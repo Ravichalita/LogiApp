@@ -38,14 +38,14 @@ export default async function ClientsPage() {
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <Accordion type="single" collapsible asChild>
-                    <TableBody>
+                  <TableBody>
+                    <Accordion type="single" collapsible className="w-full">
                       {clients.map(client => (
                         <AccordionItem value={client.id} key={client.id} asChild>
                            <React.Fragment>
                              <TableRow>
-                                <TableCell>
-                                   <AccordionTrigger className='p-2 -m-2 hover:no-underline [&[data-state=open]>svg]:rotate-180'>
+                                <TableCell className='p-0'>
+                                   <AccordionTrigger className='p-4 hover:no-underline [&[data-state=open]>svg]:rotate-180'>
                                       <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                    </AccordionTrigger>
                                 </TableCell>
@@ -58,7 +58,7 @@ export default async function ClientsPage() {
                               </TableRow>
                               <AccordionContent asChild>
                                 <TableRow className='bg-muted/50 hover:bg-muted/50'>
-                                  <TableCell colSpan={5} className="p-4 pt-0">
+                                  <TableCell colSpan={5} className="p-0">
                                     <div className="space-y-4 p-4 bg-background/50 rounded-md">
                                       <p className='lg:hidden'><span className='font-semibold'>Endereço:</span> {client.address}</p>
                                       <p className='md:hidden'><span className='font-semibold'>Telefone:</span> {client.phone}</p>
@@ -91,8 +91,8 @@ export default async function ClientsPage() {
                            </React.Fragment>
                         </AccordionItem>
                       ))}
-                    </TableBody>
-                  </Accordion>
+                    </Accordion>
+                  </TableBody>
                 </Table>
               </div>
             </CardContent>
