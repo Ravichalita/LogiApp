@@ -1,12 +1,12 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const initialState = {
@@ -24,7 +24,7 @@ function SubmitButton() {
 }
 
 export function ClientForm() {
-  const [state, formAction] = useFormState(createClient, initialState);
+  const [state, formAction] = useActionState(createClient, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
   

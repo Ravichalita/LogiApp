@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { createRental } from '@/lib/actions';
 import type { Client, Dumpster } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const initialState = {
   errors: {},
@@ -34,7 +35,7 @@ interface RentalFormProps {
 }
 
 export function RentalForm({ dumpsters, clients }: RentalFormProps) {
-  const [state, formAction] = useFormState(createRental, initialState);
+  const [state, formAction] = useActionState(createRental, initialState);
   
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
