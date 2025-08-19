@@ -39,10 +39,11 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
-  const [rentalDate, setRentalDate] = useState<Date>();
-  const [returnDate, setReturnDate] = useState<Date>();
+  const [rentalDate, setRentalDate] = useState<Date | undefined>();
+  const [returnDate, setReturnDate] = useState<Date | undefined>();
 
   useEffect(() => {
+    // Initialize dates only on the client to avoid hydration mismatch
     setRentalDate(new Date());
   }, []);
 
