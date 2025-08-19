@@ -1,13 +1,12 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { deleteClient } from '@/lib/actions';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -70,9 +69,11 @@ export function ClientActions({ client }: { client: Client }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DialogTrigger asChild>
-                <DropdownMenuItem>Editar</DropdownMenuItem>
+                 <DropdownMenuItem>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </DropdownMenuItem>
               </DialogTrigger>
-              <DropdownMenuSeparator />
               <AlertDialogTrigger asChild>
                 <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                   <Trash2 className="mr-2 h-4 w-4" />
