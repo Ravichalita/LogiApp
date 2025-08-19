@@ -1,5 +1,6 @@
+
 import { getClients } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ClientForm } from './client-form';
 import { ClientActions } from './client-actions';
@@ -9,8 +10,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Mail, FileText, ChevronDown } from 'lucide-react';
+import { Mail, FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import React from 'react';
 
 export default async function ClientsPage() {
   const clients = await getClients();
@@ -39,28 +41,26 @@ export default async function ClientsPage() {
                     </TableHeader>
                     <TableBody>
                       {clients.map(client => (
-                        <AccordionItem value={client.id} key={client.id} className="border-b-0">
-                           <TableRow>
-                            <TableCell>
-                              <AccordionTrigger className='p-0 hover:no-underline'>
-                                <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                              </AccordionTrigger>
-                            </TableCell>
-                            <TableCell className="font-medium">{client.name}</TableCell>
-                            <TableCell className='hidden md:table-cell'>{client.phone}</TableCell>
-                            <TableCell className='hidden lg:table-cell truncate max-w-xs'>{client.address}</TableCell>
-                            <TableCell className="text-right">
-                              <ClientActions client={client} />
-                            </TableCell>
-                          </TableRow>
-                          <AccordionContent asChild>
-                            <tr>
-                              <td colSpan={5} className="p-0">
-                                <div className="p-4 bg-muted/50">
-                                   <div className="space-y-4">
-                                     <p className='lg:hidden'><span className='font-semibold'>Endereço:</span> {client.address}</p>
-                                     <p className='md:hidden'><span className='font-semibold'>Telefone:</span> {client.phone}</p>
-                                     <Separator className='md:hidden'/>
+                        <AccordionItem value={client.id} key={client.id} asChild>
+                          <React.Fragment>
+                            <TableRow>
+                              <TableCell>
+                                <AccordionTrigger className='p-0 hover:no-underline' />
+                              </TableCell>
+                              <TableCell className="font-medium">{client.name}</TableCell>
+                              <TableCell className='hidden md:table-cell'>{client.phone}</TableCell>
+                              <TableCell className='hidden lg:table-cell truncate max-w-xs'>{client.address}</TableCell>
+                              <TableCell className="text-right">
+                                <ClientActions client={client} />
+                              </TableCell>
+                            </TableRow>
+                            <AccordionContent asChild>
+                              <tr className='bg-muted/50 hover:bg-muted/50'>
+                                <td colSpan={5} className="p-4">
+                                  <div className="space-y-4">
+                                    <p className='lg:hidden'><span className='font-semibold'>Endereço:</span> {client.address}</p>
+                                    <p className='md:hidden'><span className='font-semibold'>Telefone:</span> {client.phone}</p>
+                                    <Separator className='md:hidden'/>
                                     {client.email && (
                                       <div className="flex items-start gap-3">
                                         <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
@@ -71,7 +71,7 @@ export default async function ClientsPage() {
                                       </div>
                                     )}
                                     {client.observations && (
-                                       <div className="flex items-start gap-3">
+                                      <div className="flex items-start gap-3">
                                         <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                                         <div className="flex flex-col">
                                           <span className="text-sm text-muted-foreground">Observações</span>
@@ -83,10 +83,10 @@ export default async function ClientsPage() {
                                         <p className="text-sm text-muted-foreground text-center py-2">Nenhuma informação adicional cadastrada.</p>
                                     )}
                                   </div>
-                                </div>
-                              </td>
-                            </tr>
-                          </AccordionContent>
+                                </td>
+                              </tr>
+                            </AccordionContent>
+                          </React.Fragment>
                         </AccordionItem>
                       ))}
                     </TableBody>
