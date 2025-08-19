@@ -75,6 +75,7 @@ export default async function DashboardPage() {
               <div className="p-6 pt-0">
                 <form action={finishRental}>
                   <input type="hidden" name="rentalId" value={rental.id} />
+                  <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
                   <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Finalizar Aluguel

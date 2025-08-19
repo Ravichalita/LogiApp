@@ -49,11 +49,11 @@ export const addRental = async (rental: Omit<Rental, 'id'>) => {
   return newRental;
 };
 
-export const completeRental = async (rentalId: string) => {
+export const completeRental = async (rentalId: string, dumpsterId: string) => {
   const rental = rentals.find(r => r.id === rentalId);
   if (rental) {
     rental.status = 'Concluído';
-    const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
+    const dumpster = dumpsters.find(d => d.id === dumpsterId);
     if (dumpster) {
       dumpster.status = 'Disponível';
     }

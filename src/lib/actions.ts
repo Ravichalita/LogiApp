@@ -25,6 +25,7 @@ export async function createDumpster(prevState: any, formData: FormData) {
   try {
     await addDumpster(validatedFields.data);
     revalidatePath('/dumpsters');
+    revalidatePath('/rentals/new');
     return { success: true, message: "Caçamba criada com sucesso." };
   } catch (e) {
     return { error: 'Falha ao criar caçamba.' };
@@ -53,6 +54,7 @@ export async function createClient(prevState: any, formData: FormData) {
   try {
     await addClient(validatedFields.data);
     revalidatePath('/clients');
+    revalidatePath('/rentals/new');
     return { success: true, message: "Cliente criado com sucesso." };
   } catch (e) {
     return { error: 'Falha ao criar cliente.' };
@@ -104,11 +106,15 @@ export async function createRental(prevState: any, formData: FormData) {
 
 export async function finishRental(formData: FormData) {
     const rentalId = formData.get('rentalId') as string;
+    const dumpsterId = formData.get('dumpsterId') as string;
     if (!rentalId) {
         return { error: 'ID do aluguel não encontrado.' };
     }
+    if (!dumpsterId) {
+        return { error: 'ID da caçamba não encontrado.' };
+    }
     try {
-        await completeRental(rentalId);
+        await completeRental(rentalId, dumpsterId);
         revalidatePath('/');
         revalidatePath('/dumpsters');
     } catch (e) {
