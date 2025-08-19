@@ -1,6 +1,5 @@
-
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +14,7 @@ import {
 import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import type { Location } from '@/lib/types';
 
 const containerStyle = {
   width: '100%',
@@ -22,21 +22,17 @@ const containerStyle = {
 };
 
 const defaultCenter = {
-  lat: -14.235,
+  lat: -14.235, // Centered on Brazil
   lng: -51.9253,
 };
-
-interface Location {
-  lat: number;
-  lng: number;
-  address: string;
-}
 
 interface MapDialogProps {
   onLocationSelect: (location: Location) => void;
 }
 
 export function MapDialog({ onLocationSelect }: MapDialogProps) {
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [center, setCenter] = useState(defaultCenter);
   const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | undefined>();
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +43,31 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
     libraries: ['geocoding'],
     preventLoad: !googleMapsApiKey,
   });
+  
+  const onMapLoad = useCallback((mapInstance: google.maps.Map) => {
+    setMap(mapInstance);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newCenter = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setCenter(newCenter);
+          if (map) {
+            map.panTo(newCenter);
+          }
+        },
+        () => {
+          // Handle error or user denial
+          console.log("User denied Geolocation");
+        }
+      );
+    }
+  }, [isOpen, map]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (event.latLng) {
@@ -113,8 +134,9 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
     return (
       <GoogleMap
         mapContainerStyle={containerStyle}
-        center={defaultCenter}
-        zoom={4}
+        center={center}
+        zoom={15}
+        onLoad={onMapLoad}
         onClick={handleMapClick}
       >
         {selectedPosition && <Marker position={selectedPosition} />}

@@ -15,6 +15,8 @@ export interface Client {
   address: string;
   email?: string;
   observations?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Rental {

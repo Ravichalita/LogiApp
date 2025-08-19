@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { Mail, FileText, MapPin, Phone } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import Link from 'next/link';
 
 export default async function ClientsPage() {
   const clients = await getClients();
@@ -36,7 +37,7 @@ export default async function ClientsPage() {
                       <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
                          <Phone className="h-4 w-4 shrink-0"/> <span>{client.phone}</span>
                       </div>
-                      <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-2 justify-start">
+                      <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-2 justify-start [&>svg]:ml-1">
                         Ver Detalhes
                       </AccordionTrigger>
                     </div>
@@ -48,6 +49,11 @@ export default async function ClientsPage() {
                            <div className="flex flex-col">
                              <span className="text-sm text-muted-foreground">Endereço Principal</span>
                              <span className="font-medium">{client.address}</span>
+                             {client.latitude && client.longitude && (
+                               <Link href={`https://www.google.com/maps?q=${client.latitude},${client.longitude}`} target="_blank" className="text-xs text-primary hover:underline mt-1">
+                                  Ver no mapa
+                               </Link>
+                             )}
                            </div>
                         </div>
                         {client.email && (

@@ -96,6 +96,8 @@ const clientSchema = z.object({
   address: z.string().min(5, 'O endereço deve ter pelo menos 5 caracteres.'),
   email: z.string().email('O e-mail deve ser válido.').optional().or(z.literal('')),
   observations: z.string().optional(),
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
 });
 
 export async function createClient(prevState: any, formData: FormData) {
@@ -105,6 +107,8 @@ export async function createClient(prevState: any, formData: FormData) {
     address: formData.get('address'),
     email: formData.get('email'),
     observations: formData.get('observations'),
+    latitude: formData.get('latitude'),
+    longitude: formData.get('longitude'),
   });
 
   if (!validatedFields.success) {
@@ -133,6 +137,8 @@ export async function updateClient(prevState: any, formData: FormData) {
     address: formData.get('address'),
     email: formData.get('email'),
     observations: formData.get('observations'),
+    latitude: formData.get('latitude'),
+    longitude: formData.get('longitude'),
   });
 
   if (!validatedFields.success) {
@@ -159,7 +165,6 @@ export async function deleteClient(id: string) {
         revalidatePath('/clients');
         return { message: 'success' };
     } catch (e: any) {
-        // e.message will contain the specific error from data.ts
         return { message: 'error', error: e.message };
     }
 }

@@ -1,4 +1,3 @@
-
 [
   {
     "id": "1",
@@ -23,21 +22,5 @@
     "address": "Alameda dos Jacarandás, 789, Belo Horizonte, MG",
     "email": "contato@lajesepilares.com.br",
     "observations": "Cuidado com o portão automático."
-  },
-  {
-    "name": "Eduardo Ravi Chalita",
-    "phone": "32984304486",
-    "address": "Rua 4, Nº 1",
-    "id": "1755632321592",
-    "email": "eduardochalita@gmail.com",
-    "observations": ""
-  },
-  {
-    "name": "Mané Garrincha",
-    "phone": "21 995619083",
-    "address": "Rua Maracanã, 56\r\nRio de Janeiro-RJ",
-    "id": "1755633496054",
-    "email": "",
-    "observations": ""
   }
 ]

@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { MapDialog } from '@/components/map-dialog';
+import type { Location } from '@/lib/types';
 
 const initialState = {
   errors: {},
@@ -28,6 +30,9 @@ export function ClientForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
   
+  const [address, setAddress] = useState('');
+  const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
+  
   useEffect(() => {
     if (state?.message === 'success') {
       toast({
@@ -35,6 +40,8 @@ export function ClientForm() {
         description: "Novo cliente cadastrado.",
       });
       formRef.current?.reset();
+      setAddress('');
+      setLocation(null);
     } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
@@ -43,9 +50,17 @@ export function ClientForm() {
       });
     }
   }, [state, toast]);
+  
+  const handleLocationSelect = (selectedLocation: Location) => {
+    setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+    setAddress(selectedLocation.address);
+  };
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
+      {location && <input type="hidden" name="latitude" value={location.lat} />}
+      {location && <input type="hidden" name="longitude" value={location.lng} />}
+      
       <div className="space-y-2">
         <Label htmlFor="name">Nome do Cliente</Label>
         <Input id="name" name="name" placeholder="João da Silva Construções" required />
@@ -63,7 +78,15 @@ export function ClientForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="address">Endereço Principal</Label>
-        <Textarea id="address" name="address" placeholder="Rua das Flores, 123, São Paulo, SP" required />
+        <div className="flex gap-2">
+            <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua das Flores, 123, São Paulo, SP" required />
+            <MapDialog onLocationSelect={handleLocationSelect} />
+        </div>
+         {location && (
+          <p className="text-sm text-muted-foreground">
+            Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+          </p>
+        )}
         {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
       </div>
       <div className="space-y-2">

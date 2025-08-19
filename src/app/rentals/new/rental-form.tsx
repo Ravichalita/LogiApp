@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createRental } from '@/lib/actions';
-import type { Client, Dumpster } from '@/lib/types';
+import type { Client, Dumpster, Location } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -16,7 +15,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
-import { MapDialog } from './map-dialog';
+import { MapDialog } from '@/components/map-dialog';
 
 const initialState = {
   errors: {},
@@ -43,7 +42,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
@@ -53,16 +52,21 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   useEffect(() => {
     if (selectedClientId) {
       const client = clients.find(c => c.id === selectedClientId);
-      // Only set address if it's not already set by the map
-      if (!location) {
-         setDeliveryAddress(client ? client.address : '');
+      if (client) {
+         setDeliveryAddress(client.address);
+         if (client.latitude && client.longitude) {
+           setLocation({ lat: client.latitude, lng: client.longitude });
+         } else {
+           setLocation(null);
+         }
       }
     } else {
        setDeliveryAddress('');
+       setLocation(null);
     }
-  }, [selectedClientId, clients, location]);
+  }, [selectedClientId, clients]);
   
-  const handleLocationSelect = (selectedLocation: { lat: number; lng: number; address: string }) => {
+  const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setDeliveryAddress(selectedLocation.address);
   };
@@ -84,7 +88,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             <SelectValue placeholder="Selecione uma caçamba disponível" />
           </SelectTrigger>
           <SelectContent>
-            {dumpsters.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+            {dumpsters.map(d => <SelectItem key={d.id} value={d.id}>{`${d.name} (${d.size}m³, ${d.color})`}</SelectItem>)}
           </SelectContent>
         </Select>
         {state?.errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{state.errors.dumpsterId[0]}</p>}
@@ -106,7 +110,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
       <div className="space-y-2">
         <Label htmlFor="deliveryAddress">Endereço de Entrega</Label>
         <div className="flex gap-2">
-          <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço de entrega ou use o mapa" required />
+          <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço ou selecione no mapa" required />
           <MapDialog onLocationSelect={handleLocationSelect} />
         </div>
          {location && (
