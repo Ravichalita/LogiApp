@@ -1,3 +1,4 @@
+'use server';
 // In a real application, this data would be stored in a database.
 // For this demo, we're using an in-memory store. This data will reset on server restart.
 import type { Dumpster, Client, Rental } from './types';
@@ -22,10 +23,20 @@ let rentals: Rental[] = [
   { id: '2', dumpsterId: '5', clientId: '2', deliveryAddress: 'Avenida do Sol, 789, Angra dos Reis, RJ', rentalDate: new Date('2024-07-20'), returnDate: new Date('2024-07-30'), status: 'Ativo' },
 ];
 
+const deepClone = <T>(data: T): T => JSON.parse(JSON.stringify(data));
+
 // Functions to interact with the data
-export const getDumpsters = async () => dumpsters;
-export const getClients = async () => clients;
-export const getRentals = async () => rentals;
+export const getDumpsters = async (): Promise<Dumpster[]> => deepClone(dumpsters);
+export const getClients = async (): Promise<Client[]> => deepClone(clients);
+export const getRentals = async (): Promise<Rental[]> => {
+    const clonedRentals = deepClone(rentals);
+    // JSON stringify/parse turns dates into strings, so we need to convert them back
+    return clonedRentals.map(rental => ({
+        ...rental,
+        rentalDate: new Date(rental.rentalDate),
+        returnDate: new Date(rental.returnDate),
+    }));
+};
 
 export const addDumpster = async (dumpster: Omit<Dumpster, 'id'>) => {
   const newDumpster = { ...dumpster, id: String(Date.now()) };
@@ -42,21 +53,19 @@ export const addClient = async (client: Omit<Client, 'id'>) => {
 export const addRental = async (rental: Omit<Rental, 'id'>) => {
   const newRental = { ...rental, id: String(Date.now()) };
   rentals.push(newRental);
-  const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
-  if (dumpster) {
-    dumpster.status = 'Alugada';
-  }
+  dumpsters = dumpsters.map(d => 
+    d.id === rental.dumpsterId ? { ...d, status: 'Alugada' } : d
+  );
   return newRental;
 };
 
 export const completeRental = async (rentalId: string, dumpsterId: string) => {
-  const rental = rentals.find(r => r.id === rentalId);
-  if (rental) {
-    rental.status = 'Concluído';
-    const dumpster = dumpsters.find(d => d.id === dumpsterId);
-    if (dumpster) {
-      dumpster.status = 'Disponível';
-    }
-  }
-  return rental;
+  rentals = rentals.map(r => 
+    r.id === rentalId ? { ...r, status: 'Concluído' } : r
+  );
+  dumpsters = dumpsters.map(d => 
+    d.id === dumpsterId ? { ...d, status: 'Disponível' } : d
+  );
+  const updatedRental = rentals.find(r => r.id === rentalId);
+  return updatedRental;
 };

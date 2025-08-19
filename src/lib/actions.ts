@@ -24,12 +24,12 @@ export async function createDumpster(prevState: any, formData: FormData) {
 
   try {
     await addDumpster(validatedFields.data);
+    revalidatePath('/dumpsters');
+    revalidatePath('/rentals/new');
   } catch (e) {
     return { error: 'Falha ao criar caçamba.' };
   }
-
-  revalidatePath('/dumpsters');
-  revalidatePath('/rentals/new');
+  
   return { success: true, message: "Caçamba criada com sucesso." };
 }
 
@@ -54,12 +54,12 @@ export async function createClient(prevState: any, formData: FormData) {
   
   try {
     await addClient(validatedFields.data);
+    revalidatePath('/clients');
+    revalidatePath('/rentals/new');
   } catch (e) {
     return { error: 'Falha ao criar cliente.' };
   }
 
-  revalidatePath('/clients');
-  revalidatePath('/rentals/new');
   return { success: true, message: "Cliente criado com sucesso." };
 }
 
@@ -110,20 +110,20 @@ export async function createRental(prevState: any, formData: FormData) {
 export async function finishRental(formData: FormData) {
     const rentalId = formData.get('rentalId') as string;
     const dumpsterId = formData.get('dumpsterId') as string;
-    if (!rentalId) {
-        return { error: 'ID do aluguel não encontrado.' };
+    
+    if (!rentalId || !dumpsterId) {
+      // Idealmente, você retornaria um erro mais explícito para o usuário.
+      // Por enquanto, vamos apenas logar e falhar silenciosamente.
+      console.error("IDs de aluguel ou caçamba ausentes.");
+      return;
     }
-    if (!dumpsterId) {
-        return { error: 'ID da caçamba não encontrado.' };
-    }
+
     try {
         await completeRental(rentalId, dumpsterId);
+        revalidatePath('/');
+        revalidatePath('/dumpsters');
     } catch (e) {
         console.error(e);
-        // In a real app, you'd handle this error more gracefully
-        return { error: 'Falha ao finalizar aluguel.' };
+        // Em um app real, você trataria esse erro de forma mais elegante.
     }
-    revalidatePath('/');
-    revalidatePath('/dumpsters');
-    redirect('/');
 }
