@@ -24,12 +24,13 @@ export async function createDumpster(prevState: any, formData: FormData) {
 
   try {
     await addDumpster(validatedFields.data);
-    revalidatePath('/dumpsters');
-    revalidatePath('/rentals/new');
-    return { success: true, message: "Caçamba criada com sucesso." };
   } catch (e) {
     return { error: 'Falha ao criar caçamba.' };
   }
+
+  revalidatePath('/dumpsters');
+  revalidatePath('/rentals/new');
+  return { success: true, message: "Caçamba criada com sucesso." };
 }
 
 const clientSchema = z.object({
@@ -53,12 +54,13 @@ export async function createClient(prevState: any, formData: FormData) {
   
   try {
     await addClient(validatedFields.data);
-    revalidatePath('/clients');
-    revalidatePath('/rentals/new');
-    return { success: true, message: "Cliente criado com sucesso." };
   } catch (e) {
     return { error: 'Falha ao criar cliente.' };
   }
+
+  revalidatePath('/clients');
+  revalidatePath('/rentals/new');
+  return { success: true, message: "Cliente criado com sucesso." };
 }
 
 const rentalSchema = z.object({
@@ -66,7 +68,7 @@ const rentalSchema = z.object({
   clientId: z.string().min(1, 'Selecione um cliente.'),
   deliveryAddress: z.string().min(5, 'O endereço de entrega é obrigatório.'),
   rentalDate: z.coerce.date(),
-  returnDate: z.coerce.date().min(new Date(), { message: "Data de retorno deve ser no futuro." }),
+  returnDate: z.coerce.date(),
 }).refine(data => data.returnDate > data.rentalDate, {
   message: "A data de retirada deve ser após a data de entrega.",
   path: ["returnDate"],
@@ -97,6 +99,7 @@ export async function createRental(prevState: any, formData: FormData) {
         });
         revalidatePath('/');
         revalidatePath('/dumpsters');
+        revalidatePath('/rentals/new');
     } catch (e) {
         return { error: 'Falha ao criar aluguel.' };
     }
@@ -115,11 +118,12 @@ export async function finishRental(formData: FormData) {
     }
     try {
         await completeRental(rentalId, dumpsterId);
-        revalidatePath('/');
-        revalidatePath('/dumpsters');
     } catch (e) {
         console.error(e);
         // In a real app, you'd handle this error more gracefully
         return { error: 'Falha ao finalizar aluguel.' };
     }
+    revalidatePath('/');
+    revalidatePath('/dumpsters');
+    redirect('/');
 }

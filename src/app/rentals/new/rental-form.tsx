@@ -39,8 +39,8 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
-  const [rentalDate, setRentalDate] = useState<Date | undefined>();
-  const [returnDate, setReturnDate] = useState<Date | undefined>();
+  const [rentalDate, setRentalDate] = useState<Date>();
+  const [returnDate, setReturnDate] = useState<Date>();
 
   useEffect(() => {
     setRentalDate(new Date());
@@ -50,6 +50,8 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
     const client = clients.find(c => c.id === selectedClientId);
     if (client) {
       setDeliveryAddress(client.address);
+    } else {
+      setDeliveryAddress('');
     }
   }, [selectedClientId, clients]);
 
@@ -74,7 +76,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="clientId">Cliente</Label>
-        <Select name="clientId" onValueChange={setSelectedClientId} required>
+        <Select name="clientId" onValueChange={setSelectedClientId} value={selectedClientId} required>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um cliente" />
           </SelectTrigger>
