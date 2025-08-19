@@ -27,27 +27,26 @@ export default async function ClientsPage() {
               <CardTitle>Meus Clientes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="border rounded-md">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12"></TableHead>
-                      <TableHead>Nome</TableHead>
-                      <TableHead className='hidden md:table-cell'>Telefone</TableHead>
-                      <TableHead className='hidden lg:table-cell'>Endereço</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <Accordion type="single" collapsible className="w-full">
-                      {clients.map(client => (
-                        <AccordionItem value={client.id} key={client.id} asChild>
-                           <React.Fragment>
-                             <TableRow>
+              <Accordion type="single" collapsible className="w-full">
+                <div className="border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12"></TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead className='hidden md:table-cell'>Telefone</TableHead>
+                        <TableHead className='hidden lg:table-cell'>Endereço</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {clients.map(client => (
+                           <AccordionItem value={client.id} key={client.id} className='border-b last:border-b-0'>
+                              <TableRow>
                                 <TableCell className='p-0'>
-                                   <AccordionTrigger className='p-4 hover:no-underline [&[data-state=open]>svg]:rotate-180'>
+                                  <AccordionTrigger className='p-4 hover:no-underline [&[data-state=open]>svg]:rotate-180'>
                                       <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                   </AccordionTrigger>
+                                  </AccordionTrigger>
                                 </TableCell>
                                 <TableCell className="font-medium">{client.name}</TableCell>
                                 <TableCell className='hidden md:table-cell'>{client.phone}</TableCell>
@@ -56,45 +55,44 @@ export default async function ClientsPage() {
                                   <ClientActions client={client} />
                                 </TableCell>
                               </TableRow>
-                              <AccordionContent asChild>
-                                <TableRow className='bg-muted/50 hover:bg-muted/50'>
-                                  <TableCell colSpan={5} className="p-0">
-                                    <div className="space-y-4 p-4 bg-background/50 rounded-md">
-                                      <p className='lg:hidden'><span className='font-semibold'>Endereço:</span> {client.address}</p>
-                                      <p className='md:hidden'><span className='font-semibold'>Telefone:</span> {client.phone}</p>
-                                      <Separator className='md:hidden'/>
-                                      {client.email && (
-                                        <div className="flex items-start gap-3">
-                                          <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                          <div className="flex flex-col">
-                                            <span className="text-sm text-muted-foreground">Email</span>
-                                            <span className="font-medium">{client.email}</span>
+                              <TableRow>
+                                <TableCell colSpan={5} className="p-0">
+                                   <AccordionContent>
+                                      <div className="space-y-4 p-4 bg-muted/50">
+                                        <p className='lg:hidden'><span className='font-semibold'>Endereço:</span> {client.address}</p>
+                                        <p className='md:hidden'><span className='font-semibold'>Telefone:</span> {client.phone}</p>
+                                        <Separator className='md:hidden'/>
+                                        {client.email && (
+                                          <div className="flex items-start gap-3">
+                                            <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                                            <div className="flex flex-col">
+                                              <span className="text-sm text-muted-foreground">Email</span>
+                                              <span className="font-medium">{client.email}</span>
+                                            </div>
                                           </div>
-                                        </div>
-                                      )}
-                                      {client.observations && (
-                                        <div className="flex items-start gap-3">
-                                          <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                          <div className="flex flex-col">
-                                            <span className="text-sm text-muted-foreground">Observações</span>
-                                            <p className="font-medium whitespace-pre-wrap">{client.observations}</p>
+                                        )}
+                                        {client.observations && (
+                                          <div className="flex items-start gap-3">
+                                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                                            <div className="flex flex-col">
+                                              <span className="text-sm text-muted-foreground">Observações</span>
+                                              <p className="font-medium whitespace-pre-wrap">{client.observations}</p>
+                                            </div>
                                           </div>
-                                        </div>
-                                      )}
-                                      {!client.email && !client.observations && (
-                                          <p className="text-sm text-muted-foreground text-center py-2">Nenhuma informação adicional cadastrada.</p>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              </AccordionContent>
-                           </React.Fragment>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  </TableBody>
-                </Table>
-              </div>
+                                        )}
+                                        {!client.email && !client.observations && (
+                                            <p className="text-sm text-muted-foreground text-center py-2">Nenhuma informação adicional cadastrada.</p>
+                                        )}
+                                      </div>
+                                   </AccordionContent>
+                                </TableCell>
+                              </TableRow>
+                           </AccordionItem>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Accordion>
             </CardContent>
           </Card>
         </div>
