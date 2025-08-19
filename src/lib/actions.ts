@@ -19,18 +19,19 @@ export async function createDumpster(prevState: any, formData: FormData) {
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
+      message: 'validation_error',
     };
   }
 
   try {
     await addDumpster(validatedFields.data);
     revalidatePath('/dumpsters');
-    revalidatePath('/rentals/new');
+    revalidatePath('/rentals/new'); // Revalidate to update dropdown
   } catch (e) {
-    return { error: 'Falha ao criar caçamba.' };
+    return { error: 'Falha ao criar caçamba.', message: 'error' };
   }
   
-  return { success: true, message: "Caçamba criada com sucesso." };
+  return { message: "success" };
 }
 
 const clientSchema = z.object({
@@ -49,18 +50,19 @@ export async function createClient(prevState: any, formData: FormData) {
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
+      message: 'validation_error',
     };
   }
   
   try {
     await addClient(validatedFields.data);
     revalidatePath('/clients');
-    revalidatePath('/rentals/new');
+    revalidatePath('/rentals/new'); // Revalidate to update dropdown
   } catch (e) {
-    return { error: 'Falha ao criar cliente.' };
+    return { error: 'Falha ao criar cliente.', message: 'error' };
   }
 
-  return { success: true, message: "Cliente criado com sucesso." };
+  return { message: "success" };
 }
 
 const rentalSchema = z.object({
@@ -112,8 +114,6 @@ export async function finishRental(formData: FormData) {
     const dumpsterId = formData.get('dumpsterId') as string;
     
     if (!rentalId || !dumpsterId) {
-      // Idealmente, você retornaria um erro mais explícito para o usuário.
-      // Por enquanto, vamos apenas logar e falhar silenciosamente.
       console.error("IDs de aluguel ou caçamba ausentes.");
       return;
     }
@@ -126,4 +126,5 @@ export async function finishRental(formData: FormData) {
         console.error(e);
         // Em um app real, você trataria esse erro de forma mais elegante.
     }
+    redirect('/');
 }

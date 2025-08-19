@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const initialState = {
   errors: {},
-  success: false,
+  message: '',
 };
 
 function SubmitButton() {
@@ -29,13 +29,13 @@ export function ClientForm() {
   const { toast } = useToast();
   
   useEffect(() => {
-    if (state?.success) {
+    if (state?.message === 'success') {
       toast({
         title: "Sucesso!",
         description: "Novo cliente cadastrado.",
       });
       formRef.current?.reset();
-    } else if (state?.error) {
+    } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
         description: state.error,

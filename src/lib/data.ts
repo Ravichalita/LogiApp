@@ -23,36 +23,48 @@ let rentals: Rental[] = [
   { id: '2', dumpsterId: '5', clientId: '2', deliveryAddress: 'Avenida do Sol, 789, Angra dos Reis, RJ', rentalDate: new Date('2024-07-20'), returnDate: new Date('2024-07-30'), status: 'Ativo' },
 ];
 
-const deepClone = <T>(data: T): T => JSON.parse(JSON.stringify(data));
+const deepClone = <T>(data: T): T => {
+    // This is a simplified deep clone that works for our data structure
+    // It handles the Date object conversion issue from simple JSON.parse(JSON.stringify(x))
+    if (data === null || typeof data !== 'object') {
+        return data;
+    }
+    if (data instanceof Date) {
+        return new Date(data.getTime()) as any;
+    }
+    if (Array.isArray(data)) {
+        return data.map(item => deepClone(item)) as any;
+    }
+    const clone: { [key: string]: any } = {};
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key)) {
+            clone[key] = deepClone(data[key]);
+        }
+    }
+    return clone as T;
+};
+
 
 // Functions to interact with the data
 export const getDumpsters = async (): Promise<Dumpster[]> => deepClone(dumpsters);
 export const getClients = async (): Promise<Client[]> => deepClone(clients);
-export const getRentals = async (): Promise<Rental[]> => {
-    const clonedRentals = deepClone(rentals);
-    // JSON stringify/parse turns dates into strings, so we need to convert them back
-    return clonedRentals.map(rental => ({
-        ...rental,
-        rentalDate: new Date(rental.rentalDate),
-        returnDate: new Date(rental.returnDate),
-    }));
-};
+export const getRentals = async (): Promise<Rental[]> => deepClone(rentals);
 
 export const addDumpster = async (dumpster: Omit<Dumpster, 'id'>) => {
   const newDumpster = { ...dumpster, id: String(Date.now()) };
-  dumpsters.push(newDumpster);
+  dumpsters = [...dumpsters, newDumpster];
   return newDumpster;
 };
 
 export const addClient = async (client: Omit<Client, 'id'>) => {
   const newClient = { ...client, id: String(Date.now()) };
-  clients.push(newClient);
+  clients = [...clients, newClient];
   return newClient;
 };
 
 export const addRental = async (rental: Omit<Rental, 'id'>) => {
   const newRental = { ...rental, id: String(Date.now()) };
-  rentals.push(newRental);
+  rentals = [...rentals, newRental];
   dumpsters = dumpsters.map(d => 
     d.id === rental.dumpsterId ? { ...d, status: 'Alugada' } : d
   );

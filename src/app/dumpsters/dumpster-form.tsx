@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const initialState = {
   errors: {},
-  success: false,
+  message: '',
 };
 
 function SubmitButton() {
@@ -30,13 +30,13 @@ export function DumpsterForm() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (state?.success) {
+    if (state?.message === 'success') {
       toast({
         title: "Sucesso!",
         description: "Nova caçamba cadastrada.",
       });
       formRef.current?.reset();
-    } else if (state?.error) {
+    } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
         description: state.error,
