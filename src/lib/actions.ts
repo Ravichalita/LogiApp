@@ -157,8 +157,9 @@ export async function deleteClient(id: string) {
     try {
         await deleteClientData(id);
         revalidatePath('/clients');
-        return { message: 'success', title: 'Sucesso!', description: 'Cliente excluído.' };
+        return { message: 'success' };
     } catch (e: any) {
+        // e.message will contain the specific error from data.ts
         return { message: 'error', error: e.message };
     }
 }
