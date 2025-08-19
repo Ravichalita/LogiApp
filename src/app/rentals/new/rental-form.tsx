@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, MapPin } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -46,17 +46,16 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
-    setRentalDate(new Date());
-  }, []);
-
-  useEffect(() => {
-    const client = clients.find(c => c.id === selectedClientId);
-    if (client) {
-      setDeliveryAddress(client.address);
-    } else {
-      setDeliveryAddress('');
+    if (!rentalDate) {
+      setRentalDate(new Date());
     }
-  }, [selectedClientId, clients]);
+  }, [rentalDate]);
+
+  const handleClientChange = (clientId: string) => {
+    setSelectedClientId(clientId);
+    const client = clients.find(c => c.id === clientId);
+    setDeliveryAddress(client ? client.address : '');
+  };
 
   return (
     <form action={formAction} className="space-y-6">
@@ -82,7 +81,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="clientId">Cliente</Label>
-        <Select name="clientId" onValueChange={setSelectedClientId} value={selectedClientId} required>
+        <Select name="clientId" onValueChange={handleClientChange} value={selectedClientId} required>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um cliente" />
           </SelectTrigger>
