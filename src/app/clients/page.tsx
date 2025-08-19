@@ -2,17 +2,7 @@ import { getClients } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ClientForm } from './client-form';
-import { MoreHorizontal } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { EditClientForm } from './edit-client-form';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { ClientActions } from './client-actions';
 
 export default async function ClientsPage() {
   const clients = await getClients();
@@ -44,27 +34,7 @@ export default async function ClientsPage() {
                         <TableCell>{client.phone}</TableCell>
                         <TableCell>{client.address}</TableCell>
                         <TableCell className="text-right">
-                          <Dialog>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <span className="sr-only">Abrir menu</span>
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DialogTrigger asChild>
-                                  <DropdownMenuItem>Editar</DropdownMenuItem>
-                                </DialogTrigger>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                             <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Editar Cliente</DialogTitle>
-                              </DialogHeader>
-                              <EditClientForm client={client} />
-                            </DialogContent>
-                          </Dialog>
+                          <ClientActions client={client} />
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,5 +1,5 @@
 'use server';
-import type { Dumpster, Client, Rental } from './types';
+import type { Dumpster, Client, Rental, DumpsterStatus } from './types';
 import { db } from './db';
 
 // --- Data Retrieval Functions ---
@@ -31,12 +31,34 @@ export const addDumpster = async (dumpster: Omit<Dumpster, 'id'>) => {
   return newDumpster;
 };
 
-export const updateDumpster = async (dumpster: Dumpster) => {
+export const updateDumpster = async (dumpster: Partial<Dumpster>, partial = false) => {
   const currentData = await getDumpsters();
-  const updatedData = currentData.map(d => (d.id === dumpster.id ? dumpster : d));
+  let updatedData;
+  if (partial) {
+    const existingDumpster = currentData.find(d => d.id === dumpster.id);
+    if (!existingDumpster) throw new Error("Caçamba não encontrada");
+    const updatedDumpster = { ...existingDumpster, ...dumpster };
+    updatedData = currentData.map(d => (d.id === dumpster.id ? updatedDumpster : d));
+  } else {
+    updatedData = currentData.map(d => (d.id === dumpster.id ? dumpster : d));
+  }
   await db.write('dumpsters', updatedData);
   return dumpster;
 }
+
+export const deleteDumpster = async (id: string) => {
+    const [currentDumpsters, currentRentals] = await Promise.all([getDumpsters(), getRentals()]);
+    const dumpster = currentDumpsters.find(d => d.id === id);
+
+    if (dumpster?.status === 'Alugada') {
+        throw new Error('Não é possível excluir uma caçamba que está atualmente alugada.');
+    }
+
+    const updatedData = currentDumpsters.filter(d => d.id !== id);
+    await db.write('dumpsters', updatedData);
+    return { success: true };
+}
+
 
 export const addClient = async (client: Omit<Client, 'id'>) => {
   const currentData = await getClients();
@@ -51,6 +73,18 @@ export const updateClient = async (client: Client) => {
   await db.write('clients', updatedData);
   return client;
 }
+
+export const deleteClient = async (id: string) => {
+    const [currentClients, currentRentals] = await Promise.all([getClients(), getRentals()]);
+    const hasRentals = currentRentals.some(r => r.clientId === id);
+    if (hasRentals) {
+        throw new Error('Não é possível excluir um cliente com aluguéis (ativos ou concluídos).');
+    }
+    const updatedData = currentClients.filter(c => c.id !== id);
+    await db.write('clients', updatedData);
+    return { success: true };
+}
+
 
 export const addRental = async (rental: Omit<Rental, 'id'>) => {
   const newRental = { ...rental, id: String(Date.now()) };

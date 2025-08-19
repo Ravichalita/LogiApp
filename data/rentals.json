@@ -63,5 +63,16 @@
     "returnDate": "2025-08-25T03:00:00.000Z",
     "status": "Concluído",
     "id": "1755633286797"
+  },
+  {
+    "dumpsterId": "6",
+    "clientId": "1755633496054",
+    "deliveryAddress": "Rua Maracanã, 56Rio de Janeiro-RJ",
+    "latitude": 0,
+    "longitude": 0,
+    "rentalDate": "2025-08-19T19:58:21.219Z",
+    "returnDate": "2025-08-21T03:00:00.000Z",
+    "status": "Concluído",
+    "id": "1755633511448"
   }
 ]

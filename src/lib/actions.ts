@@ -1,9 +1,10 @@
 'use server';
 
 import { z } from 'zod';
-import { addClient, addDumpster, addRental, completeRental, updateClient as updateClientData, updateDumpster as updateDumpsterData } from './data';
+import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData } from './data';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import type { DumpsterStatus } from './types';
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -58,6 +59,28 @@ export async function updateDumpster(prevState: any, formData: FormData) {
   
   return { message: "success" };
 }
+
+export async function deleteDumpster(id: string) {
+    try {
+        await deleteDumpsterData(id);
+        revalidatePath('/dumpsters');
+        return { message: 'success', title: 'Sucesso!', description: 'Caçamba excluída.' };
+    } catch (e: any) {
+        return { message: 'error', error: e.message };
+    }
+}
+
+export async function updateDumpsterStatus(id: string, status: DumpsterStatus) {
+    try {
+        const dumpsters = await updateDumpsterData({ id, status } as any, true);
+        revalidatePath('/dumpsters');
+        revalidatePath('/');
+        return { message: 'success', dumpster: dumpsters };
+    } catch (e) {
+        return { message: 'error', error: 'Falha ao atualizar status da caçamba.' };
+    }
+}
+
 
 const clientSchema = z.object({
   id: z.string().optional(),
@@ -114,6 +137,16 @@ export async function updateClient(prevState: any, formData: FormData) {
   }
 
   return { message: "success" };
+}
+
+export async function deleteClient(id: string) {
+    try {
+        await deleteClientData(id);
+        revalidatePath('/clients');
+        return { message: 'success', title: 'Sucesso!', description: 'Cliente excluído.' };
+    } catch (e: any) {
+        return { message: 'error', error: e.message };
+    }
 }
 
 
