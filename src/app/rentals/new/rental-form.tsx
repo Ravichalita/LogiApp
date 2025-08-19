@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, MapPin } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
+import { MapDialog } from './map-dialog';
 
 const initialState = {
   errors: {},
@@ -41,6 +42,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
@@ -58,9 +60,12 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
   return (
     <form action={formAction} className="space-y-6">
-      {/* Hidden inputs to pass date values to the server action */}
+      {/* Hidden inputs to pass date and location values to the server action */}
       {rentalDate && <input type="hidden" name="rentalDate" value={rentalDate.toISOString()} />}
       {returnDate && <input type="hidden" name="returnDate" value={returnDate.toISOString()} />}
+      {location && <input type="hidden" name="latitude" value={location.lat} />}
+      {location && <input type="hidden" name="longitude" value={location.lng} />}
+
 
       <div className="space-y-2">
         <Label htmlFor="dumpsterId">Caçamba</Label>
@@ -90,7 +95,15 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
       
       <div className="space-y-2">
         <Label htmlFor="deliveryAddress">Endereço de Entrega</Label>
-        <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço de entrega" required />
+        <div className="flex gap-2">
+          <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço de entrega" required />
+          <MapDialog onLocationSelect={setLocation} />
+        </div>
+         {location && (
+          <p className="text-sm text-muted-foreground">
+            Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+          </p>
+        )}
         {state?.errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{state.errors.deliveryAddress[0]}</p>}
       </div>
       

@@ -34,5 +34,23 @@
     "returnDate": "2025-08-21T03:00:00.000Z",
     "status": "Concluído",
     "id": "1755632386499"
+  },
+  {
+    "dumpsterId": "1755632314897",
+    "clientId": "1755632321592",
+    "deliveryAddress": "Rua 4, Nº 1",
+    "rentalDate": "2025-08-19T19:45:59.313Z",
+    "returnDate": "2025-08-27T03:00:00.000Z",
+    "status": "Concluído",
+    "id": "1755632767934"
+  },
+  {
+    "dumpsterId": "3",
+    "clientId": "2",
+    "deliveryAddress": "Avenida Principal, 456, Rio de Janeiro, RJ",
+    "rentalDate": "2025-08-19T19:46:36.441Z",
+    "returnDate": "2025-08-26T03:00:00.000Z",
+    "status": "Concluído",
+    "id": "1755632807904"
   }
 ]

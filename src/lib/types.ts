@@ -18,6 +18,8 @@ export interface Rental {
   dumpsterId: string;
   clientId: string;
   deliveryAddress: string;
+  latitude?: number;
+  longitude?: number;
   rentalDate: Date;
   returnDate: Date;
   status: "Ativo" | "Concluído";

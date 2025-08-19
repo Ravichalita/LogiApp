@@ -121,6 +121,8 @@ const rentalSchema = z.object({
   dumpsterId: z.string().min(1, 'Selecione uma caçamba.'),
   clientId: z.string().min(1, 'Selecione um cliente.'),
   deliveryAddress: z.string().min(5, 'O endereço de entrega é obrigatório.'),
+  latitude: z.coerce.number().optional(),
+  longitude: z.coerce.number().optional(),
   rentalDate: z.coerce.date(),
   returnDate: z.coerce.date(),
 }).refine(data => data.returnDate > data.rentalDate, {
@@ -134,6 +136,8 @@ export async function createRental(prevState: any, formData: FormData) {
         dumpsterId: formData.get('dumpsterId'),
         clientId: formData.get('clientId'),
         deliveryAddress: formData.get('deliveryAddress'),
+        latitude: formData.get('latitude'),
+        longitude: formData.get('longitude'),
         rentalDate: formData.get('rentalDate'),
         returnDate: formData.get('returnDate'),
     }
