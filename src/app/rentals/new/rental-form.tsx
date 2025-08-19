@@ -38,7 +38,7 @@ interface RentalFormProps {
 export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   const [state, formAction] = useActionState(createRental, initialState);
   
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
@@ -46,16 +46,14 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
-    if (!rentalDate) {
-      setRentalDate(new Date());
-    }
-  }, [rentalDate]);
+    setRentalDate(new Date());
+  }, []);
 
-  const handleClientChange = (clientId: string) => {
-    setSelectedClientId(clientId);
-    const client = clients.find(c => c.id === clientId);
+  useEffect(() => {
+    const client = clients.find(c => c.id === selectedClientId);
     setDeliveryAddress(client ? client.address : '');
-  };
+  }, [selectedClientId, clients]);
+
 
   return (
     <form action={formAction} className="space-y-6">
@@ -81,7 +79,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
       <div className="space-y-2">
         <Label htmlFor="clientId">Cliente</Label>
-        <Select name="clientId" onValueChange={handleClientChange} value={selectedClientId} required>
+        <Select name="clientId" onValueChange={setSelectedClientId} value={selectedClientId} required>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um cliente" />
           </SelectTrigger>
