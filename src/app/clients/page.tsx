@@ -28,17 +28,17 @@ export default async function ClientsPage() {
             </CardHeader>
             <CardContent>
               <div className="border rounded-md">
-                <Accordion type="single" collapsible className="w-full">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12"></TableHead>
-                        <TableHead>Nome</TableHead>
-                        <TableHead className='hidden md:table-cell'>Telefone</TableHead>
-                        <TableHead className='hidden lg:table-cell'>Endereço</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12"></TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className='hidden md:table-cell'>Telefone</TableHead>
+                      <TableHead className='hidden lg:table-cell'>Endereço</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <Accordion type="single" collapsible asChild>
                     <TableBody>
                       {clients.map(client => (
                         <AccordionItem value={client.id} key={client.id} asChild>
@@ -57,8 +57,8 @@ export default async function ClientsPage() {
                                 </TableCell>
                               </TableRow>
                               <AccordionContent asChild>
-                                <tr className='bg-muted/50 hover:bg-muted/50'>
-                                  <td colSpan={5} className="p-4 pt-0">
+                                <TableRow className='bg-muted/50 hover:bg-muted/50'>
+                                  <TableCell colSpan={5} className="p-4 pt-0">
                                     <div className="space-y-4 p-4 bg-background/50 rounded-md">
                                       <p className='lg:hidden'><span className='font-semibold'>Endereço:</span> {client.address}</p>
                                       <p className='md:hidden'><span className='font-semibold'>Telefone:</span> {client.phone}</p>
@@ -85,15 +85,15 @@ export default async function ClientsPage() {
                                           <p className="text-sm text-muted-foreground text-center py-2">Nenhuma informação adicional cadastrada.</p>
                                       )}
                                     </div>
-                                  </td>
-                                </tr>
+                                  </TableCell>
+                                </TableRow>
                               </AccordionContent>
                            </React.Fragment>
                         </AccordionItem>
                       ))}
                     </TableBody>
-                  </Table>
-                </Accordion>
+                  </Accordion>
+                </Table>
               </div>
             </CardContent>
           </Card>
