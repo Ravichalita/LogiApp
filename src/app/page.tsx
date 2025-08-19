@@ -1,3 +1,4 @@
+
 import { getClients, getDumpsters, getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -54,10 +55,13 @@ export default async function DashboardPage() {
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2 font-headline">
                       <Truck className="h-6 w-6 text-primary" />
-                      {`${rental.dumpster.name} (${rental.dumpster.color}, ${rental.dumpster.size}m³)`}
+                      {rental.dumpster.name}
                     </span>
                     <Badge variant="destructive">Ativo</Badge>
                   </CardTitle>
+                  <CardDescription>
+                    {`${rental.dumpster.color}, ${rental.dumpster.size}m³`}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow space-y-4">
                   <div className="flex items-start gap-3">
