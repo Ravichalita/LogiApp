@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useActionState } from 'react';
@@ -52,11 +53,19 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   useEffect(() => {
     if (selectedClientId) {
       const client = clients.find(c => c.id === selectedClientId);
-      setDeliveryAddress(client ? client.address : '');
+      // Only set address if it's not already set by the map
+      if (!location) {
+         setDeliveryAddress(client ? client.address : '');
+      }
     } else {
-      setDeliveryAddress('');
+       setDeliveryAddress('');
     }
-  }, [selectedClientId, clients]);
+  }, [selectedClientId, clients, location]);
+  
+  const handleLocationSelect = (selectedLocation: { lat: number; lng: number; address: string }) => {
+    setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+    setDeliveryAddress(selectedLocation.address);
+  };
 
 
   return (
@@ -97,12 +106,12 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
       <div className="space-y-2">
         <Label htmlFor="deliveryAddress">Endereço de Entrega</Label>
         <div className="flex gap-2">
-          <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço de entrega" required />
-          <MapDialog onLocationSelect={setLocation} />
+          <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço de entrega ou use o mapa" required />
+          <MapDialog onLocationSelect={handleLocationSelect} />
         </div>
          {location && (
           <p className="text-sm text-muted-foreground">
-            Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+            Coordenadas selecionadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
           </p>
         )}
         {state?.errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{state.errors.deliveryAddress[0]}</p>}

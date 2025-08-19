@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
@@ -25,20 +26,25 @@ const defaultCenter = {
   lng: -51.9253,
 };
 
+interface Location {
+  lat: number;
+  lng: number;
+  address: string;
+}
+
 interface MapDialogProps {
-  onLocationSelect: (location: { lat: number; lng: number }) => void;
+  onLocationSelect: (location: Location) => void;
 }
 
 export function MapDialog({ onLocationSelect }: MapDialogProps) {
-  const [selectedPosition, setSelectedPosition] = useState<
-    { lat: number; lng: number } | undefined
-  >();
+  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | undefined>();
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    // Only load the script if the key is provided
+    libraries: ['geocoding'],
     preventLoad: !googleMapsApiKey,
   });
 
@@ -51,13 +57,31 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
     }
   };
 
-  const handleConfirm = () => {
-    if (selectedPosition) {
-      onLocationSelect(selectedPosition);
-    }
-    setIsOpen(false);
+  const handleConfirm = async () => {
+    if (!selectedPosition || !window.google) return;
+
+    setIsGeocoding(true);
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ location: selectedPosition }, (results, status) => {
+      setIsGeocoding(false);
+      if (status === 'OK' && results && results[0]) {
+        onLocationSelect({
+          ...selectedPosition,
+          address: results[0].formatted_address,
+        });
+        setIsOpen(false);
+      } else {
+        console.error(`Geocode was not successful for the following reason: ${status}`);
+        // Fallback if geocoding fails
+        onLocationSelect({
+          ...selectedPosition,
+          address: `Coordenadas: ${selectedPosition.lat.toFixed(6)}, ${selectedPosition.lng.toFixed(6)}`,
+        });
+        setIsOpen(false);
+      }
+    });
   };
-  
+
   const renderMap = () => {
     if (!googleMapsApiKey) {
       return (
@@ -76,7 +100,7 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
          <Alert variant="destructive">
           <AlertTitle>Erro ao Carregar o Mapa</AlertTitle>
           <AlertDescription>
-           Não foi possível carregar o Google Maps. Verifique se a sua chave da API é válida, se a API "Maps JavaScript API" está ativada e se a fatura está configurada no seu projeto do Google Cloud.
+           Não foi possível carregar o Google Maps. Verifique se a sua chave da API é válida, se as APIs "Maps JavaScript API" e "Geocoding API" estão ativadas e se a fatura está configurada no seu projeto do Google Cloud.
           </AlertDescription>
         </Alert>
       );
@@ -115,8 +139,8 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleConfirm} disabled={!selectedPosition || !googleMapsApiKey}>
-            Confirmar Localização
+          <Button onClick={handleConfirm} disabled={!selectedPosition || !googleMapsApiKey || isGeocoding}>
+            {isGeocoding ? 'Buscando endereço...' : 'Confirmar Localização'}
           </Button>
         </DialogFooter>
       </DialogContent>
