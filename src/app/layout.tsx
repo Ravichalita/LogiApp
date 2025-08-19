@@ -3,6 +3,7 @@ import './globals.css';
 import { Header } from '@/components/header';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
+import { BottomNav } from '@/components/bottom-nav';
 
 export const metadata: Metadata = {
   title: 'CaçambaControl',
@@ -26,7 +27,8 @@ export default function RootLayout({
       )}>
         <div className="relative flex min-h-screen flex-col">
           <Header />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-20 md:pb-0">{children}</main>
+          <BottomNav />
         </div>
         <Toaster />
       </body>
