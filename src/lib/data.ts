@@ -101,6 +101,22 @@ export const addRental = async (rental: Omit<Rental, 'id'>) => {
   return newRental;
 };
 
+export const updateRental = async (rental: Partial<Rental>) => {
+    const currentRentals = await getRentals();
+    const existingRental = currentRentals.find(r => r.id === rental.id);
+    if (!existingRental) {
+        throw new Error('Aluguel não encontrado.');
+    }
+    if (rental.returnDate && rental.returnDate < existingRental.rentalDate) {
+        throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
+    }
+    const updatedRental = { ...existingRental, ...rental };
+    const updatedData = currentRentals.map(r => (r.id === rental.id ? updatedRental : r));
+    await db.write('rentals', updatedData);
+    return updatedRental;
+};
+
+
 export const completeRental = async (rentalId: string, dumpsterId: string) => {
   const currentRentals = await getRentals();
   const updatedRentals = currentRentals.map(r => 

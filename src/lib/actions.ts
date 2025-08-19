@@ -1,10 +1,10 @@
 'use server';
 
 import { z } from 'zod';
-import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData } from './data';
+import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData, updateRental as updateRentalData } from './data';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { DumpsterStatus } from './types';
+import type { DumpsterStatus, Rental } from './types';
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -230,4 +230,32 @@ export async function finishRental(formData: FormData) {
     }
 
     redirect('/');
+}
+
+const updateRentalSchema = z.object({
+  id: z.string(),
+  returnDate: z.coerce.date(),
+});
+
+
+export async function updateRental(prevState: any, formData: FormData) {
+  const validatedFields = updateRentalSchema.safeParse({
+    id: formData.get('id'),
+    returnDate: formData.get('returnDate'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'validation_error',
+    };
+  }
+
+  try {
+    await updateRentalData(validatedFields.data as Rental);
+    revalidatePath('/');
+    return { message: 'success' };
+  } catch (e: any) {
+    return { error: e.message, message: 'error' };
+  }
 }

@@ -85,5 +85,16 @@
     "returnDate": "2025-08-21T03:00:00.000Z",
     "status": "Ativo",
     "id": "1755637400807"
+  },
+  {
+    "dumpsterId": "1",
+    "clientId": "1",
+    "deliveryAddress": "Avenida Principal, 456, Rio de Janeiro, RJ",
+    "latitude": -22.955412939425095,
+    "longitude": -42.698418042819824,
+    "rentalDate": "2025-08-19T21:54:08.825Z",
+    "returnDate": "2025-08-21T03:00:00.000Z",
+    "status": "Ativo",
+    "id": "1755640489106"
   }
 ]

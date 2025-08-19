@@ -2,11 +2,8 @@
 import { getClients, getDumpsters, getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Truck, User, MapPin, Calendar, CheckCircle, Mail, Phone, Home, FileText } from 'lucide-react';
-import { finishRental } from '@/lib/actions';
+import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +11,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Separator } from '@/components/ui/separator';
+import { RentalCardActions } from './rentals/rental-card-actions';
 
 async function getPopulatedRentals(): Promise<PopulatedRental[]> {
   const [rentals, dumpsters, clients] = await Promise.all([
@@ -81,8 +79,8 @@ export default async function DashboardPage() {
                   <div className="flex items-start gap-3">
                     <Calendar className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                      <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">Retirada</span>
-                      <span className='font-semibold'>{new Date(rental.returnDate).toLocaleDateString('pt-BR')}</span>
+                       <span className="text-sm text-muted-foreground">Retirada</span>
+                       <RentalCardActions rental={rental}/>
                     </div>
                   </div>
                 </CardContent>
@@ -125,14 +123,6 @@ export default async function DashboardPage() {
                         )}
                       </AccordionContent>
                   </AccordionItem>
-                   <form action={finishRental} className="mt-4">
-                    <input type="hidden" name="rentalId" value={rental.id} />
-                    <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
-                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Finalizar Aluguel
-                    </Button>
-                  </form>
                 </div>
               </Card>
             </Accordion>
