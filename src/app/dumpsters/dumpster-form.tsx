@@ -49,8 +49,20 @@ export function DumpsterForm() {
     <form ref={formRef} action={formAction} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Nome/Identificador</Label>
-        <Input id="name" name="name" placeholder="Ex: Caçamba Vermelha 05" required />
+        <Input id="name" name="name" placeholder="Ex: Caçamba 01" required />
         {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="color">Cor</Label>
+          <Input id="color" name="color" placeholder="Ex: Vermelha" required />
+          {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="size">Tamanho (m³)</Label>
+          <Input id="size" name="size" type="number" placeholder="Ex: 5" required />
+          {state?.errors?.size && <p className="text-sm font-medium text-destructive">{state.errors.size[0]}</p>}
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="status">Status Inicial</Label>

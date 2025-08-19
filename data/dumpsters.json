@@ -2,31 +2,43 @@
   {
     "id": "1",
     "name": "Caçamba 01",
-    "status": "Disponível"
+    "status": "Disponível",
+    "color": "Vermelha",
+    "size": 5
   },
   {
     "id": "2",
     "name": "Caçamba 02",
-    "status": "Alugada"
+    "status": "Ativo",
+    "color": "Azul",
+    "size": 5
   },
   {
     "id": "3",
-    "name": "Caçamba Amarela 03",
-    "status": "Disponível"
+    "name": "Caçamba 03",
+    "status": "Disponível",
+    "color": "Amarela",
+    "size": 3
   },
   {
     "id": "4",
     "name": "Caçamba 04",
-    "status": "Disponível"
+    "status": "Disponível",
+    "color": "Verde",
+    "size": 5
   },
   {
     "id": "5",
-    "name": "Caçamba Azul 05",
-    "status": "Disponível"
+    "name": "Caçamba 05",
+    "status": "Disponível",
+    "color": "Azul",
+    "size": 3
   },
   {
     "id": "6",
-    "name": "Caçamba Verde 06",
-    "status": "Disponível"
+    "name": "Caçamba 06",
+    "status": "Disponível",
+    "color": "Verde",
+    "size": 5
   }
 ]

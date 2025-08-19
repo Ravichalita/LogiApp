@@ -10,12 +10,16 @@ const dumpsterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   status: z.enum(['Disponível', 'Alugada', 'Em Manutenção']),
+  color: z.string().min(3, 'A cor deve ter pelo menos 3 caracteres.'),
+  size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
 
 export async function createDumpster(prevState: any, formData: FormData) {
   const validatedFields = dumpsterSchema.safeParse({
     name: formData.get('name'),
     status: formData.get('status'),
+    color: formData.get('color'),
+    size: formData.get('size'),
   });
 
   if (!validatedFields.success) {
@@ -41,6 +45,8 @@ export async function updateDumpster(prevState: any, formData: FormData) {
     id: formData.get('id'),
     name: formData.get('name'),
     status: formData.get('status'),
+    color: formData.get('color'),
+    size: formData.get('size'),
   });
 
   if (!validatedFields.success) {
@@ -53,6 +59,7 @@ export async function updateDumpster(prevState: any, formData: FormData) {
   try {
     await updateDumpsterData(validatedFields.data as any);
     revalidatePath('/dumpsters');
+    revalidatePath('/');
   } catch (e) {
     return { error: 'Falha ao atualizar caçamba.', message: 'error' };
   }

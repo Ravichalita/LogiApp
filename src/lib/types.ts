@@ -4,6 +4,8 @@ export interface Dumpster {
   id: string;
   name: string;
   status: DumpsterStatus;
+  color: string;
+  size: number;
 }
 
 export interface Client {

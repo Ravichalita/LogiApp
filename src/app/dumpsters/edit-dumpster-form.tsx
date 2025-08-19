@@ -53,6 +53,18 @@ export function EditDumpsterForm({ dumpster }: { dumpster: Dumpster }) {
         <Input id="name" name="name" defaultValue={dumpster.name} required />
         {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
       </div>
+       <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="color">Cor</Label>
+          <Input id="color" name="color" defaultValue={dumpster.color} required />
+          {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="size">Tamanho (m³)</Label>
+          <Input id="size" name="size" type="number" defaultValue={dumpster.size} required />
+          {state?.errors?.size && <p className="text-sm font-medium text-destructive">{state.errors.size[0]}</p>}
+        </div>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="status">Status</Label>
         <Select name="status" defaultValue={dumpster.status} required>

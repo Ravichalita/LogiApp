@@ -22,6 +22,8 @@ export default async function DumpstersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Identificador</TableHead>
+                      <TableHead>Cor</TableHead>
+                      <TableHead>Tamanho (m³)</TableHead>
                       <TableHead className="text-right">Status / Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -29,6 +31,8 @@ export default async function DumpstersPage() {
                     {dumpsters.map(dumpster => (
                       <TableRow key={dumpster.id}>
                         <TableCell className="font-medium">{dumpster.name}</TableCell>
+                        <TableCell>{dumpster.color}</TableCell>
+                        <TableCell>{dumpster.size}</TableCell>
                         <TableCell className="text-right">
                           <DumpsterActions dumpster={dumpster} />
                         </TableCell>
