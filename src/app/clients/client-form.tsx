@@ -56,10 +56,20 @@ export function ClientForm() {
         <Input id="phone" name="phone" placeholder="(11) 98765-4321" required />
         {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
       </div>
+       <div className="space-y-2">
+        <Label htmlFor="email">E-mail</Label>
+        <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
+        {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
+      </div>
       <div className="space-y-2">
         <Label htmlFor="address">Endereço Principal</Label>
         <Textarea id="address" name="address" placeholder="Rua das Flores, 123, São Paulo, SP" required />
         {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="observations">Observações</Label>
+        <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+        {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
       <SubmitButton />
     </form>

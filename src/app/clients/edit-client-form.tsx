@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -58,9 +58,19 @@ export function EditClientForm({ client }: { client: Client }) {
         {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
       </div>
       <div className="space-y-2">
+        <Label htmlFor="email">E-mail</Label>
+        <Input id="email" name="email" type="email" defaultValue={client.email} />
+        {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="address">Endereço Principal</Label>
         <Textarea id="address" name="address" defaultValue={client.address} required />
         {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="observations">Observações</Label>
+        <Textarea id="observations" name="observations" defaultValue={client.observations} />
+        {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
       <SubmitButton />
     </form>

@@ -11,6 +11,8 @@ export interface Client {
   name: string;
   phone: string;
   address: string;
+  email?: string;
+  observations?: string;
 }
 
 export interface Rental {

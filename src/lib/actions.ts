@@ -87,6 +87,8 @@ const clientSchema = z.object({
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   phone: z.string().min(10, 'O telefone deve ser válido.'),
   address: z.string().min(5, 'O endereço deve ter pelo menos 5 caracteres.'),
+  email: z.string().email('O e-mail deve ser válido.').optional().or(z.literal('')),
+  observations: z.string().optional(),
 });
 
 export async function createClient(prevState: any, formData: FormData) {
@@ -94,6 +96,8 @@ export async function createClient(prevState: any, formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     address: formData.get('address'),
+    email: formData.get('email'),
+    observations: formData.get('observations'),
   });
 
   if (!validatedFields.success) {
@@ -120,6 +124,8 @@ export async function updateClient(prevState: any, formData: FormData) {
     name: formData.get('name'),
     phone: formData.get('phone'),
     address: formData.get('address'),
+    email: formData.get('email'),
+    observations: formData.get('observations'),
   });
 
   if (!validatedFields.success) {
@@ -132,6 +138,7 @@ export async function updateClient(prevState: any, formData: FormData) {
   try {
     await updateClientData(validatedFields.data as any);
     revalidatePath('/clients');
+    revalidatePath('/');
   } catch (e) {
     return { error: 'Falha ao atualizar cliente.', message: 'error' };
   }

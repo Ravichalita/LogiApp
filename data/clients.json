@@ -1,32 +1,43 @@
+
 [
   {
     "id": "1",
     "name": "João da Silva Construções",
     "phone": "(11) 98765-4321",
-    "address": "Rua das Flores, 123, São Paulo, SP"
+    "address": "Rua das Flores, 123, São Paulo, SP",
+    "email": "joao.silva@email.com",
+    "observations": "Entregar a caçamba no período da manhã."
   },
   {
     "id": "2",
     "name": "Maria Souza Reformas",
     "phone": "(21) 91234-5678",
-    "address": "Avenida Principal, 456, Rio de Janeiro, RJ"
+    "address": "Avenida Principal, 456, Rio de Janeiro, RJ",
+    "email": "maria.souza@email.com",
+    "observations": ""
   },
   {
     "id": "3",
     "name": "Construtora Lajes & Pilares",
     "phone": "(31) 99999-8888",
-    "address": "Alameda dos Jacarandás, 789, Belo Horizonte, MG"
+    "address": "Alameda dos Jacarandás, 789, Belo Horizonte, MG",
+    "email": "contato@lajesepilares.com.br",
+    "observations": "Cuidado com o portão automático."
   },
   {
     "name": "Eduardo Ravi Chalita",
     "phone": "32984304486",
     "address": "Rua 4, Nº 1",
-    "id": "1755632321592"
+    "id": "1755632321592",
+    "email": "eduardochalita@gmail.com",
+    "observations": ""
   },
   {
     "name": "Mané Garrincha",
     "phone": "21 995619083",
     "address": "Rua Maracanã, 56\r\nRio de Janeiro-RJ",
-    "id": "1755633496054"
+    "id": "1755633496054",
+    "email": "",
+    "observations": ""
   }
 ]
