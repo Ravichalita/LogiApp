@@ -1,6 +1,6 @@
 
 import { getClients } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ClientForm } from './client-form';
 import { ClientActions } from './client-actions';
