@@ -50,8 +50,12 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   }, []);
 
   useEffect(() => {
-    const client = clients.find(c => c.id === selectedClientId);
-    setDeliveryAddress(client ? client.address : '');
+    if (selectedClientId) {
+      const client = clients.find(c => c.id === selectedClientId);
+      setDeliveryAddress(client ? client.address : '');
+    } else {
+      setDeliveryAddress('');
+    }
   }, [selectedClientId, clients]);
 
 

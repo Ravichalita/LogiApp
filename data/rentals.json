@@ -52,5 +52,16 @@
     "returnDate": "2025-08-26T03:00:00.000Z",
     "status": "Concluído",
     "id": "1755632807904"
+  },
+  {
+    "dumpsterId": "4",
+    "clientId": "1755632321592",
+    "deliveryAddress": "Rua 4, Nº 1",
+    "latitude": 0,
+    "longitude": 0,
+    "rentalDate": "2025-08-19T19:54:30.021Z",
+    "returnDate": "2025-08-25T03:00:00.000Z",
+    "status": "Concluído",
+    "id": "1755633286797"
   }
 ]
