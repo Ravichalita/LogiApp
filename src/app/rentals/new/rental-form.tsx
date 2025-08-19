@@ -39,8 +39,12 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
-  const [rentalDate, setRentalDate] = useState<Date | undefined>(new Date());
+  const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
+
+  useEffect(() => {
+    setRentalDate(new Date());
+  }, []);
 
   useEffect(() => {
     const client = clients.find(c => c.id === selectedClientId);
