@@ -22,5 +22,15 @@
     "address": "Alameda dos Jacarandás, 789, Belo Horizonte, MG",
     "email": "contato@lajesepilares.com.br",
     "observations": "Cuidado com o portão automático."
+  },
+  {
+    "name": "EDUARDO RAVI CHALITA",
+    "phone": "32984304486",
+    "address": "R. Prof. João Camargo, 33 - Caxanga, Teresópolis - RJ, 25958-260, Brazil",
+    "email": "ravichalita@gmail.com",
+    "observations": "Cara Legal",
+    "latitude": -22.443335101808575,
+    "longitude": -42.97547704439699,
+    "id": "1755641437568"
   }
 ]

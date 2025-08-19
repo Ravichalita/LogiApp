@@ -107,5 +107,16 @@
     "returnDate": "2025-08-26T03:00:00.000Z",
     "status": "Concluído",
     "id": "1755640908251"
+  },
+  {
+    "dumpsterId": "2",
+    "clientId": "1755641437568",
+    "deliveryAddress": "R. Prof. João Camargo, 33 - Caxanga, Teresópolis - RJ, 25958-260, Brazil",
+    "latitude": -22.443335101808575,
+    "longitude": -42.97547704439699,
+    "rentalDate": "2025-08-19T22:10:44.107Z",
+    "returnDate": "2025-08-21T03:00:00.000Z",
+    "status": "Ativo",
+    "id": "1755641455238"
   }
 ]

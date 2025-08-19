@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterForm } from './dumpster-form';
 import { DumpsterActions } from './dumpster-actions';
+import { Separator } from '@/components/ui/separator';
 
 export default async function DumpstersPage() {
   const dumpsters = await getDumpsters();
@@ -17,7 +18,8 @@ export default async function DumpstersPage() {
               <CardTitle>Minhas Caçambas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="border rounded-md">
+              {/* Table for larger screens */}
+              <div className="hidden md:block border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -38,8 +40,39 @@ export default async function DumpstersPage() {
                         </TableCell>
                       </TableRow>
                     ))}
+                     {dumpsters.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                          Nenhuma caçamba cadastrada.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
+              </div>
+              
+              {/* Cards for smaller screens */}
+              <div className="md:hidden space-y-4">
+                {dumpsters.map(dumpster => (
+                  <div key={dumpster.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                        <h3 className="font-bold text-lg">{dumpster.name}</h3>
+                        <div className="w-auto">
+                            <DumpsterActions dumpster={dumpster} />
+                        </div>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Cor: <span className="font-medium text-foreground">{dumpster.color}</span></span>
+                      <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
+                    </div>
+                  </div>
+                ))}
+                {dumpsters.length === 0 && (
+                  <div className="text-center py-10">
+                    <p>Nenhuma caçamba cadastrada.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
