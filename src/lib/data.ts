@@ -25,28 +25,28 @@ export const getRentals = async (): Promise<Rental[]> => {
 // --- Data Mutation Functions ---
 
 export const addDumpster = async (dumpster: Omit<Dumpster, 'id'>) => {
-  const currentData = await db.read<Dumpster[]>('dumpsters');
+  const currentData = await getDumpsters();
   const newDumpster = { ...dumpster, id: String(Date.now()) };
   await db.write('dumpsters', [...currentData, newDumpster]);
   return newDumpster;
 };
 
 export const updateDumpster = async (dumpster: Dumpster) => {
-  const currentData = await db.read<Dumpster[]>('dumpsters');
+  const currentData = await getDumpsters();
   const updatedData = currentData.map(d => (d.id === dumpster.id ? dumpster : d));
   await db.write('dumpsters', updatedData);
   return dumpster;
 }
 
 export const addClient = async (client: Omit<Client, 'id'>) => {
-  const currentData = await db.read<Client[]>('clients');
+  const currentData = await getClients();
   const newClient = { ...client, id: String(Date.now()) };
   await db.write('clients', [...currentData, newClient]);
   return newClient;
 };
 
 export const updateClient = async (client: Client) => {
-  const currentData = await db.read<Client[]>('clients');
+  const currentData = await getClients();
   const updatedData = currentData.map(c => (c.id === client.id ? client : c));
   await db.write('clients', updatedData);
   return client;
@@ -55,10 +55,10 @@ export const updateClient = async (client: Client) => {
 export const addRental = async (rental: Omit<Rental, 'id'>) => {
   const newRental = { ...rental, id: String(Date.now()) };
 
-  const currentRentals = await db.read<Rental[]>('rentals');
+  const currentRentals = await getRentals();
   await db.write('rentals', [...currentRentals, newRental]);
 
-  const currentDumpsters = await db.read<Dumpster[]>('dumpsters');
+  const currentDumpsters = await getDumpsters();
   const updatedDumpsters = currentDumpsters.map(d =>
     d.id === rental.dumpsterId ? { ...d, status: 'Alugada' } : d
   );
@@ -68,13 +68,13 @@ export const addRental = async (rental: Omit<Rental, 'id'>) => {
 };
 
 export const completeRental = async (rentalId: string, dumpsterId: string) => {
-  const currentRentals = await db.read<Rental[]>('rentals');
+  const currentRentals = await getRentals();
   const updatedRentals = currentRentals.map(r => 
     r.id === rentalId ? { ...r, status: 'Concluído' } : r
   );
   await db.write('rentals', updatedRentals);
 
-  const currentDumpsters = await db.read<Dumpster[]>('dumpsters');
+  const currentDumpsters = await getDumpsters();
   const updatedDumpsters = currentDumpsters.map(d => 
     d.id === dumpsterId ? { ...d, status: 'Disponível' } : d
   );

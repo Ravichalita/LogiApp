@@ -26,35 +26,28 @@ export const db = {
       const fileContent = await fs.readFile(filePath, 'utf-8');
       return JSON.parse(fileContent);
     } catch (error) {
+      // If the file doesn't exist, it's not an error, just return empty.
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+         return [] as T;
+      }
       console.error(`Error reading from db "${key}":`, error);
-      // Depending on the use case, you might want to return an empty array
-      // or throw the error. For this app, an empty array is safer.
-      return [] as T;
+      // For other errors, re-throw or handle as needed.
+      throw error;
     }
   },
 
   /**
-   * Writes data to a JSON file by applying an update function.
+   * Writes data to a JSON file.
    * @param key The name of the data file (without .json extension).
-   * @param updater A function that receives the current data and returns the new data.
+   * @param data The new data to write to the file.
    */
-  async write<T = any>(key: string, updater: (currentData: T) => T): Promise<void> {
+  async write<T = any>(key: string, data: T): Promise<void> {
     try {
       const filePath = path.join(dataDir, `${key}.json`);
       // Ensure the directory exists
       await fs.mkdir(dataDir, { recursive: true });
-
-      let currentData: T;
-      try {
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        currentData = JSON.parse(fileContent);
-      } catch (readError) {
-        // If the file doesn't exist, start with an empty array.
-        currentData = [] as T;
-      }
       
-      const newData = updater(currentData);
-      await fs.writeFile(filePath, JSON.stringify(newData, null, 2), 'utf-8');
+      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
     } catch (error) {
       console.error(`Error writing to db "${key}":`, error);
       throw new Error(`Failed to write to database for key: ${key}`);
