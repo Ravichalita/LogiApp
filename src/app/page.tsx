@@ -8,9 +8,11 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
 async function getPopulatedRentals(): Promise<PopulatedRental[]> {
-  const rentals = await getRentals();
-  const dumpsters = await getDumpsters();
-  const clients = await getClients();
+  const [rentals, dumpsters, clients] = await Promise.all([
+    getRentals(),
+    getDumpsters(),
+    getClients(),
+  ]);
 
   const activeRentals = rentals.filter(r => r.status === 'Ativo');
 

@@ -26,7 +26,7 @@ export async function createDumpster(prevState: any, formData: FormData) {
   try {
     await addDumpster(validatedFields.data);
     revalidatePath('/dumpsters');
-    revalidatePath('/rentals/new'); // Revalidate to update dropdown
+    revalidatePath('/rentals/new');
   } catch (e) {
     return { error: 'Falha ao criar caçamba.', message: 'error' };
   }
@@ -57,7 +57,7 @@ export async function createClient(prevState: any, formData: FormData) {
   try {
     await addClient(validatedFields.data);
     revalidatePath('/clients');
-    revalidatePath('/rentals/new'); // Revalidate to update dropdown
+    revalidatePath('/rentals/new');
   } catch (e) {
     return { error: 'Falha ao criar cliente.', message: 'error' };
   }
@@ -124,7 +124,5 @@ export async function finishRental(formData: FormData) {
         revalidatePath('/dumpsters');
     } catch (e) {
         console.error(e);
-        // Em um app real, você trataria esse erro de forma mais elegante.
     }
-    redirect('/');
 }
