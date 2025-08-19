@@ -1,9 +1,37 @@
-
 [
-  { "id": "1", "name": "Caçamba 01", "status": "Disponível" },
-  { "id": "2", "name": "Caçamba 02", "status": "Disponível" },
-  { "id": "3", "name": "Caçamba Amarela 03", "status": "Alugada" },
-  { "id": "4", "name": "Caçamba 04", "status": "Em Manutenção" },
-  { "id": "5", "name": "Caçamba Azul 05", "status": "Alugada" },
-  { "id": "6", "name": "Caçamba Verde 06", "status": "Disponível" }
+  {
+    "id": "1",
+    "name": "Caçamba 01",
+    "status": "Disponível"
+  },
+  {
+    "id": "2",
+    "name": "Caçamba 02",
+    "status": "Disponível"
+  },
+  {
+    "id": "3",
+    "name": "Caçamba Amarela 03",
+    "status": "Disponível"
+  },
+  {
+    "id": "4",
+    "name": "Caçamba 04",
+    "status": "Em Manutenção"
+  },
+  {
+    "id": "5",
+    "name": "Caçamba Azul 05",
+    "status": "Disponível"
+  },
+  {
+    "id": "6",
+    "name": "Caçamba Verde 06",
+    "status": "Disponível"
+  },
+  {
+    "name": "1914",
+    "status": "Disponível",
+    "id": "1755632314897"
+  }
 ]

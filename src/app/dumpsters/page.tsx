@@ -5,6 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { DumpsterForm } from './dumpster-form';
 import type { DumpsterStatus } from '@/lib/types';
+import { MoreHorizontal } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { EditDumpsterForm } from './edit-dumpster-form';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default async function DumpstersPage() {
   const dumpsters = await getDumpsters();
@@ -37,17 +48,41 @@ export default async function DumpstersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Identificador</TableHead>
-                      <TableHead className="text-right">Status</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {dumpsters.map(dumpster => (
                       <TableRow key={dumpster.id}>
                         <TableCell className="font-medium">{dumpster.name}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell>
                           <Badge variant={getStatusVariant(dumpster.status)} className={cn('capitalize')}>
                             {dumpster.status}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Dialog>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <span className="sr-only">Abrir menu</span>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DialogTrigger asChild>
+                                  <DropdownMenuItem>Editar</DropdownMenuItem>
+                                </DialogTrigger>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Editar Caçamba</DialogTitle>
+                              </DialogHeader>
+                              <EditDumpsterForm dumpster={dumpster} />
+                            </DialogContent>
+                          </Dialog>
                         </TableCell>
                       </TableRow>
                     ))}

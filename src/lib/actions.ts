@@ -1,11 +1,12 @@
 'use server';
 
 import { z } from 'zod';
-import { addClient, addDumpster, addRental, completeRental } from './data';
+import { addClient, addDumpster, addRental, completeRental, updateClient as updateClientData, updateDumpster as updateDumpsterData } from './data';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 const dumpsterSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   status: z.enum(['Disponível', 'Alugada', 'Em Manutenção']),
 });
@@ -34,7 +35,32 @@ export async function createDumpster(prevState: any, formData: FormData) {
   return { message: "success" };
 }
 
+export async function updateDumpster(prevState: any, formData: FormData) {
+  const validatedFields = dumpsterSchema.safeParse({
+    id: formData.get('id'),
+    name: formData.get('name'),
+    status: formData.get('status'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'validation_error',
+    };
+  }
+
+  try {
+    await updateDumpsterData(validatedFields.data as any);
+    revalidatePath('/dumpsters');
+  } catch (e) {
+    return { error: 'Falha ao atualizar caçamba.', message: 'error' };
+  }
+  
+  return { message: "success" };
+}
+
 const clientSchema = z.object({
+  id: z.string().optional(),
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
   phone: z.string().min(10, 'O telefone deve ser válido.'),
   address: z.string().min(5, 'O endereço deve ter pelo menos 5 caracteres.'),
@@ -64,6 +90,32 @@ export async function createClient(prevState: any, formData: FormData) {
 
   return { message: "success" };
 }
+
+export async function updateClient(prevState: any, formData: FormData) {
+  const validatedFields = clientSchema.safeParse({
+    id: formData.get('id'),
+    name: formData.get('name'),
+    phone: formData.get('phone'),
+    address: formData.get('address'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'validation_error',
+    };
+  }
+
+  try {
+    await updateClientData(validatedFields.data as any);
+    revalidatePath('/clients');
+  } catch (e) {
+    return { error: 'Falha ao atualizar cliente.', message: 'error' };
+  }
+
+  return { message: "success" };
+}
+
 
 const rentalSchema = z.object({
   dumpsterId: z.string().min(1, 'Selecione uma caçamba.'),
@@ -125,4 +177,6 @@ export async function finishRental(formData: FormData) {
     } catch (e) {
         console.error(e);
     }
+
+    redirect('/');
 }

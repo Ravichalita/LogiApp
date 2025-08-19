@@ -1,5 +1,38 @@
-
 [
-  { "id": "1", "dumpsterId": "3", "clientId": "1", "deliveryAddress": "Rua das Flores, 123, São Paulo, SP", "rentalDate": "2024-07-15T03:00:00.000Z", "returnDate": "2024-07-25T03:00:00.000Z", "status": "Ativo" },
-  { "id": "2", "dumpsterId": "5", "clientId": "2", "deliveryAddress": "Avenida do Sol, 789, Angra dos Reis, RJ", "rentalDate": "2024-07-20T03:00:00.000Z", "returnDate": "2024-07-30T03:00:00.000Z", "status": "Ativo" }
+  {
+    "id": "1",
+    "dumpsterId": "3",
+    "clientId": "1",
+    "deliveryAddress": "Rua das Flores, 123, São Paulo, SP",
+    "rentalDate": "2024-07-15T03:00:00.000Z",
+    "returnDate": "2024-07-25T03:00:00.000Z",
+    "status": "Concluído"
+  },
+  {
+    "id": "2",
+    "dumpsterId": "5",
+    "clientId": "2",
+    "deliveryAddress": "Avenida do Sol, 789, Angra dos Reis, RJ",
+    "rentalDate": "2024-07-20T03:00:00.000Z",
+    "returnDate": "2024-07-30T03:00:00.000Z",
+    "status": "Concluído"
+  },
+  {
+    "dumpsterId": "1",
+    "clientId": "1",
+    "deliveryAddress": "Rua 4, Nº 1",
+    "rentalDate": "2025-08-19T19:38:47.250Z",
+    "returnDate": "2025-08-21T03:00:00.000Z",
+    "status": "Concluído",
+    "id": "1755632341035"
+  },
+  {
+    "dumpsterId": "1755632314897",
+    "clientId": "1755632321592",
+    "deliveryAddress": "Rua 4, Nº 1",
+    "rentalDate": "2025-08-19T19:39:37.651Z",
+    "returnDate": "2025-08-21T03:00:00.000Z",
+    "status": "Concluído",
+    "id": "1755632386499"
+  }
 ]
