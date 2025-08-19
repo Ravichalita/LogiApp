@@ -2,14 +2,14 @@
   {
     "id": "1",
     "name": "Caçamba 01",
-    "status": "Alugada",
+    "status": "Disponível",
     "color": "Vermelha",
     "size": 5
   },
   {
     "id": "2",
     "name": "Caçamba 02",
-    "status": "Ativo",
+    "status": "Disponível",
     "color": "Azul",
     "size": 5
   },
@@ -30,7 +30,7 @@
   {
     "id": "5",
     "name": "Caçamba 05",
-    "status": "Disponível",
+    "status": "Alugada",
     "color": "Azul",
     "size": 3
   },

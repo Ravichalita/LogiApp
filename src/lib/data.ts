@@ -76,9 +76,9 @@ export const updateClient = async (client: Client) => {
 
 export const deleteClient = async (id: string) => {
     const [currentClients, currentRentals] = await Promise.all([getClients(), getRentals()]);
-    const hasRentals = currentRentals.some(r => r.clientId === id);
-    if (hasRentals) {
-        throw new Error('Não é possível excluir um cliente com aluguéis (ativos ou concluídos).');
+    const hasActiveRentals = currentRentals.some(r => r.clientId === id && r.status === 'Ativo');
+    if (hasActiveRentals) {
+        throw new Error('Não é possível excluir um cliente com aluguéis ativos. Finalize os aluguéis primeiro.');
     }
     const updatedData = currentClients.filter(c => c.id !== id);
     await db.write('clients', updatedData);
