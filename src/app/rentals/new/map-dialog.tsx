@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const containerStyle = {
   width: '100%',
@@ -33,8 +34,12 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
     { lat: number; lng: number } | undefined
   >();
   const [isOpen, setIsOpen] = useState(false);
+  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '',
+    googleMapsApiKey: googleMapsApiKey ?? '',
+    // Only load the script if the key is provided
+    preventLoad: !googleMapsApiKey,
   });
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
@@ -54,8 +59,27 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
   };
   
   const renderMap = () => {
+    if (!googleMapsApiKey) {
+      return (
+        <Alert variant="destructive">
+          <AlertTitle>Chave da API do Google Maps ausente</AlertTitle>
+          <AlertDescription>
+            <p>A chave da API do Google Maps não foi configurada. Por favor, adicione sua chave ao arquivo `.env.local` com o nome `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` para ativar o mapa.</p>
+            <p className="mt-2 text-xs">Exemplo: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=SUA_CHAVE_AQUI`</p>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
     if (loadError) {
-      return <div>Erro ao carregar o mapa. Verifique a chave da API.</div>;
+      return (
+         <Alert variant="destructive">
+          <AlertTitle>Erro ao Carregar o Mapa</AlertTitle>
+          <AlertDescription>
+           Não foi possível carregar o Google Maps. Verifique se a sua chave da API é válida, se a API "Maps JavaScript API" está ativada e se a fatura está configurada no seu projeto do Google Cloud.
+          </AlertDescription>
+        </Alert>
+      );
     }
 
     if (!isLoaded) {
@@ -91,7 +115,7 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
           <DialogClose asChild>
             <Button variant="outline">Cancelar</Button>
           </DialogClose>
-          <Button onClick={handleConfirm} disabled={!selectedPosition}>
+          <Button onClick={handleConfirm} disabled={!selectedPosition || !googleMapsApiKey}>
             Confirmar Localização
           </Button>
         </DialogFooter>
