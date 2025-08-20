@@ -73,3 +73,18 @@ export async function updateDumpsterStatus(userId: string, id: string, status: D
 export async function addRental(userId: string, rental: Omit<Rental, 'id'>) {
   return addDocument(userId, 'rentals', rental);
 }
+
+export async function completeRental(userId: string, rentalId: string, dumpsterId: string) {
+    if (!userId) throw new Error('Usuário não autenticado.');
+    if (!rentalId || !dumpsterId) throw new Error('IDs de aluguel ou caçamba ausentes.');
+
+    const batch = adminDb.batch();
+
+    const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
+    batch.update(rentalRef, { status: 'Concluído' });
+
+    const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
+    batch.update(dumpsterRef, { status: 'Disponível' });
+
+    await batch.commit();
+}

@@ -144,21 +144,3 @@ export const updateRental = async (userId: string, rental: Partial<Rental>) => {
 
     return await updateDocument(userId, 'rentals', rental);
 };
-
-// This function performs writes and should probably be a server-side only action,
-// but for now we keep it here as it's complex.
-export const completeRental = async (userId: string, rentalId: string, dumpsterId: string) => {
-  const batch = writeBatch(db);
-  
-  const rentalRef = doc(db, 'users', userId, 'rentals', rentalId);
-  batch.update(rentalRef, { status: 'Concluído' });
-
-  const dumpsterRef = doc(db, 'users', userId, 'dumpsters', dumpsterId);
-  batch.update(dumpsterRef, { status: 'Disponível' });
-
-  await batch.commit();
-  
-  const updatedRentalDoc = await getDoc(rentalRef);
-  const updatedRental = updatedRentalDoc.data();
-  return { id: rentalId, ...updatedRental } as Rental;
-};
