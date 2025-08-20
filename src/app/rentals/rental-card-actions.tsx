@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
+import { isRedirectError } from 'next/dist/client/components/redirect';
 
 export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   const { user } = useAuth();
@@ -21,15 +22,11 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  // This ref is needed to programmatically submit the hidden form
   const updateFormRef = useRef<HTMLFormElement>(null);
   const finishFormRef = useRef<HTMLFormElement>(null);
 
-  // Effect to auto-submit the form when a new date is picked
   useEffect(() => {
-    // Only submit if the date has actually changed from the original
     if (returnDate && new Date(returnDate).getTime() !== new Date(rental.returnDate).getTime()) {
-      // Timeout to ensure the hidden input value is updated before submit
       setTimeout(() => {
         updateFormRef.current?.requestSubmit();
       }, 0);
@@ -40,14 +37,13 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
     startTransition(async () => {
       if (!user) return;
       const boundAction = updateRentalAction.bind(null, user.uid);
-      const result = await boundAction(formData);
+      const result = await boundAction(prevState => prevState, formData);
        if (result.message === 'error') {
         toast({
           title: 'Erro',
           description: result.error,
           variant: 'destructive',
         });
-        // Reset date on error
         setReturnDate(new Date(rental.returnDate));
       } else {
         toast({
@@ -65,12 +61,14 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
             const boundAction = finishRentalAction.bind(null, user.uid);
             await boundAction(formData);
             toast({ title: "Sucesso!", description: "Aluguel finalizado." });
-        } catch (error: any) {
-            // Next.js throws a NEXT_REDIRECT error when redirect() is called,
-            // this is expected and should not be displayed as an error.
-            if (error.code !== 'NEXT_REDIRECT') {
-              toast({ title: "Erro", description: error.message, variant: "destructive"});
+        } catch (error) {
+            if (isRedirectError(error)) {
+              // This error is expected when redirecting, so we can ignore it.
+              return;
             }
+            console.error("Erro ao finalizar aluguel:", error);
+            const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido";
+            toast({ title: "Erro", description: errorMessage, variant: "destructive"});
         }
     })
   }
@@ -102,7 +100,6 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         </PopoverContent>
       </Popover>
 
-      {/* Hidden form for date update */}
       <form ref={updateFormRef} action={handleDateUpdateAction} className="hidden">
         <input type="hidden" name="id" value={rental.id} />
         <input type="hidden" name="returnDate" value={returnDate?.toISOString()} />

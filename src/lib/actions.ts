@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, updateRental as updateRentalData, getRentalById, deleteAllCompletedRentals } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData } from './data-server';
 import type { DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
