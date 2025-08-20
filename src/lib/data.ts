@@ -3,22 +3,16 @@ import type { Dumpster, Client, Rental, FirestoreEntity } from './types';
 import { db, auth } from './firebase';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where } from 'firebase/firestore';
 
-async function getUserIdSafe(): Promise<string | null> {
-  // This function is tricky on the server, as auth.currentUser is not reliable.
-  // The logic inside AuthProvider is the source of truth.
-  // We return null and let the data fetching functions handle it gracefully.
-  return auth.currentUser?.uid || null;
-}
-
 // --- Generic Firestore Functions ---
 
 async function getCollection<T extends FirestoreEntity>(collectionName: string): Promise<T[]> {
-  const userId = await getUserIdSafe();
-  // If there's no user ID (e.g., during server-side render before auth state is known),
-  // return an empty array to prevent errors. The client-side AuthProvider will handle redirection.
-  if (!userId) {
+  // On the server, auth.currentUser is null. We must rely on the AuthProvider on the client
+  // to handle redirection for unauthenticated users. Returning an empty array prevents
+  // the server component from crashing during its initial render.
+  if (!auth.currentUser?.uid) {
     return [];
   }
+  const userId = auth.currentUser.uid;
   const q = query(collection(db, 'users', userId, collectionName));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => {

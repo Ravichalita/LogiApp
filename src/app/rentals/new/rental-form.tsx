@@ -16,9 +16,11 @@ import { ptBR } from 'date-fns/locale';
 import { MapDialog } from '@/components/map-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/hooks/use-toast';
 
 const initialState = {
   errors: {},
+  message: '',
 };
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -37,13 +39,14 @@ interface RentalFormProps {
 export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [state, formAction] = useActionState(createRental.bind(null, user?.uid ?? ''), initialState);
+  const { toast } = useToast();
   
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
+  const [errors, setErrors] = useState<any>({});
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
@@ -73,8 +76,20 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   };
   
   const handleFormAction = (formData: FormData) => {
-    startTransition(() => {
-        formAction(formData);
+    startTransition(async () => {
+        if (!user) {
+            toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
+            return;
+        }
+        const boundAction = createRental.bind(null, user.uid);
+        const result = await boundAction(initialState, formData);
+
+        if (result?.errors) {
+            setErrors(result.errors);
+        }
+        if (result?.message) {
+            toast({ title: "Erro", description: result.message, variant: "destructive"});
+        }
     });
   };
 
@@ -97,7 +112,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             {dumpsters.map(d => <SelectItem key={d.id} value={d.id}>{`${d.name} (${d.size}m³, ${d.color})`}</SelectItem>)}
           </SelectContent>
         </Select>
-        {state?.errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{state.errors.dumpsterId[0]}</p>}
+        {errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{errors.dumpsterId[0]}</p>}
       </div>
 
       <div className="space-y-2">
@@ -110,7 +125,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        {state?.errors?.clientId && <p className="text-sm font-medium text-destructive">{state.errors.clientId[0]}</p>}
+        {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
       </div>
       
       <div className="space-y-2">
@@ -124,7 +139,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             Coordenadas selecionadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
           </p>
         )}
-        {state?.errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{state.errors.deliveryAddress[0]}</p>}
+        {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -153,7 +168,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
               />
             </PopoverContent>
           </Popover>
-          {state?.errors?.rentalDate && <p className="text-sm font-medium text-destructive">{state.errors.rentalDate[0]}</p>}
+          {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
         </div>
         <div className="space-y-2">
           <Label>Data de Retirada (Prevista)</Label>
@@ -181,7 +196,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
               />
             </PopoverContent>
           </Popover>
-           {state?.errors?.returnDate && <p className="text-sm font-medium text-destructive">{state.errors.returnDate[0]}</p>}
+           {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>
 

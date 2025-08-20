@@ -59,17 +59,59 @@ export function ClientForm() {
   };
 
   const handleFormAction = (formData: FormData) => {
+    if (!user?.uid) {
+        toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
+        return;
+    }
     startTransition(() => {
-      formAction(formData);
+      // We bind the userId to the action right before calling it.
+      createClient.bind(null, user.uid)(prevState => state, formData).then(newState => {
+          if (newState.message === 'success') {
+            toast({
+              title: "Sucesso!",
+              description: "Novo cliente cadastrado.",
+            });
+            formRef.current?.reset();
+            setAddress('');
+            setLocation(null);
+          } else if (newState.message === 'error' && newState.error) {
+            toast({
+              title: "Erro",
+              description: newState.error,
+              variant: "destructive",
+            });
+          }
+      });
     });
-  }
+  };
+
+  const action = (payload: FormData) => {
+    startTransition(async () => {
+      if (!user) {
+        toast({ title: 'Erro', description: 'Você não está autenticado.', variant: 'destructive' });
+        return;
+      }
+      const boundAction = createClient.bind(null, user.uid);
+      const result = await boundAction(state, payload);
+      if (result.message === 'success') {
+        toast({ title: 'Sucesso', description: 'Cliente cadastrado.' });
+        formRef.current?.reset();
+        setAddress('');
+        setLocation(null);
+      } else if (result.error) {
+        toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+      } else if (result.errors) {
+        // Handle validation errors if needed, e.g. show them under the fields
+      }
+    });
+  };
 
   if (!user) {
     return <div className="flex justify-center items-center"><Spinner /></div>;
   }
 
   return (
-    <form ref={formRef} action={handleFormAction} className="space-y-4">
+    <form ref={formRef} action={action} className="space-y-4">
       {location && <input type="hidden" name="latitude" value={location.lat} />}
       {location && <input type="hidden" name="longitude" value={location.lng} />}
       

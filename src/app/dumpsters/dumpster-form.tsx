@@ -26,29 +26,28 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 export function DumpsterForm() {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [state, formAction] = useActionState(createDumpster.bind(null, user?.uid ?? ''), initialState);
+  const [state, setState] = useState(initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (state?.message === 'success') {
-      toast({
-        title: "Sucesso!",
-        description: "Nova caçamba cadastrada.",
-      });
-      formRef.current?.reset();
-    } else if (state?.message === 'error' && state.error) {
-      toast({
-        title: "Erro",
-        description: state.error,
-        variant: "destructive",
-      });
-    }
-  }, [state, toast]);
+  const action = (payload: FormData) => {
+    startTransition(async () => {
+      if (!user) {
+        toast({ title: 'Erro', description: 'Você não está autenticado.', variant: 'destructive' });
+        return;
+      }
+      const boundAction = createDumpster.bind(null, user.uid);
+      const result = await boundAction(state, payload);
+      setState(result);
 
-  const handleFormAction = (formData: FormData) => {
-    startTransition(() => {
-      formAction(formData);
+      if (result.message === 'success') {
+        toast({ title: 'Sucesso', description: 'Caçamba cadastrada.' });
+        formRef.current?.reset();
+      } else if (result.error) {
+        toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+      } else if (result.errors) {
+        // You could handle displaying validation errors here if needed
+      }
     });
   };
 
@@ -57,7 +56,7 @@ export function DumpsterForm() {
   }
 
   return (
-    <form ref={formRef} action={handleFormAction} className="space-y-4">
+    <form ref={formRef} action={action} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Nome/Identificador</Label>
         <Input id="name" name="name" placeholder="Ex: Caçamba 01" required />

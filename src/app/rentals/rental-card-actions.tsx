@@ -19,12 +19,10 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   const [returnDate, setReturnDate] = useState<Date | undefined>(new Date(rental.returnDate));
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const updateRentalWithId = updateRental.bind(null, user?.uid ?? '');
-  const finishRentalWithId = finishRental.bind(null, user?.uid ?? '');
   
   // This ref is needed to programmatically submit the hidden form
   const updateFormRef = useRef<HTMLFormElement>(null);
-
+  const finishFormRef = useRef<HTMLFormElement>(null);
 
   // Effect to auto-submit the form when a new date is picked
   useEffect(() => {
@@ -37,9 +35,11 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
     }
   }, [returnDate, rental.returnDate]);
   
-  const handleDateUpdateAction = async (formData: FormData) => {
+  const handleDateUpdateAction = (formData: FormData) => {
     startTransition(async () => {
-      const result = await updateRentalWithId(null, formData);
+      if (!user) return;
+      const boundAction = updateRental.bind(null, user.uid);
+      const result = await boundAction(null, formData);
        if (result.message === 'error') {
         toast({
           title: 'Erro',
@@ -56,6 +56,19 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
       }
     });
   };
+
+  const handleFinishAction = (formData: FormData) => {
+    startTransition(async () => {
+        if (!user) return;
+        try {
+            const boundAction = finishRental.bind(null, user.uid);
+            await boundAction(formData);
+            toast({ title: "Sucesso!", description: "Aluguel finalizado." });
+        } catch (error: any) {
+            toast({ title: "Erro", description: error.message, variant: "destructive"});
+        }
+    })
+  }
 
   return (
     <div>
@@ -99,7 +112,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
             </Link>
           </Button>
         )}
-        <form action={finishRentalWithId} className="w-full">
+        <form ref={finishFormRef} action={handleFinishAction} className="w-full">
             <input type="hidden" name="rentalId" value={rental.id} />
             <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isPending}>

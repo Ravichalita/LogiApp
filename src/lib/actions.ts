@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData, updateRental as updateRentalData } from './data';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { DumpsterStatus, Rental } from './types';
+import type { Dumpster, DumpsterStatus, Rental } from './types';
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -33,13 +33,13 @@ export async function createDumpster(userId: string, prevState: any, formData: F
 
   try {
     await addDumpster(userId, validatedFields.data);
-    revalidatePath('/dumpsters');
-    revalidatePath('/rentals/new');
   } catch (e) {
     console.error(e);
     return { error: 'Falha ao criar caçamba.', message: 'error' };
   }
   
+  revalidatePath('/dumpsters');
+  revalidatePath('/rentals/new');
   return { message: "success" };
 }
 
@@ -63,12 +63,12 @@ export async function updateDumpster(userId: string, prevState: any, formData: F
 
   try {
     await updateDumpsterData(userId, validatedFields.data as any);
-    revalidatePath('/dumpsters');
-    revalidatePath('/');
   } catch (e) {
     return { error: 'Falha ao atualizar caçamba.', message: 'error' };
   }
   
+  revalidatePath('/dumpsters');
+  revalidatePath('/');
   return { message: "success" };
 }
 
@@ -129,13 +129,13 @@ export async function createClient(userId: string, prevState: any, formData: For
   
   try {
     await addClient(userId, validatedFields.data);
-    revalidatePath('/clients');
-    revalidatePath('/rentals/new');
   } catch (e) {
     console.error(e);
     return { error: 'Falha ao criar cliente.', message: 'error' };
   }
 
+  revalidatePath('/clients');
+  revalidatePath('/rentals/new');
   return { message: "success" };
 }
 
@@ -162,12 +162,12 @@ export async function updateClient(userId: string, prevState: any, formData: For
 
   try {
     await updateClientData(userId, validatedFields.data as any);
-    revalidatePath('/clients');
-    revalidatePath('/');
   } catch (e) {
     return { error: 'Falha ao atualizar cliente.', message: 'error' };
   }
-
+  
+  revalidatePath('/clients');
+  revalidatePath('/');
   return { message: "success" };
 }
 
@@ -223,38 +223,34 @@ export async function createRental(userId: string, prevState: any, formData: For
             ...validatedFields.data,
             status: 'Ativo',
         });
-        revalidatePath('/');
-        revalidatePath('/dumpsters');
-        revalidatePath('/rentals/new');
     } catch (e) {
-        return { error: 'Falha ao criar aluguel.' };
+        console.error(e);
+        return { errors: {}, message: 'Falha ao criar aluguel.' };
     }
     
+    revalidatePath('/');
     redirect('/');
 }
 
 export async function finishRental(userId: string, formData: FormData) {
     if (!userId) {
-        console.error("Usuário não autenticado.");
-        return;
+        throw new Error("Usuário não autenticado.");
     }
     const rentalId = formData.get('rentalId') as string;
     const dumpsterId = formData.get('dumpsterId') as string;
     
     if (!rentalId || !dumpsterId) {
-      console.error("IDs de aluguel ou caçamba ausentes.");
-      return;
+      throw new Error("IDs de aluguel ou caçamba ausentes.");
     }
 
     try {
         await completeRental(userId, rentalId, dumpsterId);
-        revalidatePath('/');
-        revalidatePath('/dumpsters');
     } catch (e) {
         console.error(e);
-        // Maybe return an error to the user here
+        throw new Error("Falha ao finalizar o aluguel.");
     }
 
+    revalidatePath('/');
     redirect('/');
 }
 
