@@ -1,7 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { createClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,23 +9,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { MapDialog } from '@/components/map-dialog';
 import type { Location } from '@/lib/types';
+import { useAuth } from '@/context/auth-context';
+import { Spinner } from '@/components/ui/spinner';
 
 const initialState = {
   errors: {},
   message: '',
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : 'Salvar Cliente'}
+    <Button type="submit" disabled={isPending} className="w-full">
+      {isPending ? <Spinner size="small" /> : 'Salvar Cliente'}
     </Button>
   );
 }
 
 export function ClientForm() {
-  const [state, formAction] = useActionState(createClient, initialState);
+  const { user } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [state, formAction] = useActionState(createClient.bind(null, user?.uid ?? ''), initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
   
@@ -56,8 +58,18 @@ export function ClientForm() {
     setAddress(selectedLocation.address);
   };
 
+  const handleFormAction = (formData: FormData) => {
+    startTransition(() => {
+      formAction(formData);
+    });
+  }
+
+  if (!user) {
+    return <div className="flex justify-center items-center"><Spinner /></div>;
+  }
+
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form ref={formRef} action={handleFormAction} className="space-y-4">
       {location && <input type="hidden" name="latitude" value={location.lat} />}
       {location && <input type="hidden" name="longitude" value={location.lng} />}
       
@@ -94,7 +106,7 @@ export function ClientForm() {
         <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
-      <SubmitButton />
+      <SubmitButton isPending={isPending} />
     </form>
   );
 }

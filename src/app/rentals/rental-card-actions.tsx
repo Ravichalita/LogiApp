@@ -12,28 +12,34 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
 
 export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
-  const [returnDate, setReturnDate] = useState<Date | undefined>(rental.returnDate);
+  const { user } = useAuth();
+  const [returnDate, setReturnDate] = useState<Date | undefined>(new Date(rental.returnDate));
   const [isPending, startTransition] = useTransition();
-  const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const updateRentalWithId = updateRental.bind(null, user?.uid ?? '');
+  const finishRentalWithId = finishRental.bind(null, user?.uid ?? '');
+  
+  // This ref is needed to programmatically submit the hidden form
+  const updateFormRef = useRef<HTMLFormElement>(null);
 
+
+  // Effect to auto-submit the form when a new date is picked
   useEffect(() => {
-    // This effect listens for changes in the returnDate state
-    // and submits the form programmatically.
+    // Only submit if the date has actually changed from the original
     if (returnDate && returnDate.getTime() !== new Date(rental.returnDate).getTime()) {
-      // Use a timeout to allow the hidden input to update its value
-      // before the form is submitted.
+      // Timeout to ensure the hidden input value is updated before submit
       setTimeout(() => {
-        formRef.current?.requestSubmit();
+        updateFormRef.current?.requestSubmit();
       }, 0);
     }
   }, [returnDate, rental.returnDate]);
   
-  const handleDateUpdate = async (formData: FormData) => {
+  const handleDateUpdateAction = async (formData: FormData) => {
     startTransition(async () => {
-      const result = await updateRental(null, formData);
+      const result = await updateRentalWithId(null, formData);
        if (result.message === 'error') {
         toast({
           title: 'Erro',
@@ -41,7 +47,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
           variant: 'destructive',
         });
         // Reset date on error
-        setReturnDate(rental.returnDate);
+        setReturnDate(new Date(rental.returnDate));
       } else {
         toast({
           title: 'Sucesso!',
@@ -57,6 +63,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         <PopoverTrigger asChild>
           <Button
             variant="ghost"
+            disabled={isPending}
             className={cn(
               "w-auto justify-start text-left font-semibold p-0 h-auto",
               !returnDate && "text-muted-foreground"
@@ -70,14 +77,15 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
             mode="single"
             selected={returnDate}
             onSelect={setReturnDate}
-            disabled={(date) => date < new Date(rental.rentalDate) || isPending}
+            disabled={(date) => new Date(date).setHours(0,0,0,0) < new Date(rental.rentalDate).setHours(0,0,0,0) || isPending}
             initialFocus
             locale={ptBR}
           />
         </PopoverContent>
       </Popover>
+
       {/* Hidden form for date update */}
-      <form ref={formRef} action={handleDateUpdate} className="hidden">
+      <form ref={updateFormRef} action={handleDateUpdateAction} className="hidden">
         <input type="hidden" name="id" value={rental.id} />
         <input type="hidden" name="returnDate" value={returnDate?.toISOString()} />
       </form>
@@ -91,10 +99,10 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
             </Link>
           </Button>
         )}
-        <form action={finishRental} className="w-full">
+        <form action={finishRentalWithId} className="w-full">
             <input type="hidden" name="rentalId" value={rental.id} />
             <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isPending}>
               <CheckCircle />
               Finalizar
             </Button>

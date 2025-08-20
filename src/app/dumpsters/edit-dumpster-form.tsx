@@ -1,32 +1,33 @@
 'use client';
 
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useTransition } from 'react';
 import { updateDumpster } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Dumpster } from '@/lib/types';
+import { useAuth } from '@/context/auth-context';
+import { Spinner } from '@/components/ui/spinner';
 
 const initialState = {
   errors: {},
   message: '',
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : 'Salvar Alterações'}
+    <Button type="submit" disabled={isPending} className="w-full">
+      {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
     </Button>
   );
 }
 
 export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onSave: () => void }) {
-  const [state, formAction] = useActionState(updateDumpster, initialState);
+  const { user } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [state, formAction] = useActionState(updateDumpster.bind(null, user?.uid ?? ''), initialState);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,8 +46,14 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
     }
   }, [state, toast, onSave]);
 
+  const handleFormAction = (formData: FormData) => {
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
+
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={handleFormAction} className="space-y-4">
       <input type="hidden" name="id" value={dumpster.id} />
       <div className="space-y-2">
         <Label htmlFor="name">Nome/Identificador</Label>
@@ -79,7 +86,7 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
         </Select>
          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
       </div>
-      <SubmitButton />
+      <SubmitButton isPending={isPending} />
     </form>
   );
 }

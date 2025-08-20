@@ -33,8 +33,10 @@ import type { Dumpster, DumpsterStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
 
 export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
+  const { user } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
@@ -55,8 +57,9 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   };
 
   const handleDelete = () => {
+    if (!user) return;
     startTransition(async () => {
-      const result = await deleteDumpster(dumpster.id);
+      const result = await deleteDumpster(user.uid, dumpster.id);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao excluir',
@@ -74,9 +77,9 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   };
 
   const handleChangeStatus = (newStatus: DumpsterStatus) => {
-    if (dumpster.status === newStatus) return;
+    if (dumpster.status === newStatus || !user) return;
     startTransition(async () => {
-        const result = await updateDumpsterStatus(dumpster.id, newStatus);
+        const result = await updateDumpsterStatus(user.uid, dumpster.id, newStatus);
         if (result.message === 'error') {
              toast({
                 title: 'Erro',
@@ -107,7 +110,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
              {(['Disponível', 'Alugada', 'Em Manutenção'] as DumpsterStatus[]).map((status) => (
-                <DropdownMenuItem key={status} onSelect={() => handleChangeStatus(status)} disabled={isPending}>
+                <DropdownMenuItem key={status} onSelect={() => handleChangeStatus(status)} disabled={isPending || dumpster.status === status}>
                     {isPending && dumpster.status !== status ? 'Aguarde...' : status}
                 </DropdownMenuItem>
             ))}

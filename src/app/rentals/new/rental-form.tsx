@@ -1,7 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { createRental } from '@/lib/actions';
 import type { Client, Dumpster, Location } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -14,18 +13,18 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useEffect, useState } from 'react';
 import { MapDialog } from '@/components/map-dialog';
+import { useAuth } from '@/context/auth-context';
+import { Spinner } from '@/components/ui/spinner';
 
 const initialState = {
   errors: {},
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full mt-4" size="lg">
-      {pending ? 'Salvando...' : 'Salvar Aluguel'}
+    <Button type="submit" disabled={isPending} className="w-full mt-4" size="lg">
+      {isPending ? <Spinner size="small" /> : 'Salvar Aluguel'}
     </Button>
   );
 }
@@ -36,7 +35,9 @@ interface RentalFormProps {
 }
 
 export function RentalForm({ dumpsters, clients }: RentalFormProps) {
-  const [state, formAction] = useActionState(createRental, initialState);
+  const { user } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [state, formAction] = useActionState(createRental.bind(null, user?.uid ?? ''), initialState);
   
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
@@ -70,10 +71,15 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setDeliveryAddress(selectedLocation.address);
   };
-
+  
+  const handleFormAction = (formData: FormData) => {
+    startTransition(() => {
+        formAction(formData);
+    });
+  };
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={handleFormAction} className="space-y-6">
       {/* Hidden inputs to pass date and location values to the server action */}
       {rentalDate && <input type="hidden" name="rentalDate" value={rentalDate.toISOString()} />}
       {returnDate && <input type="hidden" name="returnDate" value={returnDate.toISOString()} />}
@@ -179,7 +185,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
         </div>
       </div>
 
-      <SubmitButton />
+      <SubmitButton isPending={isPending} />
     </form>
   );
 }

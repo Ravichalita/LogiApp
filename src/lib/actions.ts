@@ -5,15 +5,6 @@ import { addClient, addDumpster, addRental, completeRental, deleteClient as dele
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { DumpsterStatus, Rental } from './types';
-import { auth } from './firebase';
-
-async function getUserId() {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error('Usuário não autenticado.');
-  }
-  return user.uid;
-}
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -23,7 +14,9 @@ const dumpsterSchema = z.object({
   size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
 
-export async function createDumpster(prevState: any, formData: FormData) {
+export async function createDumpster(userId: string, prevState: any, formData: FormData) {
+  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+
   const validatedFields = dumpsterSchema.safeParse({
     name: formData.get('name'),
     status: formData.get('status'),
@@ -39,7 +32,6 @@ export async function createDumpster(prevState: any, formData: FormData) {
   }
 
   try {
-    const userId = await getUserId();
     await addDumpster(userId, validatedFields.data);
     revalidatePath('/dumpsters');
     revalidatePath('/rentals/new');
@@ -51,7 +43,9 @@ export async function createDumpster(prevState: any, formData: FormData) {
   return { message: "success" };
 }
 
-export async function updateDumpster(prevState: any, formData: FormData) {
+export async function updateDumpster(userId: string, prevState: any, formData: FormData) {
+  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+  
   const validatedFields = dumpsterSchema.safeParse({
     id: formData.get('id'),
     name: formData.get('name'),
@@ -68,7 +62,6 @@ export async function updateDumpster(prevState: any, formData: FormData) {
   }
 
   try {
-    const userId = await getUserId();
     await updateDumpsterData(userId, validatedFields.data as any);
     revalidatePath('/dumpsters');
     revalidatePath('/');
@@ -79,9 +72,9 @@ export async function updateDumpster(prevState: any, formData: FormData) {
   return { message: "success" };
 }
 
-export async function deleteDumpster(id: string) {
+export async function deleteDumpster(userId: string, id: string) {
+    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        const userId = await getUserId();
         await deleteDumpsterData(userId, id);
         revalidatePath('/dumpsters');
         return { message: 'success', title: 'Sucesso!', description: 'Caçamba excluída.' };
@@ -90,9 +83,9 @@ export async function deleteDumpster(id: string) {
     }
 }
 
-export async function updateDumpsterStatus(id: string, status: DumpsterStatus) {
+export async function updateDumpsterStatus(userId: string, id: string, status: DumpsterStatus) {
+    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        const userId = await getUserId();
         await updateDumpsterData(userId, { id, status } as any);
         revalidatePath('/dumpsters');
         revalidatePath('/');
@@ -114,7 +107,9 @@ const clientSchema = z.object({
   longitude: z.coerce.number().optional(),
 });
 
-export async function createClient(prevState: any, formData: FormData) {
+export async function createClient(userId: string, prevState: any, formData: FormData) {
+  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+
   const validatedFields = clientSchema.safeParse({
     name: formData.get('name'),
     phone: formData.get('phone'),
@@ -133,7 +128,6 @@ export async function createClient(prevState: any, formData: FormData) {
   }
   
   try {
-    const userId = await getUserId();
     await addClient(userId, validatedFields.data);
     revalidatePath('/clients');
     revalidatePath('/rentals/new');
@@ -145,7 +139,9 @@ export async function createClient(prevState: any, formData: FormData) {
   return { message: "success" };
 }
 
-export async function updateClient(prevState: any, formData: FormData) {
+export async function updateClient(userId: string, prevState: any, formData: FormData) {
+  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+
   const validatedFields = clientSchema.safeParse({
     id: formData.get('id'),
     name: formData.get('name'),
@@ -165,7 +161,6 @@ export async function updateClient(prevState: any, formData: FormData) {
   }
 
   try {
-    const userId = await getUserId();
     await updateClientData(userId, validatedFields.data as any);
     revalidatePath('/clients');
     revalidatePath('/');
@@ -176,9 +171,9 @@ export async function updateClient(prevState: any, formData: FormData) {
   return { message: "success" };
 }
 
-export async function deleteClient(id: string) {
+export async function deleteClient(userId: string, id: string) {
+    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        const userId = await getUserId();
         await deleteClientData(userId, id);
         revalidatePath('/clients');
         return { message: 'success' };
@@ -202,7 +197,9 @@ const rentalSchema = z.object({
 });
 
 
-export async function createRental(prevState: any, formData: FormData) {
+export async function createRental(userId: string, prevState: any, formData: FormData) {
+    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+    
     const data = {
         dumpsterId: formData.get('dumpsterId'),
         clientId: formData.get('clientId'),
@@ -222,7 +219,6 @@ export async function createRental(prevState: any, formData: FormData) {
     }
 
     try {
-        const userId = await getUserId();
         await addRental(userId, {
             ...validatedFields.data,
             status: 'Ativo',
@@ -237,7 +233,11 @@ export async function createRental(prevState: any, formData: FormData) {
     redirect('/');
 }
 
-export async function finishRental(formData: FormData) {
+export async function finishRental(userId: string, formData: FormData) {
+    if (!userId) {
+        console.error("Usuário não autenticado.");
+        return;
+    }
     const rentalId = formData.get('rentalId') as string;
     const dumpsterId = formData.get('dumpsterId') as string;
     
@@ -247,12 +247,12 @@ export async function finishRental(formData: FormData) {
     }
 
     try {
-        const userId = await getUserId();
         await completeRental(userId, rentalId, dumpsterId);
         revalidatePath('/');
         revalidatePath('/dumpsters');
     } catch (e) {
         console.error(e);
+        // Maybe return an error to the user here
     }
 
     redirect('/');
@@ -264,7 +264,9 @@ const updateRentalSchema = z.object({
 });
 
 
-export async function updateRental(prevState: any, formData: FormData) {
+export async function updateRental(userId: string, prevState: any, formData: FormData) {
+  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+  
   const validatedFields = updateRentalSchema.safeParse({
     id: formData.get('id'),
     returnDate: formData.get('returnDate'),
@@ -278,7 +280,6 @@ export async function updateRental(prevState: any, formData: FormData) {
   }
 
   try {
-    const userId = await getUserId();
     await updateRentalData(userId, validatedFields.data as Rental);
     revalidatePath('/');
     return { message: 'success' };

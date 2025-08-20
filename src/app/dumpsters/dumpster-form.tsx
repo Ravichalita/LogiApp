@@ -1,31 +1,32 @@
 'use client';
 
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useRef, useTransition } from 'react';
 import { createDumpster } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
+import { Spinner } from '@/components/ui/spinner';
 
 const initialState = {
   errors: {},
   message: '',
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : 'Salvar Caçamba'}
+    <Button type="submit" disabled={isPending} className="w-full">
+      {isPending ? <Spinner size="small" /> : 'Salvar Caçamba'}
     </Button>
   );
 }
 
 export function DumpsterForm() {
-  const [state, formAction] = useActionState(createDumpster, initialState);
+  const { user } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [state, formAction] = useActionState(createDumpster.bind(null, user?.uid ?? ''), initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
@@ -45,8 +46,18 @@ export function DumpsterForm() {
     }
   }, [state, toast]);
 
+  const handleFormAction = (formData: FormData) => {
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
+
+  if (!user) {
+    return <div className="flex justify-center items-center"><Spinner /></div>;
+  }
+
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form ref={formRef} action={handleFormAction} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Nome/Identificador</Label>
         <Input id="name" name="name" placeholder="Ex: Caçamba 01" required />
@@ -78,7 +89,7 @@ export function DumpsterForm() {
         </Select>
          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
       </div>
-      <SubmitButton />
+      <SubmitButton isPending={isPending} />
     </form>
   );
 }

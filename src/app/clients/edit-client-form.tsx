@@ -1,7 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 import { updateClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,23 +9,26 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { Client, Location } from '@/lib/types';
 import { MapDialog } from '@/components/map-dialog';
+import { useAuth } from '@/context/auth-context';
+import { Spinner } from '@/components/ui/spinner';
 
 const initialState = {
   errors: {},
   message: '',
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Salvando...' : 'Salvar Alterações'}
+    <Button type="submit" disabled={isPending} className="w-full">
+      {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
     </Button>
   );
 }
 
 export function EditClientForm({ client, onSave }: { client: Client, onSave: () => void }) {
-  const [state, formAction] = useActionState(updateClient, initialState);
+  const { user } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [state, formAction] = useActionState(updateClient.bind(null, user?.uid ?? ''), initialState);
   const { toast } = useToast();
   
   const [address, setAddress] = useState(client.address);
@@ -55,9 +57,14 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
     setAddress(selectedLocation.address);
   };
 
+  const handleFormAction = (formData: FormData) => {
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={handleFormAction} className="space-y-4">
       <input type="hidden" name="id" value={client.id} />
       {location && <input type="hidden" name="latitude" value={location.lat} />}
       {location && <input type="hidden" name="longitude" value={location.lng} />}
@@ -95,7 +102,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
         <Textarea id="observations" name="observations" defaultValue={client.observations} />
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
-      <SubmitButton />
+      <SubmitButton isPending={isPending} />
     </form>
   );
 }

@@ -30,16 +30,22 @@ import {
 import { EditClientForm } from './edit-client-form';
 import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
 
 export function ClientActions({ client }: { client: Client }) {
+  const { user } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   const handleDelete = () => {
+    if (!user) {
+        toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
+        return;
+    }
     startTransition(async () => {
-      const result = await deleteClient(client.id);
+      const result = await deleteClient(user.uid, client.id);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao excluir',
