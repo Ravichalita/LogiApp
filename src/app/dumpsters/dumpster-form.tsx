@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useTransition, useEffect } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createDumpster } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import { DumpsterStatus } from '@/lib/types';
+import type { DumpsterStatus } from '@/lib/types';
 
 const initialState = {
   errors: {},
