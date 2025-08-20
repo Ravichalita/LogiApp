@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -84,7 +85,7 @@ export default function DumpstersPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                            {dumpsters.map(dumpster => (
+                            {dumpsters.length > 0 ? dumpsters.map(dumpster => (
                                 <TableRow key={dumpster.id}>
                                 <TableCell className="font-medium">{dumpster.name}</TableCell>
                                 <TableCell>{dumpster.color}</TableCell>
@@ -93,8 +94,7 @@ export default function DumpstersPage() {
                                     <DumpsterActions dumpster={dumpster} />
                                 </TableCell>
                                 </TableRow>
-                            ))}
-                            {dumpsters.length === 0 && !loading && (
+                            )) : (
                                 <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     Nenhuma caçamba cadastrada.
@@ -107,7 +107,7 @@ export default function DumpstersPage() {
                         
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
-                        {dumpsters.map(dumpster => (
+                        {dumpsters.length > 0 ? dumpsters.map(dumpster => (
                             <div key={dumpster.id} className="border rounded-lg p-4">
                             <div className="flex justify-between items-start">
                                 <h3 className="font-bold text-lg">{dumpster.name}</h3>
@@ -121,8 +121,7 @@ export default function DumpstersPage() {
                                 <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
                             </div>
                             </div>
-                        ))}
-                        {dumpsters.length === 0 && !loading && (
+                        )) : (
                             <div className="text-center py-10">
                             <p>Nenhuma caçamba cadastrada.</p>
                             </div>
@@ -138,7 +137,7 @@ export default function DumpstersPage() {
             <CardHeader>
               <CardTitle>Nova Caçamba</CardTitle>
               <CardDescription>Cadastre uma nova caçamba no seu inventário.</CardDescription>
-            </Header>
+            </CardHeader>
             <CardContent>
               <DumpsterForm />
             </CardContent>
