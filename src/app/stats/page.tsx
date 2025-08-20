@@ -122,7 +122,6 @@ export default function StatsPage() {
         <div className="container mx-auto py-8 px-4 md:px-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h1 className="text-3xl font-headline font-bold">Estatísticas</h1>
-                {!loading && completedRentals.length > 0 && <ResetDataButton />}
             </div>
             {loading ? (
                 <StatsSkeleton />
@@ -133,7 +132,12 @@ export default function StatsPage() {
                     <p className="mt-2 text-muted-foreground">Finalize aluguéis para começar a ver as estatísticas.</p>
                 </div>
             ) : (
-                <StatsDisplay rentals={completedRentals} />
+               <>
+                 <StatsDisplay rentals={completedRentals} />
+                 <div className="mt-8 flex justify-start">
+                    <ResetDataButton />
+                 </div>
+               </>
             )}
         </div>
     );
