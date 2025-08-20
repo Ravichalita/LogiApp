@@ -46,6 +46,7 @@ export default function DumpstersPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // This effect now depends on `user`. It will re-run when `user` changes.
     if (user) {
       const fetchDumpsters = async () => {
         setLoading(true);
