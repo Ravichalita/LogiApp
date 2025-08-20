@@ -36,3 +36,9 @@ export interface PopulatedRental extends Rental {
   dumpster: Dumpster;
   client: Client;
 }
+
+export interface Location {
+    address: string;
+    lat: number;
+    lng: number;
+}

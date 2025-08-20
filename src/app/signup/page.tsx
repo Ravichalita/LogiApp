@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormStatus } from 'react-dom';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -13,19 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Truck } from 'lucide-react';
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Criando conta...' : 'Criar Conta'}
-    </Button>
-  );
-}
-
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -47,10 +38,15 @@ export default function SignupPage() {
       });
       return;
     }
-
+    
+    setIsSubmitting(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await sendEmailVerification(userCredential.user);
+      toast({
+        title: 'Verificação Necessária',
+        description: 'Enviamos um link de verificação para o seu e-mail. Por favor, clique nele para ativar sua conta.',
+      });
       router.push('/verify-email');
     } catch (error: any) {
         let errorMessage = "Ocorreu um erro desconhecido.";
@@ -66,6 +62,8 @@ export default function SignupPage() {
         description: errorMessage,
         variant: 'destructive',
       });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -112,7 +110,9 @@ export default function SignupPage() {
                 required
               />
             </div>
-            <SubmitButton />
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? 'Criando conta...' : 'Criar Conta'}
+            </Button>
           </form>
         </CardContent>
         <CardFooter>

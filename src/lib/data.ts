@@ -1,10 +1,13 @@
 'use server';
-import type { Dumpster, Client, Rental, DumpsterStatus, FirestoreEntity } from './types';
+import type { Dumpster, Client, Rental, FirestoreEntity } from './types';
 import { db, auth } from './firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
 
 async function getUserId(): Promise<string> {
   const user = auth.currentUser;
+  // This check is crucial. In a real app, you might want to handle this more gracefully,
+  // but for server actions, throwing an error is often appropriate as it should be
+  // called from an authenticated context.
   if (!user) {
     throw new Error('Usuário não autenticado. Acesso negado.');
   }
@@ -31,9 +34,9 @@ async function getCollection<T extends FirestoreEntity>(collectionName: string):
 
 async function addDocument<T>(collectionName: string, data: T) {
     const userId = await getUserId();
-    const docData = { ...data, userId };
-    const docRef = await addDoc(collection(db, 'users', userId, collectionName), docData);
-    return { id: docRef.id, ...docData };
+    // Don't spread userId into the document itself, it's part of the path
+    const docRef = await addDoc(collection(db, 'users', userId, collectionName), data as any);
+    return { id: docRef.id, ...data };
 }
 
 async function updateDocument<T extends { id: string }>(collectionName: string, data: Partial<T>) {
@@ -119,14 +122,20 @@ export const addRental = async (rental: Omit<Rental, 'id'>) => {
 };
 
 export const updateRental = async (rental: Partial<Rental>) => {
-    const existingRental = await getDoc(doc(db, 'users', await getUserId(), 'rentals', rental.id!));
+    const userId = await getUserId();
+    const existingRental = await getDoc(doc(db, 'users', userId, 'rentals', rental.id!));
     const existingRentalData = existingRental.data() as Rental;
     
     if (!existingRentalData) {
         throw new Error('Aluguel não encontrado.');
     }
 
-    if (rental.returnDate && rental.returnDate < (existingRentalData.rentalDate as any).toDate()) {
+    // Convert Firestore Timestamp to Date for comparison if needed
+    const rentalDate = existingRentalData.rentalDate instanceof Timestamp 
+        ? existingRentalData.rentalDate.toDate() 
+        : existingRentalData.rentalDate;
+
+    if (rental.returnDate && rental.returnDate < rentalDate) {
         throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
     }
 
@@ -148,6 +157,7 @@ export const completeRental = async (rentalId: string, dumpsterId: string) => {
 
   await batch.commit();
   
-  const updatedRental = (await getDoc(rentalRef)).data();
+  const updatedRentalDoc = await getDoc(rentalRef);
+  const updatedRental = updatedRentalDoc.data();
   return { id: rentalId, ...updatedRental } as Rental;
 };

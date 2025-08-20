@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useFormStatus } from 'react-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -13,26 +12,24 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Truck } from 'lucide-react';
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending} className="w-full">
-      {pending ? 'Entrando...' : 'Entrar'}
-    </Button>
-  );
-}
-
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
        if (!userCredential.user.emailVerified) {
+         toast({
+            title: 'Verificação Pendente',
+            description: 'Por favor, verifique seu e-mail antes de fazer login. Um novo link de verificação foi enviado.',
+            variant: 'default',
+         });
          router.push('/verify-email');
          return;
        }
@@ -41,10 +38,8 @@ export default function LoginPage() {
       let errorMessage = 'Ocorreu um erro desconhecido.';
       switch (error.code) {
         case 'auth/user-not-found':
-          errorMessage = 'Nenhum usuário encontrado com este e-mail.';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Senha incorreta. Por favor, tente novamente.';
+        case 'auth/invalid-credential':
+          errorMessage = 'E-mail ou senha inválidos. Por favor, tente novamente.';
           break;
         case 'auth/invalid-email':
             errorMessage = 'O formato do e-mail é inválido.';
@@ -58,6 +53,8 @@ export default function LoginPage() {
         description: errorMessage,
         variant: 'destructive',
       });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -94,7 +91,9 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <SubmitButton />
+             <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? 'Entrando...' : 'Entrar'}
+            </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">

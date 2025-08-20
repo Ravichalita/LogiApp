@@ -15,6 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/login', '/signup', '/verify-email'];
+const authRoutes = ['/login', '/signup'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -25,7 +26,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setUser(user);
+        if (user.emailVerified) {
+          setUser(user);
+        } else {
+          setUser(null);
+           if (!pathname.startsWith('/verify-email')) {
+             router.push('/verify-email');
+           }
+        }
       } else {
         setUser(null);
       }
@@ -33,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [router, pathname]);
 
   useEffect(() => {
     if (loading) return;
@@ -42,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (!user && !isPublicRoute) {
       router.push('/login');
-    } else if (user && isPublicRoute) {
+    } else if (user && authRoutes.includes(pathname)) {
       router.push('/');
     }
   }, [user, loading, pathname, router]);
