@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { deleteDumpster, updateDumpsterStatus } from '@/lib/actions';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -126,11 +126,14 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DialogTrigger asChild>
-                  <DropdownMenuItem>Editar</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar
+                  </DropdownMenuItem>
                 </DialogTrigger>
                 <DropdownMenuSeparator />
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Excluir
                   </DropdownMenuItem>
@@ -142,7 +145,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
               <DialogHeader>
                 <DialogTitle>Editar Caçamba</DialogTitle>
               </DialogHeader>
-              <EditDumpsterForm dumpster={dumpster} />
+              <EditDumpsterForm dumpster={dumpster} onSave={() => setIsEditDialogOpen(false)} />
             </DialogContent>
 
             <AlertDialogContent>

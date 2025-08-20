@@ -69,13 +69,13 @@ export function ClientActions({ client }: { client: Client }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DialogTrigger asChild>
-                 <DropdownMenuItem>
+                 <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </DropdownMenuItem>
               </DialogTrigger>
               <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true);}}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Excluir
                 </DropdownMenuItem>
@@ -88,7 +88,7 @@ export function ClientActions({ client }: { client: Client }) {
             <DialogHeader>
               <DialogTitle>Editar Cliente</DialogTitle>
             </DialogHeader>
-            <EditClientForm client={client} />
+            <EditClientForm client={client} onSave={() => setIsEditDialogOpen(false)} />
           </DialogContent>
 
           {/* Delete Alert Dialog */}

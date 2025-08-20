@@ -1,142 +1,153 @@
 'use server';
-import type { Dumpster, Client, Rental, DumpsterStatus } from './types';
-import { db } from './db';
+import type { Dumpster, Client, Rental, DumpsterStatus, FirestoreEntity } from './types';
+import { db, auth } from './firebase';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
+
+async function getUserId(): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Usuário não autenticado. Acesso negado.');
+  }
+  return user.uid;
+}
+
+// --- Generic Firestore Functions ---
+
+async function getCollection<T extends FirestoreEntity>(collectionName: string): Promise<T[]> {
+  const userId = await getUserId();
+  const q = query(collection(db, 'users', userId, collectionName));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data();
+    // Convert Firestore Timestamps back to JS Dates
+    for (const key in data) {
+      if (data[key] instanceof Timestamp) {
+        data[key] = data[key].toDate();
+      }
+    }
+    return { id: doc.id, ...data } as T;
+  });
+}
+
+async function addDocument<T>(collectionName: string, data: T) {
+    const userId = await getUserId();
+    const docData = { ...data, userId };
+    const docRef = await addDoc(collection(db, 'users', userId, collectionName), docData);
+    return { id: docRef.id, ...docData };
+}
+
+async function updateDocument<T extends { id: string }>(collectionName: string, data: Partial<T>) {
+  const userId = await getUserId();
+  const { id, ...rest } = data;
+  if (!id) throw new Error("ID do documento não fornecido para atualização.");
+  const docRef = doc(db, 'users', userId, collectionName, id);
+  await updateDoc(docRef, rest);
+  return data;
+}
+
+async function deleteDocument(collectionName: string, id: string) {
+    const userId = await getUserId();
+    const docRef = doc(db, 'users', userId, collectionName, id);
+    await deleteDoc(docRef);
+    return { success: true };
+}
+
 
 // --- Data Retrieval Functions ---
 
 export const getDumpsters = async (): Promise<Dumpster[]> => {
-  return await db.read('dumpsters');
+  return await getCollection<Dumpster>('dumpsters');
 };
 
 export const getClients = async (): Promise<Client[]> => {
-  return await db.read('clients');
+  return await getCollection<Client>('clients');
 };
 
 export const getRentals = async (): Promise<Rental[]> => {
-  const rentalsData = await db.read<any[]>('rentals');
-  // Dates are stored as ISO strings in JSON, so we need to convert them back to Date objects.
-  return rentalsData.map(rental => ({
-    ...rental,
-    rentalDate: new Date(rental.rentalDate),
-    returnDate: new Date(rental.returnDate),
-  }));
+  return await getCollection<Rental>('rentals');
 };
 
 // --- Data Mutation Functions ---
 
 export const addDumpster = async (dumpster: Omit<Dumpster, 'id'>) => {
-  const currentData = await getDumpsters();
-  const newDumpster = { ...dumpster, id: String(Date.now()) };
-  await db.write('dumpsters', [...currentData, newDumpster]);
-  return newDumpster;
+  return await addDocument('dumpsters', dumpster);
 };
 
-export const updateDumpster = async (dumpster: Partial<Dumpster>, partial = false) => {
-  const currentData = await getDumpsters();
-  let updatedData;
-  if (partial) {
-    const existingDumpster = currentData.find(d => d.id === dumpster.id);
-    if (!existingDumpster) throw new Error("Caçamba não encontrada");
-    const updatedDumpster = { ...existingDumpster, ...dumpster };
-    updatedData = currentData.map(d => (d.id === dumpster.id ? updatedDumpster : d));
-  } else {
-    updatedData = currentData.map(d => (d.id === dumpster.id ? dumpster : d));
-  }
-  await db.write('dumpsters', updatedData);
-  return dumpster;
+export const updateDumpster = async (dumpster: Partial<Dumpster>) => {
+  return await updateDocument('dumpsters', dumpster);
 }
 
 export const deleteDumpster = async (id: string) => {
-    const [currentDumpsters, currentRentals] = await Promise.all([getDumpsters(), getRentals()]);
-    const dumpster = currentDumpsters.find(d => d.id === id);
+    const rentals = await getRentals();
+    const dumpsterIsRented = rentals.some(r => r.dumpsterId === id && r.status === 'Ativo');
 
-    if (dumpster?.status === 'Alugada') {
+    if (dumpsterIsRented) {
         throw new Error('Não é possível excluir uma caçamba que está atualmente alugada.');
     }
-
-    const updatedData = currentDumpsters.filter(d => d.id !== id);
-    await db.write('dumpsters', updatedData);
-    return { success: true };
+    
+    return await deleteDocument('dumpsters', id);
 }
 
 
 export const addClient = async (client: Omit<Client, 'id'>) => {
-  const currentData = await getClients();
-  const newClient = { ...client, id: String(Date.now()) };
-  await db.write('clients', [...currentData, newClient]);
-  return newClient;
+  return await addDocument('clients', client);
 };
 
 export const updateClient = async (client: Client) => {
-  const currentData = await getClients();
-  const updatedData = currentData.map(c => (c.id === client.id ? client : c));
-  await db.write('clients', updatedData);
-  return client;
+  return await updateDocument('clients', client);
 }
 
 export const deleteClient = async (id: string) => {
-    const [currentClients, currentRentals] = await Promise.all([getClients(), getRentals()]);
-    
-    // Check if the client has any rentals with the status "Ativo"
-    const hasActiveRentals = currentRentals.some(r => r.clientId === id && r.status === 'Ativo');
+    const rentals = await getRentals();
+    const hasActiveRentals = rentals.some(r => r.clientId === id && r.status === 'Ativo');
     
     if (hasActiveRentals) {
-        // If there are active rentals, throw an error.
         throw new Error('Não é possível excluir um cliente com aluguéis ativos. Finalize os aluguéis primeiro.');
     }
 
-    // If there are no active rentals, proceed with deletion.
-    const updatedData = currentClients.filter(c => c.id !== id);
-    await db.write('clients', updatedData);
-    return { success: true };
+    return await deleteDocument('clients', id);
 }
 
 
 export const addRental = async (rental: Omit<Rental, 'id'>) => {
-  const newRental = { ...rental, id: String(Date.now()) };
-
-  const currentRentals = await getRentals();
-  await db.write('rentals', [...currentRentals, newRental]);
-
-  const currentDumpsters = await getDumpsters();
-  const updatedDumpsters = currentDumpsters.map(d =>
-    d.id === rental.dumpsterId ? { ...d, status: 'Alugada' } : d
-  );
-  await db.write('dumpsters', updatedDumpsters);
-  
-  return newRental;
+    const newRental = await addDocument('rentals', rental);
+    
+    // Update dumpster status to 'Alugada'
+    await updateDumpster({ id: rental.dumpsterId, status: 'Alugada' });
+    
+    return newRental;
 };
 
 export const updateRental = async (rental: Partial<Rental>) => {
-    const currentRentals = await getRentals();
-    const existingRental = currentRentals.find(r => r.id === rental.id);
-    if (!existingRental) {
+    const existingRental = await getDoc(doc(db, 'users', await getUserId(), 'rentals', rental.id!));
+    const existingRentalData = existingRental.data() as Rental;
+    
+    if (!existingRentalData) {
         throw new Error('Aluguel não encontrado.');
     }
-    if (rental.returnDate && rental.returnDate < existingRental.rentalDate) {
+
+    if (rental.returnDate && rental.returnDate < (existingRentalData.rentalDate as any).toDate()) {
         throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
     }
-    const updatedRental = { ...existingRental, ...rental };
-    const updatedData = currentRentals.map(r => (r.id === rental.id ? updatedRental : r));
-    await db.write('rentals', updatedData);
-    return updatedRental;
+
+    return await updateDocument('rentals', rental);
 };
 
 
 export const completeRental = async (rentalId: string, dumpsterId: string) => {
-  const currentRentals = await getRentals();
-  const updatedRentals = currentRentals.map(r => 
-    r.id === rentalId ? { ...r, status: 'Concluído' } : r
-  );
-  await db.write('rentals', updatedRentals);
+  const batch = writeBatch(db);
+  const userId = await getUserId();
 
-  const currentDumpsters = await getDumpsters();
-  const updatedDumpsters = currentDumpsters.map(d => 
-    d.id === dumpsterId ? { ...d, status: 'Disponível' } : d
-  );
-  await db.write('dumpsters', updatedDumpsters);
+  // Update rental status to 'Concluído'
+  const rentalRef = doc(db, 'users', userId, 'rentals', rentalId);
+  batch.update(rentalRef, { status: 'Concluído' });
+
+  // Update dumpster status to 'Disponível'
+  const dumpsterRef = doc(db, 'users', userId, 'dumpsters', dumpsterId);
+  batch.update(dumpsterRef, { status: 'Disponível' });
+
+  await batch.commit();
   
-  const rentals = await getRentals();
-  const updatedRental = rentals.find(r => r.id === rentalId);
-  return updatedRental;
+  const updatedRental = (await getDoc(rentalRef)).data();
+  return { id: rentalId, ...updatedRental } as Rental;
 };

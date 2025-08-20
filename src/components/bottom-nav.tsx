@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, LayoutGrid, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
+
 
 const navLinks = [
   { href: '/', label: 'Painel', icon: Home },
@@ -13,6 +15,11 @@ const navLinks = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">

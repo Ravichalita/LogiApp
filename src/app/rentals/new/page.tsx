@@ -4,7 +4,6 @@ import { RentalForm } from './rental-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Truck } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 
 export default async function NewRentalPage() {
   const [dumpsters, clients] = await Promise.all([

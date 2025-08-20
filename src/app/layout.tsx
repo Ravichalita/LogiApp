@@ -4,6 +4,7 @@ import { Header } from '@/components/header';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { BottomNav } from '@/components/bottom-nav';
+import { AuthProvider } from '@/context/auth-context';
 
 export const metadata: Metadata = {
   title: 'CaçambaControl',
@@ -18,19 +19,21 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="httpshttps://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className={cn(
         "min-h-screen bg-background font-body antialiased"
       )}>
-        <div className="relative flex min-h-screen flex-col">
-          <Header />
-          <main className="flex-1 pb-20 md:pb-0">{children}</main>
-          <BottomNav />
-        </div>
-        <Toaster />
+        <AuthProvider>
+            <div className="relative flex min-h-screen flex-col">
+              <Header />
+              <main className="flex-1 pb-20 md:pb-0">{children}</main>
+              <BottomNav />
+            </div>
+            <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

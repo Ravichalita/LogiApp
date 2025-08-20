@@ -1,15 +1,17 @@
 export type DumpsterStatus = "Disponível" | "Alugada" | "Em Manutenção";
 
-export interface Dumpster {
+export interface FirestoreEntity {
   id: string;
+}
+
+export interface Dumpster extends FirestoreEntity {
   name: string;
   status: DumpsterStatus;
   color: string;
   size: number;
 }
 
-export interface Client {
-  id: string;
+export interface Client extends FirestoreEntity {
   name: string;
   phone: string;
   address: string;
@@ -19,8 +21,7 @@ export interface Client {
   longitude?: number;
 }
 
-export interface Rental {
-  id: string;
+export interface Rental extends FirestoreEntity {
   dumpsterId: string;
   clientId: string;
   deliveryAddress: string;

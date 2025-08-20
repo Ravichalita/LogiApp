@@ -14,19 +14,25 @@ import { Separator } from '@/components/ui/separator';
 import { RentalCardActions } from './rentals/rental-card-actions';
 
 async function getPopulatedRentals(): Promise<PopulatedRental[]> {
-  const [rentals, dumpsters, clients] = await Promise.all([
-    getRentals(),
-    getDumpsters(),
-    getClients(),
-  ]);
+  try {
+    const [rentals, dumpsters, clients] = await Promise.all([
+      getRentals(),
+      getDumpsters(),
+      getClients(),
+    ]);
 
-  const activeRentals = rentals.filter(r => r.status === 'Ativo');
+    const activeRentals = rentals.filter(r => r.status === 'Ativo');
 
-  return activeRentals.map(rental => {
-    const dumpster = dumpsters.find(d => d.id === rental.dumpsterId)!;
-    const client = clients.find(c => c.id === rental.clientId)!;
-    return { ...rental, dumpster, client };
-  }).sort((a, b) => a.returnDate.getTime() - b.returnDate.getTime());
+    return activeRentals.map(rental => {
+      const dumpster = dumpsters.find(d => d.id === rental.dumpsterId)!;
+      const client = clients.find(c => c.id === rental.clientId)!;
+      return { ...rental, dumpster, client };
+    }).sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime());
+  } catch(error) {
+    // This will happen if user is not authenticated.
+    // The AuthProvider will redirect to login page.
+    return [];
+  }
 }
 
 export default async function DashboardPage() {

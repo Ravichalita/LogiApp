@@ -79,10 +79,10 @@ export async function deleteDumpster(id: string) {
 
 export async function updateDumpsterStatus(id: string, status: DumpsterStatus) {
     try {
-        const dumpsters = await updateDumpsterData({ id, status } as any, true);
+        await updateDumpsterData({ id, status } as any);
         revalidatePath('/dumpsters');
         revalidatePath('/');
-        return { message: 'success', dumpster: dumpsters };
+        return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: 'Falha ao atualizar status da caçamba.' };
     }

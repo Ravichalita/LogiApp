@@ -25,7 +25,7 @@ function SubmitButton() {
   );
 }
 
-export function EditClientForm({ client }: { client: Client }) {
+export function EditClientForm({ client, onSave }: { client: Client, onSave: () => void }) {
   const [state, formAction] = useActionState(updateClient, initialState);
   const { toast } = useToast();
   
@@ -40,7 +40,7 @@ export function EditClientForm({ client }: { client: Client }) {
         title: "Sucesso!",
         description: "Cliente atualizado.",
       });
-      // Here you might want to close the dialog
+      onSave();
     } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
@@ -48,7 +48,7 @@ export function EditClientForm({ client }: { client: Client }) {
         variant: "destructive",
       });
     }
-  }, [state, toast]);
+  }, [state, toast, onSave]);
   
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });

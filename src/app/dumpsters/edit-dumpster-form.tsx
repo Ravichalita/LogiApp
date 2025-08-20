@@ -25,7 +25,7 @@ function SubmitButton() {
   );
 }
 
-export function EditDumpsterForm({ dumpster }: { dumpster: Dumpster }) {
+export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onSave: () => void }) {
   const [state, formAction] = useActionState(updateDumpster, initialState);
   const { toast } = useToast();
 
@@ -35,7 +35,7 @@ export function EditDumpsterForm({ dumpster }: { dumpster: Dumpster }) {
         title: "Sucesso!",
         description: "Caçamba atualizada.",
       });
-      // Here you might want to close the dialog
+      onSave();
     } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
@@ -43,7 +43,7 @@ export function EditDumpsterForm({ dumpster }: { dumpster: Dumpster }) {
         variant: "destructive",
       });
     }
-  }, [state, toast]);
+  }, [state, toast, onSave]);
 
   return (
     <form action={formAction} className="space-y-4">
