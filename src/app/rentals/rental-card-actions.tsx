@@ -109,7 +109,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         <input type="hidden" name="returnDate" value={returnDate?.toISOString()} />
       </form>
 
-      <div className="flex w-full gap-2 mt-6">
+      <div className="flex flex-col sm:flex-row w-full gap-2 mt-6">
         {rental.latitude && rental.longitude && (
           <Button variant="outline" className="w-full" asChild>
             <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
