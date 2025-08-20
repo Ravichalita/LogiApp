@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { updateClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 export function EditClientForm({ client, onSave }: { client: Client, onSave: () => void }) {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [state, formAction] = useActionState(updateClient.bind(null, user?.uid ?? ''), initialState);
+  const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
   
   const [address, setAddress] = useState(client.address);
@@ -58,8 +58,11 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   };
 
   const handleFormAction = (formData: FormData) => {
-    startTransition(() => {
-      formAction(formData);
+    startTransition(async () => {
+      if (!user) return;
+      const boundAction = updateClient.bind(null, user.uid);
+      const result = await boundAction(formData);
+      setState(result);
     });
   };
 

@@ -44,14 +44,14 @@ export function ClientForm() {
       formRef.current?.reset();
       setAddress('');
       setLocation(null);
-      setState(initialState); // Reset state after success
+      setState(initialState);
     } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
         description: state.error,
         variant: "destructive",
       });
-       setState(prevState => ({...prevState, message: '', error: undefined })); // Clear error
+       setState(prevState => ({...prevState, message: '', error: undefined }));
     } else if (state?.errors) {
        // Optionally handle field-specific errors
     }
@@ -62,14 +62,14 @@ export function ClientForm() {
     setAddress(selectedLocation.address);
   };
 
-  const action = (payload: FormData) => {
+  const action = (formData: FormData) => {
     startTransition(async () => {
       if (!user) {
         toast({ title: 'Erro', description: 'Você não está autenticado.', variant: 'destructive' });
         return;
       }
       const boundAction = createClient.bind(null, user.uid);
-      const result = await boundAction(state, payload);
+      const result = await boundAction(formData);
       setState(result);
     });
   };

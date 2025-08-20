@@ -14,7 +14,7 @@ const dumpsterSchema = z.object({
   size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
 
-export async function createDumpster(userId: string, prevState: any, formData: FormData) {
+export async function createDumpster(userId: string, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
 
   const validatedFields = dumpsterSchema.safeParse({
@@ -107,7 +107,7 @@ const clientSchema = z.object({
   longitude: z.coerce.number().optional(),
 });
 
-export async function createClient(userId: string, prevState: any, formData: FormData) {
+export async function createClient(userId: string, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
 
   const validatedFields = clientSchema.safeParse({
@@ -139,7 +139,7 @@ export async function createClient(userId: string, prevState: any, formData: For
   return { message: "success" };
 }
 
-export async function updateClient(userId: string, prevState: any, formData: FormData) {
+export async function updateClient(userId: string, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
 
   const validatedFields = clientSchema.safeParse({

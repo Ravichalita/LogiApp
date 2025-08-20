@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { DumpsterStatus } from '@/lib/types';
 
 const initialState = {
   errors: {},
@@ -27,6 +28,7 @@ export function DumpsterForm() {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
+  const [status, setStatus] = useState<DumpsterStatus>('Disponível');
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
@@ -34,6 +36,7 @@ export function DumpsterForm() {
     if (state?.message === 'success') {
       toast({ title: 'Sucesso', description: 'Caçamba cadastrada.' });
       formRef.current?.reset();
+      setStatus('Disponível');
       setState(initialState);
     } else if (state?.message === 'error' && state.error) {
       toast({ title: 'Erro', description: state.error, variant: 'destructive' });
@@ -41,14 +44,14 @@ export function DumpsterForm() {
     }
   }, [state, toast]);
 
-  const action = (payload: FormData) => {
+  const action = (formData: FormData) => {
     startTransition(async () => {
       if (!user) {
         toast({ title: 'Erro', description: 'Você não está autenticado.', variant: 'destructive' });
         return;
       }
       const boundAction = createDumpster.bind(null, user.uid);
-      const result = await boundAction(state, payload);
+      const result = await boundAction(formData);
       setState(result);
     });
   };
@@ -77,8 +80,8 @@ export function DumpsterForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="status">Status Inicial</Label>
-        <Select name="status" defaultValue="Disponível" required>
+        <Label>Status Inicial</Label>
+        <Select value={status} onValueChange={(value) => setStatus(value as DumpsterStatus)}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione o status" />
           </SelectTrigger>
@@ -88,6 +91,7 @@ export function DumpsterForm() {
             <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
           </SelectContent>
         </Select>
+        <input type="hidden" name="status" value={status} />
          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
       </div>
       <SubmitButton isPending={isPending} />
