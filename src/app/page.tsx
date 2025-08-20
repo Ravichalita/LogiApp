@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText } from 'lucide-react';
+import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Accordion,
@@ -17,6 +17,12 @@ import { RentalCardActions } from './rentals/rental-card-actions';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+}
 
 function DashboardSkeleton() {
     return (
@@ -68,15 +74,17 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
+        setLoading(true);
         const unsubscribe = getRentals(user.uid, (rentals) => {
             setRentals(rentals);
             setLoading(false);
         });
         return () => unsubscribe();
-    } else if (!loading) {
+    } else {
         setRentals([]);
+        setLoading(false);
     }
-  }, [user, loading]);
+  }, [user]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -122,6 +130,13 @@ export default function DashboardPage() {
                      <div className="flex flex-col">
                       <span className="text-sm text-muted-foreground">Local</span>
                       <span>{rental.deliveryAddress}</span>
+                    </div>
+                  </div>
+                   <div className="flex items-start gap-3">
+                    <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                     <div className="flex flex-col">
+                      <span className="text-sm text-muted-foreground">Valor</span>
+                      <span className="font-medium">{formatCurrency(rental.value)}</span>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">

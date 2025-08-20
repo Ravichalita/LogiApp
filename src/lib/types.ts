@@ -30,6 +30,7 @@ export interface Rental extends FirestoreEntity {
   rentalDate: Date;
   returnDate: Date;
   status: "Ativo" | "Concluído";
+  value: number;
 }
 
 export interface PopulatedRental extends Rental {

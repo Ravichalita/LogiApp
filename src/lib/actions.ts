@@ -193,6 +193,7 @@ const rentalSchema = z.object({
   longitude: z.coerce.number().optional(),
   rentalDate: z.coerce.date(),
   returnDate: z.coerce.date(),
+  value: z.string().transform(val => Number(val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim())).pipe(z.number().positive('O valor deve ser maior que zero.')),
 }).refine(data => data.returnDate > data.rentalDate, {
   message: "A data de retirada deve ser após a data de entrega.",
   path: ["returnDate"],
@@ -210,6 +211,7 @@ export async function createRental(userId: string, prevState: any, formData: For
         longitude: formData.get('longitude'),
         rentalDate: formData.get('rentalDate'),
         returnDate: formData.get('returnDate'),
+        value: formData.get('value'),
     }
 
     const validatedFields = rentalSchema.safeParse(data);

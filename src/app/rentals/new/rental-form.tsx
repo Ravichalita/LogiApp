@@ -48,6 +48,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   const [returnDate, setReturnDate] = useState<Date | undefined>();
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [errors, setErrors] = useState<any>({});
+  const [value, setValue] = useState('');
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
@@ -107,6 +108,16 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             toast({ title: "Erro", description: result.message, variant: "destructive"});
         }
     });
+  };
+
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let inputValue = e.target.value;
+    inputValue = inputValue.replace(/\D/g, ''); // Remove non-digits
+    inputValue = (Number(inputValue) / 100).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+    setValue(inputValue);
   };
 
   return (
@@ -207,6 +218,18 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
           </Popover>
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
+      </div>
+       <div className="space-y-2">
+        <Label htmlFor="value">Valor do Aluguel (R$)</Label>
+        <Input
+          id="value"
+          name="value"
+          value={value}
+          onChange={handleValueChange}
+          placeholder="R$ 0,00"
+          required
+        />
+        {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 
       <SubmitButton isPending={isPending} />
