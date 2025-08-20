@@ -5,11 +5,11 @@ import { collection, getDocs, doc, updateDoc, deleteDoc, query, writeBatch, getD
 
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 
-async function getCollection<T extends FirestoreEntity>(collectionName: string): Promise<T[]> {
-  if (!auth.currentUser?.uid) {
+async function getCollection<T extends FirestoreEntity>(userId: string, collectionName: string): Promise<T[]> {
+  if (!userId) {
+    console.log("getCollection called without userId, returning empty array.");
     return [];
   }
-  const userId = auth.currentUser.uid;
   const q = query(collection(db, 'users', userId, collectionName));
   try {
     const querySnapshot = await getDocs(q);
@@ -43,16 +43,16 @@ async function updateDocument<T extends { id: string }>(userId: string, collecti
 
 // --- Data Retrieval Functions ---
 
-export const getDumpsters = async (): Promise<Dumpster[]> => {
-  return await getCollection<Dumpster>('dumpsters');
+export const getDumpsters = async (userId: string): Promise<Dumpster[]> => {
+  return await getCollection<Dumpster>(userId, 'dumpsters');
 };
 
-export const getClients = async (): Promise<Client[]> => {
-  return await getCollection<Client>('clients');
+export const getClients = async (userId: string): Promise<Client[]> => {
+  return await getCollection<Client>(userId, 'clients');
 };
 
-export const getRentals = async (): Promise<Rental[]> => {
-  return await getCollection<Rental>('rentals');
+export const getRentals = async (userId: string): Promise<Rental[]> => {
+  return await getCollection<Rental>(userId, 'rentals');
 };
 
 
@@ -75,9 +75,9 @@ export const updateRental = async (userId: string, rental: Partial<Rental>) => {
     
     const rentalDate = existingRentalData.rentalDate instanceof Timestamp 
         ? existingRentalData.rentalDate.toDate() 
-        : existingRentalData.rentalDate;
+        : new Date(existingRentalData.rentalDate);
 
-    if (rental.returnDate && rental.returnDate < rentalDate) {
+    if (rental.returnDate && new Date(rental.returnDate) < rentalDate) {
         throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
     }
 

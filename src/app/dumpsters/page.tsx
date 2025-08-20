@@ -36,7 +36,7 @@ function DumpsterTableSkeleton() {
                 </TableBody>
             </Table>
         </div>
-    )
+    );
 }
 
 export default function DumpstersPage() {
@@ -48,11 +48,14 @@ export default function DumpstersPage() {
     if (user) {
       const fetchDumpsters = async () => {
         setLoading(true);
-        const userDumpsters = await getDumpsters();
+        const userDumpsters = await getDumpsters(user.uid);
         setDumpsters(userDumpsters);
         setLoading(false);
       };
       fetchDumpsters();
+    } else {
+      setLoading(false);
+      setDumpsters([]);
     }
   }, [user]);
 
@@ -135,7 +138,7 @@ export default function DumpstersPage() {
             <CardHeader>
               <CardTitle>Nova Caçamba</CardTitle>
               <CardDescription>Cadastre uma nova caçamba no seu inventário.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
               <DumpsterForm />
             </CardContent>

@@ -44,11 +44,16 @@ export default function ClientsPage() {
     if (user) {
       const fetchClients = async () => {
         setLoading(true);
-        const userClients = await getClients();
+        // Pass the user ID to the data fetching function
+        const userClients = await getClients(user.uid);
         setClients(userClients);
         setLoading(false);
       };
       fetchClients();
+    } else {
+      // If there's no user, we are not loading and the list is empty.
+      setLoading(false);
+      setClients([]);
     }
   }, [user]);
 

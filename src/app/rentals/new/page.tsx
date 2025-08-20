@@ -23,14 +23,18 @@ export default function NewRentalPage() {
       const fetchData = async () => {
         setLoading(true);
         const [userDumpsters, userClients] = await Promise.all([
-          getDumpsters(),
-          getClients(),
+          getDumpsters(user.uid),
+          getClients(user.uid),
         ]);
         setDumpsters(userDumpsters);
         setClients(userClients);
         setLoading(false);
       };
       fetchData();
+    } else {
+        setLoading(false);
+        setDumpsters([]);
+        setClients([]);
     }
   }, [user]);
 

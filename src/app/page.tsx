@@ -67,27 +67,31 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+        setLoading(false);
+        setRentals([]);
+        return;
+    };
     
-    async function getPopulatedRentals() {
+    async function getPopulatedRentals(userId: string) {
       setLoading(true);
-      const [rentals, dumpsters, clients] = await Promise.all([
-        getRentals(),
-        getDumpsters(),
-        getClients(),
+      const [rentalsData, dumpstersData, clientsData] = await Promise.all([
+        getRentals(userId),
+        getDumpsters(userId),
+        getClients(userId),
       ]);
 
-      if (!rentals.length || !dumpsters.length || !clients.length) {
+      if (!rentalsData.length || !dumpstersData.length || !clientsData.length) {
         setRentals([]);
         setLoading(false);
         return;
       }
 
-      const activeRentals = rentals.filter(r => r.status === 'Ativo');
+      const activeRentals = rentalsData.filter(r => r.status === 'Ativo');
 
       const populated = activeRentals.map(rental => {
-        const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
-        const client = clients.find(c => c.id === rental.clientId);
+        const dumpster = dumpstersData.find(d => d.id === rental.dumpsterId);
+        const client = clientsData.find(c => c.id === rental.clientId);
         if (!dumpster || !client) {
           return null;
         }
@@ -99,7 +103,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
     
-    getPopulatedRentals();
+    getPopulatedRentals(user.uid);
   }, [user]);
 
   return (
