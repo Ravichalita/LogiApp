@@ -28,7 +28,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   // Effect to auto-submit the form when a new date is picked
   useEffect(() => {
     // Only submit if the date has actually changed from the original
-    if (returnDate && returnDate.getTime() !== new Date(rental.returnDate).getTime()) {
+    if (returnDate && new Date(returnDate).getTime() !== new Date(rental.returnDate).getTime()) {
       // Timeout to ensure the hidden input value is updated before submit
       setTimeout(() => {
         updateFormRef.current?.requestSubmit();
@@ -68,9 +68,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         } catch (error: any) {
             // Next.js throws a NEXT_REDIRECT error when redirect() is called,
             // this is expected and should not be displayed as an error.
-            if (error.message.includes('NEXT_REDIRECT')) {
-              // Do nothing, allow redirect to happen
-            } else {
+            if (error.code !== 'NEXT_REDIRECT') {
               toast({ title: "Erro", description: error.message, variant: "destructive"});
             }
         }

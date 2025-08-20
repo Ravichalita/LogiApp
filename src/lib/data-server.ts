@@ -1,3 +1,4 @@
+
 // This file is server-only and uses the Firebase Admin SDK
 import { adminDb } from './firebase-admin';
 import type { Client, Dumpster, PopulatedRental, Rental, DumpsterStatus, CompletedRental } from './types';
@@ -110,9 +111,9 @@ export async function completeRental(userId: string, rentalId: string, dumpsterI
 
     const batch = adminDb.batch();
 
-    // 1. Mark the original rental as 'Concluído'
+    // 1. Delete the active rental document
     const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
-    batch.update(rentalRef, { status: 'Concluído' });
+    batch.delete(rentalRef);
 
     // 2. Set the dumpster status back to 'Disponível'
     const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
@@ -122,6 +123,24 @@ export async function completeRental(userId: string, rentalId: string, dumpsterI
     const completedRentalRef = adminDb.collection('users').doc(userId).collection('completedRentals').doc();
     batch.set(completedRentalRef, completedRentalData);
 
+
+    await batch.commit();
+}
+
+export async function deleteAllCompletedRentals(userId: string) {
+    if (!userId) throw new Error('Usuário não autenticado.');
+
+    const collectionRef = adminDb.collection('users').doc(userId).collection('completedRentals');
+    const snapshot = await collectionRef.get();
+
+    if (snapshot.empty) {
+        return; // Nothing to delete
+    }
+
+    const batch = adminDb.batch();
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
 
     await batch.commit();
 }

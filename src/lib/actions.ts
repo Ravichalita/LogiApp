@@ -1,9 +1,10 @@
+
 'use server';
 
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, updateRental as updateRentalData, getRentalById } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, updateRental as updateRentalData, getRentalById, deleteAllCompletedRentals } from './data-server';
 import type { DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -318,4 +319,19 @@ export async function updateRentalAction(userId: string, prevState: any, formDat
   } catch (e: any) {
     return { error: e.message, message: 'error' };
   }
+}
+
+export async function resetBillingDataAction(userId: string) {
+    if (!userId) {
+        return { message: 'error', error: 'Usuário não autenticado.' };
+    }
+
+    try {
+        await deleteAllCompletedRentals(userId);
+        revalidatePath('/stats');
+        return { message: 'success' };
+    } catch (e) {
+        console.error("Falha ao zerar dados de faturamento:", e);
+        return { message: 'error', error: 'Ocorreu um erro ao tentar zerar os dados de faturamento.' };
+    }
 }

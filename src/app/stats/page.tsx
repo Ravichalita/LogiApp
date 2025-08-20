@@ -1,14 +1,28 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { StatsDisplay } from './stats-display';
 import type { CompletedRental } from '@/lib/types';
 import { getCompletedRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Trash2, TriangleAlert } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { resetBillingDataAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 function StatsSkeleton() {
     return (
@@ -28,6 +42,59 @@ function StatsSkeleton() {
                 </CardContent>
             </Card>
         </div>
+    )
+}
+
+function ResetDataButton() {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
+
+    const handleReset = () => {
+        if (!user) return;
+        startTransition(async () => {
+            const result = await resetBillingDataAction(user.uid);
+             if (result.message === 'error') {
+                toast({
+                  title: 'Erro',
+                  description: result.error,
+                  variant: 'destructive',
+                });
+            } else {
+                toast({
+                    title: 'Sucesso',
+                    description: 'Seus dados de faturamento foram zerados.',
+                });
+            }
+        });
+    };
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                 <Button variant="destructive" size="sm">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Zerar Dados
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                        <TriangleAlert className="h-6 w-6 text-destructive" />
+                        Você tem certeza absoluta?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Essa ação não pode ser desfeita. Isso excluirá permanentemente **todos** os seus registros de aluguéis finalizados e zerará suas estatísticas de faturamento.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleReset} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                        {isPending ? 'Excluindo...' : 'Sim, excluir todos os dados'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     )
 }
 
@@ -53,7 +120,10 @@ export default function StatsPage() {
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-6">Estatísticas</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <h1 className="text-3xl font-headline font-bold">Estatísticas</h1>
+                {!loading && completedRentals.length > 0 && <ResetDataButton />}
+            </div>
             {loading ? (
                 <StatsSkeleton />
             ) : completedRentals.length === 0 ? (
