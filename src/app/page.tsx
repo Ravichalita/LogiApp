@@ -12,27 +12,34 @@ import {
 } from "@/components/ui/accordion"
 import { Separator } from '@/components/ui/separator';
 import { RentalCardActions } from './rentals/rental-card-actions';
+import { auth } from '@/lib/firebase';
 
 async function getPopulatedRentals(): Promise<PopulatedRental[]> {
-  try {
+    // On the server, auth.currentUser is null, so data fetching will return empty arrays.
+    // The AuthProvider on the client will handle redirection or re-rendering once auth state is known.
     const [rentals, dumpsters, clients] = await Promise.all([
       getRentals(),
       getDumpsters(),
       getClients(),
     ]);
 
+    // If any of these are empty (especially on first server render), no need to proceed.
+    if (!rentals.length || !dumpsters.length || !clients.length) {
+        return [];
+    }
+
     const activeRentals = rentals.filter(r => r.status === 'Ativo');
 
     return activeRentals.map(rental => {
       const dumpster = dumpsters.find(d => d.id === rental.dumpsterId)!;
       const client = clients.find(c => c.id === rental.clientId)!;
+      // Basic check to prevent crashes if data is somehow inconsistent
+      if (!dumpster || !client) {
+        return null;
+      }
       return { ...rental, dumpster, client };
-    }).sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime());
-  } catch(error) {
-    // This will happen if user is not authenticated.
-    // The AuthProvider will redirect to login page.
-    return [];
-  }
+    }).filter((r): r is PopulatedRental => r !== null)
+      .sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime());
 }
 
 export default async function DashboardPage() {

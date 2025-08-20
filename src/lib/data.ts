@@ -1,23 +1,24 @@
 'use server';
 import type { Dumpster, Client, Rental, FirestoreEntity } from './types';
 import { db, auth } from './firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where } from 'firebase/firestore';
 
-async function getUserId(): Promise<string> {
-  const user = auth.currentUser;
-  // This check is crucial. In a real app, you might want to handle this more gracefully,
-  // but for server actions, throwing an error is often appropriate as it should be
-  // called from an authenticated context.
-  if (!user) {
-    throw new Error('Usuário não autenticado. Acesso negado.');
-  }
-  return user.uid;
+async function getUserId(): Promise<string | null> {
+  // This function is tricky on the server, as auth.currentUser is not reliable.
+  // The logic inside AuthProvider is the source of truth.
+  // We return null and let the data fetching functions handle it gracefully.
+  return auth.currentUser?.uid || null;
 }
 
 // --- Generic Firestore Functions ---
 
 async function getCollection<T extends FirestoreEntity>(collectionName: string): Promise<T[]> {
   const userId = await getUserId();
+  // If there's no user ID (e.g., during server-side render before auth state is known),
+  // return an empty array to prevent errors. The client-side AuthProvider will handle redirection.
+  if (!userId) {
+    return [];
+  }
   const q = query(collection(db, 'users', userId, collectionName));
   const querySnapshot = await getDocs(q);
   return querySnapshot.docs.map(doc => {
@@ -33,14 +34,15 @@ async function getCollection<T extends FirestoreEntity>(collectionName: string):
 }
 
 async function addDocument<T>(collectionName: string, data: T) {
-    const userId = await getUserId();
-    // Don't spread userId into the document itself, it's part of the path
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("Usuário não autenticado.");
     const docRef = await addDoc(collection(db, 'users', userId, collectionName), data as any);
     return { id: docRef.id, ...data };
 }
 
 async function updateDocument<T extends { id: string }>(collectionName: string, data: Partial<T>) {
-  const userId = await getUserId();
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado.");
   const { id, ...rest } = data;
   if (!id) throw new Error("ID do documento não fornecido para atualização.");
   const docRef = doc(db, 'users', userId, collectionName, id);
@@ -49,7 +51,8 @@ async function updateDocument<T extends { id: string }>(collectionName: string, 
 }
 
 async function deleteDocument(collectionName: string, id: string) {
-    const userId = await getUserId();
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("Usuário não autenticado.");
     const docRef = doc(db, 'users', userId, collectionName, id);
     await deleteDoc(docRef);
     return { success: true };
@@ -81,10 +84,13 @@ export const updateDumpster = async (dumpster: Partial<Dumpster>) => {
 }
 
 export const deleteDumpster = async (id: string) => {
-    const rentals = await getRentals();
-    const dumpsterIsRented = rentals.some(r => r.dumpsterId === id && r.status === 'Ativo');
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("Usuário não autenticado.");
+    
+    const q = query(collection(db, 'users', userId, 'rentals'), where('dumpsterId', '==', id), where('status', '==', 'Ativo'));
+    const activeRentalsSnapshot = await getDocs(q);
 
-    if (dumpsterIsRented) {
+    if (!activeRentalsSnapshot.empty) {
         throw new Error('Não é possível excluir uma caçamba que está atualmente alugada.');
     }
     
@@ -101,10 +107,13 @@ export const updateClient = async (client: Client) => {
 }
 
 export const deleteClient = async (id: string) => {
-    const rentals = await getRentals();
-    const hasActiveRentals = rentals.some(r => r.clientId === id && r.status === 'Ativo');
-    
-    if (hasActiveRentals) {
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("Usuário não autenticado.");
+
+    const q = query(collection(db, 'users', userId, 'rentals'), where('clientId', '==', id), where('status', '==', 'Ativo'));
+    const activeRentalsSnapshot = await getDocs(q);
+
+    if (!activeRentalsSnapshot.empty) {
         throw new Error('Não é possível excluir um cliente com aluguéis ativos. Finalize os aluguéis primeiro.');
     }
 
@@ -122,8 +131,13 @@ export const addRental = async (rental: Omit<Rental, 'id'>) => {
 };
 
 export const updateRental = async (rental: Partial<Rental>) => {
-    const userId = await getUserId();
-    const existingRental = await getDoc(doc(db, 'users', userId, 'rentals', rental.id!));
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("Usuário não autenticado.");
+
+    if(!rental.id) throw new Error("ID do aluguel não fornecido.");
+
+    const existingRentalRef = doc(db, 'users', userId, 'rentals', rental.id);
+    const existingRental = await getDoc(existingRentalRef);
     const existingRentalData = existingRental.data() as Rental;
     
     if (!existingRentalData) {
@@ -144,9 +158,11 @@ export const updateRental = async (rental: Partial<Rental>) => {
 
 
 export const completeRental = async (rentalId: string, dumpsterId: string) => {
-  const batch = writeBatch(db);
-  const userId = await getUserId();
+  const userId = auth.currentUser?.uid;
+  if (!userId) throw new Error("Usuário não autenticado.");
 
+  const batch = writeBatch(db);
+  
   // Update rental status to 'Concluído'
   const rentalRef = doc(db, 'users', userId, 'rentals', rentalId);
   batch.update(rentalRef, { status: 'Concluído' });
