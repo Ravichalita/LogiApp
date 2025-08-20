@@ -51,7 +51,7 @@ export function DumpsterForm() {
         return;
       }
       const boundAction = createDumpster.bind(null, user.uid);
-      const result = await boundAction(formData);
+      const result = await boundAction(state, formData);
       setState(result);
     });
   };

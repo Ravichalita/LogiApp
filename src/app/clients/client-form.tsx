@@ -69,7 +69,7 @@ export function ClientForm() {
         return;
       }
       const boundAction = createClient.bind(null, user.uid);
-      const result = await boundAction(formData);
+      const result = await boundAction(state, formData);
       setState(result);
     });
   };

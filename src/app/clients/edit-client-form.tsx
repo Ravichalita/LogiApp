@@ -60,8 +60,8 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
       if (!user) return;
-      const boundAction = updateClient.bind(null, user.uid, state);
-      const result = await boundAction(formData);
+      const boundAction = updateClient.bind(null, user.uid);
+      const result = await boundAction(state, formData);
       setState(result);
     });
   };

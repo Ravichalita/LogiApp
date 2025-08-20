@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental } from './data-server';
 import { updateDumpsterStatus, updateRental, completeRental } from './data';
 import type { DumpsterStatus, Rental } from './types';
 
@@ -220,18 +220,19 @@ export async function createRental(userId: string, prevState: any, formData: For
         };
     }
 
-    // This needs to be implemented in data-server.ts
-    // try {
-    //     await addRental(userId, {
-    //         ...validatedFields.data,
-    //         status: 'Ativo',
-    //     });
-    // } catch (e) {
-    //     console.error(e);
-    //     return { errors: {}, message: 'Falha ao criar aluguel.' };
-    // }
+    try {
+        await addRental(userId, {
+            ...validatedFields.data,
+            status: 'Ativo',
+        });
+        await updateDumpsterStatus(userId, validatedFields.data.dumpsterId, 'Alugada');
+    } catch (e) {
+        console.error(e);
+        return { errors: {}, message: 'Falha ao criar aluguel.' };
+    }
     
     revalidatePath('/');
+    revalidatePath('/rentals/new');
     redirect('/');
 }
 

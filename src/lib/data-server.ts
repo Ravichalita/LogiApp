@@ -66,6 +66,6 @@ export async function deleteDumpster(userId: string, docId: string) {
 }
 
 // Rentals
-// addRental needs to be implemented here
-// updateRental needs to be implemented here
-// etc.
+export async function addRental(userId: string, rental: Omit<Rental, 'id'>) {
+  return addDocument(userId, 'rentals', rental);
+}
