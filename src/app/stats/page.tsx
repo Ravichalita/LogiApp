@@ -4,11 +4,11 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { StatsDisplay } from './stats-display';
-import type { CompletedRental } from '@/lib/types';
-import { getCompletedRentals } from '@/lib/data';
+import type { CompletedRental, PopulatedCompletedRental } from '@/lib/types';
+import { getPopulatedCompletedRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart3, Trash2, TriangleAlert } from 'lucide-react';
+import { BarChart3, Trash2, TriangleAlert, History } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { resetBillingDataAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CompletedRentalsTable } from './completed-rentals-table';
 
 function StatsSkeleton() {
     return (
@@ -101,13 +103,13 @@ function ResetDataButton() {
 
 export default function StatsPage() {
     const { user } = useAuth();
-    const [completedRentals, setCompletedRentals] = useState<CompletedRental[]>([]);
+    const [completedRentals, setCompletedRentals] = useState<PopulatedCompletedRental[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (user) {
             setLoading(true);
-            const unsubscribe = getCompletedRentals(user.uid, (data) => {
+            const unsubscribe = getPopulatedCompletedRentals(user.uid, (data) => {
                 setCompletedRentals(data);
                 setLoading(false);
             });
@@ -132,12 +134,27 @@ export default function StatsPage() {
                     <p className="mt-2 text-muted-foreground">Finalize aluguéis para começar a ver as estatísticas.</p>
                 </div>
             ) : (
-               <>
-                 <StatsDisplay rentals={completedRentals} />
-                 <div className="mt-8 flex justify-start">
-                    <ResetDataButton />
-                 </div>
-               </>
+                <Tabs defaultValue="overview" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="overview">
+                             <BarChart3 className="mr-2 h-4 w-4" />
+                            Visão Geral
+                        </TabsTrigger>
+                        <TabsTrigger value="history">
+                             <History className="mr-2 h-4 w-4" />
+                            Histórico de Faturamento
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="overview" className="mt-6">
+                        <StatsDisplay rentals={completedRentals} />
+                    </TabsContent>
+                    <TabsContent value="history" className="mt-6">
+                        <CompletedRentalsTable rentals={completedRentals} />
+                    </TabsContent>
+                     <div className="mt-8 flex justify-start">
+                        <ResetDataButton />
+                    </div>
+                </Tabs>
             )}
         </div>
     );

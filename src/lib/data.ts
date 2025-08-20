@@ -1,6 +1,6 @@
 
 'use client';
-import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental, CompletedRental } from './types';
+import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental, CompletedRental, PopulatedCompletedRental } from './types';
 import { db, auth } from './firebase';
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, Timestamp, where, onSnapshot, query, deleteDoc } from 'firebase/firestore';
 
@@ -102,3 +102,24 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
 export const getCompletedRentals = (userId: string, callback: (rentals: CompletedRental[]) => void) => {
     return getCollection<CompletedRental>(userId, callback, 'completedRentals');
 };
+
+export const getPopulatedCompletedRentals = (userId: string, callback: (rentals: PopulatedCompletedRental[]) => void) => {
+    return getCollection<CompletedRental>(userId, async (completedRentals) => {
+         if (!completedRentals.length) {
+            callback([]);
+            return;
+        }
+
+        const clients = await fetchClients(userId);
+        const dumpsters = await fetchDumpsters(userId);
+
+        const populatedData = completedRentals.map(rental => {
+            const client = clients.find(c => c.id === rental.clientId);
+            const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
+            return { ...rental, client, dumpster };
+        });
+        
+        callback(populatedData.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime()));
+
+    }, 'completedRentals');
+}

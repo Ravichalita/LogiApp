@@ -48,6 +48,11 @@ export interface CompletedRental extends FirestoreEntity {
     rentalDays: number;
 }
 
+export interface PopulatedCompletedRental extends CompletedRental {
+    dumpster?: Dumpster;
+    client?: Client;
+}
+
 
 export interface Location {
     address: string;
