@@ -220,7 +220,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
         </div>
       </div>
        <div className="space-y-2">
-        <Label htmlFor="value">Valor do Aluguel (R$)</Label>
+        <Label htmlFor="value">Valor da Diária (R$)</Label>
         <Input
           id="value"
           name="value"

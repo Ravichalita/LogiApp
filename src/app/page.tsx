@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign } from 'lucide-react';
+import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Accordion,
@@ -16,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { RentalCardActions } from './rentals/rental-card-actions';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { differenceInCalendarDays } from 'date-fns';
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('pt-BR', {
@@ -23,6 +25,14 @@ function formatCurrency(value: number) {
       currency: 'BRL',
     }).format(value);
 }
+
+function calculateRentalDays(startDate: Date, endDate: Date): number {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diff = differenceInCalendarDays(end, start);
+    return Math.max(diff, 1); // Ensure at least 1 day is charged
+}
+
 
 function DashboardSkeleton() {
     return (
@@ -102,94 +112,106 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {rentals.map(rental => (
-            <Accordion key={rental.id} type="single" collapsible>
-               <Card className="flex flex-col shadow-md hover:shadow-lg transition-shadow duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 font-headline">
-                      <Truck className="h-6 w-6 text-primary" />
-                      {rental.dumpster.name}
-                    </span>
-                    <Badge variant="destructive">Ativo</Badge>
-                  </CardTitle>
-                  <CardDescription>
-                    {`${rental.dumpster.color}, ${rental.dumpster.size}m³`}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow space-y-4">
-                  <div className="flex items-start gap-3">
-                    <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                    <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">Cliente</span>
-                      <span className="font-medium">{rental.client.name}</span>
+          {rentals.map(rental => {
+            const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
+            const totalValue = rental.value * rentalDays;
+
+            return (
+              <Accordion key={rental.id} type="single" collapsible>
+                 <Card className="flex flex-col shadow-md hover:shadow-lg transition-shadow duration-300">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center gap-2 font-headline">
+                        <Truck className="h-6 w-6 text-primary" />
+                        {rental.dumpster.name}
+                      </span>
+                      <Badge variant="destructive">Ativo</Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      {`${rental.dumpster.color}, ${rental.dumpster.size}m³`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow space-y-4">
+                    <div className="flex items-start gap-3">
+                      <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Cliente</span>
+                        <span className="font-medium">{rental.client.name}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                     <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">Local</span>
-                      <span>{rental.deliveryAddress}</span>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                       <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Local</span>
+                        <span>{rental.deliveryAddress}</span>
+                      </div>
                     </div>
-                  </div>
-                   <div className="flex items-start gap-3">
-                    <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                     <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">Valor</span>
-                      <span className="font-medium">{formatCurrency(rental.value)}</span>
+                     <div className="flex items-start gap-3">
+                      <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                       <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Valor Diária</span>
+                        <span className="font-medium">{formatCurrency(rental.value)}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                     <div className="flex flex-col">
-                       <span className="text-sm text-muted-foreground">Retirada</span>
-                       <RentalCardActions rental={rental}/>
+                    <div className="flex items-start gap-3">
+                      <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                       <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                        <span className="font-medium">{formatCurrency(totalValue)}</span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-                <div className="p-6 pt-0">
-                  <AccordionItem value="item-1" className="border-b-0">
-                     <AccordionTrigger>Detalhes do Cliente</AccordionTrigger>
-                      <AccordionContent className="space-y-4 pt-4">
-                        <Separator />
-                        <div className="flex items-start gap-3">
-                          <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                           <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Telefone</span>
-                            <span className="font-medium">{rental.client.phone}</span>
-                           </div>
-                        </div>
-                        {rental.client.email && (
+                    <div className="flex items-start gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                       <div className="flex flex-col">
+                         <span className="text-sm text-muted-foreground">Retirada</span>
+                         <RentalCardActions rental={rental}/>
+                      </div>
+                    </div>
+                  </CardContent>
+                  <div className="p-6 pt-0">
+                    <AccordionItem value="item-1" className="border-b-0">
+                       <AccordionTrigger>Detalhes do Cliente</AccordionTrigger>
+                        <AccordionContent className="space-y-4 pt-4">
+                          <Separator />
                           <div className="flex items-start gap-3">
-                            <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                            <div className="flex flex-col">
-                              <span className="text-sm text-muted-foreground">Email</span>
-                              <span className="font-medium">{rental.client.email}</span>
-                            </div>
+                            <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                             <div className="flex flex-col">
+                              <span className="text-sm text-muted-foreground">Telefone</span>
+                              <span className="font-medium">{rental.client.phone}</span>
+                             </div>
                           </div>
-                        )}
-                         <div className="flex items-start gap-3">
-                            <Home className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                            <div className="flex flex-col">
-                              <span className="text-sm text-muted-foreground">Endereço Principal</span>
-                              <span className="font-medium">{rental.client.address}</span>
+                          {rental.client.email && (
+                            <div className="flex items-start gap-3">
+                              <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Email</span>
+                                <span className="font-medium">{rental.client.email}</span>
+                              </div>
                             </div>
-                          </div>
-                        {rental.client.observations && (
+                          )}
                            <div className="flex items-start gap-3">
-                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                            <div className="flex flex-col">
-                              <span className="text-sm text-muted-foreground">Observações</span>
-                              <p className="font-medium whitespace-pre-wrap">{rental.client.observations}</p>
+                              <Home className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Endereço Principal</span>
+                                <span className="font-medium">{rental.client.address}</span>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </AccordionContent>
-                  </AccordionItem>
-                </div>
-              </Card>
-            </Accordion>
-          ))}
+                          {rental.client.observations && (
+                             <div className="flex items-start gap-3">
+                              <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Observações</span>
+                                <p className="font-medium whitespace-pre-wrap">{rental.client.observations}</p>
+                              </div>
+                            </div>
+                          )}
+                        </AccordionContent>
+                    </AccordionItem>
+                  </div>
+                </Card>
+              </Accordion>
+            )
+          })}
         </div>
       )}
     </div>
