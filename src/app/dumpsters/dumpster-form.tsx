@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition, useEffect } from 'react';
 import { createDumpster } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,17 @@ export function DumpsterForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (state?.message === 'success') {
+      toast({ title: 'Sucesso', description: 'Caçamba cadastrada.' });
+      formRef.current?.reset();
+      setState(initialState);
+    } else if (state?.message === 'error' && state.error) {
+      toast({ title: 'Erro', description: state.error, variant: 'destructive' });
+      setState(prevState => ({...prevState, message: '', error: undefined }));
+    }
+  }, [state, toast]);
+
   const action = (payload: FormData) => {
     startTransition(async () => {
       if (!user) {
@@ -39,15 +50,6 @@ export function DumpsterForm() {
       const boundAction = createDumpster.bind(null, user.uid);
       const result = await boundAction(state, payload);
       setState(result);
-
-      if (result.message === 'success') {
-        toast({ title: 'Sucesso', description: 'Caçamba cadastrada.' });
-        formRef.current?.reset();
-      } else if (result.error) {
-        toast({ title: 'Erro', description: result.error, variant: 'destructive' });
-      } else if (result.errors) {
-        // You could handle displaying validation errors here if needed
-      }
     });
   };
 

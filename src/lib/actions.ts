@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData, updateRental as updateRentalData } from './data';
+import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData, updateRental as updateRentalData, updateDumpsterStatus as updateDumpsterStatusData } from './data';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { Dumpster, DumpsterStatus, Rental } from './types';
@@ -86,7 +86,7 @@ export async function deleteDumpster(userId: string, id: string) {
 export async function updateDumpsterStatus(userId: string, id: string, status: DumpsterStatus) {
     if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        await updateDumpsterData(userId, { id, status } as any);
+        await updateDumpsterStatusData(userId, id, status);
         revalidatePath('/dumpsters');
         revalidatePath('/');
         return { message: 'success' };

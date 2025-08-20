@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +28,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 export function ClientForm() {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [state, formAction] = useActionState(createClient.bind(null, user?.uid ?? ''), initialState);
+  const [state, setState] = useState<any>(initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
   
@@ -44,45 +44,22 @@ export function ClientForm() {
       formRef.current?.reset();
       setAddress('');
       setLocation(null);
+      setState(initialState); // Reset state after success
     } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
         description: state.error,
         variant: "destructive",
       });
+       setState(prevState => ({...prevState, message: '', error: undefined })); // Clear error
+    } else if (state?.errors) {
+       // Optionally handle field-specific errors
     }
   }, [state, toast]);
   
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setAddress(selectedLocation.address);
-  };
-
-  const handleFormAction = (formData: FormData) => {
-    if (!user?.uid) {
-        toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
-        return;
-    }
-    startTransition(() => {
-      // We bind the userId to the action right before calling it.
-      createClient.bind(null, user.uid)(prevState => state, formData).then(newState => {
-          if (newState.message === 'success') {
-            toast({
-              title: "Sucesso!",
-              description: "Novo cliente cadastrado.",
-            });
-            formRef.current?.reset();
-            setAddress('');
-            setLocation(null);
-          } else if (newState.message === 'error' && newState.error) {
-            toast({
-              title: "Erro",
-              description: newState.error,
-              variant: "destructive",
-            });
-          }
-      });
-    });
   };
 
   const action = (payload: FormData) => {
@@ -93,16 +70,7 @@ export function ClientForm() {
       }
       const boundAction = createClient.bind(null, user.uid);
       const result = await boundAction(state, payload);
-      if (result.message === 'success') {
-        toast({ title: 'Sucesso', description: 'Cliente cadastrado.' });
-        formRef.current?.reset();
-        setAddress('');
-        setLocation(null);
-      } else if (result.error) {
-        toast({ title: 'Erro', description: result.error, variant: 'destructive' });
-      } else if (result.errors) {
-        // Handle validation errors if needed, e.g. show them under the fields
-      }
+      setState(result);
     });
   };
 

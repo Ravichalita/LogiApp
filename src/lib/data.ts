@@ -1,5 +1,5 @@
 'use server';
-import type { Dumpster, Client, Rental, FirestoreEntity } from './types';
+import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus } from './types';
 import { db, auth } from './firebase';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where } from 'firebase/firestore';
 
@@ -83,6 +83,10 @@ export const deleteDumpster = async (userId: string, id: string) => {
     }
     
     return await deleteDocument(userId, 'dumpsters', id);
+}
+
+export const updateDumpsterStatus = async (userId: string, id: string, status: DumpsterStatus) => {
+    return await updateDocument(userId, 'dumpsters', { id, status });
 }
 
 
