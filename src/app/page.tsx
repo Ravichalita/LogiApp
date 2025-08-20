@@ -21,6 +21,7 @@ import { differenceInCalendarDays } from 'date-fns';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('pt-BR', {
@@ -121,8 +122,8 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <div className="flex justify-between items-center p-6">
-                    <div className="flex-1">
+                 <AccordionTrigger className="p-6 hover:no-underline">
+                    <div className="flex-1 text-left">
                         <div className="flex items-center gap-2">
                             <Truck className="h-6 w-6 text-primary" />
                             <h3 className="font-bold text-lg font-headline">{rental.dumpster.name}</h3>
@@ -136,14 +137,7 @@ export default function DashboardPage() {
                         <span className="text-sm text-muted-foreground">Retirada</span>
                         <span className="font-semibold text-base">{format(rental.returnDate, "dd/MM/yyyy")}</span>
                     </div>
-                     <AccordionTrigger asChild>
-                        <div className="flex items-center justify-center ml-4">
-                            <div className="p-2 bg-primary/20 rounded-full group-hover:bg-primary/30 transition-colors">
-                                <ChevronDown className="h-6 w-6 text-primary transition-transform duration-300 group-data-[state=open]:rotate-180" />
-                            </div>
-                        </div>
-                    </AccordionTrigger>
-                </div>
+                </AccordionTrigger>
                 <AccordionContent>
                   <Separator />
                   <div className="p-6">
