@@ -46,7 +46,7 @@ export async function createDumpster(userId: string, prevState: any, formData: F
   return { ...prevState, message: "success" };
 }
 
-export async function updateDumpster(userId: string, prevState: any, formData: FormData) {
+export async function updateDumpster(userId: string, state:any, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
   
   const validatedFields = dumpsterSchema.safeParse({

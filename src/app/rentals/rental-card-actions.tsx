@@ -39,7 +39,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   const handleDateUpdateAction = (formData: FormData) => {
     startTransition(async () => {
       if (!user) return;
-      const boundAction = updateRentalAction.bind(null, user.uid, {});
+      const boundAction = updateRentalAction.bind(null, user.uid);
       const result = await boundAction(formData);
        if (result.message === 'error') {
         toast({
