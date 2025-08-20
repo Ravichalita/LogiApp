@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useActionState, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { createRental } from '@/lib/actions';
 import type { Client, Dumpster, Location } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -81,13 +82,28 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
             return;
         }
+        
+        // Append date and location data to formData right before submission
+        if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
+        if (returnDate) formData.set('returnDate', returnDate.toISOString());
+        if (location) {
+          formData.set('latitude', String(location.lat));
+          formData.set('longitude', String(location.lng));
+        }
+
         const boundAction = createRental.bind(null, user.uid);
-        const result = await boundAction(initialState, formData);
+        const result = await boundAction(null, formData);
 
         if (result?.errors) {
             setErrors(result.errors);
+             const errorMessages = Object.values(result.errors).flat().join(' ');
+             toast({
+                title: "Erro de Validação",
+                description: errorMessages,
+                variant: "destructive"
+             })
         }
-        if (result?.message) {
+        if (result?.message) { // For general server errors
             toast({ title: "Erro", description: result.message, variant: "destructive"});
         }
     });
@@ -95,13 +111,6 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
 
   return (
     <form action={handleFormAction} className="space-y-6">
-      {/* Hidden inputs to pass date and location values to the server action */}
-      {rentalDate && <input type="hidden" name="rentalDate" value={rentalDate.toISOString()} />}
-      {returnDate && <input type="hidden" name="returnDate" value={returnDate.toISOString()} />}
-      {location && <input type="hidden" name="latitude" value={location.lat} />}
-      {location && <input type="hidden" name="longitude" value={location.lng} />}
-
-
       <div className="space-y-2">
         <Label htmlFor="dumpsterId">Caçamba</Label>
         <Select name="dumpsterId" required>
