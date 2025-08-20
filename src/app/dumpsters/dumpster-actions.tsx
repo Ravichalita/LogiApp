@@ -1,6 +1,6 @@
 'use client';
 import { useState, useTransition } from 'react';
-import { deleteDumpster, updateDumpsterStatus } from '@/lib/actions';
+import { deleteDumpsterAction, updateDumpsterStatusAction } from '@/lib/actions';
 import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -59,7 +59,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   const handleDelete = () => {
     if (!user) return;
     startTransition(async () => {
-      const result = await deleteDumpster(user.uid, dumpster.id);
+      const result = await deleteDumpsterAction(user.uid, dumpster.id);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao excluir',
@@ -79,7 +79,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   const handleChangeStatus = (newStatus: DumpsterStatus) => {
     if (dumpster.status === newStatus || !user) return;
     startTransition(async () => {
-        const result = await updateDumpsterStatus(user.uid, dumpster.id, newStatus);
+        const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
         if (result.message === 'error') {
              toast({
                 title: 'Erro',

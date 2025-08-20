@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
-import { finishRental, updateRental } from '@/lib/actions';
+import { finishRentalAction, updateRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -38,8 +38,8 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   const handleDateUpdateAction = (formData: FormData) => {
     startTransition(async () => {
       if (!user) return;
-      const boundAction = updateRental.bind(null, user.uid);
-      const result = await boundAction(null, formData);
+      const boundAction = updateRentalAction.bind(null, user.uid, {});
+      const result = await boundAction(formData);
        if (result.message === 'error') {
         toast({
           title: 'Erro',
@@ -61,7 +61,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
     startTransition(async () => {
         if (!user) return;
         try {
-            const boundAction = finishRental.bind(null, user.uid);
+            const boundAction = finishRentalAction.bind(null, user.uid);
             await boundAction(formData);
             toast({ title: "Sucesso!", description: "Aluguel finalizado." });
         } catch (error: any) {

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useTransition } from 'react';
-import { deleteClient } from '@/lib/actions';
+import { deleteClientAction } from '@/lib/actions';
 import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,7 +45,7 @@ export function ClientActions({ client }: { client: Client }) {
         return;
     }
     startTransition(async () => {
-      const result = await deleteClient(user.uid, client.id);
+      const result = await deleteClientAction(user.uid, client.id);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao excluir',

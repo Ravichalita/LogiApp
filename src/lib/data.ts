@@ -1,37 +1,36 @@
 'use server';
-import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus } from './types';
+import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental } from './types';
 import { db, auth } from './firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where } from 'firebase/firestore';
 
-// --- Generic Firestore Functions ---
+// --- Generic Firestore Functions (CLIENT-SIDE) ---
 
 async function getCollection<T extends FirestoreEntity>(collectionName: string): Promise<T[]> {
-  // On the server, auth.currentUser is null. We must rely on the AuthProvider on the client
-  // to handle redirection for unauthenticated users. Returning an empty array prevents
-  // the server component from crashing during its initial render.
   if (!auth.currentUser?.uid) {
     return [];
   }
   const userId = auth.currentUser.uid;
   const q = query(collection(db, 'users', userId, collectionName));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => {
-    const data = doc.data();
-    // Convert Firestore Timestamps back to JS Dates
-    for (const key in data) {
-      if (data[key] instanceof Timestamp) {
-        data[key] = data[key].toDate();
+  try {
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Convert Firestore Timestamps back to JS Dates
+      for (const key in data) {
+        if (data[key] instanceof Timestamp) {
+          data[key] = data[key].toDate();
+        }
       }
-    }
-    return { id: doc.id, ...data } as T;
-  });
+      return { id: doc.id, ...data } as T;
+    });
+  } catch (error) {
+    console.error(`Error getting ${collectionName}:`, error);
+    // On server render, if auth isn't ready, it might throw a permission error.
+    // Return empty array to prevent crashing the page. The client-side will re-fetch.
+    return [];
+  }
 }
 
-async function addDocument<T>(userId: string, collectionName: string, data: T) {
-    if (!userId) throw new Error("Usuário não autenticado.");
-    const docRef = await addDoc(collection(db, 'users', userId, collectionName), data as any);
-    return { id: docRef.id, ...data };
-}
 
 async function updateDocument<T extends { id: string }>(userId: string, collectionName: string, data: Partial<T>) {
   if (!userId) throw new Error("Usuário não autenticado.");
@@ -41,14 +40,6 @@ async function updateDocument<T extends { id: string }>(userId: string, collecti
   await updateDoc(docRef, rest);
   return data;
 }
-
-async function deleteDocument(userId: string, collectionName: string, id: string) {
-    if (!userId) throw new Error("Usuário não autenticado.");
-    const docRef = doc(db, 'users', userId, collectionName, id);
-    await deleteDoc(docRef);
-    return { success: true };
-}
-
 
 // --- Data Retrieval Functions ---
 
@@ -64,60 +55,12 @@ export const getRentals = async (): Promise<Rental[]> => {
   return await getCollection<Rental>('rentals');
 };
 
-// --- Data Mutation Functions ---
 
-export const addDumpster = async (userId: string, dumpster: Omit<Dumpster, 'id'>) => {
-  return await addDocument(userId, 'dumpsters', dumpster);
-};
-
-export const updateDumpster = async (userId: string, dumpster: Partial<Dumpster>) => {
-  return await updateDocument(userId, 'dumpsters', dumpster);
-}
-
-export const deleteDumpster = async (userId: string, id: string) => {
-    const q = query(collection(db, 'users', userId, 'rentals'), where('dumpsterId', '==', id), where('status', '==', 'Ativo'));
-    const activeRentalsSnapshot = await getDocs(q);
-
-    if (!activeRentalsSnapshot.empty) {
-        throw new Error('Não é possível excluir uma caçamba que está atualmente alugada.');
-    }
-    
-    return await deleteDocument(userId, 'dumpsters', id);
-}
+// --- CLIENT-SIDE Data Mutation Functions ---
 
 export const updateDumpsterStatus = async (userId: string, id: string, status: DumpsterStatus) => {
     return await updateDocument(userId, 'dumpsters', { id, status });
 }
-
-
-export const addClient = async (userId: string, client: Omit<Client, 'id'>) => {
-  return await addDocument(userId, 'clients', client);
-};
-
-export const updateClient = async (userId: string, client: Client) => {
-  return await updateDocument(userId, 'clients', client);
-}
-
-export const deleteClient = async (userId: string, id: string) => {
-    const q = query(collection(db, 'users', userId, 'rentals'), where('clientId', '==', id), where('status', '==', 'Ativo'));
-    const activeRentalsSnapshot = await getDocs(q);
-
-    if (!activeRentalsSnapshot.empty) {
-        throw new Error('Não é possível excluir um cliente com aluguéis ativos. Finalize os aluguéis primeiro.');
-    }
-
-    return await deleteDocument(userId, 'clients', id);
-}
-
-
-export const addRental = async (userId: string, rental: Omit<Rental, 'id'>) => {
-    const newRental = await addDocument(userId, 'rentals', rental);
-    
-    // Update dumpster status to 'Alugada'
-    await updateDumpster(userId, { id: rental.dumpsterId, status: 'Alugada' });
-    
-    return newRental;
-};
 
 export const updateRental = async (userId: string, rental: Partial<Rental>) => {
     if(!rental.id) throw new Error("ID do aluguel não fornecido.");
@@ -130,8 +73,6 @@ export const updateRental = async (userId: string, rental: Partial<Rental>) => {
     }
     const existingRentalData = existingRental.data() as Rental;
     
-
-    // Convert Firestore Timestamp to Date for comparison if needed
     const rentalDate = existingRentalData.rentalDate instanceof Timestamp 
         ? existingRentalData.rentalDate.toDate() 
         : existingRentalData.rentalDate;
@@ -143,15 +84,14 @@ export const updateRental = async (userId: string, rental: Partial<Rental>) => {
     return await updateDocument(userId, 'rentals', rental);
 };
 
-
+// This function performs writes and should probably be a server-side only action,
+// but for now we keep it here as it's complex.
 export const completeRental = async (userId: string, rentalId: string, dumpsterId: string) => {
   const batch = writeBatch(db);
   
-  // Update rental status to 'Concluído'
   const rentalRef = doc(db, 'users', userId, 'rentals', rentalId);
   batch.update(rentalRef, { status: 'Concluído' });
 
-  // Update dumpster status to 'Disponível'
   const dumpsterRef = doc(db, 'users', userId, 'dumpsters', dumpsterId);
   batch.update(dumpsterRef, { status: 'Disponível' });
 

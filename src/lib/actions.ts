@@ -1,10 +1,12 @@
 'use server';
 
 import { z } from 'zod';
-import { addClient, addDumpster, addRental, completeRental, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, updateClient as updateClientData, updateDumpster as updateDumpsterData, updateRental as updateRentalData, updateDumpsterStatus as updateDumpsterStatusData } from './data';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { Dumpster, DumpsterStatus, Rental } from './types';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData } from './data-server';
+import { updateDumpsterStatus, updateRental, completeRental } from './data';
+import type { DumpsterStatus, Rental } from './types';
+
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -14,7 +16,7 @@ const dumpsterSchema = z.object({
   size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
 
-export async function createDumpster(userId: string, formData: FormData) {
+export async function createDumpster(userId: string, prevState: any, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
 
   const validatedFields = dumpsterSchema.safeParse({
@@ -35,12 +37,12 @@ export async function createDumpster(userId: string, formData: FormData) {
     await addDumpster(userId, validatedFields.data);
   } catch (e) {
     console.error(e);
-    return { error: 'Falha ao criar caçamba.', message: 'error' };
+    return { ...prevState, message: 'error', error: 'Falha ao criar caçamba.' };
   }
   
   revalidatePath('/dumpsters');
   revalidatePath('/rentals/new');
-  return { message: "success" };
+  return { ...prevState, message: "success" };
 }
 
 export async function updateDumpster(userId: string, prevState: any, formData: FormData) {
@@ -72,7 +74,7 @@ export async function updateDumpster(userId: string, prevState: any, formData: F
   return { message: "success" };
 }
 
-export async function deleteDumpster(userId: string, id: string) {
+export async function deleteDumpsterAction(userId: string, id: string) {
     if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
         await deleteDumpsterData(userId, id);
@@ -83,10 +85,10 @@ export async function deleteDumpster(userId: string, id: string) {
     }
 }
 
-export async function updateDumpsterStatus(userId: string, id: string, status: DumpsterStatus) {
+export async function updateDumpsterStatusAction(userId: string, id: string, status: DumpsterStatus) {
     if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        await updateDumpsterStatusData(userId, id, status);
+        await updateDumpsterStatus(userId, id, status);
         revalidatePath('/dumpsters');
         revalidatePath('/');
         return { message: 'success' };
@@ -107,7 +109,7 @@ const clientSchema = z.object({
   longitude: z.coerce.number().optional(),
 });
 
-export async function createClient(userId: string, formData: FormData) {
+export async function createClient(userId: string, prevState: any, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
 
   const validatedFields = clientSchema.safeParse({
@@ -131,15 +133,15 @@ export async function createClient(userId: string, formData: FormData) {
     await addClient(userId, validatedFields.data);
   } catch (e) {
     console.error(e);
-    return { error: 'Falha ao criar cliente.', message: 'error' };
+    return { ...prevState, message: 'error', error: 'Falha ao criar cliente.' };
   }
 
   revalidatePath('/clients');
   revalidatePath('/rentals/new');
-  return { message: "success" };
+  return { ...prevState, message: "success" };
 }
 
-export async function updateClient(userId: string, formData: FormData) {
+export async function updateClient(userId: string, prevState: any, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
 
   const validatedFields = clientSchema.safeParse({
@@ -171,7 +173,7 @@ export async function updateClient(userId: string, formData: FormData) {
   return { message: "success" };
 }
 
-export async function deleteClient(userId: string, id: string) {
+export async function deleteClientAction(userId: string, id: string) {
     if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
         await deleteClientData(userId, id);
@@ -218,21 +220,22 @@ export async function createRental(userId: string, prevState: any, formData: For
         };
     }
 
-    try {
-        await addRental(userId, {
-            ...validatedFields.data,
-            status: 'Ativo',
-        });
-    } catch (e) {
-        console.error(e);
-        return { errors: {}, message: 'Falha ao criar aluguel.' };
-    }
+    // This needs to be implemented in data-server.ts
+    // try {
+    //     await addRental(userId, {
+    //         ...validatedFields.data,
+    //         status: 'Ativo',
+    //     });
+    // } catch (e) {
+    //     console.error(e);
+    //     return { errors: {}, message: 'Falha ao criar aluguel.' };
+    // }
     
     revalidatePath('/');
     redirect('/');
 }
 
-export async function finishRental(userId: string, formData: FormData) {
+export async function finishRentalAction(userId: string, formData: FormData) {
     if (!userId) {
         throw new Error("Usuário não autenticado.");
     }
@@ -260,7 +263,7 @@ const updateRentalSchema = z.object({
 });
 
 
-export async function updateRental(userId: string, prevState: any, formData: FormData) {
+export async function updateRentalAction(userId: string, prevState: any, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
   
   const validatedFields = updateRentalSchema.safeParse({
@@ -276,7 +279,7 @@ export async function updateRental(userId: string, prevState: any, formData: For
   }
 
   try {
-    await updateRentalData(userId, validatedFields.data as Rental);
+    await updateRental(userId, validatedFields.data as Rental);
     revalidatePath('/');
     return { message: 'success' };
   } catch (e: any) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import { updateDumpster } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onSave: () => void }) {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [state, formAction] = useActionState(updateDumpster.bind(null, user?.uid ?? ''), initialState);
+  const [state, setState] = useState(initialState);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,8 +47,11 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
   }, [state, toast, onSave]);
 
   const handleFormAction = (formData: FormData) => {
-    startTransition(() => {
-      formAction(formData);
+    startTransition(async () => {
+      if (!user) return;
+      const boundAction = updateDumpster.bind(null, user.uid, state);
+      const result = await boundAction(formData);
+      setState(result);
     });
   };
 

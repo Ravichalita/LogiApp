@@ -60,7 +60,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
       if (!user) return;
-      const boundAction = updateClient.bind(null, user.uid);
+      const boundAction = updateClient.bind(null, user.uid, state);
       const result = await boundAction(formData);
       setState(result);
     });
@@ -84,7 +84,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">E-mail</Label>
-        <Input id="email" name="email" type="email" defaultValue={client.email} />
+        <Input id="email" name="email" type="email" defaultValue={client.email ?? ''} />
         {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
       </div>
       <div className="space-y-2">
@@ -102,7 +102,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
       </div>
       <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" defaultValue={client.observations} />
+        <Textarea id="observations" name="observations" defaultValue={client.observations ?? ''} />
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
       <SubmitButton isPending={isPending} />
