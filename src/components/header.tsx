@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 
 const navLinks = [
-  { href: "/", label: "Painel de Controle" },
+  { href: "/", label: "Aluguéis Ativos" },
   { href: "/dumpsters", label: "Caçambas" },
   { href: "/clients", label: "Clientes" },
 ];

@@ -103,7 +103,7 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-headline font-bold">Painel de Controle</h1>
+        <h1 className="text-3xl font-headline font-bold">Aluguéis Ativos</h1>
       </div>
 
        {loading ? (
@@ -122,27 +122,29 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <div className="p-6 flex justify-between items-start">
-                    <div className="flex-1 text-left">
-                        <div className="flex items-center gap-2">
-                            <Truck className="h-6 w-6 text-primary" />
-                            <h3 className="font-bold text-lg font-headline">{rental.dumpster.name}</h3>
-                             <Badge variant="destructive" className="ml-2">Ativo</Badge>
+                <div className="p-6">
+                    <div className="flex justify-between items-start">
+                        <div className="flex-1 text-left">
+                            <div className="flex items-center gap-2">
+                                <Truck className="h-6 w-6 text-primary" />
+                                <h3 className="font-bold text-lg font-headline">{rental.dumpster.name}</h3>
+                                <Badge variant="destructive" className="ml-2">Ativo</Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                                <User className="h-4 w-4 shrink-0"/> <span>{rental.client.name}</span>
+                            </div>
                         </div>
-                         <div className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
-                            <User className="h-4 w-4 shrink-0"/> <span>{rental.client.name}</span>
+                        <div className="flex flex-col items-end text-right ml-4">
+                            <span className="text-sm text-muted-foreground">Retirada</span>
+                            <span className="font-semibold text-base">{format(rental.returnDate, "dd/MM/yyyy")}</span>
                         </div>
-                    </div>
-                     <div className="flex flex-col items-end text-right ml-4">
-                        <span className="text-sm text-muted-foreground">Retirada</span>
-                        <span className="font-semibold text-base">{format(rental.returnDate, "dd/MM/yyyy")}</span>
                     </div>
                 </div>
                  <AccordionTrigger>
                     <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full">
-                        <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                         <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
-                </AccordionTrigger>
+                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="p-6 pt-2">
                     <div className="grid gap-4 md:grid-cols-2">
