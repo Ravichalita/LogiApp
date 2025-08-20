@@ -5,6 +5,15 @@ import { addClient, addDumpster, addRental, completeRental, deleteClient as dele
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import type { DumpsterStatus, Rental } from './types';
+import { auth } from './firebase';
+
+async function getUserId() {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Usuário não autenticado.');
+  }
+  return user.uid;
+}
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -30,10 +39,12 @@ export async function createDumpster(prevState: any, formData: FormData) {
   }
 
   try {
-    await addDumpster(validatedFields.data);
+    const userId = await getUserId();
+    await addDumpster(userId, validatedFields.data);
     revalidatePath('/dumpsters');
     revalidatePath('/rentals/new');
   } catch (e) {
+    console.error(e);
     return { error: 'Falha ao criar caçamba.', message: 'error' };
   }
   
@@ -57,7 +68,8 @@ export async function updateDumpster(prevState: any, formData: FormData) {
   }
 
   try {
-    await updateDumpsterData(validatedFields.data as any);
+    const userId = await getUserId();
+    await updateDumpsterData(userId, validatedFields.data as any);
     revalidatePath('/dumpsters');
     revalidatePath('/');
   } catch (e) {
@@ -69,7 +81,8 @@ export async function updateDumpster(prevState: any, formData: FormData) {
 
 export async function deleteDumpster(id: string) {
     try {
-        await deleteDumpsterData(id);
+        const userId = await getUserId();
+        await deleteDumpsterData(userId, id);
         revalidatePath('/dumpsters');
         return { message: 'success', title: 'Sucesso!', description: 'Caçamba excluída.' };
     } catch (e: any) {
@@ -79,7 +92,8 @@ export async function deleteDumpster(id: string) {
 
 export async function updateDumpsterStatus(id: string, status: DumpsterStatus) {
     try {
-        await updateDumpsterData({ id, status } as any);
+        const userId = await getUserId();
+        await updateDumpsterData(userId, { id, status } as any);
         revalidatePath('/dumpsters');
         revalidatePath('/');
         return { message: 'success' };
@@ -119,10 +133,12 @@ export async function createClient(prevState: any, formData: FormData) {
   }
   
   try {
-    await addClient(validatedFields.data);
+    const userId = await getUserId();
+    await addClient(userId, validatedFields.data);
     revalidatePath('/clients');
     revalidatePath('/rentals/new');
   } catch (e) {
+    console.error(e);
     return { error: 'Falha ao criar cliente.', message: 'error' };
   }
 
@@ -149,7 +165,8 @@ export async function updateClient(prevState: any, formData: FormData) {
   }
 
   try {
-    await updateClientData(validatedFields.data as any);
+    const userId = await getUserId();
+    await updateClientData(userId, validatedFields.data as any);
     revalidatePath('/clients');
     revalidatePath('/');
   } catch (e) {
@@ -161,7 +178,8 @@ export async function updateClient(prevState: any, formData: FormData) {
 
 export async function deleteClient(id: string) {
     try {
-        await deleteClientData(id);
+        const userId = await getUserId();
+        await deleteClientData(userId, id);
         revalidatePath('/clients');
         return { message: 'success' };
     } catch (e: any) {
@@ -204,7 +222,8 @@ export async function createRental(prevState: any, formData: FormData) {
     }
 
     try {
-        await addRental({
+        const userId = await getUserId();
+        await addRental(userId, {
             ...validatedFields.data,
             status: 'Ativo',
         });
@@ -228,7 +247,8 @@ export async function finishRental(formData: FormData) {
     }
 
     try {
-        await completeRental(rentalId, dumpsterId);
+        const userId = await getUserId();
+        await completeRental(userId, rentalId, dumpsterId);
         revalidatePath('/');
         revalidatePath('/dumpsters');
     } catch (e) {
@@ -258,7 +278,8 @@ export async function updateRental(prevState: any, formData: FormData) {
   }
 
   try {
-    await updateRentalData(validatedFields.data as Rental);
+    const userId = await getUserId();
+    await updateRentalData(userId, validatedFields.data as Rental);
     revalidatePath('/');
     return { message: 'success' };
   } catch (e: any) {
