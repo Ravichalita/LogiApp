@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -10,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Dumpster } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { DialogClose } from '@/components/ui/dialog';
+
 
 const initialState = {
   errors: {},
@@ -18,7 +21,7 @@ const initialState = {
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={isPending} className="w-full">
+    <Button type="submit" disabled={isPending}>
       {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
     </Button>
   );
@@ -89,7 +92,12 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
         </Select>
          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
       </div>
-      <SubmitButton isPending={isPending} />
+       <div className="flex justify-end gap-2 pt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <SubmitButton isPending={isPending} />
+        </div>
     </form>
   );
 }

@@ -18,6 +18,7 @@ import { MapDialog } from '@/components/map-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 const initialState = {
   errors: {},
@@ -26,7 +27,7 @@ const initialState = {
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={isPending} className="w-full mt-4" size="lg">
+    <Button type="submit" disabled={isPending} size="lg">
       {isPending ? <Spinner size="small" /> : 'Salvar Aluguel'}
     </Button>
   );
@@ -232,7 +233,12 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 
-      <SubmitButton isPending={isPending} />
+      <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
+        <SubmitButton isPending={isPending} />
+        <Button asChild variant="outline" size="lg">
+            <Link href="/">Cancelar</Link>
+        </Button>
+      </div>
     </form>
   );
 }

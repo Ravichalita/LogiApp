@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -11,6 +12,7 @@ import type { Client, Location } from '@/lib/types';
 import { MapDialog } from '@/components/map-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { DialogClose } from '@/components/ui/dialog';
 
 const initialState = {
   errors: {},
@@ -105,7 +107,12 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
         <Textarea id="observations" name="observations" defaultValue={client.observations ?? ''} />
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
-      <SubmitButton isPending={isPending} />
+       <div className="flex justify-end gap-2 pt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <SubmitButton isPending={isPending} />
+        </div>
     </form>
   );
 }
