@@ -1,10 +1,12 @@
+
 'use client';
 import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental } from './types';
 import { db, auth } from './firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, Timestamp, where, onSnapshot, query } from 'firebase/firestore';
 
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 
+// Used for real-time updates (listeners)
 function getCollection<T extends FirestoreEntity>(userId: string, collectionName: string, callback: (data: T[]) => void) {
   if (!userId) {
     console.log("getCollection called without userId, returning empty array.");
@@ -33,6 +35,25 @@ function getCollection<T extends FirestoreEntity>(userId: string, collectionName
   return unsubscribe;
 }
 
+// Used for one-time data fetching
+async function fetchCollection<T extends FirestoreEntity>(userId: string, collectionName: string): Promise<T[]> {
+  if (!userId) {
+    console.log("fetchCollection called without userId, returning empty array.");
+    return [];
+  }
+  const q = query(collection(db, 'users', userId, collectionName));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => {
+    const docData = doc.data();
+    for (const key in docData) {
+      if (docData[key] instanceof Timestamp) {
+        docData[key] = docData[key].toDate();
+      }
+    }
+    return { id: doc.id, ...docData } as T;
+  });
+}
+
 
 async function updateDocument<T extends { id: string }>(userId: string, collectionName: string, data: Partial<T>) {
   if (!userId) throw new Error("Usuário não autenticado.");
@@ -48,10 +69,14 @@ async function updateDocument<T extends { id: string }>(userId: string, collecti
 export const getDumpsters = (userId: string, callback: (dumpsters: Dumpster[]) => void) => {
   return getCollection<Dumpster>(userId, 'dumpsters', callback);
 };
+export const fetchDumpsters = (userId: string) => fetchCollection<Dumpster>(userId, 'dumpsters');
+
 
 export const getClients = (userId: string, callback: (clients: Client[]) => void) => {
   return getCollection<Client>(userId, 'clients', callback);
 };
+export const fetchClients = (userId: string) => fetchCollection<Client>(userId, 'clients');
+
 
 export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]) => void) => {
   if (!userId) {
@@ -81,16 +106,8 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
     });
     
     // Fetch clients and dumpsters
-    const clientsQuery = query(collection(db, 'users', userId, 'clients'));
-    const dumpstersQuery = query(collection(db, 'users', userId, 'dumpsters'));
-    
-    const [clientsSnapshot, dumpstersSnapshot] = await Promise.all([
-      getDocs(clientsQuery),
-      getDocs(dumpstersQuery),
-    ]);
-
-    const clients = clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Client[];
-    const dumpsters = dumpstersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Dumpster[];
+    const clients = await fetchClients(userId);
+    const dumpsters = await fetchDumpsters(userId);
 
     const populatedRentals = rentalsData.map(rental => {
       const client = clients.find(c => c.id === rental.clientId);
@@ -149,18 +166,3 @@ export const completeRental = async (userId: string, rentalId: string, dumpsterI
   const updatedRental = updatedRentalDoc.data();
   return { id: rentalId, ...updatedRental } as Rental;
 };
-
-// This function is no longer needed on the client, moved to data-server.ts for the dashboard
-// export const getRentals = async (userId: string): Promise<Rental[]> => {
-//   const q = query(collection(db, 'users', userId, 'rentals'));
-//   const querySnapshot = await getDocs(q);
-//   return querySnapshot.docs.map(doc => {
-//       const data = doc.data();
-//       for (const key in data) {
-//         if (data[key] instanceof Timestamp) {
-//           data[key] = data[key].toDate();
-//         }
-//       }
-//       return { id: doc.id, ...data } as Rental;
-//     });
-// };

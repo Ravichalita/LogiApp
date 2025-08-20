@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getClients, getDumpsters } from '@/lib/data';
+import { fetchClients, fetchDumpsters } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalForm } from './rental-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -23,8 +24,8 @@ export default function NewRentalPage() {
       const fetchData = async () => {
         setLoading(true);
         const [userDumpsters, userClients] = await Promise.all([
-          getDumpsters(user.uid),
-          getClients(user.uid),
+          fetchDumpsters(user.uid),
+          fetchClients(user.uid),
         ]);
         setDumpsters(userDumpsters);
         setClients(userClients);
