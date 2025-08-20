@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
@@ -65,6 +66,11 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
             await boundAction(formData);
             toast({ title: "Sucesso!", description: "Aluguel finalizado." });
         } catch (error: any) {
+            // Next.js throws a NEXT_REDIRECT error when redirect() is called,
+            // this is expected and should not be displayed as an error.
+            if (error.message === 'NEXT_REDIRECT') {
+              throw error;
+            }
             toast({ title: "Erro", description: error.message, variant: "destructive"});
         }
     })
