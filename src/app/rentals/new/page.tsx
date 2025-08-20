@@ -1,15 +1,39 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { getClients, getDumpsters } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalForm } from './rental-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Truck } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/auth-context';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { Client, Dumpster } from '@/lib/types';
 
-export default async function NewRentalPage() {
-  const [dumpsters, clients] = await Promise.all([
-    getDumpsters(),
-    getClients(),
-  ]);
+
+export default function NewRentalPage() {
+  const { user } = useAuth();
+  const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      const fetchData = async () => {
+        setLoading(true);
+        const [userDumpsters, userClients] = await Promise.all([
+          getDumpsters(),
+          getClients(),
+        ]);
+        setDumpsters(userDumpsters);
+        setClients(userClients);
+        setLoading(false);
+      };
+      fetchData();
+    }
+  }, [user]);
+
 
   const availableDumpsters = dumpsters.filter(d => d.status === 'Disponível');
 
@@ -21,7 +45,22 @@ export default async function NewRentalPage() {
           <CardDescription>Selecione a caçamba, o cliente e as datas para registrar um novo aluguel.</CardDescription>
         </CardHeader>
         <CardContent>
-          {availableDumpsters.length > 0 && clients.length > 0 ? (
+          {loading ? (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                 <Skeleton className="h-4 w-20" />
+                 <Skeleton className="h-10 w-full" />
+              </div>
+               <div className="space-y-2">
+                 <Skeleton className="h-4 w-20" />
+                 <Skeleton className="h-10 w-full" />
+              </div>
+               <div className="space-y-2">
+                 <Skeleton className="h-4 w-20" />
+                 <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          ) : (availableDumpsters.length > 0 && clients.length > 0) ? (
              <RentalForm dumpsters={availableDumpsters} clients={clients} />
           ) : (
             <Alert>

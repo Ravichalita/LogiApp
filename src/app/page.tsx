@@ -1,4 +1,6 @@
+'use client';
 
+import { useEffect, useState } from 'react';
 import { getClients, getDumpsters, getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,38 +14,93 @@ import {
 } from "@/components/ui/accordion"
 import { Separator } from '@/components/ui/separator';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/auth-context';
+import { Skeleton } from '@/components/ui/skeleton';
 
-async function getPopulatedRentals(): Promise<PopulatedRental[]> {
-    // On the server, auth.currentUser is null, so data fetching will return empty arrays.
-    // The AuthProvider on the client will handle redirection or re-rendering once auth state is known.
-    const [rentals, dumpsters, clients] = await Promise.all([
-      getRentals(),
-      getDumpsters(),
-      getClients(),
-    ]);
 
-    // If any of these are empty (especially on first server render), no need to proceed.
-    if (!rentals.length || !dumpsters.length || !clients.length) {
-        return [];
-    }
-
-    const activeRentals = rentals.filter(r => r.status === 'Ativo');
-
-    return activeRentals.map(rental => {
-      const dumpster = dumpsters.find(d => d.id === rental.dumpsterId)!;
-      const client = clients.find(c => c.id === rental.clientId)!;
-      // Basic check to prevent crashes if data is somehow inconsistent
-      if (!dumpster || !client) {
-        return null;
-      }
-      return { ...rental, dumpster, client };
-    }).filter((r): r is PopulatedRental => r !== null)
-      .sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime());
+function DashboardSkeleton() {
+    return (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+             {[...Array(3)].map((_, i) => (
+                <Card key={i} className="flex flex-col shadow-md">
+                    <CardHeader>
+                         <CardTitle className="flex items-center justify-between">
+                            <Skeleton className="h-6 w-32" />
+                             <Skeleton className="h-5 w-16" />
+                         </CardTitle>
+                         <CardDescription>
+                             <Skeleton className="h-4 w-20" />
+                         </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                        <div className="flex items-start gap-3">
+                            <Skeleton className="h-5 w-5 rounded-full" />
+                            <div className="w-full space-y-2">
+                                <Skeleton className="h-4 w-1/3" />
+                                <Skeleton className="h-5 w-2/3" />
+                            </div>
+                        </div>
+                         <div className="flex items-start gap-3">
+                            <Skeleton className="h-5 w-5 rounded-full" />
+                            <div className="w-full space-y-2">
+                                <Skeleton className="h-4 w-1/3" />
+                                <Skeleton className="h-5 w-full" />
+                            </div>
+                        </div>
+                         <div className="flex items-start gap-3">
+                            <Skeleton className="h-5 w-5 rounded-full" />
+                            <div className="w-full space-y-2">
+                                <Skeleton className="h-4 w-1/3" />
+                                <Skeleton className="h-5 w-1/2" />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+             ))}
+        </div>
+    )
 }
 
-export default async function DashboardPage() {
-  const rentals = await getPopulatedRentals();
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [rentals, setRentals] = useState<PopulatedRental[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    async function getPopulatedRentals() {
+      setLoading(true);
+      const [rentals, dumpsters, clients] = await Promise.all([
+        getRentals(),
+        getDumpsters(),
+        getClients(),
+      ]);
+
+      if (!rentals.length || !dumpsters.length || !clients.length) {
+        setRentals([]);
+        setLoading(false);
+        return;
+      }
+
+      const activeRentals = rentals.filter(r => r.status === 'Ativo');
+
+      const populated = activeRentals.map(rental => {
+        const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
+        const client = clients.find(c => c.id === rental.clientId);
+        if (!dumpster || !client) {
+          return null;
+        }
+        return { ...rental, dumpster, client };
+      }).filter((r): r is PopulatedRental => r !== null)
+        .sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime());
+        
+      setRentals(populated);
+      setLoading(false);
+    }
+    
+    getPopulatedRentals();
+  }, [user]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -51,7 +108,9 @@ export default async function DashboardPage() {
         <h1 className="text-3xl font-headline font-bold">Painel de Controle</h1>
       </div>
 
-      {rentals.length === 0 ? (
+       {loading ? (
+        <DashboardSkeleton />
+      ) : rentals.length === 0 ? (
         <div className="text-center py-20 bg-card rounded-lg border">
           <Truck className="mx-auto h-12 w-12 text-muted-foreground" />
           <h2 className="mt-4 text-xl font-semibold font-headline">Nenhuma caçamba alugada no momento</h2>
