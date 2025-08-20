@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays } from 'lucide-react';
+import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Accordion,
@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { differenceInCalendarDays } from 'date-fns';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('pt-BR', {
@@ -120,9 +121,8 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <AccordionTrigger className="p-6 hover:no-underline">
-                  <div className="w-full flex justify-between items-center">
-                    <div className="flex flex-col text-left">
+                <div className="flex justify-between items-center p-6">
+                    <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <Truck className="h-6 w-6 text-primary" />
                             <h3 className="font-bold text-lg font-headline">{rental.dumpster.name}</h3>
@@ -136,8 +136,14 @@ export default function DashboardPage() {
                         <span className="text-sm text-muted-foreground">Retirada</span>
                         <span className="font-semibold text-base">{format(rental.returnDate, "dd/MM/yyyy")}</span>
                     </div>
-                  </div>
-                </AccordionTrigger>
+                     <AccordionTrigger asChild>
+                        <div className="flex items-center justify-center ml-4">
+                            <div className="p-2 bg-primary/20 rounded-full group-hover:bg-primary/30 transition-colors">
+                                <ChevronDown className="h-6 w-6 text-primary transition-transform duration-300 group-data-[state=open]:rotate-180" />
+                            </div>
+                        </div>
+                    </AccordionTrigger>
+                </div>
                 <AccordionContent>
                   <Separator />
                   <div className="p-6">
