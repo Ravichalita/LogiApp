@@ -1,21 +1,21 @@
 
 'use client';
-import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental } from './types';
+import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental, CompletedRental } from './types';
 import { db, auth } from './firebase';
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, Timestamp, where, onSnapshot, query } from 'firebase/firestore';
 
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 
 // Used for real-time updates (listeners)
-function getCollection<T extends FirestoreEntity>(userId: string, callback: (data: T[]) => void, collectionName: string) {
+function getCollection<T extends FirestoreEntity>(userId: string, callback: (data: T[]) => void, collectionName: string, q?: any) {
   if (!userId) {
     console.log("getCollection called without userId, returning empty array.");
     callback([]);
     return () => {}; // Return an empty unsubscribe function
   }
-  const q = query(collection(db, 'users', userId, collectionName));
+  const collectionQuery = q || query(collection(db, 'users', userId, collectionName));
   
-  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+  const unsubscribe = onSnapshot(collectionQuery, (querySnapshot) => {
     const data = querySnapshot.docs.map(doc => {
       const docData = doc.data();
       // Convert Firestore Timestamps back to JS Dates
@@ -54,16 +54,6 @@ async function fetchCollection<T extends FirestoreEntity>(userId: string, collec
   });
 }
 
-
-async function updateDocument<T extends { id: string }>(userId: string, collectionName: string, data: Partial<T>) {
-  if (!userId) throw new Error("Usuário não autenticado.");
-  const { id, ...rest } = data;
-  if (!id) throw new Error("ID do documento não fornecido para atualização.");
-  const docRef = doc(db, 'users', userId, collectionName, id);
-  await updateDoc(docRef, rest);
-  return data;
-}
-
 // --- Data Retrieval Functions ---
 
 export const getDumpsters = (userId: string, callback: (dumpsters: Dumpster[]) => void) => {
@@ -89,33 +79,26 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
     where('status', '==', 'Ativo')
   );
 
-  return onSnapshot(rentalsQuery, async (snapshot) => {
-    if (snapshot.empty) {
+  return getCollection<Rental>(userId, async (rentals) => {
+     if (!rentals.length) {
       callback([]);
       return;
     }
 
-    const rentalsData = snapshot.docs.map(doc => {
-       const data = doc.data();
-       for (const key in data) {
-         if (data[key] instanceof Timestamp) {
-           data[key] = data[key].toDate();
-         }
-       }
-       return { id: doc.id, ...data } as Rental;
-    });
-    
-    // Fetch clients and dumpsters
+    // Fetch clients and dumpsters once
     const clients = await fetchClients(userId);
     const dumpsters = await fetchDumpsters(userId);
 
-    const populatedRentals = rentalsData.map(rental => {
+    const populatedRentals = rentals.map(rental => {
       const client = clients.find(c => c.id === rental.clientId);
       const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
       if (!client || !dumpster) return null;
       return { ...rental, client, dumpster };
     }).filter(Boolean) as PopulatedRental[];
+     callback(populatedRentals.sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime()));
+  }, 'rentals', rentalsQuery);
+};
 
-    callback(populatedRentals.sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime()));
-  });
+export const getCompletedRentals = (userId: string, callback: (rentals: CompletedRental[]) => void) => {
+    return getCollection<CompletedRental>(userId, callback, 'completedRentals');
 };

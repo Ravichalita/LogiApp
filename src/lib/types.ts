@@ -30,13 +30,24 @@ export interface Rental extends FirestoreEntity {
   rentalDate: Date;
   returnDate: Date;
   status: "Ativo" | "Concluído";
-  value: number;
+  value: number; // Daily value
 }
 
 export interface PopulatedRental extends Rental {
   dumpster: Dumpster;
   client: Client;
 }
+
+export interface CompletedRental extends FirestoreEntity {
+    dumpsterId: string;
+    clientId: string;
+    rentalDate: Date;
+    returnDate: Date;
+    completedDate: Date;
+    totalValue: number;
+    rentalDays: number;
+}
+
 
 export interface Location {
     address: string;

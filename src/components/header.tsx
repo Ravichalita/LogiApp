@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Truck, LogOut, User as UserIcon } from "lucide-react";
+import { PlusCircle, Truck, LogOut, User as UserIcon, BarChart3 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ const navLinks = [
   { href: "/", label: "Painel de Controle" },
   { href: "/dumpsters", label: "Caçambas" },
   { href: "/clients", label: "Clientes" },
+  { href: "/stats", label: "Estatísticas" },
 ];
 
 export function Header() {

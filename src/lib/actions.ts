@@ -3,8 +3,9 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, updateRental as updateRentalData } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, updateRental as updateRentalData, getRentalById } from './data-server';
 import type { DumpsterStatus, Rental } from './types';
+import { differenceInCalendarDays } from 'date-fns';
 
 
 const dumpsterSchema = z.object({
@@ -244,20 +245,39 @@ export async function finishRentalAction(userId: string, formData: FormData) {
         throw new Error("Usuário não autenticado.");
     }
     const rentalId = formData.get('rentalId') as string;
-    const dumpsterId = formData.get('dumpsterId') as string;
     
-    if (!rentalId || !dumpsterId) {
-      throw new Error("IDs de aluguel ou caçamba ausentes.");
+    if (!rentalId) {
+      throw new Error("ID do aluguel ausente.");
     }
 
     try {
-        await completeRental(userId, rentalId, dumpsterId);
+        // First, get the rental data to calculate total value
+        const rental = await getRentalById(userId, rentalId);
+        if (!rental) {
+            throw new Error("Aluguel não encontrado.");
+        }
+
+        const rentalDays = differenceInCalendarDays(rental.returnDate, rental.rentalDate) || 1;
+        const totalValue = rental.value * rentalDays;
+
+        const completedRentalData = {
+            dumpsterId: rental.dumpsterId,
+            clientId: rental.clientId,
+            rentalDate: rental.rentalDate,
+            returnDate: rental.returnDate,
+            completedDate: new Date(),
+            totalValue,
+            rentalDays,
+        };
+
+        await completeRental(userId, rentalId, rental.dumpsterId, completedRentalData);
     } catch (e) {
         console.error(e);
         throw new Error("Falha ao finalizar o aluguel.");
     }
 
     revalidatePath('/');
+    revalidatePath('/stats');
     redirect('/');
 }
 
@@ -283,6 +303,15 @@ export async function updateRentalAction(userId: string, prevState: any, formDat
   }
 
   try {
+    const rental = await getRentalById(userId, validatedFields.data.id);
+    if (!rental) {
+        return { message: 'error', error: 'Aluguel não encontrado.' };
+    }
+    // Firestore Admin SDK returns Timestamps, need to convert to Dates for comparison
+    const rentalDate = (rental.rentalDate as any).toDate ? (rental.rentalDate as any).toDate() : rental.rentalDate;
+    if (new Date(validatedFields.data.returnDate) < rentalDate) {
+        throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
+    }
     await updateRentalData(userId, validatedFields.data.id, { returnDate: validatedFields.data.returnDate });
     revalidatePath('/');
     return { message: 'success' };

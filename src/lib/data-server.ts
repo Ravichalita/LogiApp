@@ -1,9 +1,30 @@
 // This file is server-only and uses the Firebase Admin SDK
 import { adminDb } from './firebase-admin';
-import type { Client, Dumpster, PopulatedRental, Rental, DumpsterStatus } from './types';
+import type { Client, Dumpster, PopulatedRental, Rental, DumpsterStatus, CompletedRental } from './types';
 import { onSnapshot, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 // --- Generic Functions ---
+
+async function getDocumentById(userId: string, collectionName: string, docId: string) {
+    if (!userId) throw new Error('Usuário não autenticado.');
+    if (!docId) throw new Error('ID do documento não fornecido.');
+
+    const ref = adminDb.collection('users').doc(userId).collection(collectionName).doc(docId);
+    const doc = await ref.get();
+
+    if (!doc.exists) {
+        return null;
+    }
+
+    const data = doc.data()!;
+    // Convert Firestore Timestamps back to JS Dates for consistency
+     for (const key in data) {
+        if (data[key] instanceof Timestamp) {
+          data[key] = data[key].toDate();
+        }
+      }
+    return { id: doc.id, ...data };
+}
 
 async function addDocument(userId: string, collectionName: string, data: any) {
   if (!userId) throw new Error('Usuário não autenticado.');
@@ -74,39 +95,33 @@ export async function addRental(userId: string, rental: Omit<Rental, 'id'>) {
   return addDocument(userId, 'rentals', rental);
 }
 
+export async function getRentalById(userId: string, rentalId: string): Promise<Rental | null> {
+    return getDocumentById(userId, 'rentals', rentalId) as Promise<Rental | null>;
+}
+
+
 export async function updateRental(userId: string, rentalId: string, data: Partial<Rental>) {
-  if (!rentalId) throw new Error("ID do aluguel não fornecido.");
-
-  const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
-  const rentalDoc = await rentalRef.get();
-  
-  if (!rentalDoc.exists) {
-    throw new Error('Aluguel não encontrado.');
-  }
-
-  const existingData = rentalDoc.data() as Rental;
-
-  // Firestore Admin SDK returns Timestamps, need to convert to Dates for comparison
-  const rentalDate = (existingData.rentalDate as any).toDate();
-
-  if (data.returnDate && new Date(data.returnDate) < rentalDate) {
-    throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
-  }
-  
   return await updateDocument(userId, 'rentals', rentalId, data);
 }
 
-export async function completeRental(userId: string, rentalId: string, dumpsterId: string) {
+export async function completeRental(userId: string, rentalId: string, dumpsterId: string, completedRentalData: Omit<CompletedRental, 'id'>) {
     if (!userId) throw new Error('Usuário não autenticado.');
     if (!rentalId || !dumpsterId) throw new Error('IDs de aluguel ou caçamba ausentes.');
 
     const batch = adminDb.batch();
 
+    // 1. Mark the original rental as 'Concluído'
     const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
     batch.update(rentalRef, { status: 'Concluído' });
 
+    // 2. Set the dumpster status back to 'Disponível'
     const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
     batch.update(dumpsterRef, { status: 'Disponível' });
+
+    // 3. Create a new record in the 'completedRentals' collection for statistics
+    const completedRentalRef = adminDb.collection('users').doc(userId).collection('completedRentals').doc();
+    batch.set(completedRentalRef, completedRentalData);
+
 
     await batch.commit();
 }
