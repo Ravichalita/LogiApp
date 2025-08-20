@@ -1,7 +1,7 @@
 // This file is server-only and uses the Firebase Admin SDK
 import { adminDb } from './firebase-admin';
 import type { Client, Dumpster, PopulatedRental, Rental, DumpsterStatus } from './types';
-import { onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { onSnapshot, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
 // --- Generic Functions ---
 
@@ -72,6 +72,28 @@ export async function updateDumpsterStatus(userId: string, id: string, status: D
 // Rentals
 export async function addRental(userId: string, rental: Omit<Rental, 'id'>) {
   return addDocument(userId, 'rentals', rental);
+}
+
+export async function updateRental(userId: string, rentalId: string, data: Partial<Rental>) {
+  if (!rentalId) throw new Error("ID do aluguel não fornecido.");
+
+  const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
+  const rentalDoc = await rentalRef.get();
+  
+  if (!rentalDoc.exists) {
+    throw new Error('Aluguel não encontrado.');
+  }
+
+  const existingData = rentalDoc.data() as Rental;
+
+  // Firestore Admin SDK returns Timestamps, need to convert to Dates for comparison
+  const rentalDate = (existingData.rentalDate as any).toDate();
+
+  if (data.returnDate && new Date(data.returnDate) < rentalDate) {
+    throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
+  }
+  
+  return await updateDocument(userId, 'rentals', rentalId, data);
 }
 
 export async function completeRental(userId: string, rentalId: string, dumpsterId: string) {

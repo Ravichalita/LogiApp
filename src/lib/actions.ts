@@ -3,8 +3,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental } from './data-server';
-import { updateRental } from './data';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, updateRental as updateRentalData } from './data-server';
 import type { DumpsterStatus, Rental } from './types';
 
 
@@ -282,7 +281,7 @@ export async function updateRentalAction(userId: string, prevState: any, formDat
   }
 
   try {
-    await updateRental(userId, validatedFields.data as Rental);
+    await updateRentalData(userId, validatedFields.data.id, { returnDate: validatedFields.data.returnDate });
     revalidatePath('/');
     return { message: 'success' };
   } catch (e: any) {

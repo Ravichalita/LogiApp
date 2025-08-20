@@ -119,28 +119,3 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
     callback(populatedRentals.sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime()));
   });
 };
-
-
-// --- CLIENT-SIDE Data Mutation Functions ---
-
-export const updateRental = async (userId: string, rental: Partial<Rental>) => {
-    if(!rental.id) throw new Error("ID do aluguel não fornecido.");
-
-    const existingRentalRef = doc(db, 'users', userId, 'rentals', rental.id);
-    const existingRental = await getDoc(existingRentalRef);
-    
-    if(!existingRental.exists()) {
-       throw new Error('Aluguel não encontrado.');
-    }
-    const existingRentalData = existingRental.data() as Rental;
-    
-    const rentalDate = existingRentalData.rentalDate instanceof Timestamp 
-        ? existingRentalData.rentalDate.toDate() 
-        : new Date(existingRentalData.rentalDate);
-
-    if (rental.returnDate && new Date(rental.returnDate) < rentalDate) {
-        throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
-    }
-
-    return await updateDocument(userId, 'rentals', rental);
-};
