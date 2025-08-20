@@ -108,10 +108,10 @@ export default function DashboardPage() {
         <div className="text-center py-20 bg-card rounded-lg border">
           <Truck className="mx-auto h-12 w-12 text-muted-foreground" />
           <h2 className="mt-4 text-xl font-semibold font-headline">Nenhuma caçamba alugada no momento</h2>
-          <p className="mt-2 text-muted-foreground">Clique em "Novo Aluguel" no cabeçalho para começar.</p>
+          <p className="mt-2 text-muted-foreground">Clique no botão '+' para começar.</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {rentals.map(rental => {
             const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
             const totalValue = rental.value * rentalDays;

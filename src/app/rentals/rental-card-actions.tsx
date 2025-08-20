@@ -68,10 +68,11 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         } catch (error: any) {
             // Next.js throws a NEXT_REDIRECT error when redirect() is called,
             // this is expected and should not be displayed as an error.
-            if (error.message === 'NEXT_REDIRECT') {
-              throw error;
+            if (error.message.includes('NEXT_REDIRECT')) {
+              // Do nothing, allow redirect to happen
+            } else {
+              toast({ title: "Erro", description: error.message, variant: "destructive"});
             }
-            toast({ title: "Erro", description: error.message, variant: "destructive"});
         }
     })
   }
@@ -109,7 +110,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         <input type="hidden" name="returnDate" value={returnDate?.toISOString()} />
       </form>
 
-      <div className="flex flex-col sm:flex-row w-full gap-2 mt-6">
+      <div className="flex flex-col sm:flex-row w-full gap-2 mt-4">
         {rental.latitude && rental.longitude && (
           <Button variant="outline" className="w-full" asChild>
             <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">

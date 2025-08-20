@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { BottomNav } from '@/components/bottom-nav';
 import { AuthProvider } from '@/context/auth-context';
+import { NewRentalFAB } from '@/components/new-rental-fab';
 
 export const metadata: Metadata = {
   title: 'CaçambaControl',
@@ -31,6 +32,7 @@ export default function RootLayout({
               <Header />
               <main className="flex-1 pb-20 md:pb-0">{children}</main>
               <BottomNav />
+              <NewRentalFAB />
             </div>
             <Toaster />
         </AuthProvider>

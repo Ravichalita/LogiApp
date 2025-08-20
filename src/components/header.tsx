@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Truck, LogOut, User as UserIcon, BarChart3 } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, BarChart3 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -22,7 +22,6 @@ const navLinks = [
   { href: "/", label: "Painel de Controle" },
   { href: "/dumpsters", label: "Caçambas" },
   { href: "/clients", label: "Clientes" },
-  { href: "/stats", label: "Estatísticas" },
 ];
 
 export function Header() {
@@ -47,8 +46,6 @@ export function Header() {
   if (!user) {
     return null;
   }
-  
-  const userInitial = user.email ? user.email.charAt(0).toUpperCase() : '?';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -63,13 +60,13 @@ export function Header() {
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>
         </div>
 
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <Button asChild>
-            <Link href="/rentals/new">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Novo Aluguel
-            </Link>
-          </Button>
+        <div className="flex flex-1 items-center justify-end space-x-2">
+           <Button variant="ghost" size="icon" asChild>
+                <Link href="/stats">
+                    <BarChart3 className="h-5 w-5" />
+                    <span className="sr-only">Estatísticas</span>
+                </Link>
+            </Button>
           
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
