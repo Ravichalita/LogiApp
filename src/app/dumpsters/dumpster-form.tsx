@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition } from 'react';
 import { createDumpster } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +26,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 export function DumpsterForm() {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const [state, setState] = useState(initialState);
+  const [state, setState] = useState<any>(initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
