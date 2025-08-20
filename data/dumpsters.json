@@ -33,12 +33,5 @@
     "status": "Disponível",
     "color": "Azul",
     "size": 3
-  },
-  {
-    "id": "6",
-    "name": "Caçamba 06",
-    "status": "Disponível",
-    "color": "Verde",
-    "size": 5
   }
 ]
