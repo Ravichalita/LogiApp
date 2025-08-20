@@ -122,7 +122,7 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                 <AccordionTrigger className="p-6 hover:no-underline">
+                <div className="p-6 flex justify-between items-start">
                     <div className="flex-1 text-left">
                         <div className="flex items-center gap-2">
                             <Truck className="h-6 w-6 text-primary" />
@@ -137,10 +137,14 @@ export default function DashboardPage() {
                         <span className="text-sm text-muted-foreground">Retirada</span>
                         <span className="font-semibold text-base">{format(rental.returnDate, "dd/MM/yyyy")}</span>
                     </div>
+                </div>
+                 <AccordionTrigger>
+                    <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full">
+                        <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </div>
                 </AccordionTrigger>
                 <AccordionContent>
-                  <Separator />
-                  <div className="p-6">
+                  <div className="p-6 pt-2">
                     <div className="grid gap-4 md:grid-cols-2">
                          <div className="space-y-4">
                              <div className="flex items-start gap-3">
