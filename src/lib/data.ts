@@ -1,34 +1,36 @@
-'use server';
+'use client';
 import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental } from './types';
 import { db, auth } from './firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, writeBatch, getDoc, Timestamp, where, onSnapshot } from 'firebase/firestore';
 
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 
-async function getCollection<T extends FirestoreEntity>(userId: string, collectionName: string): Promise<T[]> {
+function getCollection<T extends FirestoreEntity>(userId: string, collectionName: string, callback: (data: T[]) => void) {
   if (!userId) {
     console.log("getCollection called without userId, returning empty array.");
-    return [];
+    callback([]);
+    return () => {}; // Return an empty unsubscribe function
   }
   const q = query(collection(db, 'users', userId, collectionName));
-  try {
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
+  
+  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const data = querySnapshot.docs.map(doc => {
+      const docData = doc.data();
       // Convert Firestore Timestamps back to JS Dates
-      for (const key in data) {
-        if (data[key] instanceof Timestamp) {
-          data[key] = data[key].toDate();
+      for (const key in docData) {
+        if (docData[key] instanceof Timestamp) {
+          docData[key] = docData[key].toDate();
         }
       }
-      return { id: doc.id, ...data } as T;
+      return { id: doc.id, ...docData } as T;
     });
-  } catch (error) {
+    callback(data);
+  }, (error) => {
     console.error(`Error getting ${collectionName}:`, error);
-    // On server render, if auth isn't ready, it might throw a permission error.
-    // Return empty array to prevent crashing the page. The client-side will re-fetch.
-    return [];
-  }
+    callback([]);
+  });
+
+  return unsubscribe;
 }
 
 
@@ -43,16 +45,62 @@ async function updateDocument<T extends { id: string }>(userId: string, collecti
 
 // --- Data Retrieval Functions ---
 
-export const getDumpsters = async (userId: string): Promise<Dumpster[]> => {
-  return await getCollection<Dumpster>(userId, 'dumpsters');
+export const getDumpsters = (userId: string, callback: (dumpsters: Dumpster[]) => void) => {
+  return getCollection<Dumpster>(userId, 'dumpsters', callback);
 };
 
-export const getClients = async (userId: string): Promise<Client[]> => {
-  return await getCollection<Client>(userId, 'clients');
+export const getClients = (userId: string, callback: (clients: Client[]) => void) => {
+  return getCollection<Client>(userId, 'clients', callback);
 };
 
-export const getRentals = async (userId: string): Promise<Rental[]> => {
-  return await getCollection<Rental>(userId, 'rentals');
+export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]) => void) => {
+  if (!userId) {
+    callback([]);
+    return () => {};
+  }
+
+  const rentalsQuery = query(
+    collection(db, 'users', userId, 'rentals'),
+    where('status', '==', 'Ativo')
+  );
+
+  return onSnapshot(rentalsQuery, async (snapshot) => {
+    if (snapshot.empty) {
+      callback([]);
+      return;
+    }
+
+    const rentalsData = snapshot.docs.map(doc => {
+       const data = doc.data();
+       for (const key in data) {
+         if (data[key] instanceof Timestamp) {
+           data[key] = data[key].toDate();
+         }
+       }
+       return { id: doc.id, ...data } as Rental;
+    });
+    
+    // Fetch clients and dumpsters
+    const clientsQuery = query(collection(db, 'users', userId, 'clients'));
+    const dumpstersQuery = query(collection(db, 'users', userId, 'dumpsters'));
+    
+    const [clientsSnapshot, dumpstersSnapshot] = await Promise.all([
+      getDocs(clientsQuery),
+      getDocs(dumpstersQuery),
+    ]);
+
+    const clients = clientsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Client[];
+    const dumpsters = dumpstersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Dumpster[];
+
+    const populatedRentals = rentalsData.map(rental => {
+      const client = clients.find(c => c.id === rental.clientId);
+      const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
+      if (!client || !dumpster) return null;
+      return { ...rental, client, dumpster };
+    }).filter(Boolean) as PopulatedRental[];
+
+    callback(populatedRentals.sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime()));
+  });
 };
 
 
@@ -101,3 +149,18 @@ export const completeRental = async (userId: string, rentalId: string, dumpsterI
   const updatedRental = updatedRentalDoc.data();
   return { id: rentalId, ...updatedRental } as Rental;
 };
+
+// This function is no longer needed on the client, moved to data-server.ts for the dashboard
+// export const getRentals = async (userId: string): Promise<Rental[]> => {
+//   const q = query(collection(db, 'users', userId, 'rentals'));
+//   const querySnapshot = await getDocs(q);
+//   return querySnapshot.docs.map(doc => {
+//       const data = doc.data();
+//       for (const key in data) {
+//         if (data[key] instanceof Timestamp) {
+//           data[key] = data[key].toDate();
+//         }
+//       }
+//       return { id: doc.id, ...data } as Rental;
+//     });
+// };

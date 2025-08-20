@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getClients, getDumpsters, getRentals } from '@/lib/data';
+import { getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText } from 'lucide-react';
@@ -67,44 +67,16 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
-        setLoading(false);
+    if (user) {
+        const unsubscribe = getRentals(user.uid, (rentals) => {
+            setRentals(rentals);
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    } else if (!loading) {
         setRentals([]);
-        return;
-    };
-    
-    async function getPopulatedRentals(userId: string) {
-      setLoading(true);
-      const [rentalsData, dumpstersData, clientsData] = await Promise.all([
-        getRentals(userId),
-        getDumpsters(userId),
-        getClients(userId),
-      ]);
-
-      if (!rentalsData.length || !dumpstersData.length || !clientsData.length) {
-        setRentals([]);
-        setLoading(false);
-        return;
-      }
-
-      const activeRentals = rentalsData.filter(r => r.status === 'Ativo');
-
-      const populated = activeRentals.map(rental => {
-        const dumpster = dumpstersData.find(d => d.id === rental.dumpsterId);
-        const client = clientsData.find(c => c.id === rental.clientId);
-        if (!dumpster || !client) {
-          return null;
-        }
-        return { ...rental, dumpster, client };
-      }).filter((r): r is PopulatedRental => r !== null)
-        .sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime());
-        
-      setRentals(populated);
-      setLoading(false);
     }
-    
-    getPopulatedRentals(user.uid);
-  }, [user]);
+  }, [user, loading]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">

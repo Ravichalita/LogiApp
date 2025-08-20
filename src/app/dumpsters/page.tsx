@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getDumpsters } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import type { Dumpster } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 
 function DumpsterTableSkeleton() {
@@ -44,22 +46,33 @@ export default function DumpstersPage() {
   const { user } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // This effect now depends on `user`. It will re-run when `user` changes.
     if (user) {
-      const fetchDumpsters = async () => {
-        setLoading(true);
-        const userDumpsters = await getDumpsters(user.uid);
-        setDumpsters(userDumpsters);
+      const unsubscribe = getDumpsters(user.uid, (dumpsters) => {
+        setDumpsters(dumpsters);
         setLoading(false);
-      };
-      fetchDumpsters();
+      });
+      // Cleanup subscription on unmount
+      return () => unsubscribe();
     } else {
-      setLoading(false);
-      setDumpsters([]);
+        // If there's no user, stop loading and clear data
+        setDumpsters([]);
+        setLoading(false);
     }
   }, [user]);
+
+  const filteredDumpsters = useMemo(() => {
+    if (!searchTerm) {
+      return dumpsters;
+    }
+    return dumpsters.filter(d =>
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(d.size).includes(searchTerm)
+    );
+  }, [dumpsters, searchTerm]);
 
 
   return (
@@ -70,6 +83,15 @@ export default function DumpstersPage() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>Minhas Caçambas</CardTitle>
+                <div className="relative mt-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Buscar por nome, cor, tamanho..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 {loading ? <DumpsterTableSkeleton /> : (
@@ -86,7 +108,7 @@ export default function DumpstersPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                            {dumpsters.length > 0 ? dumpsters.map(dumpster => (
+                            {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
                                 <TableRow key={dumpster.id}>
                                 <TableCell className="font-medium">{dumpster.name}</TableCell>
                                 <TableCell>{dumpster.color}</TableCell>
@@ -108,7 +130,7 @@ export default function DumpstersPage() {
                         
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
-                        {dumpsters.length > 0 ? dumpsters.map(dumpster => (
+                        {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
                             <div key={dumpster.id} className="border rounded-lg p-4">
                             <div className="flex justify-between items-start">
                                 <h3 className="font-bold text-lg">{dumpster.name}</h3>

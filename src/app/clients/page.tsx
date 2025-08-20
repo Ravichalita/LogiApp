@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getClients } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ClientForm } from './client-form';
@@ -12,12 +12,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Mail, FileText, MapPin, Phone } from 'lucide-react';
+import { Mail, FileText, MapPin, Phone, Search } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import type { Client } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 function ClientListSkeleton() {
     return (
@@ -40,24 +41,31 @@ export default function ClientsPage() {
   const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // This effect now depends on `user`. It will re-run when `user` changes.
     if (user) {
-      const fetchClients = async () => {
-        setLoading(true);
-        // Pass the user ID to the data fetching function
-        const userClients = await getClients(user.uid);
-        setClients(userClients);
+      const unsubscribe = getClients(user.uid, (clients) => {
+        setClients(clients);
         setLoading(false);
-      };
-      fetchClients();
+      });
+      return () => unsubscribe();
     } else {
-      // If there's no user, we are not loading and the list is empty.
-      setLoading(false);
       setClients([]);
+      setLoading(false);
     }
   }, [user]);
+
+  const filteredClients = useMemo(() => {
+    if (!searchTerm) {
+      return clients;
+    }
+    return clients.filter(client =>
+      client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      client.address.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [clients, searchTerm]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -67,11 +75,20 @@ export default function ClientsPage() {
           <Card className="h-full">
             <CardHeader>
               <CardTitle>Meus Clientes</CardTitle>
+              <div className="relative mt-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder="Buscar por nome, telefone, endereço..."
+                      className="pl-9"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+              </div>
             </CardHeader>
             <CardContent>
              {loading ? <ClientListSkeleton /> : (
                 <Accordion type="multiple" className="space-y-4">
-                    {clients.length > 0 ? clients.map(client => (
+                    {filteredClients.length > 0 ? filteredClients.map(client => (
                     <AccordionItem value={client.id} key={client.id} className="border rounded-lg shadow-sm">
                         <div className="p-4">
                         <div className="flex items-center justify-between">
