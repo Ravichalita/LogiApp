@@ -7,7 +7,7 @@ import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, Timestamp, whe
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 
 // Used for real-time updates (listeners)
-function getCollection<T extends FirestoreEntity>(userId: string, collectionName: string, callback: (data: T[]) => void) {
+function getCollection<T extends FirestoreEntity>(userId: string, callback: (data: T[]) => void, collectionName: string) {
   if (!userId) {
     console.log("getCollection called without userId, returning empty array.");
     callback([]);
@@ -67,13 +67,13 @@ async function updateDocument<T extends { id: string }>(userId: string, collecti
 // --- Data Retrieval Functions ---
 
 export const getDumpsters = (userId: string, callback: (dumpsters: Dumpster[]) => void) => {
-  return getCollection<Dumpster>(userId, 'dumpsters', callback);
+  return getCollection<Dumpster>(userId, callback, 'dumpsters');
 };
 export const fetchDumpsters = (userId: string) => fetchCollection<Dumpster>(userId, 'dumpsters');
 
 
 export const getClients = (userId: string, callback: (clients: Client[]) => void) => {
-  return getCollection<Client>(userId, 'clients', callback);
+  return getCollection<Client>(userId, callback, 'clients');
 };
 export const fetchClients = (userId: string) => fetchCollection<Client>(userId, 'clients');
 
@@ -122,10 +122,6 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
 
 
 // --- CLIENT-SIDE Data Mutation Functions ---
-
-export const updateDumpsterStatus = async (userId: string, id: string, status: DumpsterStatus) => {
-    return await updateDocument(userId, 'dumpsters', { id, status });
-}
 
 export const updateRental = async (userId: string, rental: Partial<Rental>) => {
     if(!rental.id) throw new Error("ID do aluguel não fornecido.");

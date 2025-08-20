@@ -3,8 +3,8 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental } from './data-server';
-import { updateDumpsterStatus, updateRental, completeRental } from './data';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus } from './data-server';
+import { updateRental, completeRental } from './data';
 import type { DumpsterStatus, Rental } from './types';
 
 
@@ -90,6 +90,7 @@ export async function updateDumpsterStatusAction(userId: string, id: string, sta
     try {
         await updateDumpsterStatus(userId, id, status);
         revalidatePath('/dumpsters');
+        revalidatePath('/rentals/new');
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
@@ -233,6 +234,7 @@ export async function createRental(userId: string, prevState: any, formData: For
     
     revalidatePath('/');
     revalidatePath('/rentals/new');
+    revalidatePath('/dumpsters');
     redirect('/');
 }
 

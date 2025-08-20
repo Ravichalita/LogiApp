@@ -1,6 +1,6 @@
 // This file is server-only and uses the Firebase Admin SDK
 import { adminDb } from './firebase-admin';
-import type { Client, Dumpster, PopulatedRental, Rental } from './types';
+import type { Client, Dumpster, PopulatedRental, Rental, DumpsterStatus } from './types';
 import { onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 
 // --- Generic Functions ---
@@ -64,6 +64,9 @@ export async function updateDumpster(userId: string, dumpster: Dumpster) {
 export async function deleteDumpster(userId: string, docId: string) {
     // You might want to add a check here for active rentals before deleting
     return deleteDocument(userId, 'dumpsters', docId);
+}
+export async function updateDumpsterStatus(userId: string, id: string, status: DumpsterStatus) {
+    return await updateDocument(userId, 'dumpsters', id, { status });
 }
 
 // Rentals
