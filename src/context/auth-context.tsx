@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onAuthStateChanged, User, signOut, Auth, Firestore } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
@@ -31,38 +31,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!auth || !db) return;
-
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // User is authenticated, now get their profile from Firestore
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const unsubUserDoc = onSnapshot(userDocRef, 
-            async (userDocSnap) => {
-                if (userDocSnap.exists()) {
-                    // Force refresh the token to get latest custom claims from the server
-                    await firebaseUser.getIdToken(true);
-                    const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-                    
-                    setUser(firebaseUser);
-                    setUserAccount(userAccountData);
-                    setAccountId(userAccountData.accountId);
-                    setLoading(false);
-                } else {
-                    // This can happen if the user exists in Auth but their Firestore doc was deleted.
-                    console.error("User is authenticated but no user document found. Logging out.");
-                    signOut(auth);
-                }
-            }, 
-            (error) => {
-                // This will trigger if the firestore.rules deny the read.
-                console.error("Error listening to user document, likely permissions. Logging out.", error);
-                signOut(auth);
-            }
-        );
+        const unsubUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
+          if (userDocSnap.exists()) {
+            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+            setUser(firebaseUser);
+            setUserAccount(userAccountData);
+            setAccountId(userAccountData.accountId);
+            setLoading(false);
+          } else {
+            console.error("Authenticated user has no user document. Logging out.");
+            signOut(auth);
+          }
+        }, (error) => {
+          console.error("Permission error fetching user document. Logging out.", error);
+          signOut(auth);
+        });
         return () => unsubUserDoc();
       } else {
-        // User is logged out
         setUser(null);
         setUserAccount(null);
         setAccountId(null);
@@ -78,27 +66,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
-    
-    // Allow logged-in admins to access signup to invite others
     const isInviteFlow = pathname.startsWith('/signup') && !!user;
 
-    if (user) { // User is logged in
+    if (user) {
       if (!user.emailVerified && !isVerifyRoute) {
         router.push('/verify-email');
-      } else if (user.emailVerified && isVerifyRoute) {
-        router.push('/');
-      } else if (isNonAuthRoute && !isInviteFlow) {
+      } else if (user.emailVerified && (isVerifyRoute || (isNonAuthRoute && !isInviteFlow))) {
         router.push('/');
       }
-    } else { // User is not logged in
-       if (!isNonAuthRoute && !isVerifyRoute) {
+    } else {
+      if (!isNonAuthRoute) {
         router.push('/login');
       }
     }
   }, [user, loading, pathname, router]);
 
   const logout = async () => {
-    if (!auth) return;
     await signOut(auth);
     router.push('/login');
   };

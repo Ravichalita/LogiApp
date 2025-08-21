@@ -54,7 +54,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      // Se não for um convite, procure uma conta pelo domínio
+      // If it's not an invite, try to find an account by email domain.
       let accountIdToJoin = inviterAccountId;
       if (!accountIdToJoin) {
           const domain = email.split('@')[1];
@@ -65,14 +65,11 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
           email,
           password,
           displayName: name,
-          emailVerified: false, // O usuário precisará verificar.
+          emailVerified: false, // The user will need to verify their email.
       });
 
-      // Garante que o documento do usuário seja criado no Firestore
-      // e que os custom claims sejam definidos.
+      // This function now handles creating the Firestore doc AND setting the critical custom claims.
       await ensureUserDocument(newUserRecord, accountIdToJoin);
-      
-      // O fluxo de ir para /verify-email e clicar em reenviar é agora mandatório.
       
       return {
         ...prevState,
@@ -284,10 +281,11 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     
-    const batch = getFirestore().batch();
+    const db = getFirestore();
+    const batch = db.batch();
     
     try {
-        const rentalRef = getFirestore().doc(`accounts/${accountId}/rentals/${rentalId}`);
+        const rentalRef = db.doc(`accounts/${accountId}/rentals/${rentalId}`);
         const rentalSnap = await rentalRef.get();
         
         if (!rentalSnap.exists) {
@@ -319,7 +317,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         }
 
         // Add to completed_rentals
-        const newCompletedRentalRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`).doc();
+        const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, validatedFields.data);
 
         // Delete from active rentals
@@ -383,8 +381,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 export async function resetBillingDataAction(accountId: string) {
   try {
     const completedRentalsRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`);
-    const q = completedRentalsRef.select(); 
-    const querySnapshot = await q.get();
+    const querySnapshot = await completedRentalsRef.get();
 
     const batch = getFirestore().batch();
     querySnapshot.docs.forEach((doc) => {
@@ -407,10 +404,11 @@ export async function resetBillingDataAction(accountId: string) {
 export async function updateUserRoleStatus(accountId: string, userId: string, role: UserRole, status: UserStatus) {
     if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
     
+    const db = getFirestore();
     try {
-        const userDocRef = getFirestore().doc(`users/${userId}`);
+        const userDocRef = db.doc(`users/${userId}`);
         
-        await getFirestore().runTransaction(async (transaction) => {
+        await db.runTransaction(async (transaction) => {
             transaction.update(userDocRef, { role, status });
             // Update the custom claims on the auth token as well
             await adminAuth.setCustomUserClaims(userId, { accountId, role });
@@ -427,9 +425,10 @@ export async function updateUserRoleStatus(accountId: string, userId: string, ro
 export async function removeUserFromAccount(accountId: string, userId: string) {
     if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
 
-    const batch = getFirestore().batch();
+    const db = getFirestore();
+    const batch = db.batch();
     try {
-        const userDocRef = getFirestore().doc(`users/${userId}`);
+        const userDocRef = db.doc(`users/${userId}`);
         const userDoc = await userDocRef.get();
 
         if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
