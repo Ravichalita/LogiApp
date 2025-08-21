@@ -48,7 +48,6 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
                 }
                 return accountId;
             }
-            // Fallthrough to create if accountId is missing
         }
 
         let accountId: string;

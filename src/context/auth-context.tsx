@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
@@ -40,14 +40,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
-            setLoading(false);
           } else {
             console.error("Authenticated user has no user document. Logging out.");
             signOut(auth);
           }
+          setLoading(false);
         }, (error) => {
           console.error("Permission error fetching user document. Logging out.", error);
           signOut(auth);
+          setLoading(false);
         });
         return () => unsubUserDoc();
       } else {
@@ -85,8 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
     router.push('/login');
   };
+  
+  const isAuthPage = nonAuthRoutes.includes(pathname) || pathname === '/verify-email';
 
-  if (loading) {
+  if (loading && !isAuthPage) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />
