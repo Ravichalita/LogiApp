@@ -15,22 +15,20 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     if (!domain) return null;
-    // This is a placeholder for a more robust domain-to-account mapping.
-    // In a real app, you might query a dedicated 'domains' collection.
+    // In a real app, you might query a dedicated 'domains' collection
+    // to map company domains to account IDs.
+    // For this app, we'll keep it simple and not auto-join accounts by domain.
     return null;
 }
 
 /**
- * Ensures a user document exists in Firestore and, critically, sets their custom claims.
- * It creates the associated account and user documents in a transaction.
- * If an accountId is provided, it links the user to that existing account.
- * CRITICALLY, it sets custom claims on the user's auth token, which is the
- * recommended and most secure way to handle authorization in Firestore rules.
+ * Ensures a user document exists in Firestore and sets their custom claims.
+ * This is a critical function for security and multi-tenancy.
  *
  * @param userRecord The user record from Firebase Admin Auth.
- * @param existingAccountId Optional ID of an existing account to join.
+ * @param existingAccountId Optional ID of an existing account to join (for invites).
  * @returns The ID of the account the user is associated with.
- * @throws An error if the document creation fails.
+ * @throws An error if the transaction fails, and attempts to clean up the auth user.
  */
 export async function ensureUserDocument(userRecord: UserRecord, existingAccountId?: string | null): Promise<string> {
     const userDocRef = firestore.doc(`users/${userRecord.uid}`);
@@ -42,22 +40,25 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             const userData = docSnap.data();
             const accountId = userData?.accountId;
             if (accountId) {
-                // Ensure claims are set even if doc exists but claims are missing
+                // This is a safety check. If the user doc exists but claims are missing, set them.
                 if (!userRecord.customClaims?.accountId) {
                      await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userData.role || 'viewer' });
                 }
                 return accountId;
             }
+             // If doc exists but has no accountId, something is wrong.
+             // We will proceed to create/assign one.
         }
 
         let accountId: string;
         let role: 'admin' | 'viewer';
 
         if (existingAccountId) {
+            // User is being invited to an existing account.
             accountId = existingAccountId;
-            role = 'viewer'; // Invited users are viewers by default
+            role = 'viewer'; // Invited users are viewers by default.
         } else {
-            // Create a new account for the first user
+            // This is a new user creating a new account.
             const accountRef = firestore.collection("accounts").doc();
             transaction.set(accountRef, {
                 ownerId: userRecord.uid,
@@ -65,12 +66,12 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
                 createdAt: FieldValue.serverTimestamp(),
             });
             accountId = accountRef.id;
-            role = 'admin'; // The creator of an account is the admin.
+            role = 'admin'; // The creator of an account is always the admin.
         }
 
         const userAccountData = {
             email: userRecord.email,
-            name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário sem nome',
+            name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário',
             accountId: accountId,
             role: role,
             status: 'ativo',
@@ -89,6 +90,6 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });
-        throw error;
+        throw error; // Re-throw the original error to be handled by the caller
     });
 }

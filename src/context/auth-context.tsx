@@ -40,11 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
+            setLoading(false);
           } else {
             console.error("Authenticated user has no user document. Logging out.");
             signOut(auth);
+            setLoading(false);
           }
-          setLoading(false);
         }, (error) => {
           console.error("Permission error fetching user document. Logging out.", error);
           signOut(auth);
@@ -67,6 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
+    
+    // Allow an already logged-in user (admin) to access the signup page to invite others
     const isInviteFlow = pathname.startsWith('/signup') && !!user;
 
     if (user) {

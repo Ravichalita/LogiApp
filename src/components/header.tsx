@@ -68,17 +68,6 @@ export function Header() {
                     <span className="sr-only">Estatísticas</span>
                 </Link>
             </Button>
-
-            {isAdmin && (
-               <>
-                <Button variant="ghost" size="icon" asChild>
-                    <Link href="/team">
-                        <Users className="h-5 w-5" />
-                        <span className="sr-only">Equipe</span>
-                    </Link>
-                </Button>
-               </>
-            )}
           
            <DropdownMenu>
             <DropdownMenuTrigger asChild>

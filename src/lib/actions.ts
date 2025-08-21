@@ -54,7 +54,6 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      // If it's not an invite, try to find an account by email domain.
       let accountIdToJoin = inviterAccountId;
       if (!accountIdToJoin) {
           const domain = email.split('@')[1];
@@ -65,10 +64,9 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
           email,
           password,
           displayName: name,
-          emailVerified: false, // The user will need to verify their email.
+          emailVerified: false,
       });
 
-      // This function now handles creating the Firestore doc AND setting the critical custom claims.
       await ensureUserDocument(newUserRecord, accountIdToJoin);
       
       return {
@@ -396,64 +394,4 @@ export async function resetBillingDataAction(accountId: string) {
     return { message: 'error', error: handleFirebaseError(e) as string };
   }
 }
-// #endregion
-
-
-// #region Team/User Actions
-
-export async function updateUserRoleStatus(accountId: string, userId: string, role: UserRole, status: UserStatus) {
-    if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
-    
-    const db = getFirestore();
-    try {
-        const userDocRef = db.doc(`users/${userId}`);
-        
-        await db.runTransaction(async (transaction) => {
-            transaction.update(userDocRef, { role, status });
-            // Update the custom claims on the auth token as well
-            await adminAuth.setCustomUserClaims(userId, { accountId, role });
-        });
-        
-        revalidatePath('/team');
-        return { message: 'success' };
-
-    } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function removeUserFromAccount(accountId: string, userId: string) {
-    if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
-
-    const db = getFirestore();
-    const batch = db.batch();
-    try {
-        const userDocRef = db.doc(`users/${userId}`);
-        const userDoc = await userDocRef.get();
-
-        if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
-             return { message: 'error', error: 'Usuário não encontrado ou não pertence a esta conta.' };
-        }
-
-        // 1. Delete the user document in Firestore
-        batch.delete(userDocRef);
-        
-        // Transactionally commit Firestore delete
-        await batch.commit();
-
-        // 2. Delete the user from Firebase Auth
-        // This is done after the Firestore operation. If this fails, the user will exist in Auth but not in the app's DB.
-        // They would need to be manually deleted from the Firebase Console.
-        await adminAuth.deleteUser(userId);
-
-        revalidatePath('/team');
-        return { message: 'success' };
-    } catch (e) {
-        // If Auth deletion fails, we don't automatically roll back the Firestore change.
-        // This is a trade-off for simplicity. A more complex implementation could use a Cloud Function to ensure consistency.
-        console.error(`Failed to fully remove user ${userId}. Firestore doc may be deleted but Auth user remains.`, e);
-        return { message: 'error', error: `Ocorreu um erro ao remover o usuário. Pode ser necessário removê-lo manualmente do painel do Firebase. (${handleFirebaseError(e)})` };
-    }
-}
-
 // #endregion
