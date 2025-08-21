@@ -1,3 +1,4 @@
+
 // src/lib/firebase-client.ts
 'use client';
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -17,6 +18,13 @@ const firebaseConfig = {
 // This function ensures that we initialize the app only once
 // and that we can get the initialized app from anywhere in our code.
 export function getFirebase() {
+  // Prevent initialization on the server
+  if (typeof window === 'undefined') {
+    // This is a dummy return for the server. The actual initialization
+    // will happen in a useEffect on the client.
+    return { app: null, auth: null, db: null };
+  }
+
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(app);
   const db = getFirestore(app);

@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, Auth, Firestore } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
@@ -31,11 +31,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firebase, setFirebase] = useState<{ auth: Auth, db: Firestore } | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const { auth, db } = getFirebase();
 
   useEffect(() => {
+    // Initialize Firebase on the client side
+    const { auth, db } = getFirebase();
+    setFirebase({ auth, db });
+  }, []);
+
+  useEffect(() => {
+    if (!firebase) return;
+
+    const { auth, db } = firebase;
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
           if (!firebaseUser.emailVerified && !pathname.startsWith('/verify-email')) {
@@ -83,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, db]); 
+  }, [firebase]); 
 
   useEffect(() => {
     if (loading) return;
@@ -100,7 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const logout = async () => {
-    await signOut(auth);
+    if (!firebase) return;
+    await signOut(firebase.auth);
     setUser(null);
     setUserAccount(null);
     setAccountId(null);
