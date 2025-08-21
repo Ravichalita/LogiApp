@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useTransition } from 'react';
 import { deleteDumpsterAction, updateDumpsterStatusAction } from '@/lib/actions';
@@ -42,6 +43,11 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  
+  // The 'Reservada' status is derived client-side. The actual status in the DB is still 'Disponível'.
+  // So, for display and actions, we need to know the real status.
+  const isReserved = dumpster.status === 'Reservada';
+  const realStatus = isReserved ? 'Disponível' : dumpster.status;
 
   const getStatusVariant = (status: DumpsterStatus): 'default' | 'destructive' | 'secondary' => {
     switch (status) {
@@ -49,6 +55,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
         return 'default';
       case 'Alugada':
         return 'destructive';
+      case 'Reservada':
       case 'Em Manutenção':
         return 'secondary';
       default:
@@ -77,7 +84,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   };
 
   const handleChangeStatus = (newStatus: DumpsterStatus) => {
-    if (dumpster.status === newStatus || !user) return;
+    if (realStatus === newStatus || !user) return;
     startTransition(async () => {
         const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
         if (result.message === 'error') {
@@ -109,9 +116,9 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
             </Badge>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-             {(['Disponível', 'Alugada', 'Em Manutenção'] as DumpsterStatus[]).map((status) => (
-                <DropdownMenuItem key={status} onSelect={() => handleChangeStatus(status)} disabled={isPending || dumpster.status === status}>
-                    {isPending && dumpster.status !== status ? 'Aguarde...' : status}
+             {(['Disponível', 'Alugada', 'Em Manutenção'] as const).map((status) => (
+                <DropdownMenuItem key={status} onSelect={() => handleChangeStatus(status)} disabled={isPending || realStatus === status}>
+                    {isPending && realStatus !== status ? 'Aguarde...' : status}
                 </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -148,7 +155,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
               <DialogHeader>
                 <DialogTitle>Editar Caçamba</DialogTitle>
               </DialogHeader>
-              <EditDumpsterForm dumpster={dumpster} onSave={() => setIsEditDialogOpen(false)} />
+              <EditDumpsterForm dumpster={{...dumpster, status: realStatus}} onSave={() => setIsEditDialogOpen(false)} />
             </DialogContent>
 
             <AlertDialogContent>

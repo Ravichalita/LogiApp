@@ -99,6 +99,18 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
   }, 'rentals', rentalsQuery);
 };
 
+export const getPendingRentals = (userId: string, callback: (rentals: Rental[]) => void) => {
+   if (!userId) {
+    callback([]);
+    return () => {};
+  }
+   const rentalsQuery = query(
+    collection(db, 'users', userId, 'rentals'),
+    where('rentalDate', '>', new Date())
+  );
+  return getCollection<Rental>(userId, callback, 'rentals', rentalsQuery);
+}
+
 export const getCompletedRentals = (userId: string, callback: (rentals: CompletedRental[]) => void) => {
     return getCollection<CompletedRental>(userId, callback, 'completedRentals');
 };

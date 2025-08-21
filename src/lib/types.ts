@@ -1,4 +1,5 @@
-export type DumpsterStatus = "Disponível" | "Alugada" | "Em Manutenção";
+
+export type DumpsterStatus = "Disponível" | "Alugada" | "Em Manutenção" | "Reservada";
 
 export interface FirestoreEntity {
   id: string;

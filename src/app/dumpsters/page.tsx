@@ -2,16 +2,17 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { getDumpsters } from '@/lib/data';
+import { getDumpsters, getPendingRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster } from '@/lib/types';
+import type { Dumpster, Rental } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { startOfToday } from 'date-fns';
 
 
 function DumpsterTableSkeleton() {
@@ -44,34 +45,59 @@ function DumpsterTableSkeleton() {
 export default function DumpstersPage() {
   const { user } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
+  const [pendingRentals, setPendingRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (user) {
-      const unsubscribe = getDumpsters(user.uid, (dumpsters) => {
-        setDumpsters(dumpsters);
-        setLoading(false);
+      const unsubscribeDumpsters = getDumpsters(user.uid, (data) => {
+        setDumpsters(data);
+        if(loading) setLoading(false);
       });
-      // Cleanup subscription on unmount
-      return () => unsubscribe();
+      const unsubscribeRentals = getPendingRentals(user.uid, (data) => {
+        setPendingRentals(data);
+      });
+      
+      return () => {
+        unsubscribeDumpsters();
+        unsubscribeRentals();
+      }
     } else {
-        // If there's no user, stop loading and clear data
         setDumpsters([]);
+        setPendingRentals([]);
         setLoading(false);
     }
   }, [user]);
 
+  const dumpstersWithDerivedStatus = useMemo(() => {
+    const today = startOfToday();
+    const scheduledDumpsterIds = new Set(
+        pendingRentals
+            .filter(r => r.rentalDate > today)
+            .map(r => r.dumpsterId)
+    );
+
+    return dumpsters.map(d => {
+        if (d.status === 'Disponível' && scheduledDumpsterIds.has(d.id)) {
+            return { ...d, status: 'Reservada' as const };
+        }
+        return d;
+    })
+
+  }, [dumpsters, pendingRentals]);
+
+
   const filteredDumpsters = useMemo(() => {
     if (!searchTerm) {
-      return dumpsters;
+      return dumpstersWithDerivedStatus;
     }
-    return dumpsters.filter(d =>
+    return dumpstersWithDerivedStatus.filter(d =>
       d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       d.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
       String(d.size).includes(searchTerm)
     );
-  }, [dumpsters, searchTerm]);
+  }, [dumpstersWithDerivedStatus, searchTerm]);
 
 
   return (
