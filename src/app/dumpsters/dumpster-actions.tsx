@@ -136,11 +136,11 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
 
   return (
     <>
-      <div className="flex items-center justify-end gap-4">
+      <div className="flex items-center justify-end gap-2 md:gap-4">
         {/* Status Badge */}
         <Badge
           variant={getStatusVariant(dumpster.derivedStatus)}
-          className={cn('text-xs text-center min-w-[120px]', isPending && 'opacity-50')}
+          className={cn('text-xs text-center', isPending && 'opacity-50')}
         >
           {dumpster.derivedStatus}
         </Badge>
@@ -160,7 +160,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
           <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+                <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
                   <span className="sr-only">Abrir menu</span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
