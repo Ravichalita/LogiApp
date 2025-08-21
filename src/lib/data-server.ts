@@ -3,7 +3,9 @@
 
 import type { UserRecord } from "firebase-admin/auth";
 import { adminDb, adminAuth } from "./firebase-admin";
-import { serverTimestamp, writeBatch, doc, collection, getDoc } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
+
+const firestore = getFirestore();
 
 /**
  * Ensures a user document exists in Firestore after user creation.
@@ -15,23 +17,23 @@ import { serverTimestamp, writeBatch, doc, collection, getDoc } from "firebase-a
  * @throws An error if the document creation fails after multiple retries.
  */
 export async function ensureUserDocument(userRecord: UserRecord): Promise<string> {
-    const userDocRef = doc(adminDb, 'users', userRecord.uid);
+    const userDocRef = firestore.doc(`users/${userRecord.uid}`);
 
     try {
         // First, check if the document already exists (e.g., from a previous, interrupted run)
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
-            return docSnap.data().accountId;
+        const docSnap = await userDocRef.get();
+        if (docSnap.exists) {
+            return docSnap.data()?.accountId;
         }
 
         // If it doesn't exist, create it in a batch write for atomicity
-        const batch = writeBatch(adminDb);
+        const batch = firestore.batch();
 
-        const accountRef = doc(collection(adminDb, "accounts"));
+        const accountRef = firestore.collection("accounts").doc();
         batch.set(accountRef, {
             ownerId: userRecord.uid,
             name: `${userRecord.email}'s Account`,
-            createdAt: serverTimestamp(),
+            createdAt: firestore.FieldValue.serverTimestamp(),
         });
 
         batch.set(userDocRef, {
@@ -44,8 +46,8 @@ export async function ensureUserDocument(userRecord: UserRecord): Promise<string
 
         // After committing, verify the document exists with retries
         for (let i = 0; i < 5; i++) {
-            const finalSnap = await getDoc(userDocRef);
-            if (finalSnap.exists()) {
+            const finalSnap = await userDocRef.get();
+            if (finalSnap.exists) {
                 console.log(`User document for ${userRecord.uid} confirmed after ${i + 1} attempts.`);
                 return accountRef.id;
             }

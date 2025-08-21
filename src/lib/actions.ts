@@ -1,19 +1,8 @@
 
 'use server';
 
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-  writeBatch,
-} from 'firebase-admin/firestore';
-import { adminAuth, adminDb } from './firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -21,6 +10,7 @@ import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, Upda
 import type { Rental } from './types';
 import { ensureUserDocument } from './data-server';
 
+const firestore = getFirestore();
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -93,10 +83,10 @@ export async function createClient(accountId: string, prevState: any, formData: 
   }
 
   try {
-    const clientsCollection = collection(adminDb, `accounts/${accountId}/clients`);
-    await addDoc(clientsCollection, {
+    const clientsCollection = firestore.collection(`accounts/${accountId}/clients`);
+    await clientsCollection.add({
       ...validatedFields.data,
-      createdAt: serverTimestamp(),
+      createdAt: firestore.FieldValue.serverTimestamp(),
     });
     revalidatePath('/clients');
     return { message: 'success' };
@@ -118,10 +108,10 @@ export async function updateClient(accountId: string, prevState: any, formData: 
     const { id, ...clientData } = validatedFields.data;
 
     try {
-        const clientDoc = doc(adminDb, `accounts/${accountId}/clients`, id);
-        await updateDoc(clientDoc, {
+        const clientDoc = firestore.doc(`accounts/${accountId}/clients/${id}`);
+        await clientDoc.update({
           ...clientData,
-          updatedAt: serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
         });
         revalidatePath('/clients');
         return { message: 'success' };
@@ -134,7 +124,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 export async function deleteClientAction(accountId: string, clientId: string) {
   try {
     // Optional: Check for associated rentals before deleting
-    await deleteDoc(doc(adminDb, `accounts/${accountId}/clients`, clientId));
+    await firestore.doc(`accounts/${accountId}/clients/${clientId}`).delete();
     revalidatePath('/clients');
     return { message: 'success' };
   } catch (e) {
@@ -160,10 +150,10 @@ export async function createDumpster(accountId: string, prevState: any, formData
   }
 
   try {
-    const dumpstersCollection = collection(adminDb, `accounts/${accountId}/dumpsters`);
-    await addDoc(dumpstersCollection, {
+    const dumpstersCollection = firestore.collection(`accounts/${accountId}/dumpsters`);
+    await dumpstersCollection.add({
       ...validatedFields.data,
-      createdAt: serverTimestamp(),
+      createdAt: firestore.FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
     return { message: 'success' };
@@ -188,10 +178,10 @@ export async function updateDumpster(accountId: string, prevState: any, formData
   const { id, ...dumpsterData } = validatedFields.data;
 
   try {
-    const dumpsterDoc = doc(adminDb, `accounts/${accountId}/dumpsters`, id);
-    await updateDoc(dumpsterDoc, {
+    const dumpsterDoc = firestore.doc(`accounts/${accountId}/dumpsters/${id}`);
+    await dumpsterDoc.update({
       ...dumpsterData,
-      updatedAt: serverTimestamp(),
+      updatedAt: firestore.FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
     revalidatePath('/'); // Also revalidate home page as dumpster status might affect rentals
@@ -203,7 +193,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
 
 export async function deleteDumpsterAction(accountId: string, dumpsterId: string) {
   try {
-    await deleteDoc(doc(adminDb, `accounts/${accountId}/dumpsters`, dumpsterId));
+    await firestore.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
     revalidatePath('/dumpsters');
     revalidatePath('/');
     return { message: 'success' };
@@ -214,8 +204,8 @@ export async function deleteDumpsterAction(accountId: string, dumpsterId: string
 
 export async function updateDumpsterStatusAction(accountId: string, dumpsterId: string, newStatus: 'Disponível' | 'Em Manutenção') {
     try {
-        const dumpsterRef = doc(adminDb, `accounts/${accountId}/dumpsters`, dumpsterId);
-        await updateDoc(dumpsterRef, { status: newStatus });
+        const dumpsterRef = firestore.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
+        await dumpsterRef.update({ status: newStatus });
         revalidatePath('/dumpsters');
         revalidatePath('/');
         return { message: 'success' };
@@ -255,9 +245,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   try {
     const rentalData = validatedFields.data;
     
-    await addDoc(collection(adminDb, `accounts/${accountId}/rentals`), {
+    await firestore.collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
-      createdAt: serverTimestamp(),
+      createdAt: firestore.FieldValue.serverTimestamp(),
     });
 
   } catch (e) {
@@ -275,10 +265,10 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     
-    const batch = writeBatch(adminDb);
+    const batch = firestore.batch();
     
     try {
-        const rentalRef = doc(adminDb, `accounts/${accountId}/rentals`, rentalId);
+        const rentalRef = firestore.doc(`accounts/${accountId}/rentals/${rentalId}`);
         const rentalSnap = await rentalRef.get();
         
         if (!rentalSnap.exists()) {
@@ -297,7 +287,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         const completedRentalData = {
             ...rentalData,
             originalRentalId: rentalId,
-            completedDate: serverTimestamp(),
+            completedDate: firestore.FieldValue.serverTimestamp(),
             rentalDays,
             totalValue
         };
@@ -310,7 +300,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         }
 
         // Add to completed_rentals
-        const newCompletedRentalRef = doc(collection(adminDb, `accounts/${accountId}/completed_rentals`));
+        const newCompletedRentalRef = firestore.doc(firestore.collection(`accounts/${accountId}/completed_rentals`));
         batch.set(newCompletedRentalRef, validatedFields.data);
 
         // Delete from active rentals
@@ -334,7 +324,7 @@ export async function cancelRentalAction(accountId: string, rentalId: string) {
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     try {
-        await deleteDoc(doc(adminDb, `accounts/${accountId}/rentals`, rentalId));
+        await firestore.doc(`accounts/${accountId}/rentals/${rentalId}`).delete();
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
@@ -355,10 +345,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     const { id, ...rentalData } = validatedFields.data;
 
     try {
-        const rentalDoc = doc(adminDb, `accounts/${accountId}/rentals`, id);
-        await updateDoc(rentalDoc, {
+        const rentalDoc = firestore.doc(`accounts/${accountId}/rentals/${id}`);
+        await rentalDoc.update({
           ...rentalData,
-          updatedAt: serverTimestamp(),
+          updatedAt: firestore.FieldValue.serverTimestamp(),
         });
         revalidatePath('/');
         return { message: 'success' };
@@ -373,11 +363,11 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 // #region Stats Actions
 export async function resetBillingDataAction(accountId: string) {
   try {
-    const completedRentalsRef = collection(adminDb, `accounts/${accountId}/completed_rentals`);
-    const q = query(completedRentalsRef);
-    const querySnapshot = await getDocs(q);
+    const completedRentalsRef = firestore.collection(`accounts/${accountId}/completed_rentals`);
+    const q = completedRentalsRef.select(); // query() is client-side, just select() is enough here
+    const querySnapshot = await q.get();
 
-    const batch = writeBatch(adminDb);
+    const batch = firestore.batch();
     querySnapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
     });
