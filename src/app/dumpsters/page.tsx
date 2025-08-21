@@ -80,8 +80,8 @@ export default function DumpstersPage() {
     
     // Get the earliest future rental for each dumpster
     pendingRentals
-      .filter(r => isAfter(new Date(r.rentalDate), today))
-      .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())
+      .filter(r => isAfter(r.rentalDate, today) || r.rentalDate.getTime() === today.getTime())
+      .sort((a,b) => a.rentalDate.getTime() - b.rentalDate.getTime())
       .forEach(r => {
         if (!scheduledRentalsMap.has(r.dumpsterId)) {
           scheduledRentalsMap.set(r.dumpsterId, r);
@@ -89,9 +89,19 @@ export default function DumpstersPage() {
       });
 
     return dumpsters.map(d => {
-      if (d.status === 'Disponível' && scheduledRentalsMap.has(d.id)) {
-        const rental = scheduledRentalsMap.get(d.id)!;
-        const formattedDate = format(new Date(rental.rentalDate), "dd/MM/yy");
+      const rental = scheduledRentalsMap.get(d.id);
+      
+      // If a rental is scheduled for today, it's considered 'Alugada'
+      if (d.status === 'Disponível' && rental && rental.rentalDate.getTime() === today.getTime()) {
+        return {
+            ...d,
+            status: 'Alugada'
+        };
+      }
+      
+      // If a rental is scheduled for a future date, it's 'Reservada'
+      if (d.status === 'Disponível' && rental && isAfter(rental.rentalDate, today)) {
+        const formattedDate = format(rental.rentalDate, "dd/MM/yy");
         return { 
           ...d, 
           status: `Reservada para ${formattedDate}`,

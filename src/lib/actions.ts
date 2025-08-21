@@ -247,9 +247,10 @@ export async function finishRentalAction(userId: string, formData: FormData) {
         throw new Error("Usuário não autenticado.");
     }
     const rentalId = formData.get('rentalId') as string;
+    const dumpsterId = formData.get('dumpsterId') as string;
     
-    if (!rentalId) {
-      throw new Error("ID do aluguel ausente.");
+    if (!rentalId || !dumpsterId) {
+      throw new Error("ID do aluguel ou da caçamba ausente.");
     }
 
     try {
@@ -273,7 +274,7 @@ export async function finishRentalAction(userId: string, formData: FormData) {
         };
 
         // This function now handles deleting the rental and updating the dumpster status
-        await completeRental(userId, rentalId, rental.dumpsterId, completedRentalData);
+        await completeRental(userId, rentalId, dumpsterId, completedRentalData);
 
     } catch (e) {
         console.error(e);

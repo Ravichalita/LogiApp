@@ -107,7 +107,7 @@ export const getPendingRentals = (userId: string, callback: (rentals: Rental[]) 
   }
    const rentalsQuery = query(
     collection(db, 'users', userId, 'rentals'),
-    where('rentalDate', '>=', startOfToday())
+    where('rentalDate', '>=', Timestamp.fromDate(startOfToday()))
   );
   return getCollection<Rental>(userId, callback, 'rentals', rentalsQuery);
 }
