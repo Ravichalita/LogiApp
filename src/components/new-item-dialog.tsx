@@ -53,7 +53,7 @@ export function NewItemDialog({ itemType }: NewItemDialogProps) {
             {descriptions[itemType]}
           </DialogDescription>
         </DialogHeader>
-        <div className="pt-4">
+        <div className="flex-grow overflow-y-auto pt-4 pr-2">
             {formComponent[itemType]}
         </div>
       </DialogContent>
