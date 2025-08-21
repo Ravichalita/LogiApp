@@ -40,24 +40,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firebase) return;
 
     const { auth, db } = firebase;
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // User is authenticated, force a token refresh to get latest custom claims
+        await firebaseUser.getIdToken(true);
         // User is potentially logged in, now we need their user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubUserDoc = onSnapshot(userDocRef, 
-            async (userDocSnap) => {
+            (userDocSnap) => {
                 if (userDocSnap.exists()) {
                     const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-                    
-                    // This is critical: force a refresh of the token to get the latest custom claims.
-                    await firebaseUser.getIdToken(true); 
-                    
                     setUser(firebaseUser);
                     setUserAccount(userAccountData);
                     setAccountId(userAccountData.accountId);
                     setLoading(false);
                 } else {
-                    // User is authenticated but no user document found. Log them out.
                     console.error("User is authenticated but no user document found. Logging out.");
                     signOut(auth);
                 }

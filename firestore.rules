@@ -10,25 +10,42 @@ service cloud.firestore {
     }
     
     function isOwner(userId) {
-      return isAuth() && request.auth.uid == userId;
+      return request.auth.uid == userId;
+    }
+    
+    function isUserInAccount(accountId) {
+      return isAuth() && request.auth.token.accountId == accountId;
+    }
+    
+    function isAdmin() {
+      return request.auth.token.role == 'admin';
     }
 
     // Rules for the 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId) || 
-                   (isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId);
-      allow list: if isAuth() && request.query.where.accountId == request.auth.token.accountId;
-      allow create: if !isAuth(); // Anyone can create a user doc during signup
-      allow update: if isAuth() && 
-                      (isOwner(userId) || 
-                       (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId));
-      allow delete: if isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
+      // ANY authenticated user can create a user document (signup)
+      allow create: if isAuth();
 
-    // Rules for all subcollections within an 'account'
+      // Users can only read their OWN document. This is critical for login.
+      // Other users in the same account can also read this document.
+      allow get: if isAuth() && (isOwner(userId) || isUserInAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId));
+      
+      // Allow users of the same account to list each other.
+      // The query from the app MUST include `where('accountId', '==', request.auth.token.accountId)`
+      allow list: if isAuth() && request.query.where.accountId == request.auth.token.accountId;
+
+      // Users can update their own document.
+      // Admins can update any user document within their account.
+      allow update: if isAuth() && (isOwner(userId) || (isAdmin() && isUserInAccount(resource.data.accountId)));
+      
+      // Admins can delete users from their account. The user cannot be the one deleting themselves.
+      allow delete: if isAuth() && isAdmin() && isUserInAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId) && !isOwner(userId);
+    }
+    
+    // Rules for the 'accounts' collection and all its subcollections
     match /accounts/{accountId}/{documents=**} {
-      allow read, write: if isAuth() && request.auth.token.accountId == accountId;
+        // Allow read and write only if the user's token contains the matching accountId
+        allow read, write: if isUserInAccount(accountId);
     }
   }
 }

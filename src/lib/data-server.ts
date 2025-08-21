@@ -36,7 +36,7 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
 }
 
 /**
- * Ensures a user document exists in Firestore after user creation.
+ * Ensures a user document exists in Firestore and sets their custom claims.
  * It creates the associated account and user documents in a transaction.
  * If an accountId is provided, it links the user to that existing account.
  * CRITICALLY, it sets custom claims on the user's auth token, which is the
