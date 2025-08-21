@@ -3,6 +3,7 @@
 import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental, CompletedRental, PopulatedCompletedRental } from './types';
 import { db, auth } from './firebase';
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, Timestamp, where, onSnapshot, query, deleteDoc } from 'firebase/firestore';
+import { startOfToday } from 'date-fns';
 
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 
@@ -106,7 +107,7 @@ export const getPendingRentals = (userId: string, callback: (rentals: Rental[]) 
   }
    const rentalsQuery = query(
     collection(db, 'users', userId, 'rentals'),
-    where('rentalDate', '>', new Date())
+    where('rentalDate', '>=', startOfToday())
   );
   return getCollection<Rental>(userId, callback, 'rentals', rentalsQuery);
 }

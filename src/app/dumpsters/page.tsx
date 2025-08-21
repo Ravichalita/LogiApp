@@ -7,12 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { startOfToday, format } from 'date-fns';
+import { startOfToday, format, isAfter } from 'date-fns';
 
 
 function DumpsterTableSkeleton() {
@@ -68,15 +68,15 @@ export default function DumpstersPage() {
         setPendingRentals([]);
         setLoading(false);
     }
-  }, [user]);
+  }, [user, loading]);
 
-  const dumpstersWithDerivedStatus = useMemo(() => {
+  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
     const scheduledRentalsMap = new Map<string, Rental>();
     
     // Get the earliest future rental for each dumpster
     pendingRentals
-      .filter(r => new Date(r.rentalDate) > today)
+      .filter(r => isAfter(new Date(r.rentalDate), today))
       .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())
       .forEach(r => {
         if (!scheduledRentalsMap.has(r.dumpsterId)) {
@@ -90,8 +90,8 @@ export default function DumpstersPage() {
         const formattedDate = format(new Date(rental.rentalDate), "dd/MM/yy");
         return { 
           ...d, 
-          status: `Reservada para ${formattedDate}` as const,
-          originalStatus: 'Disponível' as const 
+          status: `Reservada para ${formattedDate}`,
+          originalStatus: 'Disponível'
         };
       }
       return d;
