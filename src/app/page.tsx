@@ -208,7 +208,7 @@ export default function DashboardPage() {
                                 <div className="flex items-start gap-3">
                                     <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                                     <div className="flex flex-col">
-                                        <span className="text-sm text-muted-foreground">Telefone</span>
+                                        <span className="text-sm text-muted-foreground">Telefone (Clique para abrir o WhatsApp)</span>
                                         <Link 
                                             href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}`} 
                                             target="_blank" 
