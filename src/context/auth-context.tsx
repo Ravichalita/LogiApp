@@ -20,7 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const nonAuthRoutes = ['/login', '/signup']; // verify-email is a protected route now
+const nonAuthRoutes = ['/login']; // signup is NOT a non-auth-route anymore
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -85,19 +85,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
+    const isSignupRoute = pathname.startsWith('/signup');
 
-    if (user) {
+    if (user) { // User is logged in
       if (!user.emailVerified && !isVerifyRoute) {
         router.push('/verify-email');
       } else if (user.emailVerified && isVerifyRoute) {
         router.push('/');
       } else if (isNonAuthRoute) {
-        // Logged-in user trying to access login/signup. Redirect them.
+        // Logged-in user trying to access login page. Redirect them.
         router.push('/');
       }
-    } else {
-      // Not logged-in
-      if (!isNonAuthRoute && !isVerifyRoute) {
+    } else { // User is not logged in
+      if (!isNonAuthRoute && !isVerifyRoute && !isSignupRoute) {
         router.push('/login');
       }
     }
