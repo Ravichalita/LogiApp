@@ -2,33 +2,46 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-    
+  
+    // Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Rules for account subcollections (clients, dumpsters, rentals, etc.)
-    // A user can read/write to any document inside an account if their user document
-    // says they belong to that account.
-    match /accounts/{accountId}/{document=**} {
-      allow read, write: if isSignedIn() && getUserData(request.auth.uid).accountId == accountId;
+    function isUserAccountOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+    
+    function isUserInAccount(accountId) {
+        return isSignedIn() && getUserData(request.auth.uid).accountId == accountId;
+    }
+    
+    function isUserRoleInAccount(accountId, role) {
+        return isUserInAccount(accountId) && getUserData(request.auth.uid).role == role;
     }
 
-    // Rules for the users collection
+    // Rules for account-specific subcollections (clients, dumpsters, etc.)
+    match /accounts/{accountId}/{document=**} {
+      allow read, write: if isUserInAccount(accountId);
+    }
+    
+    // Rules for the top-level users collection
     match /users/{userId} {
-      // Allow a user to read another user's document if they are in the same account.
-      allow read: if isSignedIn() && getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
-
-      // Allow a user to update another user's document ONLY if the requester is an admin of that account.
-      allow update: if isSignedIn() && getUserData(request.auth.uid).role == 'admin' && getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
+      // A user can read their own document or documents of other users in the same account.
+      // The `list` permission requires that queries are secured via rules.
+      // The `get` permission allows direct lookups.
+      allow list: if isSignedIn() && request.query.where.accountId == getUserData(request.auth.uid).accountId;
+      allow get: if isUserAccountOwner(userId) || (isSignedIn() && getUserData(request.auth.uid).accountId == resource.data.accountId);
       
-      // Client-side creation and deletion is disallowed. This must be done via server actions.
+      // Only an admin of the account can update user roles/status.
+      // The user themselves cannot change their own role.
+      // Document creation/deletion is handled by server-side actions.
       allow create, delete: if false;
+      allow update: if isUserRoleInAccount(resource.data.accountId, 'admin');
     }
   }
 }
