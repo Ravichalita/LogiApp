@@ -2,17 +2,15 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { finishRentalAction, updateRentalAction, cancelRentalAction } from '@/lib/actions';
+import { finishRentalAction, cancelRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, CheckCircle, MapPin, Edit, Trash2, TriangleAlert } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { isRedirectError } from 'next/dist/client/components/redirect';
 import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
 import type { getRentalStatus } from '../page';
 import {
@@ -48,19 +46,11 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const handleFinishAction = (formData: FormData) => {
     startFinishTransition(async () => {
         if (!user) return;
-        try {
-            const boundAction = finishRentalAction.bind(null, user.uid);
-            await boundAction(formData);
-            toast({ title: "Sucesso!", description: "Aluguel finalizado." });
-        } catch (error) {
-            if (isRedirectError(error)) {
-              // This error is expected when redirecting, so we can ignore it.
-              return;
-            }
-            console.error("Erro ao finalizar aluguel:", error);
-            const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido";
-            toast({ title: "Erro", description: errorMessage, variant: "destructive"});
-        }
+        // The redirect error is expected and handled by Next.js, no need for try/catch here.
+        const boundAction = finishRentalAction.bind(null, user.uid);
+        await boundAction(formData);
+        // This toast might not be shown due to the redirect, which is acceptable.
+        toast({ title: "Sucesso!", description: "Aluguel finalizado." });
     })
   }
 
