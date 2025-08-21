@@ -18,6 +18,8 @@ import type { Client } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 function ClientListSkeleton() {
     return (
@@ -41,6 +43,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -65,6 +68,22 @@ export default function ClientsPage() {
       client.address.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [clients, searchTerm]);
+
+  const handleCopyPhone = (phone: string) => {
+    navigator.clipboard.writeText(phone).then(() => {
+      toast({
+        title: 'Copiado!',
+        description: 'Número de telefone copiado para a área de transferência.',
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+       toast({
+        title: 'Erro',
+        description: 'Não foi possível copiar o número.',
+        variant: 'destructive',
+      });
+    });
+  };
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -92,9 +111,9 @@ export default function ClientsPage() {
                             <div className="font-medium">{client.name}</div>
                             <ClientActions client={client} />
                         </div>
-                        <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                        <Button variant="ghost" className="text-sm text-muted-foreground mt-1 flex items-center gap-2 p-0 h-auto hover:bg-transparent" onClick={() => handleCopyPhone(client.phone)}>
                             <Phone className="h-4 w-4 shrink-0"/> <span>{client.phone}</span>
-                        </div>
+                        </Button>
                         <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-2 justify-start [&>svg]:ml-1">
                             Ver Detalhes
                         </AccordionTrigger>
