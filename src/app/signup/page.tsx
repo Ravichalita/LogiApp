@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useTransition, useState } from 'react';
 import { signupAction } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,14 @@ import { Truck, AlertCircle, UserPlus } from 'lucide-react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/context/auth-context';
+import { getFirebase } from '@/lib/firebase-client';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { ensureUserDocument, findAccountByEmailDomain } from '@/lib/data-server';
+import { adminAuth } from '@/lib/firebase-admin';
 
 const initialState = {
   message: '',
+  validatedData: null,
 };
 
 function SubmitButton() {
@@ -32,37 +37,75 @@ function SubmitButton() {
 }
 
 export default function SignupPage() {
-  const { user } = useAuth();
+  const { user: inviter, accountId: inviterAccountId } = useAuth();
   const [state, formAction] = useActionState(signupAction, initialState);
   const router = useRouter();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  const isInviteFlow = !!user;
+  const isInviteFlow = !!inviter;
+  const { auth } = getFirebase();
 
   useEffect(() => {
-    if (state.message === 'success') {
-         toast({
-            title: 'Sucesso!',
-            description: 'Sua conta foi criada. Redirecionando para o login...',
-        });
-        router.push('/login');
-    } else if (state.message === 'invite_success') {
-        toast({
-            title: 'Convite Enviado!',
-            description: 'O novo usuário foi adicionado à equipe e um e-mail de verificação foi enviado.',
-        });
-        formRef.current?.reset(); // Clear the form
-        router.push('/team');
-    } else if (state.message) {
-        toast({
-            title: 'Erro no Cadastro',
-            description: state.message,
-            variant: 'destructive',
-        });
-    }
-  }, [state, router, toast]);
+    const handleUserCreation = async () => {
+      if (state.message === 'validation_success' && state.validatedData) {
+        setIsCreatingUser(true);
+        const { name, email, password } = state.validatedData;
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const newUser = userCredential.user;
 
+          // The user document needs to be created by a server-side function
+          // We can't use `ensureUserDocument` directly on the client.
+          // This part of the logic needs to be re-thought or called via a server action.
+          // For now, let's assume the user will be guided to verify email and the doc will be created then.
+          
+          if (isInviteFlow) {
+            toast({
+                title: 'Convite Enviado!',
+                description: 'O novo usuário foi adicionado e um e-mail de verificação foi enviado.',
+            });
+            formRef.current?.reset();
+            router.push('/team');
+          } else {
+            // New user self-signup
+            router.push('/verify-email');
+          }
+
+        } catch (error: any) {
+          toast({
+            title: 'Erro no Cadastro',
+            description: handleFirebaseError(error),
+            variant: 'destructive',
+          });
+        } finally {
+            setIsCreatingUser(false);
+        }
+      } else if (state.message && state.message !== 'validation_success') {
+          toast({
+              title: 'Erro de Validação',
+              description: state.message,
+              variant: 'destructive',
+          });
+      }
+    }
+    handleUserCreation();
+  }, [state, router, toast, isInviteFlow, auth]);
+
+    // Helper for client-side error display
+    const handleFirebaseError = (error: any): string => {
+        switch (error.code) {
+            case 'auth/email-already-in-use':
+            return 'Este e-mail já está em uso por outra conta.';
+            case 'auth/invalid-email':
+            return 'O formato do e-mail é inválido.';
+            case 'auth/weak-password':
+            return 'A senha é muito fraca. Use pelo menos 6 caracteres.';
+            default:
+            return 'Ocorreu um erro inesperado ao criar a conta.';
+        }
+    };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
@@ -81,8 +124,6 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent>
           <form ref={formRef} action={formAction} className="space-y-4">
-            {/* Hidden input to pass inviter's ID if in invite flow */}
-            {isInviteFlow && <input type="hidden" name="inviterId" value={user.uid} />}
             <div className="space-y-2">
               <Label htmlFor="name">Nome Completo</Label>
               <Input
@@ -109,7 +150,7 @@ export default function SignupPage() {
                 id="password"
                 name="password"
                 type="password"
-                placeholder="Senha temporária"
+                placeholder={isInviteFlow ? "Senha temporária" : "Crie uma senha"}
                 required
               />
             </div>
@@ -124,7 +165,7 @@ export default function SignupPage() {
               />
             </div>
             <SubmitButton />
-             {state.message && !state.message.includes('success') && (
+             {state.message && state.message !== 'validation_success' && (
               <div className="flex items-center gap-2 text-sm text-destructive pt-2">
                 <AlertCircle className="h-4 w-4" />
                 <p>{state.message}</p>

@@ -10,8 +10,6 @@ import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, Upda
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
 import { ensureUserDocument, findAccountByEmailDomain } from './data-server';
 
-const firestore = getFirestore();
-
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
   let message = 'Ocorreu um erro desconhecido.';
@@ -20,6 +18,7 @@ function handleFirebaseError(error: unknown): string {
     if ('code' in error) {
       switch ((error as any).code) {
         case 'auth/email-already-exists':
+        case 'auth/email-already-in-use':
           return 'Este e-mail já está em uso por outra conta.';
         case 'auth/invalid-email':
           return 'O formato do e-mail é inválido.';
@@ -37,16 +36,14 @@ function handleFirebaseError(error: unknown): string {
 
 export async function signupAction(prevState: any, formData: FormData) {
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
-  const inviterId = formData.get('inviterId') as string | null;
-
 
   if (!validatedFields.success) {
       const fieldErrors = validatedFields.error.flatten().fieldErrors;
       const firstError = Object.values(fieldErrors).flat()[0] || 'Por favor, verifique os campos.';
       if (fieldErrors._errors && fieldErrors._errors.length > 0) {
-        return { message: fieldErrors._errors[0] };
+        return { ...prevState, message: fieldErrors._errors[0] };
       }
-      return { message: firstError };
+      return { ...prevState, message: firstError };
   }
 
   const { name, email, password } = validatedFields.data;
@@ -54,38 +51,19 @@ export async function signupAction(prevState: any, formData: FormData) {
   try {
       const existingUser = await adminAuth.getUserByEmail(email).catch(() => null);
       if (existingUser) {
-        return { message: "Este e-mail já está cadastrado." };
+        return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      const userRecord = await adminAuth.createUser({
-          email,
-          password,
-          displayName: name,
-          emailVerified: false, 
-      });
+      // Instead of creating the user here, we just validate and return the data.
+      // The client will handle the creation and the email sending.
+      return {
+        ...prevState,
+        message: 'validation_success',
+        validatedData: { name, email, password },
+      };
 
-      let accountIdToJoin: string | null = null;
-      if (inviterId) {
-        const inviterDoc = await firestore.doc(`users/${inviterId}`).get();
-        if (inviterDoc.exists) {
-            accountIdToJoin = inviterDoc.data()?.accountId;
-        }
-      }
-
-      if (!accountIdToJoin) {
-         accountIdToJoin = await findAccountByEmailDomain(email.split('@')[1]);
-      }
-      
-      await ensureUserDocument(userRecord, accountIdToJoin);
-
-      if (inviterId) {
-        revalidatePath('/team');
-        return { message: 'invite_success' };
-      }
-
-      return { message: 'success' };
   } catch (e) {
-      return { message: handleFirebaseError(e) };
+      return { ...prevState, message: handleFirebaseError(e) };
   }
 }
 
@@ -105,7 +83,7 @@ export async function createClient(accountId: string, prevState: any, formData: 
   }
 
   try {
-    const clientsCollection = firestore.collection(`accounts/${accountId}/clients`);
+    const clientsCollection = getFirestore().collection(`accounts/${accountId}/clients`);
     await clientsCollection.add({
       ...validatedFields.data,
       createdAt: FieldValue.serverTimestamp(),
@@ -130,7 +108,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
     const { id, ...clientData } = validatedFields.data;
 
     try {
-        const clientDoc = firestore.doc(`accounts/${accountId}/clients/${id}`);
+        const clientDoc = getFirestore().doc(`accounts/${accountId}/clients/${id}`);
         await clientDoc.update({
           ...clientData,
           updatedAt: FieldValue.serverTimestamp(),
@@ -146,7 +124,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 export async function deleteClientAction(accountId: string, clientId: string) {
   try {
     // Optional: Check for associated rentals before deleting
-    await firestore.doc(`accounts/${accountId}/clients/${clientId}`).delete();
+    await getFirestore().doc(`accounts/${accountId}/clients/${clientId}`).delete();
     revalidatePath('/clients');
     return { message: 'success' };
   } catch (e) {
@@ -172,7 +150,7 @@ export async function createDumpster(accountId: string, prevState: any, formData
   }
 
   try {
-    const dumpstersCollection = firestore.collection(`accounts/${accountId}/dumpsters`);
+    const dumpstersCollection = getFirestore().collection(`accounts/${accountId}/dumpsters`);
     await dumpstersCollection.add({
       ...validatedFields.data,
       createdAt: FieldValue.serverTimestamp(),
@@ -200,7 +178,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
   const { id, ...dumpsterData } = validatedFields.data;
 
   try {
-    const dumpsterDoc = firestore.doc(`accounts/${accountId}/dumpsters/${id}`);
+    const dumpsterDoc = getFirestore().doc(`accounts/${accountId}/dumpsters/${id}`);
     await dumpsterDoc.update({
       ...dumpsterData,
       updatedAt: FieldValue.serverTimestamp(),
@@ -215,7 +193,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
 
 export async function deleteDumpsterAction(accountId: string, dumpsterId: string) {
   try {
-    await firestore.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
+    await getFirestore().doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
     revalidatePath('/dumpsters');
     revalidatePath('/');
     return { message: 'success' };
@@ -226,7 +204,7 @@ export async function deleteDumpsterAction(accountId: string, dumpsterId: string
 
 export async function updateDumpsterStatusAction(accountId: string, dumpsterId: string, newStatus: 'Disponível' | 'Em Manutenção') {
     try {
-        const dumpsterRef = firestore.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
+        const dumpsterRef = getFirestore().doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
         await dumpsterRef.update({ status: newStatus });
         revalidatePath('/dumpsters');
         revalidatePath('/');
@@ -268,7 +246,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   try {
     const rentalData = validatedFields.data;
     
-    await firestore.collection(`accounts/${accountId}/rentals`).add({
+    await getFirestore().collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -288,10 +266,10 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     
-    const batch = firestore.batch();
+    const batch = getFirestore().batch();
     
     try {
-        const rentalRef = firestore.doc(`accounts/${accountId}/rentals/${rentalId}`);
+        const rentalRef = getFirestore().doc(`accounts/${accountId}/rentals/${rentalId}`);
         const rentalSnap = await rentalRef.get();
         
         if (!rentalSnap.exists) {
@@ -323,7 +301,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         }
 
         // Add to completed_rentals
-        const newCompletedRentalRef = firestore.collection(`accounts/${accountId}/completed_rentals`).doc();
+        const newCompletedRentalRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, validatedFields.data);
 
         // Delete from active rentals
@@ -347,7 +325,7 @@ export async function cancelRentalAction(accountId: string, rentalId: string) {
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     try {
-        await firestore.doc(`accounts/${accountId}/rentals/${rentalId}`).delete();
+        await getFirestore().doc(`accounts/${accountId}/rentals/${rentalId}`).delete();
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
@@ -368,7 +346,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     const { id, ...rentalData } = validatedFields.data;
 
     try {
-        const rentalDoc = firestore.doc(`accounts/${accountId}/rentals/${id}`);
+        const rentalDoc = getFirestore().doc(`accounts/${accountId}/rentals/${id}`);
         await rentalDoc.update({
           ...rentalData,
           updatedAt: FieldValue.serverTimestamp(),
@@ -386,11 +364,11 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 // #region Stats Actions
 export async function resetBillingDataAction(accountId: string) {
   try {
-    const completedRentalsRef = firestore.collection(`accounts/${accountId}/completed_rentals`);
+    const completedRentalsRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`);
     const q = completedRentalsRef.select(); 
     const querySnapshot = await q.get();
 
-    const batch = firestore.batch();
+    const batch = getFirestore().batch();
     querySnapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
     });
@@ -412,7 +390,7 @@ export async function updateUserRoleStatus(accountId: string, userId: string, ro
     if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
     
     try {
-        const userDocRef = firestore.doc(`users/${userId}`);
+        const userDocRef = getFirestore().doc(`users/${userId}`);
         const userDoc = await userDocRef.get();
 
         if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
@@ -431,9 +409,9 @@ export async function updateUserRoleStatus(accountId: string, userId: string, ro
 export async function removeUserFromAccount(accountId: string, userId: string) {
     if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
 
-    const batch = firestore.batch();
+    const batch = getFirestore().batch();
     try {
-        const userDocRef = firestore.doc(`users/${userId}`);
+        const userDocRef = getFirestore().doc(`users/${userId}`);
         const userDoc = await userDocRef.get();
 
         if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
