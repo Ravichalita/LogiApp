@@ -1,19 +1,10 @@
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// Ensure you have the service account key in an environment variable
-const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-if (!serviceAccountKey) {
-  throw new Error('A variável de ambiente FIREBASE_SERVICE_ACCOUNT_KEY não está definida. O SDK Admin não pode ser inicializado.');
-}
-
-const parsedServiceAccount = JSON.parse(serviceAccountKey);
-
+// When running in a Google Cloud environment, the SDK is automatically initialized.
+// No need to pass in service account credentials.
 const app = getApps().length
   ? getApps()[0]
-  : initializeApp({
-      credential: cert(parsedServiceAccount),
-    });
+  : initializeApp();
 
 export const adminDb = getFirestore(app);
