@@ -1,41 +1,46 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
-    function isUserAuthenticated() {
+    
+    // Helper Functions
+    function isSignedIn() {
       return request.auth != null;
     }
-
-    function isAccountOwner(accountId) {
-      return isUserAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
-    }
     
-    function isUserAdmin(accountId) {
-        return isAccountOwner(accountId) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
-    // Allow users to read their own user document.
+    function isSameAccount(accountId) {
+      return request.auth.token.accountId == accountId;
+    }
+
+    function isAdmin() {
+      return request.auth.token.role == 'admin';
+    }
+
+    // USERS collection
+    // Users can read their own document to get their profile info (including accountId).
+    // Admins of the same account can update other users' roles/status.
     match /users/{userId} {
-      allow read, update: if isUserAuthenticated() && request.auth.uid == userId;
+      allow get: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isSameAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId) && isAdmin();
+      allow list: if isSignedIn() && request.query.where.accountId == request.auth.token.accountId;
+      // Deny create/delete by default. Handled by server-side actions.
+      allow create, delete: if false;
     }
 
-    // Rules for multi-tenant data within accounts
+    // ACCOUNTS collection and subcollections
+    // Users can only access data within their own account, verified by the custom token.
     match /accounts/{accountId} {
-        // Only allow reading/writing to an account if the user belongs to that account.
-        allow read, write: if isAccountOwner(accountId);
+      allow read, write: if isSignedIn() && isSameAccount(accountId);
 
-        // Allow admins of an account to list users in that account
-        match /users/{userId} {
-             allow read, list: if isAccountOwner(accountId);
-             allow update: if isUserAdmin(accountId);
-        }
-
-        // Apply the same account ownership rule to all subcollections.
-        match /{document=**} {
-             allow read, write: if isAccountOwner(accountId);
-        }
+      // Subcollections also inherit this rule.
+      match /{collection}/{docId} {
+         allow read, write: if isSignedIn() && isSameAccount(accountId);
+      }
     }
   }
 }
