@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { TeamActions } from './team-actions';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Users } from 'lucide-react';
 
 function TeamTableSkeleton() {
   return (
@@ -46,25 +47,32 @@ function TeamTableSkeleton() {
 }
 
 export default function TeamPage() {
-  const { accountId, user, userAccount } = useAuth();
+  const { accountId, userAccount } = useAuth();
   const [members, setMembers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const isAdmin = userAccount?.role === 'admin';
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
     if (accountId && isAdmin) {
-      const unsubscribe = getTeamMembers(accountId, (users) => {
+      setLoading(true);
+      unsubscribe = getTeamMembers(accountId, (users) => {
         setMembers(users);
         setLoading(false);
       });
-      return () => unsubscribe();
     } else {
       setLoading(false);
+      setMembers([]);
+    }
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+        }
     }
   }, [accountId, isAdmin]);
   
   const sortedMembers = useMemo(() => {
-    // Ordenação segura no lado do cliente
+    // Secure sorting on the client side, handling potential missing names
     return [...members].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
   }, [members]);
 
@@ -86,6 +94,9 @@ export default function TeamPage() {
   if (!isAdmin) {
     return (
       <div className="container mx-auto py-8 px-4 md:px-6 text-center">
+        <div className="p-4 bg-primary/10 rounded-full mb-4 w-fit mx-auto">
+            <Users className="h-10 w-10 text-primary" />
+        </div>
         <h1 className="text-2xl font-bold">Acesso Negado</h1>
         <p className="text-muted-foreground mt-2">Você não tem permissão para visualizar esta página.</p>
       </div>

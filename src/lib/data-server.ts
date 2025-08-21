@@ -15,14 +15,16 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     const usersRef = firestore.collection('users');
+    // As Firestore doesn't support ending-with queries, we fetch users with the same domain.
+    // This is not perfectly scalable but works for many scenarios.
+    // A more robust solution might involve a separate collection of domains.
     const q = usersRef.where('email', '>=', `a@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
 
     try {
         const snapshot = await q.get();
         if (!snapshot.empty) {
-            // Check if the found user's email actually ends with the domain,
-            // as the query is a range scan and might match prefixes.
             const user = snapshot.docs[0].data();
+            // Ensure the found email actually belongs to the same domain.
             if (user.email && typeof user.email === 'string' && user.email.endsWith(`@${domain}`)) {
                 return user.accountId;
             }
@@ -60,9 +62,11 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         let role: 'admin' | 'viewer' = 'viewer';
 
         if (existingAccountId) {
+            // User is invited to an existing account.
             accountId = existingAccountId;
+            role = 'viewer'; // Invited users are viewers by default
         } else {
-            // First user from a domain (or any new user) becomes the admin of a new account
+            // First user, or user from a new domain, becomes the admin of a new account.
             const accountRef = firestore.collection("accounts").doc();
             batch.set(accountRef, {
                 ownerId: userRecord.uid,
@@ -70,7 +74,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
                 createdAt: FieldValue.serverTimestamp(),
             });
             accountId = accountRef.id;
-            role = 'admin';
+            role = 'admin'; // The creator of an account is the admin.
         }
 
         batch.set(userDocRef, {
@@ -78,19 +82,19 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário sem nome',
             accountId: accountId,
             role: role,
-            status: 'ativo', // Default status
+            status: 'ativo', // Default status is active
         });
 
         await batch.commit();
 
         return accountId;
     } catch (error) {
-        console.error("Error in ensureUserDocument:", error);
-        // Attempt to clean up the Auth user if the DB operation fails
+        console.error("Error in ensureUserDocument, attempting to clean up Auth user:", error);
+        // If the database operation fails, we should not leave an orphaned auth user.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
-            console.error(`Failed to cleanup auth user ${userRecord.uid} after doc creation failure:`, delErr)
+            console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });
-        // Re-throw the original error to be handled by the caller
+        // Re-throw the original error to be handled by the caller action.
         throw error;
     }
 }
