@@ -24,6 +24,8 @@ const publicRoutes = ['/login', '/signup'];
 // Add verify-email to the list of routes that DON'T require an authenticated user.
 const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
 
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -47,10 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
              router.push('/');
           }
           
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDocSnap = await getDoc(userDocRef);
+          // Retry mechanism to handle the race condition with Firebase Function trigger
+          let userDocSnap;
+          for (let i = 0; i < 3; i++) {
+              const userDocRef = doc(db, 'users', firebaseUser.uid);
+              userDocSnap = await getDoc(userDocRef);
+              if (userDocSnap.exists()) {
+                  break; 
+              }
+              await delay(i === 0 ? 1500 : 2000); // Wait 1.5s, then 2s
+          }
 
-          if (userDocSnap.exists()) {
+
+          if (userDocSnap && userDocSnap.exists()) {
             const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
             setUser(firebaseUser);
             setUserAccount(userAccountData);
