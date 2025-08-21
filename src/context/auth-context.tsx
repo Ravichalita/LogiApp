@@ -34,33 +34,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is authenticated with Firebase
-        if (firebaseUser.emailVerified) {
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const userDocSnap = await getDoc(userDocRef);
+        // User is authenticated with Firebase, now get our user document
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
 
-            if (userDocSnap.exists()) {
-                const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+        if (userDocSnap.exists()) {
+            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+            if (firebaseUser.emailVerified) {
+                // All good: user is verified and has a user document
                 setUser(firebaseUser);
                 setUserAccount(userAccountData);
                 setAccountId(userAccountData.accountId);
             } else {
-                // This can happen briefly after signup before the server action completes.
-                // We'll let the router logic handle redirection if needed, but for now, we're not fully "logged in".
-                 console.warn("User document not found for UID:", firebaseUser.uid, "- This might be temporary after signup.");
-                 // Keep user null until we have the account data.
-                 setUser(null);
-                 setUserAccount(null);
-                 setAccountId(null);
+                // User is not verified, redirect to verification page
+                setUser(null); // Keep user object null to prevent access
+                setUserAccount(null);
+                setAccountId(null);
+                if (!pathname.startsWith('/verify-email')) {
+                    router.push('/verify-email');
+                }
             }
         } else {
-          // Email not verified, redirect to verification page
+          // User exists in Auth but not in Firestore, something is wrong
+          // This might happen if Firestore write fails during signup
+          console.error("User document not found in Firestore for UID:", firebaseUser.uid);
+          await signOut(auth); // Log them out to be safe
           setUser(null);
           setUserAccount(null);
           setAccountId(null);
-           if (!pathname.startsWith('/verify-email')) {
-             router.push('/verify-email');
-           }
         }
       } else {
         // No user logged in
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserAccount(null);
         setAccountId(null);
       }
+      // CRITICAL: Set loading to false after all checks are done
       setLoading(false);
     });
 
@@ -88,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     else if (user && authRoutes.some(route => pathname.startsWith(route))) {
       router.push('/');
     }
-  }, [user, accountId, loading, pathname, router]);
+  }, [user, loading, pathname, router]);
 
 
   const logout = async () => {

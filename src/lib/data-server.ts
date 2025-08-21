@@ -69,7 +69,7 @@ export async function createAccountForNewUser(userId: string, email: string) {
     try {
         const batch = writeBatch(db);
 
-        // 1. Create a new account document (generate ID locally)
+        // 1. Create a new account document and get its ID
         const accountRef = doc(collection(db, 'accounts'));
         const accountId = accountRef.id;
         batch.set(accountRef, {
@@ -78,11 +78,11 @@ export async function createAccountForNewUser(userId: string, email: string) {
             createdAt: new Date(),
         });
         
-        // 2. Create the user document and link it to the account
+        // 2. Create the user document and link it to the new account ID
         const userRef = doc(db, 'users', userId);
         batch.set(userRef, {
             email: email,
-            accountId: accountId,
+            accountId: accountId, // Use the generated accountId here
             role: 'admin', // First user is always an admin
         });
 
