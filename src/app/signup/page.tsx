@@ -59,6 +59,8 @@ export default function SignupPage() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
+        // This is the critical error handling that was missing.
+        // It catches failures from our API route.
         throw new Error(result.error || 'Falha ao criar os documentos do usuário no banco de dados.');
       }
       
@@ -81,6 +83,7 @@ export default function SignupPage() {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'A senha é muito fraca.';
       } else {
+        // This will now catch the error thrown from our API fetch
         errorMessage = error.message || errorMessage;
       }
       toast({
