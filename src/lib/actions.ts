@@ -77,12 +77,6 @@ export async function signupAction(prevState: any, formData: FormData) {
       }
       
       await ensureUserDocument(userRecord, accountIdToJoin);
-      
-      // Send verification email
-      // This part doesn't work in server actions with the admin SDK directly in this flow.
-      // Firebase Auth automatically sends a verification email on creation if configured in the console.
-      // Or, it can be triggered on the client-side after the first login.
-      // For now, we rely on the default Firebase behavior.
 
       if (inviterId) {
         revalidatePath('/team');

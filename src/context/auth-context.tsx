@@ -88,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/verify-email');
       } else if (user.emailVerified && pathname.startsWith('/verify-email')) {
         router.push('/');
+      } else if (isNonAuthRoute && !pathname.startsWith('/verify-email') && !pathname.startsWith('/signup')) {
+         router.push('/');
       }
     } else {
       if (!isNonAuthRoute) {
