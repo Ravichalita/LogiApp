@@ -145,7 +145,7 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
             const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
             const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
 
-            const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientSnap]);
+            const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
 
             return {
                 id: rentalDoc.id,
