@@ -70,7 +70,7 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
 
 
 export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -94,9 +94,9 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   };
 
   const handleDelete = () => {
-    if (!user) return;
+    if (!accountId) return;
     startTransition(async () => {
-      const result = await deleteDumpsterAction(user.uid, dumpster.id);
+      const result = await deleteDumpsterAction(accountId, dumpster.id);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao excluir',
@@ -114,11 +114,11 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   };
 
   const handleToggleStatus = () => {
-    if (!user || isRented || isReserved) return;
+    if (!accountId || isRented || isReserved) return;
     const newStatus = dumpster.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
     startTransition(async () => {
-        const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
+        const result = await updateDumpsterStatusAction(accountId, dumpster.id, newStatus);
         if (result.message === 'error') {
              toast({
                 title: 'Erro',

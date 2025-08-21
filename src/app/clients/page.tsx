@@ -39,15 +39,15 @@ function ClientListSkeleton() {
 
 
 export default function ClientsPage() {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      const unsubscribe = getClients(user.uid, (clients) => {
+    if (accountId) {
+      const unsubscribe = getClients(accountId, (clients) => {
         setClients(clients);
         setLoading(false);
       });
@@ -56,7 +56,7 @@ export default function ClientsPage() {
       setClients([]);
       setLoading(false);
     }
-  }, [user]);
+  }, [accountId]);
 
   const filteredClients = useMemo(() => {
     if (!searchTerm) {

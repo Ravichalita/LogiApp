@@ -17,8 +17,8 @@ const dumpsterSchema = z.object({
   size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
 
-export async function createDumpster(userId: string, prevState: any, formData: FormData) {
-  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function createDumpster(accountId: string, prevState: any, formData: FormData) {
+  if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
 
   const validatedFields = dumpsterSchema.safeParse({
     name: formData.get('name'),
@@ -35,7 +35,7 @@ export async function createDumpster(userId: string, prevState: any, formData: F
   }
 
   try {
-    await addDumpster(userId, validatedFields.data);
+    await addDumpster(accountId, validatedFields.data);
   } catch (e) {
     console.error(e);
     return { ...prevState, message: 'error', error: 'Falha ao criar caçamba.' };
@@ -46,8 +46,8 @@ export async function createDumpster(userId: string, prevState: any, formData: F
   return { ...prevState, message: "success" };
 }
 
-export async function updateDumpster(userId: string, state:any, formData: FormData) {
-  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function updateDumpster(accountId: string, state:any, formData: FormData) {
+  if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
   
   const validatedFields = dumpsterSchema.safeParse({
     id: formData.get('id'),
@@ -65,7 +65,7 @@ export async function updateDumpster(userId: string, state:any, formData: FormDa
   }
 
   try {
-    await updateDumpsterData(userId, validatedFields.data as any);
+    await updateDumpsterData(accountId, validatedFields.data as any);
   } catch (e) {
     return { error: 'Falha ao atualizar caçamba.', message: 'error' };
   }
@@ -75,10 +75,10 @@ export async function updateDumpster(userId: string, state:any, formData: FormDa
   return { message: "success" };
 }
 
-export async function deleteDumpsterAction(userId: string, id: string) {
-    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function deleteDumpsterAction(accountId: string, id: string) {
+    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
     try {
-        await deleteDumpsterData(userId, id);
+        await deleteDumpsterData(accountId, id);
         revalidatePath('/dumpsters');
         return { message: 'success', title: 'Sucesso!', description: 'Caçamba excluída.' };
     } catch (e: any) {
@@ -86,10 +86,10 @@ export async function deleteDumpsterAction(userId: string, id: string) {
     }
 }
 
-export async function updateDumpsterStatusAction(userId: string, id: string, status: DumpsterStatus) {
-    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function updateDumpsterStatusAction(accountId: string, id: string, status: DumpsterStatus) {
+    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
     try {
-        await updateDumpsterData(userId, { id, status } as Dumpster);
+        await updateDumpsterData(accountId, { id, status } as Dumpster);
         revalidatePath('/dumpsters');
         revalidatePath('/rentals/new');
         revalidatePath('/');
@@ -111,8 +111,8 @@ const clientSchema = z.object({
   longitude: z.coerce.number().optional(),
 });
 
-export async function createClient(userId: string, prevState: any, formData: FormData) {
-  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function createClient(accountId: string, prevState: any, formData: FormData) {
+  if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
 
   const validatedFields = clientSchema.safeParse({
     name: formData.get('name'),
@@ -132,7 +132,7 @@ export async function createClient(userId: string, prevState: any, formData: For
   }
   
   try {
-    await addClient(userId, validatedFields.data);
+    await addClient(accountId, validatedFields.data);
   } catch (e) {
     console.error(e);
     return { ...prevState, message: 'error', error: 'Falha ao criar cliente.' };
@@ -143,8 +143,8 @@ export async function createClient(userId: string, prevState: any, formData: For
   return { ...prevState, message: "success" };
 }
 
-export async function updateClient(userId: string, prevState: any, formData: FormData) {
-  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function updateClient(accountId: string, prevState: any, formData: FormData) {
+  if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
 
   const validatedFields = clientSchema.safeParse({
     id: formData.get('id'),
@@ -165,7 +165,7 @@ export async function updateClient(userId: string, prevState: any, formData: For
   }
 
   try {
-    await updateClientData(userId, validatedFields.data as any);
+    await updateClientData(accountId, validatedFields.data as any);
   } catch (e) {
     return { error: 'Falha ao atualizar cliente.', message: 'error' };
   }
@@ -175,10 +175,10 @@ export async function updateClient(userId: string, prevState: any, formData: For
   return { message: "success" };
 }
 
-export async function deleteClientAction(userId: string, id: string) {
-    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function deleteClientAction(accountId: string, id: string) {
+    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
     try {
-        await deleteClientData(userId, id);
+        await deleteClientData(accountId, id);
         revalidatePath('/clients');
         return { message: 'success' };
     } catch (e: any) {
@@ -196,14 +196,15 @@ const rentalSchema = z.object({
   rentalDate: z.coerce.date(),
   returnDate: z.coerce.date(),
   value: z.string().transform(val => Number(val.replace('R$', '').replace(/\./g, '').replace(',', '.').trim())).pipe(z.number().positive('O valor deve ser maior que zero.')),
+  assignedTo: z.string().optional(),
 }).refine(data => data.returnDate > data.rentalDate, {
   message: "A data de retirada deve ser após a data de entrega.",
   path: ["returnDate"],
 });
 
 
-export async function createRental(userId: string, prevState: any, formData: FormData) {
-    if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function createRental(accountId: string, userId: string, prevState: any, formData: FormData) {
+    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
     
     const data = {
         dumpsterId: formData.get('dumpsterId'),
@@ -214,6 +215,7 @@ export async function createRental(userId: string, prevState: any, formData: For
         rentalDate: formData.get('rentalDate'),
         returnDate: formData.get('returnDate'),
         value: formData.get('value'),
+        assignedTo: userId, // Automatically assign to the user creating it
     }
 
     const validatedFields = rentalSchema.safeParse(data);
@@ -225,7 +227,7 @@ export async function createRental(userId: string, prevState: any, formData: For
     }
 
     try {
-        await addRental(userId, {
+        await addRental(accountId, {
             ...validatedFields.data,
             status: 'Ativo',
         });
@@ -240,9 +242,9 @@ export async function createRental(userId: string, prevState: any, formData: For
     redirect('/');
 }
 
-export async function finishRentalAction(userId: string, formData: FormData) {
-    if (!userId) {
-        throw new Error("Usuário não autenticado.");
+export async function finishRentalAction(accountId: string, formData: FormData) {
+    if (!accountId) {
+        throw new Error("Conta não identificada.");
     }
     const rentalId = formData.get('rentalId') as string;
     
@@ -251,7 +253,7 @@ export async function finishRentalAction(userId: string, formData: FormData) {
     }
 
     try {
-        const rental = await getRentalById(userId, rentalId);
+        const rental = await getRentalById(accountId, rentalId);
         if (!rental) {
             throw new Error("Aluguel não encontrado.");
         }
@@ -267,9 +269,10 @@ export async function finishRentalAction(userId: string, formData: FormData) {
             completedDate: new Date(),
             totalValue,
             rentalDays,
+            assignedTo: rental.assignedTo,
         };
 
-        await completeRental(userId, rentalId, completedRentalData);
+        await completeRental(accountId, rentalId, completedRentalData);
 
     } catch (e) {
         console.error(e);
@@ -282,16 +285,16 @@ export async function finishRentalAction(userId: string, formData: FormData) {
     redirect('/');
 }
 
-export async function cancelRentalAction(userId: string, rentalId: string) {
-    if (!userId) {
-        return { message: 'error', error: 'Usuário não autenticado.' };
+export async function cancelRentalAction(accountId: string, rentalId: string) {
+    if (!accountId) {
+        return { message: 'error', error: 'Conta não identificada.' };
     }
     if (!rentalId) {
         return { message: 'error', error: 'Informações do aluguel ausentes.' };
     }
 
     try {
-        await cancelRental(userId, rentalId);
+        await cancelRental(accountId, rentalId);
     } catch (e: any) {
         console.error("Error canceling rental:", e);
         return { message: 'error', error: 'Falha ao cancelar o aluguel.' };
@@ -313,8 +316,8 @@ const updateRentalSchema = z.object({
 });
 
 
-export async function updateRentalAction(userId: string, prevState: any, formData: FormData) {
-  if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
+export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
+  if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
   
   const data = {
     id: formData.get('id'),
@@ -332,7 +335,7 @@ export async function updateRentalAction(userId: string, prevState: any, formDat
   }
 
   try {
-    await updateRentalData(userId, validatedFields.data.id, { 
+    await updateRentalData(accountId, validatedFields.data.id, { 
         returnDate: validatedFields.data.returnDate,
         rentalDate: validatedFields.data.rentalDate,
     });
@@ -344,13 +347,13 @@ export async function updateRentalAction(userId: string, prevState: any, formDat
   return { message: 'success' };
 }
 
-export async function resetBillingDataAction(userId: string) {
-    if (!userId) {
-        return { message: 'error', error: 'Usuário não autenticado.' };
+export async function resetBillingDataAction(accountId: string) {
+    if (!accountId) {
+        return { message: 'error', error: 'Conta não identificada.' };
     }
 
     try {
-        await deleteAllCompletedRentals(userId);
+        await deleteAllCompletedRentals(accountId);
         revalidatePath('/stats');
         return { message: 'success' };
     } catch (e) {

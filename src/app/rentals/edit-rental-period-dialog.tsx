@@ -31,7 +31,7 @@ interface EditRentalPeriodDialogProps {
 }
 
 export function EditRentalPeriodDialog({ rental, children }: EditRentalPeriodDialogProps) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [rentalDate, setRentalDate] = useState<Date | undefined>(new Date(rental.rentalDate));
@@ -41,15 +41,15 @@ export function EditRentalPeriodDialog({ rental, children }: EditRentalPeriodDia
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
-      if (!user) {
-        toast({ title: 'Erro', description: 'Você precisa estar logado.', variant: 'destructive' });
+      if (!accountId) {
+        toast({ title: 'Erro', description: 'Conta não identificada.', variant: 'destructive' });
         return;
       }
       
       if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
       if (returnDate) formData.set('returnDate', returnDate.toISOString());
       
-      const boundAction = updateRentalAction.bind(null, user.uid);
+      const boundAction = updateRentalAction.bind(null, accountId);
       const result = await boundAction(null, formData);
 
       if (result.errors) {

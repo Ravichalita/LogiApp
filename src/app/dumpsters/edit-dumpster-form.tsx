@@ -28,7 +28,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onSave: () => void }) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState(initialState);
   const { toast } = useToast();
@@ -51,8 +51,8 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
-      if (!user) return;
-      const boundAction = updateDumpster.bind(null, user.uid, state);
+      if (!accountId) return;
+      const boundAction = updateDumpster.bind(null, accountId, state);
       const result = await boundAction(formData);
       setState(result);
     });

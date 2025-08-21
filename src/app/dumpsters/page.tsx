@@ -55,7 +55,7 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[]
 ];
 
 export default function DumpstersPage() {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,12 +65,12 @@ export default function DumpstersPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      const unsubscribeDumpsters = getDumpsters(user.uid, (data) => {
+    if (accountId) {
+      const unsubscribeDumpsters = getDumpsters(accountId, (data) => {
         setDumpsters(data);
         if(loading) setLoading(false);
       });
-      const unsubscribeRentals = getRentals(user.uid, (data) => {
+      const unsubscribeRentals = getRentals(accountId, (data) => {
         setAllRentals(data);
       });
       
@@ -83,7 +83,7 @@ export default function DumpstersPage() {
         setAllRentals([]);
         setLoading(false);
     }
-  }, [user, loading]);
+  }, [accountId, loading]);
 
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
@@ -98,7 +98,6 @@ export default function DumpstersPage() {
       const activeRental = dumpsterRentals.find(r => {
           const rentalStart = new Date(r.rentalDate);
           const rentalEnd = new Date(r.returnDate);
-          // It's active if today is within the rental period OR if the return date has passed (overdue)
           return isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
       });
 
@@ -143,7 +142,7 @@ export default function DumpstersPage() {
   }, [dumpstersWithDerivedStatus, searchTerm, statusFilter]);
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
-    if (!user) return;
+    if (!accountId) return;
     const isRented = dumpster.derivedStatus === 'Alugada';
     const isReserved = dumpster.derivedStatus.startsWith('Reservada');
 
@@ -152,7 +151,7 @@ export default function DumpstersPage() {
     const newStatus = dumpster.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
     startTransition(async () => {
-        const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
+        const result = await updateDumpsterStatusAction(accountId, dumpster.id, newStatus);
         if (result.message === 'error') {
              toast({
                 title: 'Erro',

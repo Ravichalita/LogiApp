@@ -33,19 +33,19 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 
 export function ClientActions({ client }: { client: Client }) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   const handleDelete = () => {
-    if (!user) {
-        toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
+    if (!accountId) {
+        toast({ title: "Erro", description: "Conta não identificada.", variant: "destructive" });
         return;
     }
     startTransition(async () => {
-      const result = await deleteClientAction(user.uid, client.id);
+      const result = await deleteClientAction(accountId, client.id);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao excluir',

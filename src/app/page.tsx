@@ -112,15 +112,15 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'Todos' | RentalStatusType>('Todos');
 
   useEffect(() => {
-    if (user) {
+    if (accountId) {
         setLoading(true);
-        const unsubscribe = getRentals(user.uid, (rentals) => {
+        const unsubscribe = getRentals(accountId, (rentals) => {
             setRentals(rentals);
             setLoading(false);
         });
@@ -129,7 +129,7 @@ export default function DashboardPage() {
         setRentals([]);
         setLoading(false);
     }
-  }, [user]);
+  }, [accountId]);
 
   const filteredRentals = useMemo(() => {
     if (statusFilter === 'Todos') {

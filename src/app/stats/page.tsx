@@ -48,14 +48,14 @@ function StatsSkeleton() {
 }
 
 function ResetDataButton() {
-    const { user } = useAuth();
+    const { accountId } = useAuth();
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
 
     const handleReset = () => {
-        if (!user) return;
+        if (!accountId) return;
         startTransition(async () => {
-            const result = await resetBillingDataAction(user.uid);
+            const result = await resetBillingDataAction(accountId);
              if (result.message === 'error') {
                 toast({
                   title: 'Erro',
@@ -102,14 +102,14 @@ function ResetDataButton() {
 
 
 export default function StatsPage() {
-    const { user } = useAuth();
+    const { accountId } = useAuth();
     const [completedRentals, setCompletedRentals] = useState<PopulatedCompletedRental[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
+        if (accountId) {
             setLoading(true);
-            const unsubscribe = getPopulatedCompletedRentals(user.uid, (data) => {
+            const unsubscribe = getPopulatedCompletedRentals(accountId, (data) => {
                 setCompletedRentals(data);
                 setLoading(false);
             });
@@ -118,7 +118,7 @@ export default function StatsPage() {
             setCompletedRentals([]);
             setLoading(false);
         }
-    }, [user]);
+    }, [accountId]);
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">

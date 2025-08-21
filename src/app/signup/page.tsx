@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,29 @@ export default function SignupPage() {
     setIsSubmitting(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create a new account and user document in a batch write
+      const batch = writeBatch(db);
+
+      // 1. Create a new account
+      const accountRef = doc(collection(db, 'accounts'));
+      batch.set(accountRef, {
+        ownerId: user.uid,
+        name: `${user.email}'s Account`,
+        createdAt: new Date(),
+      });
+
+      // 2. Create the user document and link it to the account
+      const userRef = doc(db, 'users', user.uid);
+      batch.set(userRef, {
+          email: user.email,
+          accountId: accountRef.id,
+          role: 'admin', // First user is always an admin
+      });
+
+      await batch.commit();
+
       await sendEmailVerification(userCredential.user);
       toast({
         title: 'Verificação Necessária',

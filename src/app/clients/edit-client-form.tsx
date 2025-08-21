@@ -28,7 +28,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 export function EditClientForm({ client, onSave }: { client: Client, onSave: () => void }) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
@@ -61,8 +61,8 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
-      if (!user) return;
-      const boundAction = updateClient.bind(null, user.uid);
+      if (!accountId) return;
+      const boundAction = updateClient.bind(null, accountId);
       const result = await boundAction(state, formData);
       setState(result);
     });

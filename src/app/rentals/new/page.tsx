@@ -14,21 +14,21 @@ import type { Client, Dumpster, Rental } from '@/lib/types';
 import { isAfter, isWithinInterval, startOfToday, format } from 'date-fns';
 
 export default function NewRentalPage() {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
+    if (accountId) {
       const fetchData = async () => {
         setLoading(true);
-        const userClients = await fetchClients(user.uid);
+        const userClients = await fetchClients(accountId);
         setClients(userClients);
 
-        const unsubDumpsters = getDumpsters(user.uid, setDumpsters);
-        const unsubRentals = getRentals(user.uid, setAllRentals);
+        const unsubDumpsters = getDumpsters(accountId, setDumpsters);
+        const unsubRentals = getRentals(accountId, setAllRentals);
         
         setLoading(false);
 
@@ -44,7 +44,7 @@ export default function NewRentalPage() {
         setClients([]);
         setAllRentals([]);
     }
-  }, [user]);
+  }, [accountId]);
 
 
   const dumpstersForForm = useMemo((): DumpsterForForm[] => {
@@ -52,12 +52,10 @@ export default function NewRentalPage() {
 
     return dumpsters
       .filter(d => {
-        // Exclude dumpsters in maintenance
         if (d.status === 'Em Manutenção') {
           return false;
         }
 
-        // Exclude dumpsters currently rented or overdue
         const activeOrOverdueRental = allRentals.find(r => 
           r.dumpsterId === d.id && 
           (isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) }) || isAfter(today, new Date(r.returnDate)))
@@ -66,7 +64,6 @@ export default function NewRentalPage() {
         return !activeOrOverdueRental;
       })
       .map(d => {
-        // Find the next reservation if it exists
         const futureRental = allRentals
           .filter(r => r.dumpsterId === d.id && isAfter(new Date(r.rentalDate), today))
           .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0];

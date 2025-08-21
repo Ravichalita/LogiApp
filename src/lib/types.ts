@@ -1,5 +1,18 @@
 
 
+export type UserRole = 'admin' | 'member';
+
+export interface Account extends FirestoreEntity {
+    name: string;
+    ownerId: string;
+}
+
+export interface UserAccount extends FirestoreEntity {
+    email: string;
+    role: UserRole;
+    accountId: string;
+}
+
 export type DumpsterStatus = "Disponível" | "Em Manutenção";
 export type DerivedDumpsterStatus = DumpsterStatus | "Alugada" | `Reservada para ${string}`;
 
@@ -40,11 +53,13 @@ export interface Rental extends FirestoreEntity {
   returnDate: Date;
   status: "Ativo";
   value: number; // Daily value
+  assignedTo?: string; // UID of the user this rental is assigned to
 }
 
 export interface PopulatedRental extends Rental {
   dumpster: Dumpster;
   client: Client;
+  assignedUser?: UserAccount;
 }
 
 export interface CompletedRental extends FirestoreEntity {
@@ -55,11 +70,13 @@ export interface CompletedRental extends FirestoreEntity {
     completedDate: Date;
     totalValue: number;
     rentalDays: number;
+    assignedTo?: string;
 }
 
 export interface PopulatedCompletedRental extends CompletedRental {
     dumpster?: Dumpster;
     client?: Client;
+    assignedUser?: UserAccount;
 }
 
 

@@ -57,7 +57,7 @@ function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
 
 
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
   const [isCanceling, startCancelTransition] = useTransition();
   const { toast } = useToast();
@@ -70,19 +70,17 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
   const handleFinishAction = (formData: FormData) => {
     startFinishTransition(async () => {
-        if (!user) return;
-        // The redirect error is expected and handled by Next.js, no need for try/catch here.
-        const boundAction = finishRentalAction.bind(null, user.uid);
+        if (!accountId) return;
+        const boundAction = finishRentalAction.bind(null, accountId);
         await boundAction(formData);
-        // This toast might not be shown due to the redirect, which is acceptable.
         toast({ title: "Sucesso!", description: "Aluguel finalizado." });
     })
   }
 
   const handleCancelAction = () => {
      startCancelTransition(async () => {
-        if (!user) return;
-        const result = await cancelRentalAction(user.uid, rental.id);
+        if (!accountId) return;
+        const result = await cancelRentalAction(accountId, rental.id);
         if (result.message === 'error') {
             toast({ title: "Erro", description: result.error, variant: "destructive"});
         } else {

@@ -28,7 +28,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 export function ClientForm({ onSave }: { onSave?: () => void }) {
-  const { user } = useAuth();
+  const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const formRef = useRef<HTMLFormElement>(null);
@@ -67,17 +67,17 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
 
   const action = (formData: FormData) => {
     startTransition(async () => {
-      if (!user) {
-        toast({ title: 'Erro', description: 'Você não está autenticado.', variant: 'destructive' });
+      if (!accountId) {
+        toast({ title: 'Erro', description: 'Conta não identificada.', variant: 'destructive' });
         return;
       }
-      const boundAction = createClient.bind(null, user.uid);
+      const boundAction = createClient.bind(null, accountId);
       const result = await boundAction(state, formData);
       setState(result);
     });
   };
 
-  if (!user) {
+  if (!accountId) {
     return <div className="flex justify-center items-center"><Spinner /></div>;
   }
 

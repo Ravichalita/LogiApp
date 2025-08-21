@@ -41,7 +41,7 @@ interface RentalFormProps {
 }
 
 export function RentalForm({ dumpsters, clients }: RentalFormProps) {
-  const { user } = useAuth();
+  const { accountId, user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
@@ -82,12 +82,11 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
-        if (!user) {
+        if (!accountId || !user) {
             toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
             return;
         }
         
-        // Append date and location data to formData right before submission
         if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
         if (returnDate) formData.set('returnDate', returnDate.toISOString());
         if (location) {
@@ -95,7 +94,7 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
           formData.set('longitude', String(location.lng));
         }
 
-        const boundAction = createRental.bind(null, user.uid);
+        const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
 
         if (result?.errors) {
