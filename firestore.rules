@@ -1,0 +1,32 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read their own user document
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow user creation for signup
+      allow create: if request.auth != null;
+    }
+
+    // Protect the accounts collection
+    match /accounts/{accountId} {
+      // Helper function to check if the requesting user belongs to the account
+      function userIsMemberOfAccount() {
+        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
+      }
+
+      // Accounts can be read by their members
+      allow read: if request.auth != null && userIsMemberOfAccount();
+      // Allow account creation during signup
+      allow create: if request.auth != null;
+
+      // Any subcollection within an account can be read/written by account members
+      match /{subcollection}/{docId=**} {
+        allow read, write, delete: if request.auth != null && userIsMemberOfAccount();
+      }
+    }
+  }
+}
