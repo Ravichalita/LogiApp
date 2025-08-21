@@ -15,13 +15,26 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     const usersRef = firestore.collection('users');
-    const q = usersRef.where('email', '>=', `@${domain}`).where('email', '<=', `@${domain}\uf8ff`).limit(1);
-    const snapshot = await q.get();
+    // We search for any user whose email ends with the given domain.
+    // Firestore doesn't support "endsWith" queries, so we fetch one user
+    // with the domain and assume all users from that domain share the account.
+    const q = usersRef.where('email', '>=', `@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
 
-    if (!snapshot.empty) {
-        const existingUser = snapshot.docs[0].data();
-        return existingUser.accountId;
+    try {
+        const snapshot = await q.get();
+
+        if (!snapshot.empty) {
+            for(const doc of snapshot.docs) {
+                const user = doc.data();
+                if (user.email && user.email.endsWith(`@${domain}`)) {
+                    return user.accountId;
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error finding account by email domain:", error);
     }
+    
     return null;
 }
 
