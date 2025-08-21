@@ -1,13 +1,11 @@
 
 'use client';
 
-import { useEffect, useState, useTransition, useRef } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, updateRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, CheckCircle, MapPin } from 'lucide-react';
+import { CalendarIcon, CheckCircle, MapPin, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -15,44 +13,14 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { isRedirectError } from 'next/dist/client/components/redirect';
+import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
 
 export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
   const { user } = useAuth();
-  const [returnDate, setReturnDate] = useState<Date | undefined>(new Date(rental.returnDate));
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const updateFormRef = useRef<HTMLFormElement>(null);
   const finishFormRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (returnDate && new Date(returnDate).getTime() !== new Date(rental.returnDate).getTime()) {
-      setTimeout(() => {
-        updateFormRef.current?.requestSubmit();
-      }, 0);
-    }
-  }, [returnDate, rental.returnDate]);
-  
-  const handleDateUpdateAction = (formData: FormData) => {
-    startTransition(async () => {
-      if (!user) return;
-      const boundAction = updateRentalAction.bind(null, user.uid);
-      const result = await boundAction(prevState => prevState, formData);
-       if (result.message === 'error') {
-        toast({
-          title: 'Erro',
-          description: result.error,
-          variant: 'destructive',
-        });
-        setReturnDate(new Date(rental.returnDate));
-      } else {
-        toast({
-          title: 'Sucesso!',
-          description: 'Data de retirada atualizada.',
-        });
-      }
-    });
-  };
 
   const handleFinishAction = (formData: FormData) => {
     startTransition(async () => {
@@ -75,37 +43,14 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
 
   return (
     <div>
-       <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            disabled={isPending}
-            className={cn(
-              "w-auto justify-start text-left font-semibold p-0 h-auto",
-              !returnDate && "text-muted-foreground"
-            )}
-          >
-            <span className="text-base">{returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <Calendar
-            mode="single"
-            selected={returnDate}
-            onSelect={setReturnDate}
-            disabled={(date) => new Date(date).setHours(0,0,0,0) < new Date(rental.rentalDate).setHours(0,0,0,0) || isPending}
-            initialFocus
-            locale={ptBR}
-          />
-        </PopoverContent>
-      </Popover>
-
-      <form ref={updateFormRef} action={handleDateUpdateAction} className="hidden">
-        <input type="hidden" name="id" value={rental.id} />
-        <input type="hidden" name="returnDate" value={returnDate?.toISOString()} />
-      </form>
+        <p className="text-sm text-muted-foreground">Período</p>
+        <p className="font-semibold text-base">
+            {format(rental.rentalDate, "dd/MM/yy", { locale: ptBR })} - {format(rental.returnDate, "dd/MM/yy", { locale: ptBR })}
+        </p>
 
       <div className="flex flex-col sm:flex-row w-full gap-2 mt-4">
+         <EditRentalPeriodDialog rental={rental} />
+
         {rental.latitude && rental.longitude && (
           <Button variant="outline" className="w-full" asChild>
             <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">

@@ -284,17 +284,24 @@ export async function finishRentalAction(userId: string, formData: FormData) {
 
 const updateRentalSchema = z.object({
   id: z.string(),
+  rentalDate: z.coerce.date(),
   returnDate: z.coerce.date(),
+}).refine(data => data.returnDate > data.rentalDate, {
+    message: "A data de retirada deve ser após a data de entrega.",
+    path: ["returnDate"],
 });
 
 
 export async function updateRentalAction(userId: string, prevState: any, formData: FormData) {
   if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
   
-  const validatedFields = updateRentalSchema.safeParse({
+  const data = {
     id: formData.get('id'),
+    rentalDate: formData.get('rentalDate'),
     returnDate: formData.get('returnDate'),
-  });
+  };
+  
+  const validatedFields = updateRentalSchema.safeParse(data);
 
   if (!validatedFields.success) {
     return {
@@ -304,16 +311,10 @@ export async function updateRentalAction(userId: string, prevState: any, formDat
   }
 
   try {
-    const rental = await getRentalById(userId, validatedFields.data.id);
-    if (!rental) {
-        return { message: 'error', error: 'Aluguel não encontrado.' };
-    }
-    // Firestore Admin SDK returns Timestamps, need to convert to Dates for comparison
-    const rentalDate = (rental.rentalDate as any).toDate ? (rental.rentalDate as any).toDate() : rental.rentalDate;
-    if (new Date(validatedFields.data.returnDate) < rentalDate) {
-        throw new Error('A data de devolução não pode ser anterior à data de aluguel.');
-    }
-    await updateRentalData(userId, validatedFields.data.id, { returnDate: validatedFields.data.returnDate });
+    await updateRentalData(userId, validatedFields.data.id, { 
+        returnDate: validatedFields.data.returnDate,
+        rentalDate: validatedFields.data.rentalDate,
+    });
     revalidatePath('/');
     return { message: 'success' };
   } catch (e: any) {
