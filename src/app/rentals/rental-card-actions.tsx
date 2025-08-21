@@ -102,7 +102,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     <span className="font-medium">{rental.deliveryAddress}</span>
                 </div>
             </div>
-             {rental.latitude && rental.longitude && (
+            {!!rental.latitude && !!rental.longitude && (
               <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" asChild>
                 <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
                     <GoogleMapsIcon className="h-4 w-4" />
