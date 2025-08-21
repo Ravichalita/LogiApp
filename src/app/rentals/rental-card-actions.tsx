@@ -52,6 +52,16 @@ function calculateRentalDays(startDate: string, endDate: string): number {
     return Math.max(diff, 1); // Ensure at least 1 day is charged
 }
 
+function formatPhoneNumberForWhatsApp(phone: string): string {
+    let digits = phone.replace(/\D/g, '');
+    // Ensure it has the country code (assuming Brazil 55)
+    if (digits.length === 10 || digits.length === 11) {
+        digits = `55${digits}`;
+    }
+    return digits;
+}
+
+
 function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 18" fill="none" {...props}>
@@ -150,7 +160,15 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Telefone</span>
-                            <span className="font-medium">{rental.client?.phone}</span>
+                             <a 
+                                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="font-medium text-primary hover:underline"
+                            >
+                                {rental.client?.phone}
+                            </a>
+                            <span className="text-xs text-muted-foreground">Toque para abrir no WhatsApp</span>
                         </div>
                     </div>
                     {rental.client?.email && (
