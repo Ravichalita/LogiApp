@@ -7,14 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { startOfToday, format, isAfter, isWithinInterval } from 'date-fns';
+import { isAfter, isWithinInterval, startOfToday, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 
 function DumpsterTableSkeleton() {
@@ -44,12 +46,21 @@ function DumpsterTableSkeleton() {
     );
 }
 
+const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[] = [
+    { label: "Todas", value: 'Todos' },
+    { label: "Disponível", value: 'Disponível' },
+    { label: "Alugada", value: 'Alugada' },
+    { label: "Reservada", value: 'Reservada' },
+    { label: "Manutenção", value: 'Em Manutenção' },
+];
+
 export default function DumpstersPage() {
   const { user } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos'>('Todos');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -59,7 +70,6 @@ export default function DumpstersPage() {
         setDumpsters(data);
         if(loading) setLoading(false);
       });
-      // Fetch all active and future rentals to determine derived status
       const unsubscribeRentals = getRentals(user.uid, (data) => {
         setAllRentals(data);
       });
@@ -75,35 +85,29 @@ export default function DumpstersPage() {
     }
   }, [user, loading]);
 
- const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
+  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
     
-    const rentalsByDumpster = new Map<string, Rental[]>();
-    allRentals.forEach(rental => {
-        const existing = rentalsByDumpster.get(rental.dumpsterId) || [];
-        rentalsByDumpster.set(rental.dumpsterId, [...existing, rental]);
-    });
-
     return dumpsters.map(d => {
       if (d.status === 'Em Manutenção') {
         return { ...d, derivedStatus: 'Em Manutenção' };
       }
       
-      const dumpsterRentals = rentalsByDumpster.get(d.id);
+      const dumpsterRentals = allRentals.filter(r => r.dumpsterId === d.id);
       
-      // An active rental is one that is currently happening or is overdue
-      const activeRental = dumpsterRentals?.find(r => 
-        isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) }) ||
-        isAfter(today, new Date(r.returnDate))
-      );
+      const activeRental = dumpsterRentals.find(r => {
+          const rentalStart = new Date(r.rentalDate);
+          const rentalEnd = new Date(r.returnDate);
+          // It's active if today is within the rental period OR if the return date has passed (overdue)
+          return isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
+      });
 
       if(activeRental) {
         return { ...d, derivedStatus: 'Alugada' };
       }
 
-      // Check for future reservations if not rented
-       const futureRental = dumpsterRentals
-        ?.filter(r => isAfter(new Date(r.rentalDate), today))
+      const futureRental = dumpsterRentals
+        .filter(r => isAfter(new Date(r.rentalDate), today))
         .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0]; 
 
       if (futureRental) {
@@ -116,17 +120,27 @@ export default function DumpstersPage() {
 
   }, [dumpsters, allRentals]);
 
-
   const filteredDumpsters = useMemo(() => {
-    if (!searchTerm) {
-      return dumpstersWithDerivedStatus;
+    let result = dumpstersWithDerivedStatus;
+
+    if (statusFilter !== 'Todos') {
+        if (statusFilter === 'Reservada') {
+            result = result.filter(d => d.derivedStatus.startsWith('Reservada para'));
+        } else {
+            result = result.filter(d => d.derivedStatus === statusFilter);
+        }
     }
-    return dumpstersWithDerivedStatus.filter(d =>
-      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      d.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(d.size).includes(searchTerm)
-    );
-  }, [dumpstersWithDerivedStatus, searchTerm]);
+
+    if (searchTerm) {
+      result = result.filter(d =>
+        d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.color.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(d.size).includes(searchTerm)
+      );
+    }
+
+    return result;
+  }, [dumpstersWithDerivedStatus, searchTerm, statusFilter]);
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
     if (!user) return;
@@ -170,6 +184,19 @@ export default function DumpstersPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                <div className="flex flex-wrap gap-2 pt-4">
+                    {filterOptions.map(option => (
+                        <Button
+                            key={option.value}
+                            variant={statusFilter === option.value ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setStatusFilter(option.value as DerivedDumpsterStatus | 'Todos')}
+                            className="text-xs h-7"
+                        >
+                            {option.label}
+                        </Button>
+                    ))}
+                </div>
             </CardHeader>
             <CardContent>
                 {loading ? <DumpsterTableSkeleton /> : (
@@ -198,7 +225,7 @@ export default function DumpstersPage() {
                             )) : (
                                 <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
-                                    Nenhuma caçamba cadastrada.
+                                    Nenhuma caçamba encontrada.
                                 </TableCell>
                                 </TableRow>
                             )}
@@ -234,7 +261,7 @@ export default function DumpstersPage() {
                            )
                         }) : (
                             <div className="text-center py-10">
-                            <p>Nenhuma caçamba cadastrada.</p>
+                                <p>Nenhuma caçamba encontrada.</p>
                             </div>
                         )}
                         </div>
