@@ -4,15 +4,14 @@
 import { useEffect, useState, useMemo } from 'react';
 import { fetchClients, getDumpsters, getRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RentalForm } from './rental-form';
+import { RentalForm, type DumpsterForForm } from './rental-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental } from '@/lib/types';
-import { isAfter, isWithinInterval, startOfToday } from 'date-fns';
-
+import { isAfter, isWithinInterval, startOfToday, format } from 'date-fns';
 
 export default function NewRentalPage() {
   const { user } = useAuth();
@@ -25,9 +24,7 @@ export default function NewRentalPage() {
     if (user) {
       const fetchData = async () => {
         setLoading(true);
-        const [userClients] = await Promise.all([
-          fetchClients(user.uid),
-        ]);
+        const userClients = await fetchClients(user.uid);
         setClients(userClients);
 
         const unsubDumpsters = getDumpsters(user.uid, setDumpsters);
@@ -50,29 +47,39 @@ export default function NewRentalPage() {
   }, [user]);
 
 
-  const availableDumpsters = useMemo(() => {
+  const dumpstersForForm = useMemo((): DumpsterForForm[] => {
     const today = startOfToday();
 
-    const unavailableDumpsterIds = new Set<string>();
-
-    // Mark dumpsters in maintenance as unavailable
-    dumpsters.forEach(d => {
-        if(d.status === 'Em Manutenção') {
-            unavailableDumpsterIds.add(d.id);
+    return dumpsters
+      .filter(d => {
+        // Exclude dumpsters in maintenance
+        if (d.status === 'Em Manutenção') {
+          return false;
         }
-    });
 
-    // Mark dumpsters that have an active, future, or overdue rental as unavailable
-    allRentals.forEach(r => {
-        const rentalStart = new Date(r.rentalDate);
-        const rentalEnd = new Date(r.returnDate);
-        // A dumpster is unavailable if it's currently rented, overdue, or has a future booking.
-        if (isAfter(rentalEnd, today) || isWithinInterval(today, {start: rentalStart, end: rentalEnd}) || isAfter(today, rentalEnd)) {
-            unavailableDumpsterIds.add(r.dumpsterId);
+        // Exclude dumpsters currently rented or overdue
+        const activeOrOverdueRental = allRentals.find(r => 
+          r.dumpsterId === d.id && 
+          (isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) }) || isAfter(today, new Date(r.returnDate)))
+        );
+
+        return !activeOrOverdueRental;
+      })
+      .map(d => {
+        // Find the next reservation if it exists
+        const futureRental = allRentals
+          .filter(r => r.dumpsterId === d.id && isAfter(new Date(r.rentalDate), today))
+          .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0];
+        
+        if (futureRental) {
+          return {
+            ...d,
+            availableUntil: new Date(futureRental.rentalDate),
+          };
         }
-    });
-    
-    return dumpsters.filter(d => !unavailableDumpsterIds.has(d.id));
+        
+        return { ...d, availableUntil: undefined };
+      });
   }, [dumpsters, allRentals]);
 
   return (
@@ -98,14 +105,14 @@ export default function NewRentalPage() {
                  <Skeleton className="h-10 w-full" />
               </div>
             </div>
-          ) : (availableDumpsters.length > 0 && clients.length > 0) ? (
-             <RentalForm dumpsters={availableDumpsters} clients={clients} />
+          ) : (dumpstersForForm.length > 0 && clients.length > 0) ? (
+             <RentalForm dumpsters={dumpstersForForm} clients={clients} />
           ) : (
             <Alert>
               <Truck className="h-4 w-4" />
               <AlertTitle>Faltam informações para criar um aluguel!</AlertTitle>
               <AlertDescription>
-                {availableDumpsters.length === 0 && <p>Não há caçambas disponíveis. <Link href="/dumpsters" className="font-bold underline">Gerencie suas caçambas</Link>.</p>}
+                {dumpstersForForm.length === 0 && <p>Não há caçambas disponíveis. <Link href="/dumpsters" className="font-bold underline">Gerencie suas caçambas</Link>.</p>}
                 {clients.length === 0 && <p>Não há clientes cadastrados. <Link href="/clients" className="font-bold underline">Cadastre um novo cliente</Link>.</p>}
               </AlertDescription>
             </Alert>

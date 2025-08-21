@@ -25,6 +25,8 @@ const initialState = {
   message: '',
 };
 
+export type DumpsterForForm = Dumpster & { availableUntil?: Date };
+
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button type="submit" disabled={isPending} size="lg">
@@ -34,7 +36,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 interface RentalFormProps {
-  dumpsters: Dumpster[];
+  dumpsters: DumpsterForForm[];
   clients: Client[];
 }
 
@@ -130,7 +132,18 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
             <SelectValue placeholder="Selecione uma caçamba disponível" />
           </SelectTrigger>
           <SelectContent>
-            {dumpsters.map(d => <SelectItem key={d.id} value={d.id}>{`${d.name} (${d.size}m³, ${d.color})`}</SelectItem>)}
+            {dumpsters.map(d => (
+              <SelectItem key={d.id} value={d.id}>
+                <div className="flex justify-between w-full">
+                    <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
+                    {d.availableUntil && (
+                      <span className="text-xs text-muted-foreground ml-4">
+                        Disponível até {format(d.availableUntil, "dd/MM/yy")}
+                      </span>
+                    )}
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{errors.dumpsterId[0]}</p>}
