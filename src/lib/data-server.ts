@@ -4,7 +4,7 @@
 // This file is server-only and uses the Firebase Client SDK for server-side operations
 import { db } from './firebase';
 import type { Client, Dumpster, Rental, CompletedRental } from './types';
-import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp, getDocs, setDoc } from 'firebase/firestore';
 
 
 // --- Generic Functions ---
@@ -67,27 +67,21 @@ async function deleteDocument(accountId: string, collectionName: string, docId: 
 // Called from a server action during signup
 export async function createAccountForNewUser(userId: string, email: string) {
     try {
-        const batch = writeBatch(db);
-
         // 1. Create a new account document and get its ID
-        const accountRef = doc(collection(db, 'accounts'));
-        const accountId = accountRef.id;
-        batch.set(accountRef, {
+        const accountRef = await addDoc(collection(db, 'accounts'), {
             ownerId: userId,
             name: `${email}'s Account`,
             createdAt: new Date(),
         });
+        const accountId = accountRef.id;
         
         // 2. Create the user document and link it to the new account ID
         const userRef = doc(db, 'users', userId);
-        batch.set(userRef, {
+        await setDoc(userRef, {
             email: email,
             accountId: accountId, // Use the generated accountId here
             role: 'admin', // First user is always an admin
         });
-
-        // 3. Commit the batch
-        await batch.commit();
 
     } catch(error) {
         console.error("Error creating account and user document:", error);

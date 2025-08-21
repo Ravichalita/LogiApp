@@ -34,34 +34,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is authenticated with Firebase, now get our user document
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        // User is authenticated with Firebase, check if they are verified
+        if (firebaseUser.emailVerified) {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists()) {
+          if (userDocSnap.exists()) {
             const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-            if (firebaseUser.emailVerified) {
-                // All good: user is verified and has a user document
-                setUser(firebaseUser);
-                setUserAccount(userAccountData);
-                setAccountId(userAccountData.accountId);
-            } else {
-                // User is not verified, redirect to verification page
-                setUser(null); // Keep user object null to prevent access
-                setUserAccount(null);
-                setAccountId(null);
-                if (!pathname.startsWith('/verify-email')) {
-                    router.push('/verify-email');
-                }
-            }
+            setUser(firebaseUser);
+            setUserAccount(userAccountData);
+            setAccountId(userAccountData.accountId);
+          } else {
+            // User exists in Auth but not in Firestore, something is wrong
+            console.error("User document not found in Firestore for UID:", firebaseUser.uid);
+            await signOut(auth); // Log them out to prevent broken state
+            setUser(null);
+            setUserAccount(null);
+            setAccountId(null);
+          }
         } else {
-          // User exists in Auth but not in Firestore, something is wrong
-          // This might happen if Firestore write fails during signup
-          console.error("User document not found in Firestore for UID:", firebaseUser.uid);
-          await signOut(auth); // Log them out to be safe
-          setUser(null);
+          // User is not verified, redirect to verification page
+          setUser(null); 
           setUserAccount(null);
           setAccountId(null);
+          if (!pathname.startsWith('/verify-email')) {
+            router.push('/verify-email');
+          }
         }
       } else {
         // No user logged in
@@ -69,8 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserAccount(null);
         setAccountId(null);
       }
-      // CRITICAL: Set loading to false after all checks are done
-      setLoading(false);
+      setLoading(false); // CRITICAL: Set loading to false after all async checks are done
     });
 
     return () => unsubscribe();
