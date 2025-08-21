@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, deleteRental } from './data-server';
-import type { DumpsterStatus, Rental } from './types';
+import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
 
@@ -89,7 +89,7 @@ export async function deleteDumpsterAction(userId: string, id: string) {
 export async function updateDumpsterStatusAction(userId: string, id: string, status: DumpsterStatus) {
     if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        const docRef = await updateDocument(userId, 'dumpsters', id, { status });
+        await updateDumpsterData(userId, { id, status } as Dumpster);
         revalidatePath('/dumpsters');
         revalidatePath('/rentals/new');
         revalidatePath('/');
@@ -274,6 +274,7 @@ export async function finishRentalAction(userId: string, formData: FormData) {
 
     } catch (e) {
         console.error(e);
+        // This will be caught by Next.js error boundary
         throw new Error("Falha ao finalizar o aluguel.");
     }
 
