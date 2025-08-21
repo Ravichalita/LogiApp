@@ -35,7 +35,7 @@ const AccordionTrigger = React.forwardRef<
       {...props}
     >
       {children}
-      {/* If children are provided, we don't render the default chevron */}
+      {/* The default chevron is only displayed if there are no children */}
       {!children && <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />}
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
