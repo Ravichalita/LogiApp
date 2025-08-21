@@ -4,12 +4,12 @@ import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyC01nU7J9tn9vs_kL5E3d7y4aGmdFVM54U",
-    authDomain: "caambacontrol3.firebaseapp.com",
     projectId: "caambacontrol3",
-    storageBucket: "caambacontrol3.appspot.com",
-    messagingSenderId: "11233123437",
-    appId: "1:11233123437:web:edd2f4c4df82467edab364"
+    appId: "1:11233123437:web:edd2f4c4df82467edab364",
+    storageBucket: "caambacontrol3.firebasestorage.app",
+    apiKey: "AIzaSyABRxn8A7wsLOwhl0CaZGN9ZeQiUoiLdDs",
+    authDomain: "caambacontrol3.firebaseapp.com",
+    messagingSenderId: "11233123437"
 };
 
 interface FirebaseInstances {
