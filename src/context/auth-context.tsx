@@ -41,32 +41,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { auth, db } = firebase;
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setLoading(true);
       if (firebaseUser) {
-        // Use onSnapshot to listen for real-time updates to the user document
+        // User is potentially logged in, now we need their user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const unsubUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
-          if (userDocSnap.exists()) {
-            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-            setUser(firebaseUser);
-            setUserAccount(userAccountData);
-            setAccountId(userAccountData.accountId);
-            setLoading(false); // Stop loading ONLY when we have all the data
-          } else {
-             // This can happen if the user is authenticated but their Firestore document
-             // has not been created yet or was deleted (e.g., during signup failure cleanup).
-             // We log them out to avoid being in a broken state.
-             console.error("User is authenticated but no user document found. Logging out.");
-             signOut(auth);
-             // setLoading(false) will be called in the 'else' block below
-          }
-        }, (error) => {
-            console.error("Error listening to user document:", error);
-            // If we can't read the user document, it's a permissions issue. Log out.
-            signOut(auth);
-        });
-        
-        // This will be called when the onAuthStateChanged listener is cleaned up
+        const unsubUserDoc = onSnapshot(userDocRef, 
+            (userDocSnap) => {
+                if (userDocSnap.exists()) {
+                    const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                    setUser(firebaseUser);
+                    setUserAccount(userAccountData);
+                    setAccountId(userAccountData.accountId);
+                    // This is critical: force a refresh of the token to get the latest custom claims.
+                    // This makes the security rules work reliably.
+                    firebaseUser.getIdToken(true); 
+                    setLoading(false);
+                } else {
+                    // User is authenticated but no user document found. Log them out.
+                    console.error("User is authenticated but no user document found. Logging out.");
+                    signOut(auth);
+                }
+            }, 
+            (error) => {
+                console.error("Error listening to user document, likely permissions. Logging out.", error);
+                signOut(auth);
+            }
+        );
         return () => unsubUserDoc();
       } else {
         // User is logged out
@@ -95,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (user.emailVerified && isVerifyRoute) {
         router.push('/');
       } else if (isNonAuthRoute && !isInviteFlow) {
-        // Logged-in user trying to access login/signup page (and it's not an invite). Redirect them.
         router.push('/');
       }
     } else { // User is not logged in
@@ -108,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     if (!firebase) return;
     await signOut(firebase.auth);
-    // State will be cleared by the onAuthStateChanged listener
     router.push('/login');
   };
 

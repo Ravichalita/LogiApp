@@ -3,7 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions to make rules more readable
     function isAuth() {
       return request.auth != null;
     }
@@ -12,39 +11,37 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == userId;
     }
     
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
+    // Custom claims (like accountId and role) are the recommended way to handle authorization.
+    // They are secure and don't require extra database reads in rules.
+    function belongsToAccount(accountId) {
+      return isAuth() && request.auth.token.accountId == accountId;
     }
 
-    // Rules for the users collection
+    function isAdmin() {
+      return isAuth() && request.auth.token.role == 'admin';
+    }
+
+    // Users can read their own document.
+    // They can read documents of other users in the same account.
     match /users/{userId} {
-      // ANY authenticated user can create their OWN user document.
-      allow create: if isAuth();
-
-      // A user can ONLY read THEIR OWN document.
-      allow get: if isOwner(userId);
+      allow get: if isOwner(userId) || belongsToAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
       
-      // A user can list other users ONLY IF they belong to the same account.
-      // The query from the client MUST include `where('accountId', '==', currentUser.accountId)`
-      allow list: if isAuth() && request.query.where.accountId == getUserData(request.auth.uid).accountId;
+      // A user can list users only if they are querying for their own account.
+      // This is the key rule to fix the team page.
+      allow list: if isAuth() && request.query.where.accountId == request.auth.token.accountId;
 
-      // A user can update their own name.
-      // An admin can update other users' role or status within the same account.
-      allow update: if isOwner(userId) && request.resource.data.keys().hasOnly(['name']) ||
-                     isAuth() && getUserData(request.auth.uid).role == 'admin' &&
-                     getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
+      // An admin can update any user in their own account.
+      // A regular user can only update their own document.
+      allow update: if (isAdmin() && belongsToAccount(resource.data.accountId)) || isOwner(userId);
       
-      // An admin can delete a user from their account. The user being deleted cannot be the admin themselves.
-      allow delete: if isAuth() && getUserData(request.auth.uid).role == 'admin' && 
-                       request.auth.uid != userId &&
-                       getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
+      // Only admins can create or delete users (handled by server-side logic).
+      allow create, delete: if false; 
     }
 
-    // Rules for all subcollections within an account
-    match /accounts/{accountId}/{document=**} {
-      // Allow read/write access only if the user's accountId (from their user doc)
-      // matches the accountId in the path.
-      allow read, write: if isAuth() && getUserData(request.auth.uid).accountId == accountId;
+    // Any document within an account's subcollection can only be accessed
+    // by users belonging to that account.
+    match /accounts/{accountId}/{documents=**} {
+      allow read, write: if belongsToAccount(accountId);
     }
   }
 }

@@ -15,16 +15,12 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     const usersRef = firestore.collection('users');
-    // As Firestore doesn't support ending-with queries, we fetch users with the same domain.
-    // This is not perfectly scalable but works for many scenarios.
-    // A more robust solution might involve a separate collection of domains.
     const q = usersRef.where('email', '>=', `a@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
 
     try {
         const snapshot = await q.get();
         if (!snapshot.empty) {
             const user = snapshot.docs[0].data();
-            // Ensure the found email actually belongs to the same domain.
             if (user.email && typeof user.email === 'string' && user.email.endsWith(`@${domain}`)) {
                 return user.accountId;
             }
@@ -36,12 +32,12 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
     return null;
 }
 
-
 /**
  * Ensures a user document exists in Firestore after user creation.
  * It creates the associated account and user documents in a transaction.
  * If an accountId is provided, it links the user to that existing account.
- * It also sets custom claims on the user's auth token, which is crucial for security rules.
+ * CRITICALLY, it sets custom claims on the user's auth token, which is the
+ * recommended and most secure way to handle authorization in Firestore rules.
  *
  * @param userRecord The user record from Firebase Admin Auth.
  * @param existingAccountId Optional ID of an existing account to join.
@@ -60,8 +56,8 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             const role = accountData?.role || 'viewer';
 
             // Ensure claims are set even if doc exists but claims are missing
-            if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
-                 await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
+             if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
+                await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
             }
             return accountId;
         }
@@ -70,11 +66,9 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         let role: 'admin' | 'viewer' = 'viewer';
 
         if (existingAccountId) {
-            // User is invited to an existing account.
             accountId = existingAccountId;
             role = 'viewer'; // Invited users are viewers by default
         } else {
-            // First user, or user from a new domain, becomes the admin of a new account.
             const accountRef = firestore.collection("accounts").doc();
             transaction.set(accountRef, {
                 ownerId: userRecord.uid,
@@ -90,7 +84,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário sem nome',
             accountId: accountId,
             role: role,
-            status: 'ativo', // Default status is active
+            status: 'ativo',
         };
 
         transaction.set(userDocRef, userAccountData);
@@ -102,11 +96,9 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         return accountId;
     }).catch(async (error) => {
         console.error("Error in ensureUserDocument transaction, attempting to clean up Auth user:", error);
-        // If the database transaction fails, we should not leave an orphaned auth user.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });
-        // Re-throw the original error to be handled by the caller action.
         throw error;
     });
 }
