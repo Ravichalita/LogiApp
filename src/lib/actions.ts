@@ -34,7 +34,7 @@ function handleFirebaseError(error: unknown): string {
 
 // #region Auth Actions
 
-export async function signupAction(prevState: any, formData: FormData) {
+export async function signupAction(inviterAccountId: string | null, prevState: any, formData: FormData) {
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
@@ -54,12 +54,31 @@ export async function signupAction(prevState: any, formData: FormData) {
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      // Instead of creating the user here, we just validate and return the data.
-      // The client will handle the creation and the email sending.
+      // Se não for um convite, procure uma conta pelo domínio
+      let accountIdToJoin = inviterAccountId;
+      if (!accountIdToJoin) {
+          const domain = email.split('@')[1];
+          accountIdToJoin = await findAccountByEmailDomain(domain);
+      }
+
+      const newUserRecord = await adminAuth.createUser({
+          email,
+          password,
+          displayName: name,
+          emailVerified: false, // O usuário precisará verificar.
+      });
+
+      // Garante que o documento do usuário seja criado no Firestore
+      await ensureUserDocument(newUserRecord, accountIdToJoin);
+      
+      // A criação no cliente envia o email, então essa ação agora é só para o caso do admin
+      // Como estamos criando no servidor, o e-mail não é enviado automaticamente.
+      // O fluxo de ir para /verify-email e clicar em reenviar é agora mandatório.
+      
       return {
         ...prevState,
-        message: 'validation_success',
-        validatedData: { name, email, password },
+        message: 'success',
+        isInvite: !!inviterAccountId,
       };
 
   } catch (e) {

@@ -15,18 +15,16 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     const usersRef = firestore.collection('users');
-    // We search for any user whose email ends with the given domain.
     const q = usersRef.where('email', '>=', `a@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
 
     try {
         const snapshot = await q.get();
-
         if (!snapshot.empty) {
-            for(const doc of snapshot.docs) {
-                const user = doc.data();
-                if (user.email && user.email.endsWith(`@${domain}`)) {
-                    return user.accountId;
-                }
+            // Check if the found user's email actually ends with the domain,
+            // as the query is a range scan and might match prefixes.
+            const user = snapshot.docs[0].data();
+            if (user.email && typeof user.email === 'string' && user.email.endsWith(`@${domain}`)) {
+                return user.accountId;
             }
         }
     } catch (error) {
@@ -45,7 +43,7 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
  * @param userRecord The user record from Firebase Admin Auth.
  * @param existingAccountId Optional ID of an existing account to join.
  * @returns The ID of the account the user is associated with.
- * @throws An error if the document creation fails after multiple retries.
+ * @throws An error if the document creation fails.
  */
 export async function ensureUserDocument(userRecord: UserRecord, existingAccountId?: string | null): Promise<string> {
     const userDocRef = firestore.doc(`users/${userRecord.uid}`);
@@ -53,6 +51,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
     try {
         const docSnap = await userDocRef.get();
         if (docSnap.exists) {
+            console.warn(`User document for ${userRecord.uid} already exists.`);
             return docSnap.data()?.accountId;
         }
 
@@ -63,11 +62,11 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         if (existingAccountId) {
             accountId = existingAccountId;
         } else {
-            // First user from a domain becomes the admin of a new account
+            // First user from a domain (or any new user) becomes the admin of a new account
             const accountRef = firestore.collection("accounts").doc();
             batch.set(accountRef, {
                 ownerId: userRecord.uid,
-                name: `${userRecord.displayName || userRecord.email}'s Account`,
+                name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
                 createdAt: FieldValue.serverTimestamp(),
             });
             accountId = accountRef.id;
@@ -87,9 +86,11 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         return accountId;
     } catch (error) {
         console.error("Error in ensureUserDocument:", error);
+        // Attempt to clean up the Auth user if the DB operation fails
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`Failed to cleanup auth user ${userRecord.uid} after doc creation failure:`, delErr)
         });
+        // Re-throw the original error to be handled by the caller
         throw error;
     }
 }

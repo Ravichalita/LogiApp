@@ -7,7 +7,7 @@ import { onAuthStateChanged, User, signOut, Auth, Firestore } from 'firebase/aut
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 
 interface AuthContextType {
@@ -20,7 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
+const nonAuthRoutes = ['/login', '/signup']; // verify-email is a protected route now
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -44,35 +44,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { auth, db } = firebase;
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
-        let userDocSnap;
+        // Use onSnapshot to listen for real-time updates to the user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const unsubUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
+          if (userDocSnap.exists()) {
+            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+            setUser(firebaseUser);
+            setUserAccount(userAccountData);
+            setAccountId(userAccountData.accountId);
+          } else {
+             // This might happen briefly after creation due to replication delay
+             console.log("User document not yet available for UID:", firebaseUser.uid);
+             setUser(firebaseUser); // Set firebase user but account data is pending
+             setUserAccount(null);
+             setAccountId(null);
+          }
+           setLoading(false);
+        }, (error) => {
+            console.error("Error listening to user document:", error);
+            signOut(auth); // Log out on error to prevent inconsistent state
+        });
         
-        // Retry logic to handle Firestore replication delay
-        for (let i = 0; i < 5; i++) {
-            userDocSnap = await getDoc(userDocRef);
-            if (userDocSnap.exists()) break;
-            await delay(i < 2 ? 500 : 1000);
-        }
-        
-        if (userDocSnap && userDocSnap.exists()) {
-          const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-          setUser(firebaseUser);
-          setUserAccount(userAccountData);
-          setAccountId(userAccountData.accountId);
-        } else {
-          console.error("User document not found in Firestore for UID:", firebaseUser.uid, "after multiple retries.");
-          await signOut(auth); // Log out to prevent inconsistent state
-          setUser(null);
-          setUserAccount(null);
-          setAccountId(null);
-        }
+        // This will be called when the onAuthStateChanged listener is cleaned up
+        return () => unsubUserDoc();
       } else {
         setUser(null);
         setUserAccount(null);
         setAccountId(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -82,17 +84,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (loading) return;
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
+    const isVerifyRoute = pathname.startsWith('/verify-email');
 
     if (user) {
-      if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
+      if (!user.emailVerified && !isVerifyRoute) {
         router.push('/verify-email');
-      } else if (user.emailVerified && pathname.startsWith('/verify-email')) {
+      } else if (user.emailVerified && isVerifyRoute) {
         router.push('/');
-      } else if (isNonAuthRoute && !pathname.startsWith('/verify-email') && !pathname.startsWith('/signup')) {
-         router.push('/');
+      } else if (isNonAuthRoute) {
+        // Logged-in user trying to access login/signup. Redirect them.
+        router.push('/');
       }
     } else {
-      if (!isNonAuthRoute) {
+      // Not logged-in
+      if (!isNonAuthRoute && !isVerifyRoute) {
         router.push('/login');
       }
     }
@@ -107,9 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  const isAppLoading = loading || (!user && !nonAuthRoutes.some(route => pathname.startsWith(route)));
-
-  if (isAppLoading) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />
