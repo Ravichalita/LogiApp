@@ -4,9 +4,32 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRental } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRental, createAccountForNewUser } from './data-server';
 import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
+
+
+const createUserAccountSchema = z.object({
+  userId: z.string(),
+  email: z.string().email(),
+});
+
+export async function createUserAccountAction(data: z.infer<typeof createUserAccountSchema>) {
+  const validatedFields = createUserAccountSchema.safeParse(data);
+  if (!validatedFields.success) {
+    return {
+      message: 'error',
+      error: 'Dados de usuário inválidos.',
+    };
+  }
+
+  try {
+    await createAccountForNewUser(validatedFields.data.userId, validatedFields.data.email);
+    return { message: 'success' };
+  } catch (e: any) {
+    return { message: 'error', error: e.message || 'Falha ao criar a conta no Firestore.' };
+  }
+}
 
 
 const dumpsterSchema = z.object({

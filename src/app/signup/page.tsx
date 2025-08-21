@@ -1,10 +1,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, setDoc, writeBatch, collection } from 'firebase/firestore';
+import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Truck } from 'lucide-react';
+import { createUserAccountAction } from '@/lib/actions';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -32,63 +32,57 @@ export default function SignupPage() {
       });
       return;
     }
-     if (password.length < 6) {
+    if (password.length < 6) {
       toast({
-        title: "Erro",
-        description: "A senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'A senha deve ter pelo menos 6 caracteres.',
+        variant: 'destructive',
       });
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
+      // 1. Create the user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create a new account and user document in a batch write
-      const batch = writeBatch(db);
-
-      // 1. Create a new account
-      const accountRef = doc(collection(db, 'accounts'));
-      batch.set(accountRef, {
-        ownerId: user.uid,
-        name: `${user.email}'s Account`,
-        createdAt: new Date(),
+      // 2. Call a server action to create the user account and user document in Firestore
+      const result = await createUserAccountAction({
+        userId: user.uid,
+        email: user.email!,
       });
+      
+      if (result.message === 'error') {
+        throw new Error(result.error);
+      }
 
-      // 2. Create the user document and link it to the account
-      const userRef = doc(db, 'users', user.uid);
-      batch.set(userRef, {
-          email: user.email,
-          accountId: accountRef.id,
-          role: 'admin', // First user is always an admin
-      });
-
-      await batch.commit();
-
-      await sendEmailVerification(userCredential.user);
+      // 3. Send verification email
+      await sendEmailVerification(user);
       toast({
         title: 'Verificação Necessária',
-        description: 'Enviamos um link de verificação para o seu e-mail. Por favor, clique nele para ativar sua conta.',
+        description:
+          'Enviamos um link de verificação para o seu e-mail. Por favor, clique nele para ativar sua conta.',
       });
       router.push('/verify-email');
     } catch (error: any) {
-        let errorMessage = "Ocorreu um erro desconhecido.";
-        if (error.code === 'auth/email-already-in-use') {
-            errorMessage = 'Este e-mail já está em uso por outra conta.';
-        } else if (error.code === 'auth/invalid-email') {
-            errorMessage = 'O formato do e-mail é inválido.';
-        } else if (error.code === 'auth/weak-password') {
-             errorMessage = 'A senha é muito fraca.';
-        }
+      let errorMessage = 'Ocorreu um erro desconhecido.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este e-mail já está em uso por outra conta.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'O formato do e-mail é inválido.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'A senha é muito fraca.';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
       toast({
         title: 'Erro no Cadastro',
         description: errorMessage,
         variant: 'destructive',
       });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 

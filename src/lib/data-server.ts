@@ -62,6 +62,30 @@ async function deleteDocument(accountId: string, collectionName: string, docId: 
 
 // --- Specific Functions ---
 
+// Called from a server action during signup
+export async function createAccountForNewUser(userId: string, email: string) {
+  const batch = adminDb.batch();
+
+  // 1. Create a new account
+  const accountRef = adminDb.collection('accounts').doc();
+  batch.set(accountRef, {
+    ownerId: userId,
+    name: `${email}'s Account`,
+    createdAt: new Date(),
+  });
+
+  // 2. Create the user document and link it to the account
+  const userRef = adminDb.collection('users').doc(userId);
+  batch.set(userRef, {
+    email: email,
+    accountId: accountRef.id,
+    role: 'admin', // First user is always an admin
+  });
+
+  await batch.commit();
+}
+
+
 // Clients
 export async function addClient(accountId: string, client: Omit<Client, 'id'>) {
   return addDocument(accountId, 'clients', client);
