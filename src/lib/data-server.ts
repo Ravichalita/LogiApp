@@ -2,7 +2,7 @@
 'use server';
 
 import type { UserRecord } from "firebase-admin/auth";
-import { adminDb, adminAuth } from "./firebase-admin";
+import { adminAuth } from "./firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 const firestore = getFirestore();
@@ -41,6 +41,7 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
  * Ensures a user document exists in Firestore after user creation.
  * It creates the associated account and user documents in a transaction.
  * If an accountId is provided, it links the user to that existing account.
+ * It also sets custom claims on the user's auth token, which is crucial for security rules.
  *
  * @param userRecord The user record from Firebase Admin Auth.
  * @param existingAccountId Optional ID of an existing account to join.
@@ -54,7 +55,15 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         const docSnap = await transaction.get(userDocRef);
         if (docSnap.exists) {
             console.warn(`User document for ${userRecord.uid} already exists.`);
-            return docSnap.data()?.accountId;
+            const accountId = docSnap.data()?.accountId;
+            // Ensure claims are set even if doc exists but claims are missing
+            if (request.auth?.token.accountId !== accountId) {
+                 await adminAuth.setCustomUserClaims(userRecord.uid, { 
+                    accountId: accountId, 
+                    role: docSnap.data()?.role || 'viewer' 
+                });
+            }
+            return accountId;
         }
 
         let accountId: string;

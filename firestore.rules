@@ -3,46 +3,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // Helper function to check if the authenticated user's token has a specific accountId.
+    // This is the core of the multi-tenant security.
+    function userIsInAccount(accountId) {
+      return request.auth != null && request.auth.token.accountId == accountId;
     }
     
-    function isUserInAccount(accountId) {
-      return isAuth() && getUserData().accountId == accountId;
-    }
-    
-    function isUserRole(role) {
-       return isAuth() && getUserData().role == role;
+    // Helper function to check if the authenticated user is an admin for their account.
+    function isAccountAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
     }
 
-    // Rules for the 'users' collection
-    match /users/{userId} {
-      // Allow a user to get another user's document if they are in the same account
-      allow get: if isAuth() && getUserData().accountId == resource.data.accountId;
-
-      // Allow a user to list users only if the query is constrained to their own account
-      allow list: if isAuth() && request.query.get('where')[0][2] == getUserData().accountId;
-
-      // Allow a user to update another user's document if they are an admin in the same account
-      allow update: if isUserInAccount(resource.data.accountId) && isUserRole('admin');
-
-      // Allow anyone to create a user document (signup)
-      allow create: if true;
-      
-      // Do not allow deletion of user documents through client-side requests for safety.
-      // Deletion is handled by a server-side action.
-      allow delete: if false;
-    }
-
-    // Rules for all subcollections within an account
+    // Rules for all collections under an account (clients, dumpsters, rentals, etc.)
+    // Access is granted if the user's token contains the correct accountId.
     match /accounts/{accountId}/{documents=**} {
-      // Allow read/write access only to users who belong to this account
-      allow read, write: if isUserInAccount(accountId);
+      allow read, write: if userIsInAccount(accountId);
+    }
+
+    // Rules for the top-level users collection
+    match /users/{userId} {
+      // Allow a user to read their own document.
+      // Allow any user to read another user's document IF they are in the same account.
+      allow get: if userIsInAccount(resource.data.accountId);
+      
+      // Allow a user to list documents from the 'users' collection ONLY IF
+      // the query explicitly filters for their own accountId. This prevents
+      // a user from listing users from other accounts.
+      // This is the key rule that fixes the "team members not appearing" issue.
+      allow list: if userIsInAccount(request.query.where.accountId);
+      
+      // Allow a user to update another user's document IF:
+      // 1. They are in the same account.
+      // 2. They have the 'admin' role in their token.
+      allow update: if userIsInAccount(resource.data.accountId) && isAccountAdmin();
+
+      // Allow anyone to create a user document, as this is handled by a server-side action (`signupAction`)
+      // which performs its own validation before creating the user.
+      allow create: if request.auth != null;
     }
   }
 }
