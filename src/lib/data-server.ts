@@ -55,13 +55,13 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         const docSnap = await transaction.get(userDocRef);
         if (docSnap.exists) {
             console.warn(`User document for ${userRecord.uid} already exists.`);
-            const accountId = docSnap.data()?.accountId;
+            const accountData = docSnap.data();
+            const accountId = accountData?.accountId;
+            const role = accountData?.role || 'viewer';
+
             // Ensure claims are set even if doc exists but claims are missing
-            if (request.auth?.token.accountId !== accountId) {
-                 await adminAuth.setCustomUserClaims(userRecord.uid, { 
-                    accountId: accountId, 
-                    role: docSnap.data()?.role || 'viewer' 
-                });
+            if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
+                 await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
             }
             return accountId;
         }

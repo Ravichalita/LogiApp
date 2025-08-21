@@ -3,12 +3,11 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onAuthStateChanged, User, signOut, Auth, Firestore, getIdToken, getIdTokenResult } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, Auth, Firestore } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -52,24 +51,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
+            // Once we have the user data, we can stop the main loading spinner
+            setLoading(false);
           } else {
              // This can happen if the user is authenticated but their Firestore document
-             // has not been created yet or was deleted. We should log them out to avoid
-             // being in a broken state.
+             // has not been created yet or was deleted (e.g., during signup failure cleanup).
+             // We should log them out to avoid being in a broken state.
              console.error("User is authenticated but no user document found. Logging out.");
              signOut(auth);
+             // setLoading(false) will be called in the 'else' block below
           }
-           setLoading(false);
         }, (error) => {
-            console.error("Error listening to user document:", error);
+            console.error("Error listening to user document (permissions issue?):", error);
             // If we can't read the user document (e.g., due to permissions),
             // it's safer to log the user out.
             signOut(auth);
+            // setLoading(false) will be called in the 'else' block below
         });
         
         // This will be called when the onAuthStateChanged listener is cleaned up
         return () => unsubUserDoc();
       } else {
+        // User is logged out
         setUser(null);
         setUserAccount(null);
         setAccountId(null);
@@ -95,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (user.emailVerified && isVerifyRoute) {
         router.push('/');
       } else if (isNonAuthRoute && !isInviteFlow) {
-        // Logged-in user trying to access login/signup page. Redirect them.
+        // Logged-in user trying to access login/signup page (and it's not an invite). Redirect them.
         router.push('/');
       }
     } else { // User is not logged in
@@ -108,9 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     if (!firebase) return;
     await signOut(firebase.auth);
-    setUser(null);
-    setUserAccount(null);
-    setAccountId(null);
+    // State will be cleared by the onAuthStateChanged listener
     router.push('/login');
   };
 
