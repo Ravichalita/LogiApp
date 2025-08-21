@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
@@ -35,16 +36,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (user) {
         if (user.emailVerified) {
           setUser(user);
-          // Fetch user profile from Firestore to get accountId and role
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDocSnap = await getDoc(userDocRef);
-          if (userDocSnap.exists()) {
-              const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-              setUserAccount(userAccountData);
-              setAccountId(userAccountData.accountId);
-          } else {
-             // This case might happen during the signup process before the user doc is created
-             console.log("User document doesn't exist yet.");
+          // Only fetch if userAccount is not already set for this user
+          if (!userAccount || userAccount.id !== user.uid) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                setUserAccount(userAccountData);
+                setAccountId(userAccountData.accountId);
+            } else {
+               console.log("User document doesn't exist yet.");
+               // This can happen on first signup, log them out to be safe
+               // or redirect to a waiting page. For now, we clear state.
+               setUser(null);
+               setUserAccount(null);
+               setAccountId(null);
+            }
           }
         } else {
           setUser(null);
@@ -63,16 +70,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [router, pathname]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
 
   useEffect(() => {
     if (loading) return;
 
-    const isPublicRoute = publicRoutes.includes(pathname);
+    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
     
     if (!user && !isPublicRoute) {
       router.push('/login');
-    } else if (user && user.emailVerified && authRoutes.includes(pathname)) {
+    } else if (user && user.emailVerified && authRoutes.some(route => pathname.startsWith(route))) {
       router.push('/');
     }
   }, [user, loading, pathname, router]);
@@ -86,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  if (loading || (!user && !publicRoutes.includes(pathname))) {
+  if (loading || (!user && !publicRoutes.some(route => pathname.startsWith(route)))) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />
