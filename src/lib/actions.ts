@@ -271,7 +271,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         const rentalRef = firestore.doc(`accounts/${accountId}/rentals/${rentalId}`);
         const rentalSnap = await rentalRef.get();
         
-        if (!rentalSnap.exists()) {
+        if (!rentalSnap.exists) {
             throw new Error('Aluguel não encontrado.');
         }
         
@@ -382,4 +382,5 @@ export async function resetBillingDataAction(accountId: string) {
 }
 // #endregion
 
+    
     

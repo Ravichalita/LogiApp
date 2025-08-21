@@ -1,5 +1,6 @@
 
 import { z } from 'zod';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // #region Base Schemas
 export const ClientSchema = z.object({
@@ -56,7 +57,7 @@ export const UpdateRentalSchema = z.object({
 
 export const CompletedRentalSchema = RentalSchema.omit({ status: true }).extend({
     originalRentalId: z.string(),
-    completedDate: z.any(), // Will be a server timestamp
+    completedDate: z.custom<FieldValue>(),
     rentalDays: z.number().positive(),
     totalValue: z.number().positive(),
 });
@@ -106,3 +107,5 @@ export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'cli
     client: Client | null;
 };
 // #endregion
+
+    
