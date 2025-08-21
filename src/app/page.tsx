@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { RentalCardActions } from './rentals/rental-card-actions';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInCalendarDays, startOfToday } from 'date-fns';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -100,6 +100,21 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  const getRentalStatus = (rental: PopulatedRental): { text: string; variant: 'default' | 'destructive' | 'secondary' | 'success' } => {
+    const today = startOfToday();
+    const rentalDate = new Date(rental.rentalDate);
+    const returnDate = new Date(rental.returnDate);
+    
+    if (rentalDate > today) {
+      return { text: 'Pendente', variant: 'secondary' };
+    }
+    if (returnDate < today) {
+      return { text: 'Em Atraso', variant: 'destructive' };
+    }
+    return { text: 'Ativo', variant: 'success' };
+  };
+
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <div className="flex justify-between items-center mb-6">
@@ -119,6 +134,7 @@ export default function DashboardPage() {
           {rentals.map(rental => {
             const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
             const totalValue = rental.value * rentalDays;
+            const status = getRentalStatus(rental);
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
@@ -128,7 +144,7 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2">
                                 <Truck className="h-6 w-6 text-primary" />
                                 <h3 className="font-bold text-lg font-headline">{rental.dumpster.name}</h3>
-                                <Badge variant="destructive" className="ml-2">Ativo</Badge>
+                                <Badge variant={status.variant} className="ml-2">{status.text}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
                                 <User className="h-4 w-4 shrink-0"/> <span>{rental.client.name}</span>
