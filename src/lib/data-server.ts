@@ -1,8 +1,9 @@
 
-// This file is server-only and uses the Firebase Admin SDK
-import { adminDb } from './firebase-admin';
-import type { Client, Dumpster, PopulatedRental, Rental, DumpsterStatus, CompletedRental } from './types';
-import { onSnapshot, collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+// This file is server-only and uses the Firebase Client SDK for server-side operations
+import { db } from './firebase';
+import type { Client, Dumpster, Rental, CompletedRental } from './types';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
+
 
 // --- Generic Functions ---
 
@@ -10,34 +11,33 @@ async function getDocumentById(accountId: string, collectionName: string, docId:
     if (!accountId) throw new Error('Conta não identificada.');
     if (!docId) throw new Error('ID do documento não fornecido.');
 
-    const ref = adminDb.collection('accounts').doc(accountId).collection(collectionName).doc(docId);
-    const doc = await ref.get();
+    const ref = doc(db, 'accounts', accountId, collectionName, docId);
+    const docSnap = await getDoc(ref);
 
-    if (!doc.exists) {
+    if (!docSnap.exists()) {
         return null;
     }
 
-    const data = doc.data()!;
+    const data = docSnap.data();
     // Convert Firestore Timestamps back to JS Dates for consistency
      for (const key in data) {
         if (data[key] instanceof Timestamp) {
           data[key] = data[key].toDate();
         }
       }
-    return { id: doc.id, ...data };
+    return { id: docSnap.id, ...data };
 }
 
 async function addDocument(accountId: string, collectionName: string, data: any) {
   if (!accountId) throw new Error('Conta não identificada.');
   
-  const ref = await adminDb
-    .collection('accounts')
-    .doc(accountId)
-    .collection(collectionName)
-    .add({
+  const ref = await addDoc(
+    collection(db, 'accounts', accountId, collectionName),
+    {
       ...data,
-      createdAt: new Date(), // Optional: add a creation timestamp
-    });
+      createdAt: new Date(),
+    }
+  );
   return { id: ref.id };
 }
 
@@ -45,8 +45,8 @@ async function updateDocument(accountId: string, collectionName: string, docId: 
     if (!accountId) throw new Error('Conta não identificada.');
     if (!docId) throw new Error('ID do documento não fornecido.');
 
-    const ref = adminDb.collection('accounts').doc(accountId).collection(collectionName).doc(docId);
-    await ref.update(data);
+    const ref = doc(db, 'accounts', accountId, collectionName, docId);
+    await updateDoc(ref, data);
     return { id: docId, ...data};
 }
 
@@ -54,8 +54,8 @@ async function deleteDocument(accountId: string, collectionName: string, docId: 
     if (!accountId) throw new Error('Conta não identificada.');
     if (!docId) throw new Error('ID do documento não fornecido.');
     
-    const ref = adminDb.collection('accounts').doc(accountId).collection(collectionName).doc(docId);
-    await ref.delete();
+    const ref = doc(db, 'accounts', accountId, collectionName, docId);
+    await deleteDoc(ref);
     return { success: true };
 }
 
@@ -65,9 +65,11 @@ async function deleteDocument(accountId: string, collectionName: string, docId: 
 // Called from a server action during signup
 export async function createAccountForNewUser(userId: string, email: string) {
     try {
-        // 1. Create a new account
-        const accountRef = adminDb.collection('accounts').doc();
-        await accountRef.set({
+        const batch = writeBatch(db);
+
+        // 1. Create a new account document (generate ID locally)
+        const accountRef = doc(collection(db, 'accounts'));
+        batch.set(accountRef, {
             ownerId: userId,
             name: `${email}'s Account`,
             createdAt: new Date(),
@@ -75,12 +77,16 @@ export async function createAccountForNewUser(userId: string, email: string) {
         const accountId = accountRef.id;
 
         // 2. Create the user document and link it to the account
-        const userRef = adminDb.collection('users').doc(userId);
-        await userRef.set({
+        const userRef = doc(db, 'users', userId);
+        batch.set(userRef, {
             email: email,
             accountId: accountId,
             role: 'admin', // First user is always an admin
         });
+
+        // 3. Commit the batch
+        await batch.commit();
+
     } catch(error) {
         console.error("Error creating account and user document:", error);
         throw new Error("Falha ao salvar informações do usuário no banco de dados.");
@@ -136,14 +142,14 @@ export async function completeRental(accountId: string, rentalId: string, comple
     if (!accountId) throw new Error('Conta não identificada.');
     if (!rentalId) throw new Error('ID do aluguel ausente.');
 
-    const batch = adminDb.batch();
+    const batch = writeBatch(db);
 
     // 1. Delete the active rental document
-    const rentalRef = adminDb.collection('accounts').doc(accountId).collection('rentals').doc(rentalId);
+    const rentalRef = doc(db, 'accounts', accountId, 'rentals', rentalId);
     batch.delete(rentalRef);
 
     // 2. Create a new record in the 'completedRentals' collection for statistics
-    const completedRentalRef = adminDb.collection('accounts').doc(accountId).collection('completedRentals').doc();
+    const completedRentalRef = doc(collection(db, 'accounts', accountId, 'completedRentals'));
     batch.set(completedRentalRef, completedRentalData);
 
 
@@ -153,14 +159,17 @@ export async function completeRental(accountId: string, rentalId: string, comple
 export async function deleteAllCompletedRentals(accountId: string) {
     if (!accountId) throw new Error('Conta não identificada.');
 
-    const collectionRef = adminDb.collection('accounts').doc(accountId).collection('completedRentals');
-    const snapshot = await collectionRef.get();
+    // This operation is more complex with client SDK on the server, as it requires fetching all docs first.
+    // Let's assume for now this is less frequent and can be done this way.
+    // For very large collections, a Cloud Function would be better.
+    const collectionRef = collection(db, 'accounts', accountId, 'completedRentals');
+    const snapshot = await getDocs(collectionRef);
 
     if (snapshot.empty) {
         return; // Nothing to delete
     }
 
-    const batch = adminDb.batch();
+    const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
         batch.delete(doc.ref);
     });

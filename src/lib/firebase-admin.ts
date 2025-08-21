@@ -1,10 +1,3 @@
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
 
-// When running in a Google Cloud environment, the SDK is automatically initialized.
-// No need to pass in service account credentials.
-const app = getApps().length
-  ? getApps()[0]
-  : initializeApp();
-
-export const adminDb = getFirestore(app);
+// This file is intentionally left blank to be removed. 
+// All server-side data logic now uses the client SDK via data-server.ts for consistency.

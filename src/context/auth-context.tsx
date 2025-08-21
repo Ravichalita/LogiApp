@@ -7,7 +7,7 @@ import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 
 interface AuthContextType {
@@ -45,11 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUserAccount(userAccountData);
               setAccountId(userAccountData.accountId);
             } else {
-              // User exists in Auth but not in Firestore, something is wrong
-              // This might happen if Firestore write fails during signup
-              console.error("User document not found in Firestore for UID:", firebaseUser.uid);
-              await signOut(auth); // Log them out to be safe
-              setUser(null);
+              // This can happen in a brief moment after signup before the server action completes.
+              // Instead of logging an error, we wait. If it persists, it's a real issue.
+              // For now, we treat it as "loading account data".
+              console.warn("User document not found for UID:", firebaseUser.uid, "- This might be temporary after signup.");
+              setUser(firebaseUser); // Set the user, but account is null
               setUserAccount(null);
               setAccountId(null);
             }
@@ -87,12 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
     
+    // If not logged in and not on a public page, redirect to login
     if (!user && !isPublicRoute) {
       router.push('/login');
-    } else if (user && user.emailVerified && authRoutes.some(route => pathname.startsWith(route))) {
+    } 
+    // If logged in, email is verified, but account data is still loading, wait.
+    // Except if we are on an auth page, then we can redirect away.
+    else if (user && user.emailVerified && !accountId && !isPublicRoute) {
+       // Still loading account details, do nothing, show spinner
+    }
+    // If logged in and on an auth page, redirect to home
+    else if (user && authRoutes.some(route => pathname.startsWith(route))) {
       router.push('/');
     }
-  }, [user, loading, pathname, router]);
+  }, [user, accountId, loading, pathname, router]);
 
 
   const logout = async () => {
@@ -104,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
-  if (loading && !isAuthPage) {
+  // Show a global spinner if we are loading auth state or account data, but not on public pages
+  if (loading || (user && !accountId && !isAuthPage)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />
