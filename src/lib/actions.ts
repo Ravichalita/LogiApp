@@ -24,6 +24,7 @@ export async function createUserAccountAction(data: z.infer<typeof createUserAcc
   }
 
   try {
+    // This function now uses the Admin SDK and is guaranteed to work from the server.
     await createAccountForNewUser(validatedFields.data.userId, validatedFields.data.email);
     return { message: 'success' };
   } catch (e: any) {

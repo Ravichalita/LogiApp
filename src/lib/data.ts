@@ -1,9 +1,11 @@
 
 'use client';
 import type { Dumpster, Client, Rental, FirestoreEntity, DumpsterStatus, PopulatedRental, CompletedRental, PopulatedCompletedRental, UserAccount } from './types';
-import { db, auth } from './firebase';
+import { getFirebase } from './firebase';
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, Timestamp, where, onSnapshot, query, deleteDoc } from 'firebase/firestore';
 import { startOfToday } from 'date-fns';
+
+const { db } = getFirebase();
 
 // --- Generic Firestore Functions (CLIENT-SIDE) ---
 

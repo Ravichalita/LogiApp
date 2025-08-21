@@ -2,7 +2,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { auth, db } from '@/lib/firebase';
+import { getFirebase } from '@/lib/firebase';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
@@ -20,8 +20,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const publicRoutes = ['/login', '/signup', '/verify-email'];
-const authRoutes = ['/login', '/signup'];
+const publicRoutes = ['/login', '/signup'];
+// Add verify-email to the list of routes that DON'T require an authenticated user.
+const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -30,12 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { auth, db } = getFirebase();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is authenticated with Firebase, check if they are verified
-        if (firebaseUser.emailVerified) {
+          if (!firebaseUser.emailVerified && !pathname.startsWith('/verify-email')) {
+             router.push('/verify-email');
+             setLoading(false);
+             return;
+          }
+
+          if(firebaseUser.emailVerified && pathname.startsWith('/verify-email')) {
+             router.push('/');
+          }
+          
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           const userDocSnap = await getDoc(userDocRef);
 
@@ -45,46 +56,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
           } else {
-            // User exists in Auth but not in Firestore, something is wrong
             console.error("User document not found in Firestore for UID:", firebaseUser.uid);
-            await signOut(auth); // Log them out to prevent broken state
+            await signOut(auth);
             setUser(null);
             setUserAccount(null);
             setAccountId(null);
           }
-        } else {
-          // User is not verified, redirect to verification page
-          setUser(null); 
-          setUserAccount(null);
-          setAccountId(null);
-          if (!pathname.startsWith('/verify-email')) {
-            router.push('/verify-email');
-          }
-        }
       } else {
-        // No user logged in
         setUser(null);
         setUserAccount(null);
         setAccountId(null);
       }
-      setLoading(false); // CRITICAL: Set loading to false after all async checks are done
+      setLoading(false);
     });
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [auth, db]); 
 
   useEffect(() => {
     if (loading) return;
 
-    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+    const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     
-    // If we're not loading, and there's no user, and we're not on a public route, redirect to login.
-    if (!user && !isPublicRoute) {
+    if (!user && !isNonAuthRoute) {
       router.push('/login');
     } 
-    // If there is a user and they are on an auth page (login/signup), redirect to home.
-    else if (user && authRoutes.some(route => pathname.startsWith(route))) {
+    else if (user && publicRoutes.some(route => pathname.startsWith(route))) {
       router.push('/');
     }
   }, [user, loading, pathname, router]);
@@ -97,9 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccountId(null);
     router.push('/login');
   };
+  
+  const isAppLoading = loading || (!user && !nonAuthRoutes.some(route => pathname.startsWith(route)));
 
-  // The main loading condition for the app.
-  if (loading) {
+  if (isAppLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />

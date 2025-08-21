@@ -1,13 +1,16 @@
 
 'use server';
 
-// This file is server-only and uses the Firebase Client SDK for server-side operations
-import { db } from './firebase';
+// This file is server-only and uses the Firebase Admin SDK for special cases like user creation.
+import { adminDb } from './firebase-server';
 import type { Client, Dumpster, Rental, CompletedRental } from './types';
-import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp, getDocs } from 'firebase/firestore';
+import { getFirebase } from './firebase';
 
+const { db } = getFirebase();
 
 // --- Generic Functions ---
+// These use the CLIENT SDK and are fine for Server Actions, as they run under the user's context.
 
 async function getDocumentById(accountId: string, collectionName: string, docId: string) {
     if (!accountId) throw new Error('Conta não identificada.');
@@ -64,27 +67,33 @@ async function deleteDocument(accountId: string, collectionName: string, docId: 
 
 // --- Specific Functions ---
 
-// Called from a server action during signup
+// Called from a server action during signup.
+// THIS MUST USE THE ADMIN SDK TO BYPASS SECURITY RULES for initial user/account creation.
 export async function createAccountForNewUser(userId: string, email: string) {
     try {
-        // 1. Create a new account document and get its ID
-        const accountRef = await addDoc(collection(db, 'accounts'), {
+        const batch = adminDb.batch();
+
+        // 1. Create a new account document and get its ref
+        const accountRef = adminDb.collection('accounts').doc();
+        batch.set(accountRef, {
             ownerId: userId,
             name: `${email}'s Account`,
             createdAt: new Date(),
         });
-        const accountId = accountRef.id;
         
         // 2. Create the user document and link it to the new account ID
-        const userRef = doc(db, 'users', userId);
-        await setDoc(userRef, {
+        const userRef = adminDb.collection('users').doc(userId);
+        batch.set(userRef, {
             email: email,
-            accountId: accountId, // Use the generated accountId here
+            accountId: accountRef.id,
             role: 'admin', // First user is always an admin
         });
+        
+        // 3. Commit the atomic batch
+        await batch.commit();
 
     } catch(error) {
-        console.error("Error creating account and user document:", error);
+        console.error("Error creating account and user document with Admin SDK:", error);
         throw new Error("Falha ao salvar informações do usuário no banco de dados.");
     }
 }
@@ -140,11 +149,9 @@ export async function completeRental(accountId: string, rentalId: string, comple
 
     const batch = writeBatch(db);
 
-    // 1. Delete the active rental document
     const rentalRef = doc(db, 'accounts', accountId, 'rentals', rentalId);
     batch.delete(rentalRef);
 
-    // 2. Create a new record in the 'completedRentals' collection for statistics
     const completedRentalRef = doc(collection(db, 'accounts', accountId, 'completedRentals'));
     batch.set(completedRentalRef, completedRentalData);
 
@@ -155,14 +162,11 @@ export async function completeRental(accountId: string, rentalId: string, comple
 export async function deleteAllCompletedRentals(accountId: string) {
     if (!accountId) throw new Error('Conta não identificada.');
 
-    // This operation is more complex with client SDK on the server, as it requires fetching all docs first.
-    // Let's assume for now this is less frequent and can be done this way.
-    // For very large collections, a Cloud Function would be better.
     const collectionRef = collection(db, 'accounts', accountId, 'completedRentals');
     const snapshot = await getDocs(collectionRef);
 
     if (snapshot.empty) {
-        return; // Nothing to delete
+        return; 
     }
 
     const batch = writeBatch(db);

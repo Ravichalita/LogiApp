@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getFirebase } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { auth } = getFirebase();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +55,6 @@ export default function SignupPage() {
       });
       
       if (result.message === 'error') {
-        // This will catch errors from the server action, like Firestore write failures
         throw new Error(result.error);
       }
 
@@ -65,6 +65,7 @@ export default function SignupPage() {
         description:
           'Enviamos um link de verificação para o seu e-mail. Por favor, clique nele para ativar sua conta.',
       });
+
       router.push('/verify-email');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
@@ -75,7 +76,6 @@ export default function SignupPage() {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'A senha é muito fraca.';
       } else {
-        // Catches the error thrown from the server action result
         errorMessage = error.message || errorMessage;
       }
       toast({
