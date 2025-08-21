@@ -1,47 +1,41 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper Functions
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
-    }
-  
-    function isSameAccount(accountId) {
-      return request.auth != null && request.auth.token.accountId == accountId;
+
+    // Helper functions
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
-    }
-
-    // Rules for the users collection
-    match /users/{userId} {
-      // Any authenticated user can create their own user document
-      allow create: if request.auth != null;
-
-      // Users can read their own document.
-      // Other users in the same account can also read this document.
-      allow get: if isOwner(userId) || isSameAccount(resource.data.accountId);
-      
-      // Users can only be listed if the query is for their own account.
-      // This is crucial for the team management page to work.
-      allow list: if request.auth != null && isSameAccount(request.query.where.accountId);
-      
-      // Only admins can update user roles/status.
-      // Users can update their own non-critical info (e.g., name), but for simplicity, we restrict to admin.
-      allow update: if isAdmin() && isSameAccount(resource.data.accountId);
-      
-      // Only admins can delete users, and they cannot delete themselves.
-      allow delete: if isAdmin() && isSameAccount(resource.data.accountId) && !isOwner(userId);
+    function isAccountOwner(accountId) {
+      return isUserAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
     }
     
-    // Rules for all account-specific subcollections
-    match /accounts/{accountId}/{collection}/{docId} {
-        // Allow read and write access only to users who belong to the account.
-        allow read, write: if isSameAccount(accountId);
+    function isUserAdmin(accountId) {
+        return isAccountOwner(accountId) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Allow users to read their own user document.
+    match /users/{userId} {
+      allow read, update: if isUserAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for multi-tenant data within accounts
+    match /accounts/{accountId} {
+        // Only allow reading/writing to an account if the user belongs to that account.
+        allow read, write: if isAccountOwner(accountId);
+
+        // Allow admins of an account to list users in that account
+        match /users/{userId} {
+             allow read, list: if isAccountOwner(accountId);
+             allow update: if isUserAdmin(accountId);
+        }
+
+        // Apply the same account ownership rule to all subcollections.
+        match /{document=**} {
+             allow read, write: if isAccountOwner(accountId);
+        }
     }
   }
 }
