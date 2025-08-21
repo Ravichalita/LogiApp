@@ -7,22 +7,15 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {onObjectFinalized} from "firebase-functions/v2/storage";
-import {onDocumentWritten} from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
-import {initializeApp} from "firebase-admin/app";
+import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 import {auth} from "firebase-functions/v1";
 
-initializeApp();
-
-// // Start writing functions
-// // https://firebase.google.com/docs/functions/typescript
-//
-// export const helloWorld = onCall((request) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   return "Hello from Firebase!";
-// });
+// Ensure app is initialized only once
+if (!getApps().length) {
+    initializeApp();
+}
 
 exports.createAccountAndUserDoc = auth.user().onCreate(async (user) => {
   logger.info(`New user created: ${user.uid}, email: ${user.email}`);
