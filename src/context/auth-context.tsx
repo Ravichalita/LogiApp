@@ -20,7 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const nonAuthRoutes = ['/login']; // signup is NOT a non-auth-route anymore
+const nonAuthRoutes = ['/login'];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/');
       }
     } else { // User is not logged in
-      if (!isNonAuthRoute && !isVerifyRoute && !isSignupRoute) {
+       if (!isNonAuthRoute && !isSignupRoute && !isVerifyRoute) {
         router.push('/login');
       }
     }

@@ -171,7 +171,6 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
   const q = query(
     usersCollection, 
     where('accountId', '==', accountId)
-    // orderBy('name', 'asc') // This requires a composite index
   );
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -182,7 +181,6 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     callback(users);
   }, (error) => {
       console.error("Error fetching team members:", error);
-      // You can also add more robust error handling here, like updating UI state
   });
 
   return unsubscribe;

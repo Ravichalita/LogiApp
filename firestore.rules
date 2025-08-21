@@ -3,34 +3,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isOwner(accountId) {
-      return get(/databases/$(database)/documents/accounts/$(accountId)).data.ownerId == request.auth.uid;
+    // Helper functions
+    function isAuth() {
+      return request.auth != null;
     }
 
-    function isUserInAccount(accountId) {
-      return request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
-    }
-
-    function isAccountAdmin(accountId) {
-      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
-      return isUserInAccount(accountId) && userRole == 'admin';
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
     }
     
-    match /accounts/{accountId} {
-      allow read: if isUserInAccount(accountId);
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+    function isUserInAccount(accountId) {
+        return isAuth() && getUserData(request.auth.uid).accountId == accountId;
     }
-
-    match /accounts/{accountId}/{document=**} {
-      allow read, write: if isUserInAccount(accountId);
+    
+    function isUserRole(role) {
+        return isAuth() && getUserData(request.auth.uid).role == role;
     }
-
+    
+    // User collection rules
     match /users/{userId} {
-      allow get: if isUserInAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
-      allow list: if isAccountAdmin(request.query.accountId);
-      allow create: if request.auth.uid == userId; // Allow user to create their own document during signup.
-      allow update: if request.auth.uid == userId || isAccountAdmin(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
-      allow delete: if isAccountAdmin(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
+      allow create; // Allow user creation via signup action
+      allow get: if isAuth() && (request.auth.uid == userId || getUserData(request.auth.uid).accountId == resource.data.accountId);
+      allow list: if isAuth() && request.query.where.accountId == getUserData(request.auth.uid).accountId;
+      allow update: if isAuth() && (
+                    (request.auth.uid == userId) || 
+                    (isUserRole('admin') && getUserData(request.auth.uid).accountId == resource.data.accountId)
+                  );
+      allow delete: if isAuth() && isUserRole('admin') && getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
+    }
+
+    // Account-specific data rules
+    match /accounts/{accountId}/{collection}/{docId} {
+      allow read, write, delete: if isUserInAccount(accountId);
     }
   }
 }
