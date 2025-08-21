@@ -27,9 +27,10 @@ import { Spinner } from '@/components/ui/spinner';
 
 interface EditRentalPeriodDialogProps {
   rental: PopulatedRental;
+  children: React.ReactNode;
 }
 
-export function EditRentalPeriodDialog({ rental }: EditRentalPeriodDialogProps) {
+export function EditRentalPeriodDialog({ rental, children }: EditRentalPeriodDialogProps) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -80,10 +81,7 @@ export function EditRentalPeriodDialog({ rental }: EditRentalPeriodDialogProps) 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
-          <Edit />
-          Editar Período
-        </Button>
+        {children}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

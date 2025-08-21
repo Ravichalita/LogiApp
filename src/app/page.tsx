@@ -203,36 +203,10 @@ export default function DashboardPage() {
                  </AccordionTrigger>
                 <AccordionContent>
                   <div className="p-6 pt-2">
-                    <div className="grid gap-4 md:grid-cols-2">
-                         <div className="space-y-4">
-                             <div className="flex items-start gap-3">
-                                <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                                    <span className="font-medium">{rental.deliveryAddress}</span>
-                                </div>
-                            </div>
-                             <div className="flex items-start gap-3">
-                                <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm text-muted-foreground">Valor Diária</span>
-                                    <span className="font-medium">{formatCurrency(rental.value)}</span>
-                                </div>
-                            </div>
-                             <div className="flex items-start gap-3">
-                                <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
-                                    <span className="font-medium">{formatCurrency(totalValue)}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <p className="font-medium">Ações</p>
-                            <RentalCardActions rental={rental} status={status} />
-                        </div>
-                    </div>
+                    <RentalCardActions rental={rental} status={status} />
+
                     <Separator className="my-6" />
+
                     <Accordion type="single" collapsible>
                         <AccordionItem value="client-details" className="border-b-0">
                             <AccordionTrigger className="font-medium hover:no-underline py-0">
