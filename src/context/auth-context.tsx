@@ -20,9 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const nonAuthRoutes = ['/login'];
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const nonAuthRoutes = ['/login', '/signup'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -43,40 +41,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!firebase) return;
 
     const { auth, db } = firebase;
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setLoading(true);
       if (firebaseUser) {
         // Use onSnapshot to listen for real-time updates to the user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const unsubUserDoc = onSnapshot(userDocRef, async (userDocSnap) => {
+        const unsubUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
           if (userDocSnap.exists()) {
             const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
-            
-            // This is the key change: we check if the custom claims on the token
-            // match the data in Firestore. If not, we force a token refresh.
-            // This ensures our security rules always have the latest accountId and role.
-            const tokenResult = await getIdTokenResult(firebaseUser);
-            const needsRefresh = tokenResult.claims.accountId !== userAccountData.accountId ||
-                                tokenResult.claims.role !== userAccountData.role;
-
-            if (needsRefresh) {
-               await getIdToken(firebaseUser, true); // Force refresh
-            }
-
           } else {
-             // This might happen briefly after creation due to replication delay
-             console.log("User document not yet available for UID:", firebaseUser.uid);
-             setUser(firebaseUser); // Set firebase user but account data is pending
-             setUserAccount(null);
-             setAccountId(null);
+             // This can happen if the user is authenticated but their Firestore document
+             // has not been created yet or was deleted. We should log them out to avoid
+             // being in a broken state.
+             console.error("User is authenticated but no user document found. Logging out.");
+             signOut(auth);
           }
            setLoading(false);
         }, (error) => {
             console.error("Error listening to user document:", error);
-            signOut(auth); // Log out on error to prevent inconsistent state
+            // If we can't read the user document (e.g., due to permissions),
+            // it's safer to log the user out.
+            signOut(auth);
         });
         
         // This will be called when the onAuthStateChanged listener is cleaned up
@@ -97,9 +85,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
-    const isSignupRoute = pathname.startsWith('/signup');
-    const isInviteFlow = isSignupRoute && !!user;
-
+    
+    // Allow logged-in admins to access signup to invite others
+    const isInviteFlow = pathname.startsWith('/signup') && !!user;
 
     if (user) { // User is logged in
       if (!user.emailVerified && !isVerifyRoute) {
@@ -107,11 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (user.emailVerified && isVerifyRoute) {
         router.push('/');
       } else if (isNonAuthRoute && !isInviteFlow) {
-        // Logged-in user trying to access login page. Redirect them.
+        // Logged-in user trying to access login/signup page. Redirect them.
         router.push('/');
       }
     } else { // User is not logged in
-       if (!isNonAuthRoute && !isSignupRoute && !isVerifyRoute) {
+       if (!isNonAuthRoute && !isVerifyRoute) {
         router.push('/login');
       }
     }

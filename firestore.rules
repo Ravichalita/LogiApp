@@ -1,53 +1,48 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // As informações da conta do usuário (incluindo o ID da conta) são armazenadas
-    // como custom claims no token de autenticação do Firebase.
-    // Isso evita a necessidade de uma busca extra no banco de dados (get()) dentro das regras,
-    // que é ineficiente e muitas vezes não permitido em regras de listagem de coleção.
-    function getAccountId() {
-      return request.auth.token.accountId;
-    }
 
+    // Helper function to check if a user is authenticated.
     function isAuth() {
       return request.auth != null;
     }
-    
-    // Verifica se o usuário autenticado pertence à conta que está tentando acessar.
-    function userIsInAccount(accountId) {
-      return isAuth() && getAccountId() == accountId;
+
+    // Helper function to check if the requesting user belongs to the specified account.
+    // It does this by checking the `accountId` field on the user's own document in the /users collection.
+    function isUserInAccount(accountId) {
+      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
     }
     
-    // Verifica se o usuário autenticado tem a função de 'admin' na sua conta.
-    function isAdmin() {
-      return isAuth() && request.auth.token.role == 'admin';
+    // Helper function to check if the user is an admin of the specified account.
+    function isUserAdminOfAccount(accountId) {
+      return isUserInAccount(accountId) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    match /accounts/{accountId} {
-      // Regra geral para todas as subcoleções dentro de uma conta (clients, dumpsters, rentals, etc.)
-      match /{documents=**} {
-        allow read, write: if userIsInAccount(accountId);
-      }
+    // Rules for all collections under an account (e.g., clients, dumpsters, rentals).
+    // The user must belong to the account to read or write any documents within it.
+    match /accounts/{accountId}/{documents=**} {
+      allow read, write: if isUserInAccount(accountId);
     }
-
+    
     match /users/{userId} {
+      // A user can read another user's document ONLY if they both belong to the same account.
       allow get: if isAuth() && 
-                    (request.auth.uid == userId || 
-                    get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId());
-      
-      // Permite a listagem de usuários somente se a consulta for filtrada pelo accountId do usuário solicitante.
-      // Isso impede que um usuário liste usuários de outras contas.
-      allow list: if isAuth() && request.query.where.get("accountId")[2] == getAccountId();
-      
-      // Permite a criação por qualquer pessoa (signup). A lógica de associação à conta é tratada no backend.
-      allow create: if true;
-      
-      // Permite a atualização apenas se o usuário for um administrador da mesma conta.
-      allow update: if isAuth() && isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId();
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId;
 
-      // Permite a exclusão apenas por administradores da mesma conta.
-      allow delete: if isAuth() && isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId();
+      // A user can list users ONLY if they are querying for users within their own account.
+      // This forces the client query to include `where('accountId', '==', user.accountId)`.
+      allow list: if isAuth() && request.query.accountId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId;
+
+      // A user can only update another user's document if they are an admin of that account.
+      // A user cannot update their own role or accountId.
+      allow update: if isUserAdminOfAccount(resource.data.accountId) && 
+                       !(request.resource.data.role != resource.data.role && request.auth.uid == userId) &&
+                       !(request.resource.data.accountId != resource.data.accountId);
+                       
+      // A user can only be created via the signupAction server-side function, which has full access.
+      // No client-side creation is allowed. Deletion is also server-side only.
+      allow create, delete: if false;
     }
   }
 }
