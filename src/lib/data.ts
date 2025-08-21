@@ -170,8 +170,8 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
   const usersCollection = collection(db, 'users');
   const q = query(
     usersCollection, 
-    where('accountId', '==', accountId),
-    orderBy('name', 'asc') // Re-add ordering, as the new rules will support it
+    where('accountId', '==', accountId)
+    // orderBy('name', 'asc') // This requires a composite index
   );
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
