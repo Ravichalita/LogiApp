@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays, ChevronDown } from 'lucide-react';
+import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays, ChevronDown, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Accordion,
@@ -43,7 +43,8 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
     return `55${digitsOnly}`;
 }
 
-type RentalStatus = { text: string; variant: 'default' | 'destructive' | 'secondary' | 'success' };
+export type RentalStatusType = 'Pendente' | 'Ativo' | 'Em Atraso';
+type RentalStatus = { text: RentalStatusType; variant: 'default' | 'destructive' | 'secondary' | 'success' };
 
 export function getRentalStatus(rental: PopulatedRental): RentalStatus {
     const today = startOfToday();
@@ -58,6 +59,13 @@ export function getRentalStatus(rental: PopulatedRental): RentalStatus {
     }
     return { text: 'Ativo', variant: 'success' };
 }
+
+const filterOptions: { label: string, value: 'Todos' | RentalStatusType }[] = [
+    { label: "Todos", value: 'Todos' },
+    { label: "Ativos", value: 'Ativo' },
+    { label: "Pendentes", value: 'Pendente' },
+    { label: "Em Atraso", value: 'Em Atraso' },
+];
 
 
 function DashboardSkeleton() {
@@ -107,6 +115,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'Todos' | RentalStatusType>('Todos');
 
   useEffect(() => {
     if (user) {
@@ -122,23 +131,47 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  const filteredRentals = useMemo(() => {
+    if (statusFilter === 'Todos') {
+      return rentals;
+    }
+    return rentals.filter(rental => getRentalStatus(rental).text === statusFilter);
+  }, [rentals, statusFilter]);
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-headline font-bold">Aluguéis e Agendamentos</h1>
       </div>
+       <div className="flex flex-wrap gap-2 pb-6">
+            {filterOptions.map(option => (
+                <Button
+                    key={option.value}
+                    variant={statusFilter === option.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(option.value)}
+                    className="text-xs h-7"
+                >
+                    {option.label}
+                </Button>
+            ))}
+        </div>
 
        {loading ? (
         <DashboardSkeleton />
-      ) : rentals.length === 0 ? (
+      ) : filteredRentals.length === 0 ? (
         <div className="text-center py-20 bg-card rounded-lg border">
           <Truck className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h2 className="mt-4 text-xl font-semibold font-headline">Nenhuma caçamba alugada no momento</h2>
-          <p className="mt-2 text-muted-foreground">Clique no botão '+' para começar.</p>
+          <h2 className="mt-4 text-xl font-semibold font-headline">
+            {rentals.length === 0 ? 'Nenhuma caçamba alugada no momento' : 'Nenhum aluguel encontrado para este filtro'}
+          </h2>
+          <p className="mt-2 text-muted-foreground">
+             {rentals.length === 0 ? "Clique no botão '+' para começar." : "Tente selecionar outro filtro ou adicione um novo aluguel."}
+          </p>
         </div>
       ) : (
         <Accordion type="single" collapsible className="w-full space-y-4">
-          {rentals.map(rental => {
+          {filteredRentals.map(rental => {
             const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
             const totalValue = rental.value * rentalDays;
             const status = getRentalStatus(rental);
