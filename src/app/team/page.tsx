@@ -64,6 +64,7 @@ export default function TeamPage() {
   }, [accountId, isAdmin]);
   
   const sortedMembers = useMemo(() => {
+    // Ordenação segura no lado do cliente
     return [...members].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
   }, [members]);
 
@@ -98,6 +99,9 @@ export default function TeamPage() {
             <h1 className="text-3xl font-headline font-bold">Gerenciar Equipe</h1>
             <p className="text-muted-foreground">Adicione, remova e gerencie as permissões dos usuários.</p>
         </div>
+         <Button asChild>
+            <Link href="/signup">Convidar Usuário</Link>
+        </Button>
       </div>
       <Card>
         <CardHeader>

@@ -44,7 +44,7 @@ export function Header() {
     ));
 
   // Hide header on auth pages
-  if (!user) {
+  if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email')) {
     return null;
   }
 
@@ -75,12 +75,6 @@ export function Header() {
                     <Link href="/team">
                         <Users className="h-5 w-5" />
                         <span className="sr-only">Equipe</span>
-                    </Link>
-                </Button>
-                 <Button variant="ghost" size="icon" asChild>
-                    <Link href="/signup">
-                        <UserPlus className="h-5 w-5" />
-                        <span className="sr-only">Convidar Usuário</span>
                     </Link>
                 </Button>
                </>
