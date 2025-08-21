@@ -272,7 +272,9 @@ export async function finishRentalAction(userId: string, formData: FormData) {
             rentalDays,
         };
 
+        // This function now handles deleting the rental and updating the dumpster status
         await completeRental(userId, rentalId, rental.dumpsterId, completedRentalData);
+
     } catch (e) {
         console.error(e);
         throw new Error("Falha ao finalizar o aluguel.");
@@ -280,8 +282,10 @@ export async function finishRentalAction(userId: string, formData: FormData) {
 
     revalidatePath('/');
     revalidatePath('/stats');
+    revalidatePath('/dumpsters'); // Revalidate to update dumpster status
     redirect('/');
 }
+
 
 const updateRentalSchema = z.object({
   id: z.string(),
