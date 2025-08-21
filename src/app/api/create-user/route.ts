@@ -1,10 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import * as admin from 'firebase-admin';
-
-// This function must be inside the POST handler or be structured in a way
-// that ensures it's only called on the server side when needed.
-// The current approach moves initialization inside the POST handler.
+// Do not import firebase-admin statically. We will import it dynamically.
 
 /**
  * API route to create an account and a user document in Firestore.
@@ -12,13 +8,16 @@ import * as admin from 'firebase-admin';
  * created in Firebase Auth.
  */
 export async function POST(request: Request) {
+  // Dynamically import firebase-admin ONLY on the server.
+  const admin = (await import('firebase-admin')).default;
+
   try {
     // Ensure Firebase Admin is initialized for every API call
     if (!admin.apps.length) {
-        admin.initializeApp({
-            credential: admin.credential.applicationDefault(),
-            projectId: "caambacontrol3",
-        });
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+        projectId: "caambacontrol3",
+      });
     }
     const adminDb = admin.firestore();
 
