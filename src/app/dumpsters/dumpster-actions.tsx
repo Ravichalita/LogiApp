@@ -30,13 +30,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { EditDumpsterForm } from './edit-dumpster-form';
-import type { Dumpster, DumpsterStatus } from '@/lib/types';
+import type { Dumpster, DumpsterStatus, EnhancedDumpster } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
-export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
+export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const { user } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -44,18 +44,17 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  // The 'Reservada' status is derived client-side. The actual status in the DB is still 'Disponível'.
-  // So, for display and actions, we need to know the real status.
-  const isReserved = dumpster.status === 'Reservada';
-  const realStatus = isReserved ? 'Disponível' : dumpster.status;
+  // The 'Reservada...' status is derived client-side. The actual status in the DB is stored in `originalStatus`
+  const isReserved = !!dumpster.originalStatus;
+  const realStatus = dumpster.originalStatus || dumpster.status;
 
-  const getStatusVariant = (status: DumpsterStatus): 'default' | 'destructive' | 'secondary' => {
+  const getStatusVariant = (status: EnhancedDumpster['status']): 'default' | 'destructive' | 'secondary' => {
+    if (status.startsWith('Reservada')) return 'secondary';
     switch (status) {
       case 'Disponível':
         return 'default';
       case 'Alugada':
         return 'destructive';
-      case 'Reservada':
       case 'Em Manutenção':
         return 'secondary';
       default:
@@ -110,7 +109,7 @@ export function DumpsterActions({ dumpster }: { dumpster: Dumpster }) {
           <DropdownMenuTrigger asChild>
             <Badge
               variant={getStatusVariant(dumpster.status)}
-              className={cn('capitalize cursor-pointer')}
+              className={cn('cursor-pointer text-xs')}
             >
               {dumpster.status}
             </Badge>

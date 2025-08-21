@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { startOfToday } from 'date-fns';
+import { startOfToday, format } from 'date-fns';
 
 
 function DumpsterTableSkeleton() {
@@ -72,17 +72,29 @@ export default function DumpstersPage() {
 
   const dumpstersWithDerivedStatus = useMemo(() => {
     const today = startOfToday();
-    const scheduledDumpsterIds = new Set(
-        pendingRentals
-            .filter(r => r.rentalDate > today)
-            .map(r => r.dumpsterId)
-    );
+    const scheduledRentalsMap = new Map<string, Rental>();
+    
+    // Get the earliest future rental for each dumpster
+    pendingRentals
+      .filter(r => new Date(r.rentalDate) > today)
+      .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())
+      .forEach(r => {
+        if (!scheduledRentalsMap.has(r.dumpsterId)) {
+          scheduledRentalsMap.set(r.dumpsterId, r);
+        }
+      });
 
     return dumpsters.map(d => {
-        if (d.status === 'Disponível' && scheduledDumpsterIds.has(d.id)) {
-            return { ...d, status: 'Reservada' as const };
-        }
-        return d;
+      if (d.status === 'Disponível' && scheduledRentalsMap.has(d.id)) {
+        const rental = scheduledRentalsMap.get(d.id)!;
+        const formattedDate = format(new Date(rental.rentalDate), "dd/MM/yy");
+        return { 
+          ...d, 
+          status: `Reservada para ${formattedDate}` as const,
+          originalStatus: 'Disponível' as const 
+        };
+      }
+      return d;
     })
 
   }, [dumpsters, pendingRentals]);

@@ -12,7 +12,7 @@ import { differenceInCalendarDays } from 'date-fns';
 const dumpsterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  status: z.enum(['Disponível', 'Alugada', 'Em Manutenção', 'Reservada']),
+  status: z.enum(['Disponível', 'Alugada', 'Em Manutenção']),
   color: z.string().min(3, 'A cor deve ter pelo menos 3 caracteres.'),
   size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
@@ -338,5 +338,3 @@ export async function resetBillingDataAction(userId: string) {
         return { message: 'error', error: 'Ocorreu um erro ao tentar zerar os dados de faturamento.' };
     }
 }
-
-    

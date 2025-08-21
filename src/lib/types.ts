@@ -1,5 +1,8 @@
 
-export type DumpsterStatus = "Disponível" | "Alugada" | "Em Manutenção" | "Reservada";
+
+export type DumpsterStatus = "Disponível" | "Alugada" | "Em Manutenção";
+export type DerivedDumpsterStatus = DumpsterStatus | `Reservada para ${string}`;
+
 
 export interface FirestoreEntity {
   id: string;
@@ -11,6 +14,12 @@ export interface Dumpster extends FirestoreEntity {
   color: string;
   size: number;
 }
+
+export interface EnhancedDumpster extends Dumpster {
+    status: DerivedDumpsterStatus;
+    originalStatus?: DumpsterStatus;
+}
+
 
 export interface Client extends FirestoreEntity {
   name: string;
