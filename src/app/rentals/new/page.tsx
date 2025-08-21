@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental } from '@/lib/types';
-import { isAfter, isWithinInterval } from 'date-fns';
+import { isAfter, isWithinInterval, startOfToday } from 'date-fns';
 
 
 export default function NewRentalPage() {
@@ -51,7 +51,7 @@ export default function NewRentalPage() {
 
 
   const availableDumpsters = useMemo(() => {
-    const today = new Date();
+    const today = startOfToday();
 
     const unavailableDumpsterIds = new Set<string>();
 
@@ -62,11 +62,12 @@ export default function NewRentalPage() {
         }
     });
 
-    // Mark dumpsters that have an active or future rental as unavailable
+    // Mark dumpsters that have an active, future, or overdue rental as unavailable
     allRentals.forEach(r => {
         const rentalStart = new Date(r.rentalDate);
         const rentalEnd = new Date(r.returnDate);
-        if (isAfter(rentalEnd, today) || isWithinInterval(today, {start: rentalStart, end: rentalEnd})) {
+        // A dumpster is unavailable if it's currently rented, overdue, or has a future booking.
+        if (isAfter(rentalEnd, today) || isWithinInterval(today, {start: rentalStart, end: rentalEnd}) || isAfter(today, rentalEnd)) {
             unavailableDumpsterIds.add(r.dumpsterId);
         }
     });
