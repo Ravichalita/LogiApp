@@ -83,7 +83,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
     if (status.startsWith('Reservada')) return 'secondary';
     switch (status) {
       case 'Disponível':
-        return 'default';
+        return 'success';
       case 'Alugada':
         return 'destructive';
       case 'Em Manutenção':
@@ -140,7 +140,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
         {/* Status Badge */}
         <Badge
           variant={getStatusVariant(dumpster.derivedStatus)}
-          className={cn('text-xs justify-center', isPending && 'opacity-50')}
+          className={cn('text-xs text-center min-w-[120px]', isPending && 'opacity-50')}
         >
           {dumpster.derivedStatus}
         </Badge>
