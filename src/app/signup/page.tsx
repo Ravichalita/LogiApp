@@ -1,9 +1,7 @@
-
 'use client';
 
-import { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirebase } from '@/lib/firebase';
+import { useEffect, useState } from 'react';
+import { signupAction } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,65 +9,43 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { Truck } from 'lucide-react';
+import { Truck, AlertCircle } from 'lucide-react';
+import { useFormState, useFormStatus } from 'react-dom';
+
+const initialState = {
+  message: '',
+};
+
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" disabled={pending} className="w-full">
+            {pending ? 'Criando conta...' : 'Criar Conta'}
+        </Button>
+    )
+}
 
 export default function SignupPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [state, formAction] = useFormState(signupAction, initialState);
   const router = useRouter();
   const { toast } = useToast();
-  const { auth } = getFirebase();
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      toast({
-        title: 'Erro',
-        description: 'As senhas não coincidem.',
-        variant: 'destructive',
-      });
-      return;
+  useEffect(() => {
+    if (state.message === 'success') {
+         toast({
+            title: 'Sucesso!',
+            description: 'Sua conta foi criada. Redirecionando para o login...',
+        });
+        router.push('/login');
+    } else if (state.message) {
+        toast({
+            title: 'Erro no Cadastro',
+            description: state.message,
+            variant: 'destructive',
+        });
     }
-    if (password.length < 6) {
-      toast({
-        title: 'Erro',
-        description: 'A senha deve ter pelo menos 6 caracteres.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  }, [state, router, toast]);
 
-    setIsSubmitting(true);
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Sucesso!',
-        description: 'Sua conta foi criada. Redirecionando para o login...',
-      });
-      router.push('/login');
-
-    } catch (error: any) {
-      let errorMessage = 'Ocorreu um erro desconhecido.';
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'Este e-mail já está em uso por outra conta.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'O formato do e-mail é inválido.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'A senha é muito fraca.';
-      } else {
-        errorMessage = error.message || errorMessage;
-      }
-      toast({
-        title: 'Erro no Cadastro',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
@@ -82,14 +58,13 @@ export default function SignupPage() {
           <CardDescription>Cadastre-se para começar</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4">
+          <form action={formAction} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
                 required
               />
@@ -98,25 +73,27 @@ export default function SignupPage() {
               <Label htmlFor="password">Senha</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
              <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirmar Senha</Label>
+              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
               <Input
-                id="confirm-password"
+                id="confirmPassword"
+                name="confirmPassword"
                 type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
             </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Criando conta...' : 'Criar Conta'}
-            </Button>
+            <SubmitButton />
+             {state.message && state.message !== 'success' && (
+              <div className="flex items-center gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <p>{state.message}</p>
+              </div>
+            )}
           </form>
         </CardContent>
         <CardFooter>

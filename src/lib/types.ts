@@ -69,6 +69,17 @@ export const UserAccountSchema = z.object({
   role: z.enum(['admin', 'viewer']),
 });
 
+export const SignupSchema = z
+  .object({
+    email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
+    password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem.',
+    path: ['_errors'], // Use _errors to show a general form error
+  });
+
 // #endregion
 
 

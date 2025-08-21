@@ -24,7 +24,6 @@ const publicRoutes = ['/login', '/signup'];
 // Add verify-email to the list of routes that DON'T require an authenticated user.
 const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
 
-// Helper function to delay execution
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,25 +48,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
              router.push('/');
           }
           
-          // Retry mechanism to handle the race condition with Firebase Function trigger
           let userDocSnap;
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          
+          // Retry logic to handle Firestore replication delay
           for (let i = 0; i < 3; i++) {
-              const userDocRef = doc(db, 'users', firebaseUser.uid);
               userDocSnap = await getDoc(userDocRef);
               if (userDocSnap.exists()) {
-                  break; 
+                  break;
               }
-              await delay(i === 0 ? 1500 : 2000); // Wait 1.5s, then 2s
+              await delay(500); // wait 500ms before retrying
           }
-
-
+          
           if (userDocSnap && userDocSnap.exists()) {
             const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
           } else {
-            console.error("User document not found in Firestore for UID:", firebaseUser.uid);
+            console.error("User document not found in Firestore for UID:", firebaseUser.uid, "after multiple retries.");
+            // Logging out to be safe.
             await signOut(auth);
             setUser(null);
             setUserAccount(null);

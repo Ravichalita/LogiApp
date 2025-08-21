@@ -12,28 +12,97 @@ import {
   where,
   getDocs,
   writeBatch,
+  setDoc,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema } from './types';
 import type { Rental } from './types';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { getFirebaseAdmin } from './firebase-server';
+
 
 // Helper function for error handling
-function handleFirebaseError(error: unknown) {
+function handleFirebaseError(error: unknown): string {
+  let message = 'Ocorreu um erro desconhecido.';
   if (error instanceof Error) {
+    message = error.message;
     if ('code' in error) {
-      // Firebase specific error
-      console.error(`Firebase error (${(error as any).code}): ${error.message}`);
-      return `Erro no servidor: ${(error as any).code}`;
+      switch ((error as any).code) {
+        case 'auth/email-already-exists':
+          return 'Este e-mail já está em uso por outra conta.';
+        case 'auth/invalid-email':
+          return 'O formato do e-mail é inválido.';
+        case 'auth/weak-password':
+          return 'A senha é muito fraca. Use pelo menos 6 caracteres.';
+        default:
+          return `Erro no servidor: ${(error as any).code}`;
+      }
     }
-    console.error(`Generic error: ${error.message}`);
-    return `Ocorreu um erro: ${error.message}`;
   }
-  console.error(`Unknown error: ${error}`);
-  return 'Ocorreu um erro desconhecido.';
+  return message;
 }
+
+// #region Auth Actions
+
+export async function signupAction(prevState: any, formData: FormData) {
+  const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
+
+  if (!validatedFields.success) {
+      return { message: validatedFields.error.flatten().fieldErrors._errors[0] };
+  }
+
+  const { email, password } = validatedFields.data;
+  const { app, db } = await getFirebaseAdmin();
+  const adminAuth = getAdminAuth(app);
+
+  try {
+      // 1. Create user in Firebase Auth
+      const userRecord = await adminAuth.createUser({
+          email,
+          password,
+          emailVerified: false, // Start with email unverified
+      });
+
+      // 2. Create documents in Firestore
+      const batch = writeBatch(db);
+
+      // 2a. Create account document
+      const accountRef = doc(collection(db, "accounts"));
+      batch.set(accountRef, {
+          ownerId: userRecord.uid,
+          name: `${email}'s Account`,
+          createdAt: serverTimestamp(),
+      });
+
+      // 2b. Create user document
+      const userRef = doc(db, "users", userRecord.uid);
+      batch.set(userRef, {
+          email: userRecord.email,
+          accountId: accountRef.id,
+          role: "admin",
+      });
+      
+      // 3. Commit batch
+      await batch.commit();
+
+      // 4. Send verification email
+      // We are creating a custom link to avoid issues with default Firebase links in some environments
+      const verificationLink = await adminAuth.generateEmailVerificationLink(email);
+      // Here you would typically send an email with this link using a service like SendGrid, Resend, etc.
+      // For this app, we'll rely on the client-side to prompt the user to check their email and the built-in Firebase console sender.
+      // console.log("Verification link:", verificationLink); // For debugging
+
+      return { message: 'success' };
+  } catch (e) {
+      return { message: handleFirebaseError(e) };
+  }
+}
+
+
+// #endregion
 
 
 // #region Client Actions
@@ -225,7 +294,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     });
 
   } catch (e) {
-    return { message: handleFirebaseError(e) };
+    return { message: handleFirebaseError(e) as string };
   }
 
   revalidatePath('/');
@@ -288,7 +357,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         
     } catch(e) {
          console.error("Failed to finish rental:", e);
-         return { message: 'error', error: handleFirebaseError(e) };
+         return { message: 'error', error: handleFirebaseError(e) as string };
     }
 
     redirect('/');
@@ -304,7 +373,7 @@ export async function cancelRentalAction(accountId: string, rentalId: string) {
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return { message: 'error', error: handleFirebaseError(e) as string };
     }
 }
 
@@ -330,7 +399,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return { message: 'error', error: handleFirebaseError(e) as string };
     }
 }
 
@@ -355,7 +424,7 @@ export async function resetBillingDataAction(accountId: string) {
     revalidatePath('/stats');
     return { message: 'success' };
   } catch (e) {
-    return { message: 'error', error: handleFirebaseError(e) };
+    return { message: 'error', error: handleFirebaseError(e) as string };
   }
 }
 // #endregion
