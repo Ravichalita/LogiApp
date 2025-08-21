@@ -1,269 +1,113 @@
+import Image from 'next/image';
 
-'use client';
-
-import { useEffect, useState, useMemo } from 'react';
-import { getRentals } from '@/lib/data';
-import type { PopulatedRental } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays, ChevronDown, Filter, Plus, Minus } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import { Separator } from '@/components/ui/separator';
-import { RentalCardActions } from './rentals/rental-card-actions';
-import { useAuth } from '@/context/auth-context';
-import { Skeleton } from '@/components/ui/skeleton';
-import { differenceInCalendarDays, startOfToday, isBefore, isAfter } from 'date-fns';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-
-function formatCurrency(value: number) {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-}
-
-function calculateRentalDays(startDate: Date, endDate: Date): number {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diff = differenceInCalendarDays(end, start);
-    return Math.max(diff, 1); // Ensure at least 1 day is charged
-}
-
-function formatPhoneNumberForWhatsApp(phone: string): string {
-    const digitsOnly = phone.replace(/\D/g, '');
-    return `55${digitsOnly}`;
-}
-
-export type RentalStatusType = 'Pendente' | 'Ativo' | 'Em Atraso';
-type RentalStatus = { text: RentalStatusType; variant: 'default' | 'destructive' | 'secondary' | 'success' };
-
-export function getRentalStatus(rental: PopulatedRental): RentalStatus {
-    const today = startOfToday();
-    const rentalDate = new Date(rental.rentalDate);
-    const returnDate = new Date(rental.returnDate);
-    
-    if (isBefore(returnDate, today)) {
-      return { text: 'Em Atraso', variant: 'destructive' };
-    }
-    if (isAfter(rentalDate, today)) {
-      return { text: 'Pendente', variant: 'secondary' };
-    }
-    return { text: 'Ativo', variant: 'success' };
-}
-
-const filterOptions: { label: string, value: 'Todos' | RentalStatusType }[] = [
-    { label: "Todos", value: 'Todos' },
-    { label: "Ativos", value: 'Ativo' },
-    { label: "Pendentes", value: 'Pendente' },
-    { label: "Em Atraso", value: 'Em Atraso' },
-];
-
-
-function DashboardSkeleton() {
-    return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-             {[...Array(3)].map((_, i) => (
-                <Card key={i} className="flex flex-col shadow-md">
-                    <CardHeader>
-                         <CardTitle className="flex items-center justify-between">
-                            <Skeleton className="h-6 w-32" />
-                             <Skeleton className="h-5 w-16" />
-                         </CardTitle>
-                         <CardDescription>
-                             <Skeleton className="h-4 w-20" />
-                         </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow space-y-4">
-                        <div className="flex items-start gap-3">
-                            <Skeleton className="h-5 w-5 rounded-full" />
-                            <div className="w-full space-y-2">
-                                <Skeleton className="h-4 w-1/3" />
-                                <Skeleton className="h-5 w-2/3" />
-                            </div>
-                        </div>
-                         <div className="flex items-start gap-3">
-                            <Skeleton className="h-5 w-5 rounded-full" />
-                            <div className="w-full space-y-2">
-                                <Skeleton className="h-4 w-1/3" />
-                                <Skeleton className="h-5 w-full" />
-                            </div>
-                        </div>
-                         <div className="flex items-start gap-3">
-                            <Skeleton className="h-5 w-5 rounded-full" />
-                            <div className="w-full space-y-2">
-                                <Skeleton className="h-4 w-1/3" />
-                                <Skeleton className="h-5 w-1/2" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-             ))}
-        </div>
-    )
-}
-
-export default function DashboardPage() {
-  const { accountId } = useAuth();
-  const [rentals, setRentals] = useState<PopulatedRental[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'Todos' | RentalStatusType>('Todos');
-
-  useEffect(() => {
-    if (accountId) {
-        setLoading(true);
-        const unsubscribe = getRentals(accountId, (rentals) => {
-            setRentals(rentals);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    } else {
-        setRentals([]);
-        setLoading(false);
-    }
-  }, [accountId]);
-
-  const filteredRentals = useMemo(() => {
-    if (statusFilter === 'Todos') {
-      return rentals;
-    }
-    return rentals.filter(rental => getRentalStatus(rental).text === statusFilter);
-  }, [rentals, statusFilter]);
-
+export default function Home() {
   return (
-    <div className="container mx-auto py-8 px-4 md:px-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-3xl font-headline font-bold">Aluguéis e Agendamentos</h1>
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
+        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+          Get started by editing&nbsp;
+          <code className="font-mono font-bold">src/app/page.tsx</code>
+        </p>
+        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
+          <a
+            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
+            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            By{' '}
+            <Image
+              src="/vercel.svg"
+              alt="Vercel Logo"
+              className="dark:invert"
+              width={100}
+              height={24}
+              priority
+            />
+          </a>
+        </div>
       </div>
-       <div className="flex flex-wrap gap-2 pb-6">
-            {filterOptions.map(option => (
-                <Button
-                    key={option.value}
-                    variant={statusFilter === option.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter(option.value)}
-                    className="text-xs h-7"
-                >
-                    {option.label}
-                </Button>
-            ))}
-        </div>
 
-       {loading ? (
-        <DashboardSkeleton />
-      ) : filteredRentals.length === 0 ? (
-        <div className="text-center py-20 bg-card rounded-lg border">
-          <Truck className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h2 className="mt-4 text-xl font-semibold font-headline">
-            {rentals.length === 0 ? 'Nenhuma caçamba alugada no momento' : 'Nenhum aluguel encontrado para este filtro'}
+      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
+        <Image
+          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
+          src="/next.svg"
+          alt="Next.js Logo"
+          width={180}
+          height={37}
+          priority
+        />
+      </div>
+
+      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
+        <a
+          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className="mb-3 text-2xl font-semibold">
+            Docs{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
           </h2>
-          <p className="mt-2 text-muted-foreground">
-             {rentals.length === 0 ? "Clique no botão '+' para começar." : "Tente selecionar outro filtro ou adicione um novo aluguel."}
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Find in-depth information about Next.js features and API.
           </p>
-        </div>
-      ) : (
-        <Accordion type="single" collapsible className="w-full space-y-4">
-          {filteredRentals.map(rental => {
-            const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
-            const totalValue = rental.value * rentalDays;
-            const status = getRentalStatus(rental);
+        </a>
 
-            return (
-              <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <div className="p-6 pb-0">
-                    <div className="flex justify-between items-start">
-                        <div className="flex-1 text-left">
-                            <div className="flex items-center gap-2">
-                                <Truck className="h-6 w-6 text-primary" />
-                                <h3 className="font-bold text-lg font-headline">{rental.dumpster.name}</h3>
-                                <Badge variant={status.variant} className="ml-2">{status.text}</Badge>
-                            </div>
-                            <div className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
-                                <User className="h-4 w-4 shrink-0"/> <span>{rental.client.name}</span>
-                            </div>
-                        </div>
-                        <div className="flex flex-col items-end text-right ml-4">
-                            <span className="text-sm text-muted-foreground">{status.text === 'Pendente' ? 'Início' : 'Retirada'}</span>
-                            <span className="font-semibold text-base">{format(status.text === 'Pendente' ? rental.rentalDate : rental.returnDate, "dd/MM/yyyy")}</span>
-                        </div>
-                    </div>
-                </div>
-                 <AccordionTrigger className="w-full pt-4 hover:no-underline">
-                    <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full">
-                         <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                    </div>
-                 </AccordionTrigger>
-                <AccordionContent>
-                  <div className="p-6 pt-2 flex flex-col h-full">
-                    <RentalCardActions rental={rental} status={status} />
+        <a
+          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className="mb-3 text-2xl font-semibold">
+            Learn{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Learn about Next.js in an interactive course with&nbsp;quizzes!
+          </p>
+        </a>
 
-                    <Separator className="my-6" />
+        <a
+          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className="mb-3 text-2xl font-semibold">
+            Templates{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Explore starter templates for Next.js.
+          </p>
+        </a>
 
-                    <Accordion type="single" collapsible>
-                        <AccordionItem value="client-details" className="border-b-0">
-                            <AccordionTrigger className="group flex w-full items-center justify-start font-medium hover:no-underline py-0 text-sm">
-                                <span>Ver Detalhes do Cliente</span>
-                                <Plus className="ml-2 h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:hidden" />
-                                <Minus className="ml-2 h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=closed]:hidden" />
-                            </AccordionTrigger>
-                            <AccordionContent className="space-y-4 pt-4">
-                                <div className="flex items-start gap-3">
-                                    <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                    <div className="flex flex-col">
-                                        <span className="text-sm text-muted-foreground">(Clique para abrir o WhatsApp)</span>
-                                        <Link 
-                                            href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}`} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            className="font-medium hover:underline"
-                                        >
-                                            {rental.client.phone}
-                                        </Link>
-                                    </div>
-                                </div>
-                                {rental.client.email && (
-                                    <div className="flex items-start gap-3">
-                                    <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                    <div className="flex flex-col">
-                                        <span className="text-sm text-muted-foreground">Email</span>
-                                        <span className="font-medium">{rental.client.email}</span>
-                                    </div>
-                                    </div>
-                                )}
-                                <div className="flex items-start gap-3">
-                                    <Home className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                    <div className="flex flex-col">
-                                        <span className="text-sm text-muted-foreground">Endereço Principal</span>
-                                        <span className="font-medium">{rental.client.address}</span>
-                                    </div>
-                                </div>
-                                {rental.client.observations && (
-                                    <div className="flex items-start gap-3">
-                                    <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                                    <div className="flex flex-col">
-                                        <span className="text-sm text-muted-foreground">Observações</span>
-                                        <p className="font-medium whitespace-pre-wrap">{rental.client.observations}</p>
-                                    </div>
-                                    </div>
-                                )}
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            )
-          })}
-        </Accordion>
-      )}
-    </div>
+        <a
+          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <h2 className="mb-3 text-2xl font-semibold">
+            Deploy{' '}
+            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
+              -&gt;
+            </span>
+          </h2>
+          <p className="m-0 max-w-[30ch] text-sm opacity-50">
+            Instantly deploy your Next.js site to a shareable URL with Vercel.
+          </p>
+        </a>
+      </div>
+    </main>
   );
 }
