@@ -26,40 +26,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [firebase, setFirebase] = useState<{ auth: Auth, db: Firestore } | null>(null);
+  const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // Initialize Firebase on the client side
-    const { auth, db } = getFirebase();
-    setFirebase({ auth, db });
-  }, []);
+    if (!auth || !db) return;
 
-  useEffect(() => {
-    if (!firebase) return;
-
-    const { auth, db } = firebase;
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // User is authenticated, force a token refresh to get latest custom claims
-        await firebaseUser.getIdToken(true);
-        // User is potentially logged in, now we need their user document
+        // User is authenticated, now get their profile from Firestore
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubUserDoc = onSnapshot(userDocRef, 
-            (userDocSnap) => {
+            async (userDocSnap) => {
                 if (userDocSnap.exists()) {
+                    // Force refresh the token to get latest custom claims from the server
+                    await firebaseUser.getIdToken(true);
                     const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                    
                     setUser(firebaseUser);
                     setUserAccount(userAccountData);
                     setAccountId(userAccountData.accountId);
                     setLoading(false);
                 } else {
+                    // This can happen if the user exists in Auth but their Firestore doc was deleted.
                     console.error("User is authenticated but no user document found. Logging out.");
                     signOut(auth);
                 }
             }, 
             (error) => {
+                // This will trigger if the firestore.rules deny the read.
                 console.error("Error listening to user document, likely permissions. Logging out.", error);
                 signOut(auth);
             }
@@ -75,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [firebase]);
+  }, [auth, db]);
 
   useEffect(() => {
     if (loading) return;
@@ -102,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, loading, pathname, router]);
 
   const logout = async () => {
-    if (!firebase) return;
-    await signOut(firebase.auth);
+    if (!auth) return;
+    await signOut(auth);
     router.push('/login');
   };
 

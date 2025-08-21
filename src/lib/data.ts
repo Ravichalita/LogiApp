@@ -29,6 +29,10 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
       ...doc.data()
     } as Client));
     callback(clients);
+  }, (error) => {
+      console.error("Error fetching clients:", error);
+      // Optionally call callback with empty array or handle error state
+      callback([]);
   });
 
   return unsubscribe;
@@ -55,6 +59,9 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
             ...doc.data(),
         } as Dumpster));
         callback(dumpsters);
+    }, (error) => {
+        console.error("Error fetching dumpsters:", error);
+        callback([]);
     });
 
     return unsubscribe;
@@ -78,6 +85,9 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
             } as Rental;
         });
         callback(rentals);
+    }, (error) => {
+        console.error("Error fetching rentals:", error);
+        callback([]);
     });
 
     return unsubscribe;
@@ -108,6 +118,9 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 
         const populatedRentals = await Promise.all(rentalPromises);
         callback(populatedRentals.filter(r => r.client && r.dumpster)); // Filter out rentals with missing relations
+    }, (error) => {
+        console.error("Error fetching populated rentals:", error);
+        callback([]);
     });
 
     return unsubscribe;
@@ -129,6 +142,9 @@ export function getCompletedRentals(accountId: string, callback: (rentals: Compl
             } as CompletedRental;
         });
         callback(rentals);
+    }, (error) => {
+        console.error("Error fetching completed rentals:", error);
+        callback([]);
     });
 
     return unsubscribe;
@@ -159,6 +175,9 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
 
         const populatedRentals = await Promise.all(rentalPromises);
         callback(populatedRentals.filter(r => r.client && r.dumpster)); // Filter out rentals with missing relations
+    }, (error) => {
+        console.error("Error fetching populated completed rentals:", error);
+        callback([]);
     });
 
     return unsubscribe;
@@ -181,6 +200,7 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     callback(users);
   }, (error) => {
       console.error("Error fetching team members:", error);
+      callback([]);
   });
 
   return unsubscribe;
