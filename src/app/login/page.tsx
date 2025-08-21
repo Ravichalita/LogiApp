@@ -26,7 +26,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // The AuthProvider will handle redirection.
       router.push('/');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
@@ -60,7 +59,7 @@ export default function LoginPage() {
                 <Truck className="h-10 w-10 text-primary" />
             </div>
           <CardTitle className="text-2xl font-bold">Login</CardTitle>
-          <CardDescription>Acesse sua conta CaçambaControl</CardDescription>
+          <CardDescription>Acesse sua conta</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

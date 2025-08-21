@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirebase } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -43,23 +43,12 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Create the user in Firebase Auth.
-      // The Firebase Function trigger will handle creating the user documents.
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // 2. Send verification email
-      await sendEmailVerification(user);
+      await createUserWithEmailAndPassword(auth, email, password);
       toast({
-        title: 'Verificação Necessária',
-        description:
-          'Enviamos um link de verificação para o seu e-mail. Por favor, clique nele para ativar sua conta.',
+        title: 'Sucesso!',
+        description: 'Sua conta foi criada. Redirecionando para o login...',
       });
-
-      // 3. Redirect to the verify-email page.
-      // The user document will be created in the background by the function.
-      // The AuthProvider will handle routing once the user is verified and re-logins.
-      router.push('/verify-email');
+      router.push('/login');
 
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
@@ -90,7 +79,7 @@ export default function SignupPage() {
                 <Truck className="h-10 w-10 text-primary" />
             </div>
           <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
-          <CardDescription>Cadastre-se para começar a gerenciar suas caçambas</CardDescription>
+          <CardDescription>Cadastre-se para começar</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-4">
