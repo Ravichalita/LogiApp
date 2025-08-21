@@ -1,32 +1,35 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read their own user document
-    match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      // Allow user creation for signup
-      allow create: if request.auth != null;
+  
+    // Helper function to get user's account data from the users collection
+    function getUserAccount(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+    
+    // Helper function to check if a user is an admin
+    function isAccountAdmin(userId, accountId) {
+      let userAccount = getUserAccount(userId);
+      return userAccount.accountId == accountId && userAccount.role == 'admin';
     }
 
-    // Protect the accounts collection
-    match /accounts/{accountId} {
-      // Helper function to check if the requesting user belongs to the account
-      function userIsMemberOfAccount() {
-        return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
-      }
+    // Protect user data: only users within the same account can read each other's basic info,
+    // and only admins can modify other users in their account.
+    match /users/{userId} {
+       allow read: if request.auth != null && 
+                      getUserAccount(request.auth.uid).accountId == resource.data.accountId;
+       allow create: if request.auth != null; // Allow new user creation (signup)
+       allow update: if request.auth != null && 
+                        isAccountAdmin(request.auth.uid, resource.data.accountId);
+       allow delete: if request.auth != null &&
+                        isAccountAdmin(request.auth.uid, resource.data.accountId);
+    }
 
-      // Accounts can be read by their members
-      allow read: if request.auth != null && userIsMemberOfAccount();
-      // Allow account creation during signup
-      allow create: if request.auth != null;
-
-      // Any subcollection within an account can be read/written by account members
-      match /{subcollection}/{docId=**} {
-        allow read, write, delete: if request.auth != null && userIsMemberOfAccount();
-      }
+    // Protect account-specific data (clients, dumpsters, rentals)
+    match /accounts/{accountId}/{document=**} {
+      allow read, write: if request.auth != null &&
+                           getUserAccount(request.auth.uid).accountId == accountId;
     }
   }
 }
