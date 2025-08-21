@@ -25,8 +25,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // The AuthProvider will handle redirection and email verification checks.
-      // We just need to push to a default page upon successful auth.
+      // The AuthProvider will handle redirection.
       router.push('/');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';

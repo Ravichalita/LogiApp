@@ -32,36 +32,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        if (user.emailVerified) {
-          setUser(user);
-          // Only fetch if userAccount is not already set for this user
-          if (!userAccount || userAccount.id !== user.uid) {
-            const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
+      if (firebaseUser) {
+        if (firebaseUser.emailVerified) {
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          try {
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
-                const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-                setUserAccount(userAccountData);
-                setAccountId(userAccountData.accountId);
+              const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+              setUser(firebaseUser);
+              setUserAccount(userAccountData);
+              setAccountId(userAccountData.accountId);
             } else {
-               console.log("User document doesn't exist yet.");
-               // This can happen on first signup, log them out to be safe
-               // or redirect to a waiting page. For now, we clear state.
-               setUser(null);
-               setUserAccount(null);
-               setAccountId(null);
+              // User exists in Auth but not in Firestore, something is wrong
+              // This might happen if Firestore write fails during signup
+              console.error("User document not found in Firestore for UID:", firebaseUser.uid);
+              await signOut(auth); // Log them out to be safe
+              setUser(null);
+              setUserAccount(null);
+              setAccountId(null);
             }
+          } catch (error) {
+            console.error("Error fetching user document:", error);
+            await signOut(auth);
+            setUser(null);
+            setUserAccount(null);
+            setAccountId(null);
           }
         } else {
+          // Email not verified
           setUser(null);
           setUserAccount(null);
           setAccountId(null);
-          if (!pathname.startsWith('/verify-email')) {
+           if (!pathname.startsWith('/verify-email')) {
              router.push('/verify-email');
-          }
+           }
         }
       } else {
+        // No user logged in
         setUser(null);
         setUserAccount(null);
         setAccountId(null);
@@ -71,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -94,13 +103,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  if (loading || (!user && !publicRoutes.some(route => pathname.startsWith(route)))) {
+  const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
+  if (loading && !isAuthPage) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />
       </div>
     );
   }
+
 
   return (
     <AuthContext.Provider value={{ user, userAccount, accountId, loading, logout }}>
