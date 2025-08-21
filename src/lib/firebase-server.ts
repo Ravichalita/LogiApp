@@ -19,15 +19,9 @@ export async function getFirebaseAdmin() {
 
     try {
         const serviceAccount = JSON.parse(serviceAccountEnv);
-
-        // The credential object might be nested within a `credential` property,
-        // or it might be the top-level object. This handles both cases.
-        const credential = serviceAccount.credential
-            ? admin.credential.cert(serviceAccount.credential)
-            : admin.credential.cert(serviceAccount);
             
         const app = admin.initializeApp({
-             credential,
+             credential: admin.credential.cert(serviceAccount),
         });
 
         const db = admin.firestore(app);
