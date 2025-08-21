@@ -30,7 +30,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { EditDumpsterForm } from './edit-dumpster-form';
-import type { Dumpster, DumpsterStatus, EnhancedDumpster } from '@/lib/types';
+import type { DumpsterStatus, EnhancedDumpster } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -44,10 +44,11 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  // The 'Reservada...' status is derived client-side. The actual status in the DB is stored in `originalStatus`
-  const isReserved = !!dumpster.originalStatus;
+  // The 'Reservada...' status is derived client-side. The actual status in the DB is stored in `originalStatus` or `status`.
+  const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
   const realStatus = dumpster.originalStatus || dumpster.status;
-
+  const canChangeStatusOnClick = realStatus === 'Disponível' || realStatus === 'Em Manutenção';
+  
   const getStatusVariant = (status: EnhancedDumpster['status']): 'default' | 'destructive' | 'secondary' => {
     if (status.startsWith('Reservada')) return 'secondary';
     switch (status) {
@@ -82,8 +83,10 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
     });
   };
 
-  const handleChangeStatus = (newStatus: DumpsterStatus) => {
-    if (realStatus === newStatus || !user) return;
+  const handleToggleStatus = () => {
+    if (!user || !canChangeStatusOnClick) return;
+    const newStatus = realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível';
+    
     startTransition(async () => {
         const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
         if (result.message === 'error') {
@@ -106,21 +109,25 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
       <div className="flex items-center justify-end gap-2">
         {/* Status Badge Dropdown */}
         <DropdownMenu open={isStatusMenuOpen} onOpenChange={setIsStatusMenuOpen}>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild disabled={!canChangeStatusOnClick || isPending}>
             <Badge
               variant={getStatusVariant(dumpster.status)}
-              className={cn('cursor-pointer text-xs')}
+              className={cn(
+                'text-xs', 
+                canChangeStatusOnClick && 'cursor-pointer',
+                isPending && 'opacity-50'
+              )}
             >
               {dumpster.status}
             </Badge>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-             {(['Disponível', 'Alugada', 'Em Manutenção'] as const).map((status) => (
-                <DropdownMenuItem key={status} onSelect={() => handleChangeStatus(status)} disabled={isPending || realStatus === status}>
-                    {isPending && realStatus !== status ? 'Aguarde...' : status}
-                </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
+          {canChangeStatusOnClick && (
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleToggleStatus} disabled={isPending}>
+                  Mudar para "{realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível'}"
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          )}
         </DropdownMenu>
 
         {/* Actions Kebab Menu */}
@@ -135,14 +142,14 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)} disabled={isReservedOrRented}>
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </DropdownMenuItem>
                 </DialogTrigger>
                 <DropdownMenuSeparator />
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}>
+                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }} disabled={isReservedOrRented}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Excluir
                   </DropdownMenuItem>
