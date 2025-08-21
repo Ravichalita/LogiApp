@@ -76,9 +76,8 @@ export default function DumpstersPage() {
   }, [user, loading]);
 
  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
-    const today = new Date();
+    const today = startOfToday();
     
-    // Create a map for quick lookup of rentals for each dumpster
     const rentalsByDumpster = new Map<string, Rental[]>();
     allRentals.forEach(rental => {
         const existing = rentalsByDumpster.get(rental.dumpsterId) || [];
@@ -86,33 +85,32 @@ export default function DumpstersPage() {
     });
 
     return dumpsters.map(d => {
-      // Priority 1: If status from DB is 'Em Manutenção', it's final.
       if (d.status === 'Em Manutenção') {
-        return { ...d, derivedStatus: d.status };
+        return { ...d, derivedStatus: 'Em Manutenção' };
       }
       
       const dumpsterRentals = rentalsByDumpster.get(d.id);
       
-      // Check for active rentals
+      // An active rental is one that is currently happening or is overdue
       const activeRental = dumpsterRentals?.find(r => 
-        isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) })
+        isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) }) ||
+        isAfter(today, new Date(r.returnDate))
       );
 
       if(activeRental) {
         return { ...d, derivedStatus: 'Alugada' };
       }
 
-      // Check for future reservations
+      // Check for future reservations if not rented
        const futureRental = dumpsterRentals
         ?.filter(r => isAfter(new Date(r.rentalDate), today))
-        .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0]; // get the soonest one
+        .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0]; 
 
       if (futureRental) {
          const formattedDate = format(new Date(futureRental.rentalDate), "dd/MM/yy");
          return { ...d, derivedStatus: `Reservada para ${formattedDate}` };
       }
       
-      // If none of the above, it's 'Disponível'.
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
