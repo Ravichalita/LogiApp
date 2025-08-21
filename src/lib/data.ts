@@ -9,9 +9,10 @@ import {
   getDocs,
   doc,
   getDoc,
+  where,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental } from './types';
+import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental, UserAccount } from './types';
 
 type Unsubscribe = () => void;
 
@@ -161,5 +162,22 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
     });
 
     return unsubscribe;
+}
+// #endregion
+
+// #region User/Team Data
+export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
+  const usersCollection = collection(db, 'users');
+  const q = query(usersCollection, where('accountId', '==', accountId), orderBy('name', 'asc'));
+
+  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const users = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as UserAccount));
+    callback(users);
+  });
+
+  return unsubscribe;
 }
 // #endregion

@@ -57,10 +57,20 @@ export default function SignupPage() {
                 <Truck className="h-10 w-10 text-primary" />
             </div>
           <CardTitle className="text-2xl font-bold">Criar Conta</CardTitle>
-          <CardDescription>Cadastre-se para começar</CardDescription>
+          <CardDescription>Cadastre-se para começar a gerenciar suas caçambas.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={formAction} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome Completo</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Seu nome"
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -91,7 +101,7 @@ export default function SignupPage() {
             </div>
             <SubmitButton />
              {state.message && state.message !== 'success' && (
-              <div className="flex items-center gap-2 text-sm text-destructive">
+              <div className="flex items-center gap-2 text-sm text-destructive pt-2">
                 <AlertCircle className="h-4 w-4" />
                 <p>{state.message}</p>
               </div>

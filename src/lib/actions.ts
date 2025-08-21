@@ -6,9 +6,9 @@ import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema } from './types';
-import type { Rental } from './types';
-import { ensureUserDocument } from './data-server';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema } from './types';
+import type { Rental, UserAccount, UserRole, UserStatus } from './types';
+import { ensureUserDocument, findAccountByEmailDomain } from './data-server';
 
 const firestore = getFirestore();
 
@@ -40,7 +40,6 @@ export async function signupAction(prevState: any, formData: FormData) {
 
   if (!validatedFields.success) {
       const fieldErrors = validatedFields.error.flatten().fieldErrors;
-      // Return the first error found in any field
       const firstError = Object.values(fieldErrors).flat()[0] || 'Por favor, verifique os campos.';
       if (fieldErrors._errors && fieldErrors._errors.length > 0) {
         return { message: fieldErrors._errors[0] };
@@ -48,18 +47,25 @@ export async function signupAction(prevState: any, formData: FormData) {
       return { message: firstError };
   }
 
-  const { email, password } = validatedFields.data;
+  const { name, email, password } = validatedFields.data;
 
   try {
-      // 1. Create user in Firebase Auth
+      const existingUser = await adminAuth.getUserByEmail(email).catch(() => null);
+      if (existingUser) {
+        return { message: "Este e-mail já está cadastrado." };
+      }
+
       const userRecord = await adminAuth.createUser({
           email,
           password,
-          emailVerified: false, // Start with email unverified
+          displayName: name,
+          emailVerified: false, 
       });
 
-      // 2. Ensure Firestore documents are created and synced
-      await ensureUserDocument(userRecord);
+      const emailDomain = email.split('@')[1];
+      const accountId = await findAccountByEmailDomain(emailDomain);
+      
+      await ensureUserDocument(userRecord, accountId);
 
       return { message: 'success' };
   } catch (e) {
@@ -232,6 +238,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     longitude: rawData.longitude ? parseFloat(rawData.longitude as string) : undefined,
     status: 'Pendente',
     createdBy: createdBy,
+    assignedTo: createdBy, // Default assignment to creator
   });
 
   if (!validatedFields.success) {
@@ -364,7 +371,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 export async function resetBillingDataAction(accountId: string) {
   try {
     const completedRentalsRef = firestore.collection(`accounts/${accountId}/completed_rentals`);
-    const q = completedRentalsRef.select(); // query() is client-side, just select() is enough here
+    const q = completedRentalsRef.select(); 
     const querySnapshot = await q.get();
 
     const batch = firestore.batch();
@@ -382,5 +389,60 @@ export async function resetBillingDataAction(accountId: string) {
 }
 // #endregion
 
+
+// #region Team/User Actions
+
+export async function updateUserRoleStatus(accountId: string, userId: string, role: UserRole, status: UserStatus) {
+    if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
     
-    
+    try {
+        const userDocRef = firestore.doc(`users/${userId}`);
+        const userDoc = await userDocRef.get();
+
+        if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
+             return { message: 'error', error: 'Usuário não encontrado ou não pertence a esta conta.' };
+        }
+        
+        await userDocRef.update({ role, status });
+        revalidatePath('/team');
+        return { message: 'success' };
+
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function removeUserFromAccount(accountId: string, userId: string) {
+    if (!accountId || !userId) return { message: 'error', error: 'Informações incompletas.' };
+
+    const batch = firestore.batch();
+    try {
+        const userDocRef = firestore.doc(`users/${userId}`);
+        const userDoc = await userDocRef.get();
+
+        if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
+             return { message: 'error', error: 'Usuário não encontrado ou não pertence a esta conta.' };
+        }
+
+        // 1. Delete the user document in Firestore
+        batch.delete(userDocRef);
+        
+        // Transactionally commit Firestore delete
+        await batch.commit();
+
+        // 2. Delete the user from Firebase Auth
+        // This is done after the Firestore operation. If this fails, the user will exist in Auth but not in the app's DB.
+        // They would need to be manually deleted from the Firebase Console.
+        await adminAuth.deleteUser(userId);
+
+        revalidatePath('/team');
+        return { message: 'success' };
+    } catch (e) {
+        // If Auth deletion fails, we don't automatically roll back the Firestore change.
+        // This is a trade-off for simplicity. A more complex implementation could use a Cloud Function to ensure consistency.
+        console.error(`Failed to fully remove user ${userId}. Firestore doc may be deleted but Auth user remains.`, e);
+        return { message: 'error', error: `Ocorreu um erro ao remover o usuário. Pode ser necessário removê-lo manualmente do painel do Firebase. (${handleFirebaseError(e)})` };
+    }
+}
+
+// #endregion

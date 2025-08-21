@@ -43,6 +43,7 @@ export const RentalSchema = z.object({
   value: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
+  assignedTo: z.string(),
 });
 
 export const UpdateRentalSchema = z.object({
@@ -66,19 +67,22 @@ export const CompletedRentalSchema = RentalSchema.omit({ status: true }).extend(
 export const UserAccountSchema = z.object({
   id: z.string(),
   accountId: z.string(),
+  name: z.string(),
   email: z.string(),
   role: z.enum(['admin', 'viewer']),
+  status: z.enum(['ativo', 'inativo']),
 });
 
 export const SignupSchema = z
   .object({
+    name: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
     email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
     password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem.',
-    path: ['_errors'], // Use _errors to show a general form error
+    path: ['confirmPassword'],
   });
 
 // #endregion
@@ -91,6 +95,8 @@ export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string };
 export type CompletedRental = z.infer<typeof CompletedRentalSchema> & { id: string; completedDate: Date };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
+export type UserRole = UserAccount['role'];
+export type UserStatus = UserAccount['status'];
 export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
@@ -107,5 +113,3 @@ export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'cli
     client: Client | null;
 };
 // #endregion
-
-    
