@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { deleteDumpsterAction, updateDumpsterStatusAction } from '@/lib/actions';
 import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,18 +38,47 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
+export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, isReservedOrRented }: {
+    dumpster: EnhancedDumpster;
+    isPending: boolean;
+    handleToggleStatus: () => void;
+    isReservedOrRented: boolean;
+}) {
+    const realStatus = dumpster.originalStatus || dumpster.status;
+    const isMaintenance = realStatus === 'Em Manutenção';
+
+    return (
+        <div className="flex items-center space-x-2">
+            <Checkbox 
+                id={`maintenance-${dumpster.id}`} 
+                checked={isMaintenance}
+                onCheckedChange={handleToggleStatus}
+                disabled={isPending || isReservedOrRented}
+                aria-label="Marcar como em manutenção"
+            />
+            <Label 
+                htmlFor={`maintenance-${dumpster.id}`}
+                className={cn(
+                    "text-sm font-medium leading-none",
+                    (isPending || isReservedOrRented) && "text-muted-foreground cursor-not-allowed"
+                )}
+            >
+                Em Manutenção
+            </Label>
+        </div>
+    )
+}
+
+
 export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const { user } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  // The 'Reservada...' status is derived client-side. The actual status in the DB is stored in `originalStatus` or `status`.
   const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
   const realStatus = dumpster.originalStatus || dumpster.status;
-  const canChangeStatusOnClick = realStatus === 'Disponível' || realStatus === 'Em Manutenção';
   
   const getStatusVariant = (status: EnhancedDumpster['status']): 'default' | 'destructive' | 'secondary' => {
     if (status.startsWith('Reservada')) return 'secondary';
@@ -84,7 +115,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   };
 
   const handleToggleStatus = () => {
-    if (!user || !canChangeStatusOnClick) return;
+    if (!user || isReservedOrRented) return;
     const newStatus = realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
     startTransition(async () => {
@@ -106,29 +137,24 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
 
   return (
     <>
-      <div className="flex items-center justify-end gap-2">
-        {/* Status Badge Dropdown */}
-        <DropdownMenu open={isStatusMenuOpen} onOpenChange={setIsStatusMenuOpen}>
-          <DropdownMenuTrigger asChild disabled={!canChangeStatusOnClick || isPending}>
-            <Badge
-              variant={getStatusVariant(dumpster.status)}
-              className={cn(
-                'text-xs', 
-                canChangeStatusOnClick && 'cursor-pointer',
-                isPending && 'opacity-50'
-              )}
-            >
-              {dumpster.status}
-            </Badge>
-          </DropdownMenuTrigger>
-          {canChangeStatusOnClick && (
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleToggleStatus} disabled={isPending}>
-                  Mudar para "{realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível'}"
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          )}
-        </DropdownMenu>
+      <div className="flex items-center justify-end gap-4">
+        {/* Status Badge */}
+        <Badge
+          variant={getStatusVariant(dumpster.status)}
+          className={cn('text-xs', isPending && 'opacity-50')}
+        >
+          {dumpster.status}
+        </Badge>
+        
+        {/* Checkbox for desktop view */}
+        <div className="hidden md:flex">
+             <MaintenanceCheckbox 
+                dumpster={dumpster} 
+                isPending={isPending} 
+                handleToggleStatus={handleToggleStatus} 
+                isReservedOrRented={isReservedOrRented}
+            />
+        </div>
 
         {/* Actions Kebab Menu */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

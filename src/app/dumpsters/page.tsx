@@ -1,18 +1,20 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useTransition } from 'react';
 import { getDumpsters, getPendingRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DumpsterActions } from './dumpster-actions';
+import { DumpsterActions, MaintenanceCheckbox } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster, DumpsterStatus } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { startOfToday, format, isAfter } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { updateDumpsterStatusAction } from '@/lib/actions';
 
 
 function DumpsterTableSkeleton() {
@@ -24,7 +26,8 @@ function DumpsterTableSkeleton() {
                         <TableHead>Identificador</TableHead>
                         <TableHead>Cor</TableHead>
                         <TableHead>Tamanho (m³)</TableHead>
-                        <TableHead className="text-right">Status / Ações</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Ações</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -33,6 +36,7 @@ function DumpsterTableSkeleton() {
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-10" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-28" /></TableCell>
                             <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                         </TableRow>
                     ))}
@@ -48,6 +52,8 @@ export default function DumpstersPage() {
   const [pendingRentals, setPendingRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -95,7 +101,7 @@ export default function DumpstersPage() {
         };
       }
       return d;
-    })
+    }).sort((a, b) => a.name.localeCompare(b.name));
 
   }, [dumpsters, pendingRentals]);
 
@@ -110,6 +116,31 @@ export default function DumpstersPage() {
       String(d.size).includes(searchTerm)
     );
   }, [dumpstersWithDerivedStatus, searchTerm]);
+  
+  const handleToggleStatus = (dumpster: EnhancedDumpster) => {
+    if (!user) return;
+    const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
+    if (isReservedOrRented) return;
+
+    const realStatus = dumpster.originalStatus || dumpster.status;
+    const newStatus = realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível';
+    
+    startTransition(async () => {
+        const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
+        if (result.message === 'error') {
+             toast({
+                title: 'Erro',
+                description: result.error,
+                variant: 'destructive',
+            });
+        } else {
+            toast({
+                title: 'Sucesso',
+                description: `Status da caçamba alterado para ${newStatus}.`
+            });
+        }
+    });
+  };
 
 
   return (
@@ -139,7 +170,7 @@ export default function DumpstersPage() {
                                     <TableHead>Identificador</TableHead>
                                     <TableHead>Cor</TableHead>
                                     <TableHead>Tamanho (m³)</TableHead>
-                                    <TableHead className="text-right">Status / Ações</TableHead>
+                                    <TableHead>Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -148,7 +179,7 @@ export default function DumpstersPage() {
                                 <TableCell className="font-medium">{dumpster.name}</TableCell>
                                 <TableCell>{dumpster.color}</TableCell>
                                 <TableCell>{dumpster.size}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell>
                                     <DumpsterActions dumpster={dumpster} />
                                 </TableCell>
                                 </TableRow>
@@ -165,21 +196,30 @@ export default function DumpstersPage() {
 
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
-                        {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
-                            <div key={dumpster.id} className="border rounded-lg p-4">
-                            <div className="flex justify-between items-start">
-                                <h3 className="font-bold text-lg">{dumpster.name}</h3>
-                                <div className="w-auto">
+                        {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
+                            const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
+                           return (
+                            <div key={dumpster.id} className="border rounded-lg p-4 space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="font-bold text-lg">{dumpster.name}</h3>
                                     <DumpsterActions dumpster={dumpster} />
                                 </div>
+                                <div className="flex justify-between text-sm text-muted-foreground">
+                                    <span>Cor: <span className="font-medium text-foreground">{dumpster.color}</span></span>
+                                    <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
+                                </div>
+                                <Separator />
+                                <div className="pt-1">
+                                    <MaintenanceCheckbox 
+                                        dumpster={dumpster}
+                                        isPending={isPending}
+                                        handleToggleStatus={() => handleToggleStatus(dumpster)}
+                                        isReservedOrRented={isReservedOrRented}
+                                    />
+                                </div>
                             </div>
-                            <Separator className="my-2" />
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Cor: <span className="font-medium text-foreground">{dumpster.color}</span></span>
-                                <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
-                            </div>
-                            </div>
-                        )) : (
+                           )
+                        }) : (
                             <div className="text-center py-10">
                             <p>Nenhuma caçamba cadastrada.</p>
                             </div>
