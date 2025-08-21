@@ -20,7 +20,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const publicRoutes = ['/login'];
 const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -87,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
         router.push('/verify-email');
-      } else if (user.emailVerified && (publicRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith('/verify-email'))) {
+      } else if (user.emailVerified && pathname.startsWith('/verify-email')) {
         router.push('/');
       }
     } else {
