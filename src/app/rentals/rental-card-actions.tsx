@@ -5,14 +5,20 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, cancelRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays } from 'lucide-react';
-import { format } from 'date-fns';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText } from 'lucide-react';
+import { format, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
 import type { getRentalStatus } from '../page';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,8 +31,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { differenceInCalendarDays } from 'date-fns';
-
+import { Separator } from '@/components/ui/separator';
 
 interface RentalCardActionsProps {
     rental: PopulatedRental;
@@ -40,7 +45,7 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
-function calculateRentalDays(startDate: Date, endDate: Date): number {
+function calculateRentalDays(startDate: string, endDate: string): number {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const diff = differenceInCalendarDays(end, start);
@@ -54,7 +59,6 @@ function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
         </svg>
     )
 }
-
 
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { accountId } = useAuth();
@@ -133,6 +137,44 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 <span className="font-medium">{formatCurrency(totalValue)}</span>
             </div>
         </div>
+
+        <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="client-details" className="border-none">
+                <Separator />
+                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-center">
+                    Detalhes do Cliente
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-1" />
+                </AccordionTrigger>
+                <AccordionContent className="pt-3 space-y-3">
+                     <div className="flex items-start gap-3">
+                        <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Telefone</span>
+                            <span className="font-medium">{rental.client?.phone}</span>
+                        </div>
+                    </div>
+                    {rental.client?.email && (
+                        <div className="flex items-start gap-3">
+                            <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Email</span>
+                            <span className="font-medium">{rental.client.email}</span>
+                            </div>
+                        </div>
+                    )}
+                    {rental.client?.observations && (
+                        <div className="flex items-start gap-3">
+                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Observações</span>
+                            <p className="font-medium whitespace-pre-wrap">{rental.client.observations}</p>
+                            </div>
+                        </div>
+                    )}
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+
       </div>
        <div className="flex flex-col md:flex-row w-full gap-2 mt-auto md:ml-auto md:w-auto">
             {status.text !== 'Pendente' && (
@@ -176,3 +218,5 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
+
+    
