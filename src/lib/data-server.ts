@@ -87,13 +87,14 @@ export async function deleteDumpster(userId: string, docId: string) {
     // You might want to add a check here for active rentals before deleting
     return deleteDocument(userId, 'dumpsters', docId);
 }
-export async function updateDumpsterStatus(userId: string, id: string, status: DumpsterStatus) {
-    return await updateDocument(userId, 'dumpsters', id, { status });
-}
 
 // Rentals
 export async function addRental(userId: string, rental: Omit<Rental, 'id'>) {
   return addDocument(userId, 'rentals', rental);
+}
+
+export async function deleteRental(userId: string, rentalId: string) {
+    return deleteDocument(userId, 'rentals', rentalId);
 }
 
 export async function getRentalById(userId: string, rentalId: string): Promise<Rental | null> {

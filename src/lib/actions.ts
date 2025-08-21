@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, updateDumpsterStatus, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, deleteRental } from './data-server';
 import type { DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -89,7 +89,7 @@ export async function deleteDumpsterAction(userId: string, id: string) {
 export async function updateDumpsterStatusAction(userId: string, id: string, status: DumpsterStatus) {
     if (!userId) return { message: 'error', error: 'Usuário não autenticado.' };
     try {
-        await updateDumpsterStatus(userId, id, status);
+        const docRef = await updateDocument(userId, 'dumpsters', id, { status });
         revalidatePath('/dumpsters');
         revalidatePath('/rentals/new');
         revalidatePath('/');
@@ -225,11 +225,9 @@ export async function createRental(userId: string, prevState: any, formData: For
     }
 
     try {
-        // The dumpster status is no longer changed here.
-        // The UI will derive the status ('Reservada' or 'Alugada') based on the rental dates.
         await addRental(userId, {
             ...validatedFields.data,
-            status: 'Ativo', // All new rentals are 'Ativo' by default.
+            status: 'Ativo',
         });
     } catch (e) {
         console.error(e);
@@ -254,7 +252,6 @@ export async function finishRentalAction(userId: string, formData: FormData) {
     }
 
     try {
-        // First, get the rental data to calculate total value
         const rental = await getRentalById(userId, rentalId);
         if (!rental) {
             throw new Error("Aluguel não encontrado.");
@@ -273,7 +270,6 @@ export async function finishRentalAction(userId: string, formData: FormData) {
             rentalDays,
         };
 
-        // This function now handles deleting the rental and updating the dumpster status
         await completeRental(userId, rentalId, dumpsterId, completedRentalData);
 
     } catch (e) {
@@ -283,8 +279,28 @@ export async function finishRentalAction(userId: string, formData: FormData) {
 
     revalidatePath('/');
     revalidatePath('/stats');
-    revalidatePath('/dumpsters'); // Revalidate to update dumpster status
+    revalidatePath('/dumpsters');
     redirect('/');
+}
+
+export async function cancelRentalAction(userId: string, rentalId: string) {
+    if (!userId) {
+        return { message: 'error', error: 'Usuário não autenticado.' };
+    }
+    if (!rentalId) {
+        return { message: 'error', error: 'ID do aluguel não fornecido.' };
+    }
+
+    try {
+        await deleteRental(userId, rentalId);
+    } catch (e: any) {
+        console.error("Error canceling rental:", e);
+        return { message: 'error', error: 'Falha ao cancelar o aluguel.' };
+    }
+
+    revalidatePath('/');
+    revalidatePath('/dumpsters');
+    return { message: 'success' };
 }
 
 
