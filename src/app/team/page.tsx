@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getTeamMembers } from '@/lib/data';
 import type { UserAccount } from '@/lib/types';
@@ -62,6 +62,10 @@ export default function TeamPage() {
       setLoading(false);
     }
   }, [accountId, isAdmin]);
+  
+  const sortedMembers = useMemo(() => {
+    return [...members].sort((a, b) => a.name.localeCompare(b.name));
+  }, [members]);
 
   if (loading) {
     return (
@@ -96,7 +100,7 @@ export default function TeamPage() {
         <CardHeader>
           <CardTitle>Membros da Equipe</CardTitle>
           <CardDescription>
-            {members.length} usuário(s) nesta conta.
+            {sortedMembers.length} usuário(s) nesta conta.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -111,8 +115,8 @@ export default function TeamPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.length > 0 ? (
-                  members.map((member) => (
+                {sortedMembers.length > 0 ? (
+                  sortedMembers.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell>
                         <div className="font-medium">{member.name}</div>

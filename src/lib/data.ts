@@ -168,7 +168,7 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
 // #region User/Team Data
 export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
   const usersCollection = collection(db, 'users');
-  const q = query(usersCollection, where('accountId', '==', accountId), orderBy('name', 'asc'));
+  const q = query(usersCollection, where('accountId', '==', accountId));
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const users = querySnapshot.docs.map(doc => ({
