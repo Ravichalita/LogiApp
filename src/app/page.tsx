@@ -20,23 +20,35 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
-export function getRentalStatus(rental: Rental) {
+type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado';
+type RentalStatusFilter = RentalStatus | 'Todas';
+
+export function getRentalStatus(rental: Rental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success', order: number } {
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
 
-  if (isBefore(today, rentalDate)) {
-    return { text: 'Pendente', variant: 'secondary', order: 1 };
-  }
   if (isAfter(today, returnDate)) {
-    return { text: 'Em Atraso', variant: 'destructive', order: 2 };
+    return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
   if (isToday(rentalDate) || isAfter(today, rentalDate) && isBefore(today, returnDate) || isToday(returnDate)) {
-     return { text: 'Ativo', variant: 'default', order: 3 };
+     return { text: 'Ativo', variant: 'success', order: 2 };
   }
-  return { text: 'Agendado', variant: 'secondary', order: 4 };
+  if (isBefore(today, rentalDate)) {
+    return { text: 'Pendente', variant: 'secondary', order: 3 };
+  }
+  return { text: 'Agendado', variant: 'secondary', order: 4 }; // Should not happen in active rentals list often
 }
+
+const filterOptions: { label: string, value: RentalStatusFilter }[] = [
+    { label: "Todas", value: 'Todas' },
+    { label: "Pendente", value: 'Pendente' },
+    { label: "Ativo", value: 'Ativo' },
+    { label: "Em Atraso", value: 'Em Atraso' },
+];
+
 
 function RentalCardSkeleton() {
     return (
@@ -85,6 +97,7 @@ export default function HomePage() {
   const { accountId } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
     if (accountId) {
@@ -99,8 +112,14 @@ export default function HomePage() {
     }
   }, [accountId]);
   
-  const sortedRentals = useMemo(() => {
-    return rentals.sort((a, b) => {
+  const filteredAndSortedRentals = useMemo(() => {
+    return rentals
+     .filter(rental => {
+        if (statusFilter === 'Todas') return true;
+        const status = getRentalStatus(rental);
+        return status.text === statusFilter;
+      })
+     .sort((a, b) => {
         const statusA = getRentalStatus(a);
         const statusB = getRentalStatus(b);
         if (statusA.order !== statusB.order) {
@@ -108,7 +127,7 @@ export default function HomePage() {
         }
         return parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime();
     });
-  }, [rentals]);
+  }, [rentals, statusFilter]);
   
 
   if (loading) {
@@ -145,9 +164,23 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
+      <h1 className="text-3xl font-headline font-bold mb-4">Aluguéis Ativos</h1>
+      <div className="flex flex-wrap gap-2 mb-6">
+            {filterOptions.map(option => (
+                <Button
+                    key={option.value}
+                    variant={statusFilter === option.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(option.value)}
+                    className="text-xs h-7"
+                >
+                    {option.label}
+                </Button>
+            ))}
+        </div>
+
       <div className="space-y-4">
-        {sortedRentals.map((rental) => {
+        {filteredAndSortedRentals.length > 0 ? filteredAndSortedRentals.map((rental) => {
             const status = getRentalStatus(rental);
             return (
             <Accordion type="single" collapsible className="w-full" key={rental.id}>
@@ -183,7 +216,11 @@ export default function HomePage() {
                 </AccordionItem>
             </Accordion>
             );
-        })}
+        }) : (
+             <div className="text-center py-16 bg-card rounded-lg border">
+                <p className="text-muted-foreground">Nenhum aluguel encontrado para o filtro "{statusFilter}".</p>
+            </div>
+        )}
       </div>
     </div>
   );

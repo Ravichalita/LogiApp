@@ -6,7 +6,7 @@ import { finishRentalAction, cancelRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText } from 'lucide-react';
-import { format, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -46,8 +46,8 @@ function formatCurrency(value: number) {
 }
 
 function calculateRentalDays(startDate: string, endDate: string): number {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
     const diff = differenceInCalendarDays(end, start);
     return Math.max(diff, 1); // Ensure at least 1 day is charged
 }
@@ -119,7 +119,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Período</span>
                      <p className="font-semibold text-base">
-                        {format(rental.rentalDate, "dd/MM/yy", { locale: ptBR })} - {format(rental.returnDate, "dd/MM/yy", { locale: ptBR })}
+                        {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
                     </p>
                 </div>
             </div>
@@ -218,5 +218,3 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
-
-    
