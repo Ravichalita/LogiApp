@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Truck, LogOut, User as UserIcon, BarChart3, Users } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, BarChart3, Users, UserPlus } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -70,12 +70,20 @@ export function Header() {
             </Button>
 
             {isAdmin && (
-               <Button variant="ghost" size="icon" asChild>
+               <>
+                <Button variant="ghost" size="icon" asChild>
                     <Link href="/team">
                         <Users className="h-5 w-5" />
                         <span className="sr-only">Equipe</span>
                     </Link>
                 </Button>
+                 <Button variant="ghost" size="icon" asChild>
+                    <Link href="/signup">
+                        <UserPlus className="h-5 w-5" />
+                        <span className="sr-only">Convidar Usuário</span>
+                    </Link>
+                </Button>
+               </>
             )}
           
            <DropdownMenu>

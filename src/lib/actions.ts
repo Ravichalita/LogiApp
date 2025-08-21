@@ -37,6 +37,8 @@ function handleFirebaseError(error: unknown): string {
 
 export async function signupAction(prevState: any, formData: FormData) {
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
+  const inviterId = formData.get('inviterId') as string | null;
+
 
   if (!validatedFields.success) {
       const fieldErrors = validatedFields.error.flatten().fieldErrors;
@@ -62,10 +64,30 @@ export async function signupAction(prevState: any, formData: FormData) {
           emailVerified: false, 
       });
 
-      const emailDomain = email.split('@')[1];
-      const accountId = await findAccountByEmailDomain(emailDomain);
+      let accountIdToJoin: string | null = null;
+      if (inviterId) {
+        const inviterDoc = await firestore.doc(`users/${inviterId}`).get();
+        if (inviterDoc.exists) {
+            accountIdToJoin = inviterDoc.data()?.accountId;
+        }
+      }
+
+      if (!accountIdToJoin) {
+         accountIdToJoin = await findAccountByEmailDomain(email.split('@')[1]);
+      }
       
-      await ensureUserDocument(userRecord, accountId);
+      await ensureUserDocument(userRecord, accountIdToJoin);
+      
+      // Send verification email
+      // This part doesn't work in server actions with the admin SDK directly in this flow.
+      // Firebase Auth automatically sends a verification email on creation if configured in the console.
+      // Or, it can be triggered on the client-side after the first login.
+      // For now, we rely on the default Firebase behavior.
+
+      if (inviterId) {
+        revalidatePath('/team');
+        return { message: 'invite_success' };
+      }
 
       return { message: 'success' };
   } catch (e) {

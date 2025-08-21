@@ -70,7 +70,13 @@ export default function TeamPage() {
   if (loading) {
     return (
       <div className="container mx-auto py-8 px-4 md:px-6">
-        <h1 className="text-3xl font-headline font-bold mb-6">Gerenciar Equipe</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+              <h1 className="text-3xl font-headline font-bold">Gerenciar Equipe</h1>
+              <p className="text-muted-foreground">Adicione, remova e gerencie as permissões dos usuários.</p>
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
         <TeamTableSkeleton />
       </div>
     );
@@ -92,9 +98,6 @@ export default function TeamPage() {
             <h1 className="text-3xl font-headline font-bold">Gerenciar Equipe</h1>
             <p className="text-muted-foreground">Adicione, remova e gerencie as permissões dos usuários.</p>
         </div>
-        <Button asChild>
-            <Link href="/signup">Convidar Usuário</Link>
-        </Button>
       </div>
       <Card>
         <CardHeader>
