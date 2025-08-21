@@ -15,23 +15,8 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     if (!domain) return null;
-    const usersRef = firestore.collection('users');
-    // A simple query to find a user with the same domain. This is for convenience and might not be secure
-    // for all use cases (e.g. public email domains). For a corporate app, it's a reasonable starting point.
-    const querySnapshot = await usersRef.where('email', '>', `@${domain}`).where('email', '<', `z@${domain}`).limit(1).get();
-
-    try {
-        if (!querySnapshot.empty) {
-            const user = querySnapshot.docs[0].data();
-            // Ensure the found user has an accountId and their email domain matches.
-            if (user.accountId && typeof user.email === 'string' && user.email.endsWith(`@${domain}`)) {
-                return user.accountId;
-            }
-        }
-    } catch (error) {
-        console.error("Error finding account by email domain:", error);
-    }
-    
+    // This is a placeholder for a more robust domain-to-account mapping.
+    // In a real app, you might query a dedicated 'domains' collection.
     return null;
 }
 
@@ -55,12 +40,13 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         if (docSnap.exists) {
             console.warn(`User document for ${userRecord.uid} already exists.`);
             const userData = docSnap.data();
-            if (userData?.accountId) {
+            const accountId = userData?.accountId;
+            if (accountId) {
                 // Ensure claims are set even if doc exists but claims are missing
                 if (!userRecord.customClaims?.accountId) {
-                     await adminAuth.setCustomUserClaims(userRecord.uid, { accountId: userData.accountId, role: userData.role || 'viewer' });
+                     await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userData.role || 'viewer' });
                 }
-                return userData.accountId;
+                return accountId;
             }
             // Fallthrough to create if accountId is missing
         }

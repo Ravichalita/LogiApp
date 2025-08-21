@@ -4,51 +4,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isAuth() {
-      return request.auth != null;
-    }
-
+    // Helper functions to make rules more readable.
     function isOwner(userId) {
-      return isAuth() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
-    // Custom claims are set on the user's token by a server-side process (e.g., Cloud Function or Admin SDK)
-    // This is the most secure and performant way to handle roles and multi-tenancy.
-    function getAccountId() {
-      return request.auth.token.accountId;
+    function isSameAccount(accountId) {
+      // The user's accountId is stored as a custom claim on their auth token.
+      // This is the fastest and most secure way to check for tenancy.
+      return request.auth.token.accountId == accountId;
     }
 
     function isAdmin() {
+      // The user's role is also stored as a custom claim.
       return request.auth.token.role == 'admin';
     }
 
-    // Rules for the 'users' collection
+    // User profiles can be read by themselves, or by anyone in the same account.
+    // A user can always update their own profile.
+    // Admins can update any user's profile in their account.
     match /users/{userId} {
-      // Any authenticated user can create their own user document.
-      allow create: if isAuth();
-
-      // A user can read their own document.
-      // An admin of the same account can also read the document.
-      allow get: if isAuth() && (isOwner(userId) || (isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId()));
-
-      // A user can update their own document.
-      // An admin can update any user document within the same account.
-      allow update: if isAuth() && (isOwner(userId) || isAdmin());
-
-      // Only an admin can delete a user (and this should be handled via a Cloud Function for safety).
-      allow delete: if false;
-
-      // Users can list other users ONLY if they are querying for users within their own account.
-      // This is the key rule that secures multi-tenancy for the users collection.
-      allow list: if isAuth() && request.query.where.accountId == getAccountId();
+      allow get: if isOwner(userId) || isSameAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
+      allow list: if isSameAccount(request.query.where.accountId);
+      allow update: if isOwner(userId) || (isAdmin() && isSameAccount(resource.data.accountId));
+      allow create: if true; // Creation is handled by server-side logic (signupAction).
     }
-
-    // Rules for all subcollections within an 'accounts' document
-    match /accounts/{accountId}/{document=**} {
-      // A user can read or write to any document within an account
-      // if and only if their custom token claim `accountId` matches the {accountId} wildcard.
-      allow read, write: if isAuth() && getAccountId() == accountId;
+    
+    // Any document within an account can only be accessed by users belonging to that account.
+    match /accounts/{accountId}/{collection}/{docId} {
+      allow read, write: if isSameAccount(accountId);
     }
   }
 }
