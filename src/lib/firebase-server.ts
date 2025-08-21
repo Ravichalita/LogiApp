@@ -1,3 +1,4 @@
+
 'use server';
 import * as admin from 'firebase-admin';
 
@@ -11,14 +12,19 @@ export async function getFirebaseAdmin() {
         };
     }
 
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-    if (!serviceAccount) {
+    if (!serviceAccountEnv) {
         throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. This is required for server-side Firebase Admin operations.');
     }
+    
+    const serviceAccount = typeof serviceAccountEnv === 'string' 
+        ? JSON.parse(serviceAccountEnv) 
+        : serviceAccountEnv;
+
 
     const app = admin.initializeApp({
-        credential: admin.credential.cert(JSON.parse(serviceAccount)),
+        credential: admin.credential.cert(serviceAccount),
     });
     
     const db = admin.firestore(app);
