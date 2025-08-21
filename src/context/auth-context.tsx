@@ -20,7 +20,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const publicRoutes = ['/login', '/signup'];
+const publicRoutes = ['/login'];
 const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
