@@ -64,25 +64,27 @@ async function deleteDocument(accountId: string, collectionName: string, docId: 
 
 // Called from a server action during signup
 export async function createAccountForNewUser(userId: string, email: string) {
-  const batch = adminDb.batch();
+    try {
+        // 1. Create a new account
+        const accountRef = adminDb.collection('accounts').doc();
+        await accountRef.set({
+            ownerId: userId,
+            name: `${email}'s Account`,
+            createdAt: new Date(),
+        });
+        const accountId = accountRef.id;
 
-  // 1. Create a new account
-  const accountRef = adminDb.collection('accounts').doc();
-  batch.set(accountRef, {
-    ownerId: userId,
-    name: `${email}'s Account`,
-    createdAt: new Date(),
-  });
-
-  // 2. Create the user document and link it to the account
-  const userRef = adminDb.collection('users').doc(userId);
-  batch.set(userRef, {
-    email: email,
-    accountId: accountRef.id,
-    role: 'admin', // First user is always an admin
-  });
-
-  await batch.commit();
+        // 2. Create the user document and link it to the account
+        const userRef = adminDb.collection('users').doc(userId);
+        await userRef.set({
+            email: email,
+            accountId: accountId,
+            role: 'admin', // First user is always an admin
+        });
+    } catch(error) {
+        console.error("Error creating account and user document:", error);
+        throw new Error("Falha ao salvar informações do usuário no banco de dados.");
+    }
 }
 
 

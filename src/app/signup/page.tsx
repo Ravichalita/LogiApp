@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
@@ -54,6 +54,7 @@ export default function SignupPage() {
       });
       
       if (result.message === 'error') {
+        // This will catch errors from the server action, like Firestore write failures
         throw new Error(result.error);
       }
 
@@ -74,6 +75,7 @@ export default function SignupPage() {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'A senha é muito fraca.';
       } else {
+        // Catches the error thrown from the server action result
         errorMessage = error.message || errorMessage;
       }
       toast({

@@ -10,8 +10,8 @@ import { differenceInCalendarDays } from 'date-fns';
 
 
 const createUserAccountSchema = z.object({
-  userId: z.string(),
-  email: z.string().email(),
+  userId: z.string().min(1, 'User ID is required.'),
+  email: z.string().email('Invalid email format.'),
 });
 
 export async function createUserAccountAction(data: z.infer<typeof createUserAccountSchema>) {
@@ -27,6 +27,7 @@ export async function createUserAccountAction(data: z.infer<typeof createUserAcc
     await createAccountForNewUser(validatedFields.data.userId, validatedFields.data.email);
     return { message: 'success' };
   } catch (e: any) {
+    console.error("Error in createUserAccountAction:", e);
     return { message: 'error', error: e.message || 'Falha ao criar a conta no Firestore.' };
   }
 }
