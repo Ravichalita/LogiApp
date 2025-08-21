@@ -145,7 +145,7 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <div className="p-6">
+                <div className="p-6 pb-0">
                     <div className="flex justify-between items-start">
                         <div className="flex-1 text-left">
                             <div className="flex items-center gap-2">
@@ -164,12 +164,12 @@ export default function DashboardPage() {
                     </div>
                 </div>
                  <AccordionTrigger asChild>
-                    <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full">
+                    <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full mt-4">
                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
                  </AccordionTrigger>
-                <AccordionContent>
-                  <div className="p-6 pt-2">
+                <AccordionContent className="p-6">
+                  <div className="pt-2">
                     <div className="grid gap-4 md:grid-cols-2">
                          <div className="space-y-4">
                              <div className="flex items-start gap-3">
@@ -209,7 +209,7 @@ export default function DashboardPage() {
                                 <div className="flex items-start gap-3">
                                     <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                                     <div className="flex flex-col">
-                                        <span className="text-sm text-muted-foreground">Telefone (Clique para abrir o WhatsApp)</span>
+                                        <span className="text-sm text-muted-foreground">(Clique para abrir o WhatsApp)</span>
                                         <Link 
                                             href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}`} 
                                             target="_blank" 
@@ -258,5 +258,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
