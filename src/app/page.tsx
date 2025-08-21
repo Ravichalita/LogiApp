@@ -111,13 +111,17 @@ export default function DashboardPage() {
     const rentalDate = new Date(rental.rentalDate);
     const returnDate = new Date(rental.returnDate);
     
+    if (rental.status !== 'Ativo') {
+        // This case shouldn't happen based on the query, but as a fallback
+        return { text: rental.status, variant: 'secondary'};
+    }
+    
     if (rentalDate > today) {
       return { text: 'Pendente', variant: 'secondary' };
     }
     if (returnDate < today) {
       return { text: 'Em Atraso', variant: 'destructive' };
     }
-    // A caçamba está alugada se a data de entrega é hoje ou já passou, e a data de retorno é hoje ou no futuro.
     return { text: 'Ativo', variant: 'success' };
   };
 
@@ -145,7 +149,7 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <div className="p-6 pb-0">
+                <div className="p-6 pb-4">
                     <div className="flex justify-between items-start">
                         <div className="flex-1 text-left">
                             <div className="flex items-center gap-2">
@@ -163,13 +167,13 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-                 <AccordionTrigger asChild>
+                 <AccordionTrigger>
                     <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full mt-4">
                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
                  </AccordionTrigger>
-                <AccordionContent className="p-6">
-                  <div className="pt-2">
+                <AccordionContent>
+                  <div className="p-6 pt-2">
                     <div className="grid gap-4 md:grid-cols-2">
                          <div className="space-y-4">
                              <div className="flex items-start gap-3">
@@ -258,3 +262,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
