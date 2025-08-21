@@ -3,46 +3,46 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated.
+    // Helper Functions
     function isAuth() {
       return request.auth != null;
     }
 
-    // Helper function to check if the requesting user belongs to the specified account.
-    // It does this by checking the `accountId` field on the user's own document in the /users collection.
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
     function isUserInAccount(accountId) {
-      return isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
+      return isAuth() && getUserData().accountId == accountId;
     }
     
-    // Helper function to check if the user is an admin of the specified account.
-    function isUserAdminOfAccount(accountId) {
-      return isUserInAccount(accountId) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    function isUserRole(role) {
+       return isAuth() && getUserData().role == role;
     }
 
-    // Rules for all collections under an account (e.g., clients, dumpsters, rentals).
-    // The user must belong to the account to read or write any documents within it.
-    match /accounts/{accountId}/{documents=**} {
-      allow read, write: if isUserInAccount(accountId);
-    }
-    
+    // Rules for the 'users' collection
     match /users/{userId} {
-      // A user can read another user's document ONLY if they both belong to the same account.
-      allow get: if isAuth() && 
-                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId;
+      // Allow a user to get another user's document if they are in the same account
+      allow get: if isAuth() && getUserData().accountId == resource.data.accountId;
 
-      // A user can list users ONLY if they are querying for users within their own account.
-      // This forces the client query to include `where('accountId', '==', user.accountId)`.
-      allow list: if isAuth() && request.query.accountId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId;
+      // Allow a user to list users only if the query is constrained to their own account
+      allow list: if isAuth() && request.query.get('where')[0][2] == getUserData().accountId;
 
-      // A user can only update another user's document if they are an admin of that account.
-      // A user cannot update their own role or accountId.
-      allow update: if isUserAdminOfAccount(resource.data.accountId) && 
-                       !(request.resource.data.role != resource.data.role && request.auth.uid == userId) &&
-                       !(request.resource.data.accountId != resource.data.accountId);
-                       
-      // A user can only be created via the signupAction server-side function, which has full access.
-      // No client-side creation is allowed. Deletion is also server-side only.
-      allow create, delete: if false;
+      // Allow a user to update another user's document if they are an admin in the same account
+      allow update: if isUserInAccount(resource.data.accountId) && isUserRole('admin');
+
+      // Allow anyone to create a user document (signup)
+      allow create: if true;
+      
+      // Do not allow deletion of user documents through client-side requests for safety.
+      // Deletion is handled by a server-side action.
+      allow delete: if false;
+    }
+
+    // Rules for all subcollections within an account
+    match /accounts/{accountId}/{documents=**} {
+      // Allow read/write access only to users who belong to this account
+      allow read, write: if isUserInAccount(accountId);
     }
   }
 }
