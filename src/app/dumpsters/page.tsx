@@ -75,30 +75,30 @@ export default function DumpstersPage() {
     }
   }, [user, loading]);
 
-  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
+ const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
     
-    const scheduledRentalsMap = new Map<string, Rental>();
-    // Pre-process rentals to find the earliest future rental for each dumpster
+    // Create a map for quick lookup of the earliest rental for each dumpster
+    const rentalsMap = new Map<string, Rental>();
     pendingRentals
       .sort((a, b) => a.rentalDate.getTime() - b.rentalDate.getTime())
       .forEach(rental => {
-        if (!scheduledRentalsMap.has(rental.dumpsterId)) {
-          scheduledRentalsMap.set(rental.dumpsterId, rental);
+        if (!rentalsMap.has(rental.dumpsterId)) {
+          rentalsMap.set(rental.dumpsterId, rental);
         }
       });
 
     return dumpsters.map(d => {
-      // Priority 1: If status from DB is final ('Alugada' or 'Em Manutenção'), use it directly.
+      // Priority 1: If status from DB is 'Alugada' or 'Em Manutenção', it's final.
       if (d.status === 'Alugada' || d.status === 'Em Manutenção') {
         return { ...d, derivedStatus: d.status };
       }
       
       // Priority 2: If status is 'Disponível', check for future reservations.
-      const rental = scheduledRentalsMap.get(d.id);
+      const rental = rentalsMap.get(d.id);
       if (rental) {
         const rentalDate = new Date(rental.rentalDate);
-        // Only if the rental is strictly in the future, it's 'Reservada'.
+        // isAfter checks if the first date is after the second one.
         if (isAfter(rentalDate, today)) {
           const formattedDate = format(rentalDate, "dd/MM/yy");
           return { 
@@ -108,9 +108,7 @@ export default function DumpstersPage() {
         }
       }
       
-      // If 'Disponível' and no future reservations, or if the reservation starts today, it remains 'Disponível' 
-      // (and will be marked 'Alugada' by the system if a rental starts today).
-      // If the createRental action correctly sets the status to 'Alugada', this path is for truly available dumpsters.
+      // If none of the above, it's 'Disponível'.
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -130,8 +128,10 @@ export default function DumpstersPage() {
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
     if (!user) return;
-    const isReservedOrRented = dumpster.derivedStatus !== 'Disponível' && dumpster.derivedStatus !== 'Em Manutenção';
-    if (isReservedOrRented) return;
+    const isRented = dumpster.derivedStatus === 'Alugada';
+    const isReserved = dumpster.derivedStatus.startsWith('Reservada');
+
+    if (isRented || isReserved) return;
 
     const newStatus = dumpster.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
@@ -207,7 +207,8 @@ export default function DumpstersPage() {
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
                         {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
-                           const isReservedOrRented = dumpster.derivedStatus !== 'Disponível' && dumpster.derivedStatus !== 'Em Manutenção';
+                           const isRented = dumpster.derivedStatus === 'Alugada';
+                           const isReserved = dumpster.derivedStatus.startsWith('Reservada');
                            return (
                             <div key={dumpster.id} className="border rounded-lg p-4 space-y-3">
                                 <div className="flex justify-between items-start">
@@ -224,7 +225,7 @@ export default function DumpstersPage() {
                                         dumpster={dumpster}
                                         isPending={isPending}
                                         handleToggleStatus={() => handleToggleStatus(dumpster)}
-                                        isReservedOrRented={isReservedOrRented}
+                                        isReservedOrRented={isRented || isReserved}
                                     />
                                 </div>
                             </div>

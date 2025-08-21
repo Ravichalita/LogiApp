@@ -109,12 +109,9 @@ export const getPendingRentals = (userId: string, callback: (rentals: Rental[]) 
     callback([]);
     return () => {};
   }
-   // This query fetches all rentals that are not yet completed.
+   // This query fetches all rentals.
    // The logic to determine if it's "pending" vs "active" is handled on the client.
-   const rentalsQuery = query(
-    collection(db, 'users', userId, 'rentals'),
-     where('status', '==', 'Ativo')
-  );
+   const rentalsQuery = query(collection(db, 'users', userId, 'rentals'));
   return getCollection<Rental>(userId, callback, 'rentals', rentalsQuery);
 }
 

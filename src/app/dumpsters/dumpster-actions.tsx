@@ -76,7 +76,8 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const isReservedOrRented = dumpster.derivedStatus !== 'Disponível' && dumpster.derivedStatus !== 'Em Manutenção';
+  const isReserved = dumpster.derivedStatus.startsWith('Reservada');
+  const isRented = dumpster.derivedStatus === 'Alugada';
   
   const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' => {
     if (status.startsWith('Reservada')) return 'secondary';
@@ -113,7 +114,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   };
 
   const handleToggleStatus = () => {
-    if (!user || isReservedOrRented) return;
+    if (!user || isRented || isReserved) return;
     const newStatus = dumpster.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
     startTransition(async () => {
@@ -150,7 +151,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
                 dumpster={dumpster} 
                 isPending={isPending} 
                 handleToggleStatus={handleToggleStatus} 
-                isReservedOrRented={isReservedOrRented}
+                isReservedOrRented={isRented || isReserved}
             />
         </div>
 
