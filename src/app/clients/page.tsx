@@ -3,8 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getClients } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ClientForm } from './client-form';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClientActions } from './client-actions';
 import {
   Accordion,
@@ -70,23 +69,21 @@ export default function ClientsPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-headline font-bold mb-6">Gerenciar Clientes</h1>
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card className="h-full">
+        <Card>
             <CardHeader>
-              <CardTitle>Meus Clientes</CardTitle>
-              <div className="relative mt-2">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                      placeholder="Buscar por nome, telefone, endereço..."
-                      className="pl-9"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-              </div>
+            <CardTitle>Meus Clientes</CardTitle>
+            <div className="relative mt-2">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Buscar por nome, telefone, endereço..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
             </CardHeader>
             <CardContent>
-             {loading ? <ClientListSkeleton /> : (
+            {loading ? <ClientListSkeleton /> : (
                 <Accordion type="multiple" className="space-y-4">
                     {filteredClients.length > 0 ? filteredClients.map(client => (
                     <AccordionItem value={client.id} key={client.id} className="border rounded-lg shadow-sm">
@@ -145,22 +142,9 @@ export default function ClientsPage() {
                     <p className="text-center text-muted-foreground py-8">Nenhum cliente cadastrado ainda.</p>
                     )}
                 </Accordion>
-             )}
+            )}
             </CardContent>
-          </Card>
-        </div>
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Novo Cliente</CardTitle>
-              <CardDescription>Adicione um novo cliente à sua lista de contatos.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ClientForm />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </Card>
     </div>
   );
 }

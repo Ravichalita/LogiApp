@@ -3,9 +3,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getDumpsters } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DumpsterForm } from './dumpster-form';
 import { DumpsterActions } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
 import type { Dumpster } from '@/lib/types';
@@ -78,14 +77,12 @@ export default function DumpstersPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-headline font-bold mb-6">Gerenciar Caçambas</h1>
-      <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card className="h-full">
+        <Card>
             <CardHeader>
-              <CardTitle>Minhas Caçambas</CardTitle>
+            <CardTitle>Minhas Caçambas</CardTitle>
                 <div className="relative mt-2">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
+                    <Input
                         placeholder="Buscar por nome, cor, tamanho..."
                         className="pl-9"
                         value={searchTerm}
@@ -127,7 +124,7 @@ export default function DumpstersPage() {
                             </TableBody>
                         </Table>
                         </div>
-                        
+
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
                         {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
@@ -153,20 +150,7 @@ export default function DumpstersPage() {
                     </>
                 )}
             </CardContent>
-          </Card>
-        </div>
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Nova Caçamba</CardTitle>
-              <CardDescription>Cadastre uma nova caçamba no seu inventário.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DumpsterForm />
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </Card>
     </div>
   );
 }

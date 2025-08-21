@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -11,6 +12,7 @@ import { MapDialog } from '@/components/map-dialog';
 import type { Location } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { DialogClose } from '@/components/ui/dialog';
 
 const initialState = {
   errors: {},
@@ -25,7 +27,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
   );
 }
 
-export function ClientForm() {
+export function ClientForm({ onSave }: { onSave?: () => void }) {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
@@ -45,6 +47,7 @@ export function ClientForm() {
       setAddress('');
       setLocation(null);
       setState(initialState);
+      onSave?.();
     } else if (state?.message === 'error' && state.error) {
       toast({
         title: "Erro",
@@ -55,7 +58,7 @@ export function ClientForm() {
     } else if (state?.errors) {
        // Optionally handle field-specific errors
     }
-  }, [state, toast]);
+  }, [state, toast, onSave]);
   
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -116,7 +119,12 @@ export function ClientForm() {
         <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
-      <SubmitButton isPending={isPending} />
+       <div className="flex justify-end gap-2 pt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <SubmitButton isPending={isPending} />
+        </div>
     </form>
   );
 }

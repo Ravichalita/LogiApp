@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -10,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import type { DumpsterStatus } from '@/lib/types';
+import { DialogClose } from '@/components/ui/dialog';
 
 const initialState = {
   errors: {},
@@ -24,7 +26,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
   );
 }
 
-export function DumpsterForm() {
+export function DumpsterForm({ onSave }: { onSave?: () => void }) {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
@@ -38,11 +40,12 @@ export function DumpsterForm() {
       formRef.current?.reset();
       setStatus('Disponível');
       setState(initialState);
+      onSave?.();
     } else if (state?.message === 'error' && state.error) {
       toast({ title: 'Erro', description: state.error, variant: 'destructive' });
       setState(prevState => ({...prevState, message: '', error: undefined }));
     }
-  }, [state, toast]);
+  }, [state, toast, onSave]);
 
   const action = (formData: FormData) => {
     startTransition(async () => {
@@ -81,7 +84,7 @@ export function DumpsterForm() {
       </div>
       <div className="space-y-2">
         <Label>Status Inicial</Label>
-        <Select value={status} onValueChange={(value) => setStatus(value as DumpsterStatus)}>
+        <Select name="status" value={status} onValueChange={(value) => setStatus(value as DumpsterStatus)}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione o status" />
           </SelectTrigger>
@@ -91,10 +94,14 @@ export function DumpsterForm() {
             <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
           </SelectContent>
         </Select>
-        <input type="hidden" name="status" value={status} />
          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
       </div>
-      <SubmitButton isPending={isPending} />
+       <div className="flex justify-end gap-2 pt-4">
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <SubmitButton isPending={isPending} />
+        </div>
     </form>
   );
 }

@@ -16,6 +16,12 @@ export function FloatingActionButton() {
         return null;
     }
 
+    // Don't show FAB on these pages
+    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/stats')) {
+        return null;
+    }
+
+
     const getFabContent = () => {
         switch (pathname) {
             case '/clients':

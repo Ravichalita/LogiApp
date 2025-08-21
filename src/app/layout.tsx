@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/header';
@@ -5,7 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { BottomNav } from '@/components/bottom-nav';
 import { AuthProvider } from '@/context/auth-context';
-import { NewRentalFAB } from '@/components/new-rental-fab';
+import { FloatingActionButton } from '@/components/floating-action-button';
 
 export const metadata: Metadata = {
   title: 'CaçambaControl',
@@ -32,7 +33,7 @@ export default function RootLayout({
               <Header />
               <main className="flex-1 pb-20 md:pb-0">{children}</main>
               <BottomNav />
-              <NewRentalFAB />
+              <FloatingActionButton />
             </div>
             <Toaster />
         </AuthProvider>
