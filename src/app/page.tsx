@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('pt-BR', {
@@ -35,6 +36,11 @@ function calculateRentalDays(startDate: Date, endDate: Date): number {
     const end = new Date(endDate);
     const diff = differenceInCalendarDays(end, start);
     return Math.max(diff, 1); // Ensure at least 1 day is charged
+}
+
+function formatPhoneNumberForWhatsApp(phone: string): string {
+    const digitsOnly = phone.replace(/\D/g, '');
+    return `55${digitsOnly}`;
 }
 
 
@@ -202,8 +208,15 @@ export default function DashboardPage() {
                                 <div className="flex items-start gap-3">
                                     <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                                     <div className="flex flex-col">
-                                    <span className="text-sm text-muted-foreground">Telefone</span>
-                                    <span className="font-medium">{rental.client.phone}</span>
+                                        <span className="text-sm text-muted-foreground">Telefone</span>
+                                        <Link 
+                                            href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="font-medium hover:underline"
+                                        >
+                                            {rental.client.phone}
+                                        </Link>
                                     </div>
                                 </div>
                                 {rental.client.email && (
