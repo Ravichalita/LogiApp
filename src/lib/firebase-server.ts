@@ -18,13 +18,12 @@ export async function getFirebaseAdmin() {
     }
 
     try {
-        const serviceAccount = typeof serviceAccountEnv === 'string'
-            ? JSON.parse(serviceAccountEnv)
-            : serviceAccountEnv;
+        const serviceAccount = JSON.parse(serviceAccountEnv);
 
-        // The credential object might be wrapped in a `credential` property.
-        const credential = serviceAccount.credential 
-            ? admin.credential.cert(serviceAccount.credential) 
+        // The credential object might be nested within a `credential` property,
+        // or it might be the top-level object. This handles both cases.
+        const credential = serviceAccount.credential
+            ? admin.credential.cert(serviceAccount.credential)
             : admin.credential.cert(serviceAccount);
             
         const app = admin.initializeApp({
