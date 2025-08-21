@@ -1,8 +1,10 @@
 
+'use server';
+
 // This file is server-only and uses the Firebase Client SDK for server-side operations
 import { db } from './firebase';
 import type { Client, Dumpster, Rental, CompletedRental } from './types';
-import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, writeBatch, Timestamp, getDocs } from 'firebase/firestore';
 
 
 // --- Generic Functions ---
@@ -69,18 +71,18 @@ export async function createAccountForNewUser(userId: string, email: string) {
 
         // 1. Create a new account document (generate ID locally)
         const accountRef = doc(collection(db, 'accounts'));
+        const accountId = accountRef.id;
         batch.set(accountRef, {
             ownerId: userId,
             name: `${email}'s Account`,
             createdAt: new Date(),
         });
-        const accountId = accountRef.id;
-
+        
         // 2. Create the user document and link it to the account
         const userRef = doc(db, 'users', userId);
         batch.set(userRef, {
             email: email,
-            accountId: accountId,
+            accountId: accountId, // This was the missing piece
             role: 'admin', // First user is always an admin
         });
 
