@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
       if (firebaseUser) {
         if (firebaseUser.emailVerified) {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -47,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
               // This can happen in a brief moment after signup before the server action completes.
               // Instead of logging an error, we wait. If it persists, it's a real issue.
-              // For now, we treat it as "loading account data".
               console.warn("User document not found for UID:", firebaseUser.uid, "- This might be temporary after signup.");
               setUser(firebaseUser); // Set the user, but account is null
               setUserAccount(null);
