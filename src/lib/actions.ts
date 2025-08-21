@@ -9,11 +9,14 @@ import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 import * as admin from 'firebase-admin';
 
-// This function is self-contained to ensure firebase-admin is only used server-side.
+// Helper function to initialize admin and create user/account docs
 async function createAccountForNewUserWithAdmin(userId: string, email: string) {
     // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
-      admin.initializeApp();
+       // Providing the projectId is crucial for the Admin SDK to know which project to connect to.
+      admin.initializeApp({
+        projectId: "caambacontrol3"
+      });
     }
     const adminDb = admin.firestore();
 
