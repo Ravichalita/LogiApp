@@ -22,6 +22,7 @@ import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, Upda
 import type { Rental } from './types';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getFirebaseAdmin } from './firebase-server';
+import { ensureUserDocument } from './data-server';
 
 
 // Helper function for error handling
@@ -55,7 +56,7 @@ export async function signupAction(prevState: any, formData: FormData) {
   }
 
   const { email, password } = validatedFields.data;
-  const { app, db } = await getFirebaseAdmin();
+  const { app } = await getFirebaseAdmin();
   const adminAuth = getAdminAuth(app);
 
   try {
@@ -66,34 +67,11 @@ export async function signupAction(prevState: any, formData: FormData) {
           emailVerified: false, // Start with email unverified
       });
 
-      // 2. Create documents in Firestore
-      const batch = writeBatch(db);
+      // 2. Ensure Firestore documents are created and synced
+      await ensureUserDocument(userRecord);
 
-      // 2a. Create account document
-      const accountRef = doc(collection(db, "accounts"));
-      batch.set(accountRef, {
-          ownerId: userRecord.uid,
-          name: `${email}'s Account`,
-          createdAt: serverTimestamp(),
-      });
-
-      // 2b. Create user document
-      const userRef = doc(db, "users", userRecord.uid);
-      batch.set(userRef, {
-          email: userRecord.email,
-          accountId: accountRef.id,
-          role: "admin",
-      });
-      
-      // 3. Commit batch
-      await batch.commit();
-
-      // 4. Send verification email
-      // We are creating a custom link to avoid issues with default Firebase links in some environments
-      const verificationLink = await adminAuth.generateEmailVerificationLink(email);
-      // Here you would typically send an email with this link using a service like SendGrid, Resend, etc.
-      // For this app, we'll rely on the client-side to prompt the user to check their email and the built-in Firebase console sender.
-      // console.log("Verification link:", verificationLink); // For debugging
+      // 3. Send verification email (optional, as client can also trigger this)
+      // For this app, we let the client-side handle verification prompts.
 
       return { message: 'success' };
   } catch (e) {

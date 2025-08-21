@@ -52,12 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDocRef = doc(db, 'users', firebaseUser.uid);
           
           // Retry logic to handle Firestore replication delay
-          for (let i = 0; i < 3; i++) {
+          for (let i = 0; i < 5; i++) {
               userDocSnap = await getDoc(userDocRef);
               if (userDocSnap.exists()) {
                   break;
               }
-              await delay(500); // wait 500ms before retrying
+              await delay(i < 2 ? 500: 1000); // wait longer on later retries
           }
           
           if (userDocSnap && userDocSnap.exists()) {
