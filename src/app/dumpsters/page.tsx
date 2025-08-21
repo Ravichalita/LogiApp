@@ -78,10 +78,9 @@ export default function DumpstersPage() {
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
     
-    // Create a map for easy lookup of the earliest future rental for each dumpster
     const scheduledRentalsMap = new Map<string, Rental>();
     pendingRentals
-      .sort((a, b) => a.rentalDate.getTime() - b.rentalDate.getTime()) // Sort by date to get the earliest
+      .sort((a, b) => a.rentalDate.getTime() - b.rentalDate.getTime())
       .forEach(rental => {
         if (!scheduledRentalsMap.has(rental.dumpsterId)) {
           scheduledRentalsMap.set(rental.dumpsterId, rental);
@@ -89,16 +88,16 @@ export default function DumpstersPage() {
       });
 
     return dumpsters.map(d => {
-      // Priority 1: If status is 'Alugada' or 'Em Manutenção' from DB, it's the final status.
+      // Priority 1: If status from DB is final ('Alugada' or 'Em Manutenção'), use it directly.
       if (d.status === 'Alugada' || d.status === 'Em Manutenção') {
         return { ...d, derivedStatus: d.status };
       }
       
-      // Priority 2: If status is 'Disponível', check for future rentals
+      // Priority 2: If status is 'Disponível', check for future reservations.
       const rental = scheduledRentalsMap.get(d.id);
       if (rental) {
         const rentalDate = new Date(rental.rentalDate);
-        // If a rental is scheduled for a future date, it's 'Reservada'
+        // Only if the rental is strictly in the future, it's 'Reservada'.
         if (isAfter(rentalDate, today)) {
           const formattedDate = format(rental.rentalDate, "dd/MM/yy");
           return { 
@@ -108,7 +107,7 @@ export default function DumpstersPage() {
         }
       }
       
-      // If 'Disponível' and no future reservations, it remains 'Disponível'
+      // If 'Disponível' and no future reservations, it remains 'Disponível'.
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
