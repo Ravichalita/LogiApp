@@ -168,14 +168,14 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)} disabled={isReservedOrRented}>
+                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
                     <Edit className="mr-2 h-4 w-4" />
                     Editar
                   </DropdownMenuItem>
                 </DialogTrigger>
                 <DropdownMenuSeparator />
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }} disabled={isReservedOrRented}>
+                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Excluir
                   </DropdownMenuItem>
