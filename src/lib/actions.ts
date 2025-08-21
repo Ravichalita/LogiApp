@@ -225,11 +225,12 @@ export async function createRental(userId: string, prevState: any, formData: For
     }
 
     try {
+        // The dumpster status is no longer changed here.
+        // The UI will derive the status ('Reservada' or 'Alugada') based on the rental dates.
         await addRental(userId, {
             ...validatedFields.data,
-            status: 'Ativo',
+            status: 'Ativo', // All new rentals are 'Ativo' by default.
         });
-        await updateDumpsterStatus(userId, validatedFields.data.dumpsterId, 'Alugada');
     } catch (e) {
         console.error(e);
         return { errors: {}, message: 'Falha ao criar aluguel.' };
@@ -337,3 +338,5 @@ export async function resetBillingDataAction(userId: string) {
         return { message: 'error', error: 'Ocorreu um erro ao tentar zerar os dados de faturamento.' };
     }
 }
+
+    

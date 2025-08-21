@@ -117,6 +117,7 @@ export default function DashboardPage() {
     if (returnDate < today) {
       return { text: 'Em Atraso', variant: 'destructive' };
     }
+    // A caçamba está alugada se a data de entrega é hoje ou já passou, e a data de retorno é hoje ou no futuro.
     return { text: 'Ativo', variant: 'success' };
   };
 
@@ -162,7 +163,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-                 <AccordionTrigger>
+                 <AccordionTrigger asChild>
                     <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full">
                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
@@ -257,3 +258,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
