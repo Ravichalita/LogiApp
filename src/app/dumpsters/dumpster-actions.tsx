@@ -79,7 +79,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
   const isRented = dumpster.derivedStatus === 'Alugada';
   
-  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' => {
+  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' => {
     if (status.startsWith('Reservada')) return 'secondary';
     switch (status) {
       case 'Disponível':
@@ -140,7 +140,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
         {/* Status Badge */}
         <Badge
           variant={getStatusVariant(dumpster.derivedStatus)}
-          className={cn('text-xs', isPending && 'opacity-50')}
+          className={cn('text-xs justify-center', isPending && 'opacity-50')}
         >
           {dumpster.derivedStatus}
         </Badge>
