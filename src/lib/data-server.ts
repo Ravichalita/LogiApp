@@ -14,14 +14,17 @@ const firestore = getFirestore();
  * @returns The accountId if found, otherwise null.
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
+    if (!domain) return null;
     const usersRef = firestore.collection('users');
+    // A simple query to find a user with the same domain.
     const q = usersRef.where('email', '>=', `a@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
 
     try {
         const snapshot = await q.get();
         if (!snapshot.empty) {
             const user = snapshot.docs[0].data();
-            if (user.email && typeof user.email === 'string' && user.email.endsWith(`@${domain}`)) {
+            // Ensure the found user has an accountId and their email domain matches.
+            if (user.accountId && typeof user.email === 'string' && user.email.endsWith(`@${domain}`)) {
                 return user.accountId;
             }
         }
@@ -56,7 +59,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             const role = accountData?.role || 'viewer';
 
             // Ensure claims are set even if doc exists but claims are missing
-             if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
+            if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
                 await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
             }
             return accountId;
@@ -69,6 +72,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             accountId = existingAccountId;
             role = 'viewer'; // Invited users are viewers by default
         } else {
+            // Create a new account for the first user
             const accountRef = firestore.collection("accounts").doc();
             transaction.set(accountRef, {
                 ownerId: userRecord.uid,
@@ -96,6 +100,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         return accountId;
     }).catch(async (error) => {
         console.error("Error in ensureUserDocument transaction, attempting to clean up Auth user:", error);
+        // If the transaction fails, we should delete the auth user to prevent an orphaned account.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });

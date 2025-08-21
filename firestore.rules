@@ -1,47 +1,34 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
+  
+    // Helper Functions
     function isAuth() {
       return request.auth != null;
     }
-
+    
     function isOwner(userId) {
       return isAuth() && request.auth.uid == userId;
     }
-    
-    // Custom claims (like accountId and role) are the recommended way to handle authorization.
-    // They are secure and don't require extra database reads in rules.
-    function belongsToAccount(accountId) {
-      return isAuth() && request.auth.token.accountId == accountId;
-    }
 
-    function isAdmin() {
-      return isAuth() && request.auth.token.role == 'admin';
-    }
-
-    // Users can read their own document.
-    // They can read documents of other users in the same account.
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow get: if isOwner(userId) || belongsToAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
-      
-      // A user can list users only if they are querying for their own account.
-      // This is the key rule to fix the team page.
+      allow get: if isOwner(userId) || 
+                   (isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId);
       allow list: if isAuth() && request.query.where.accountId == request.auth.token.accountId;
-
-      // An admin can update any user in their own account.
-      // A regular user can only update their own document.
-      allow update: if (isAdmin() && belongsToAccount(resource.data.accountId)) || isOwner(userId);
-      
-      // Only admins can create or delete users (handled by server-side logic).
-      allow create, delete: if false; 
+      allow create: if !isAuth(); // Anyone can create a user doc during signup
+      allow update: if isAuth() && 
+                      (isOwner(userId) || 
+                       (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId));
+      allow delete: if isAuth() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Any document within an account's subcollection can only be accessed
-    // by users belonging to that account.
+    // Rules for all subcollections within an 'account'
     match /accounts/{accountId}/{documents=**} {
-      allow read, write: if belongsToAccount(accountId);
+      allow read, write: if isAuth() && request.auth.token.accountId == accountId;
     }
   }
 }

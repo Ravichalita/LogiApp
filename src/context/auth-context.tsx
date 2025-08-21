@@ -45,15 +45,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // User is potentially logged in, now we need their user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubUserDoc = onSnapshot(userDocRef, 
-            (userDocSnap) => {
+            async (userDocSnap) => {
                 if (userDocSnap.exists()) {
                     const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                    
+                    // This is critical: force a refresh of the token to get the latest custom claims.
+                    await firebaseUser.getIdToken(true); 
+                    
                     setUser(firebaseUser);
                     setUserAccount(userAccountData);
                     setAccountId(userAccountData.accountId);
-                    // This is critical: force a refresh of the token to get the latest custom claims.
-                    // This makes the security rules work reliably.
-                    firebaseUser.getIdToken(true); 
                     setLoading(false);
                 } else {
                     // User is authenticated but no user document found. Log them out.
