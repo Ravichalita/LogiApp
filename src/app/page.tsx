@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -184,8 +185,8 @@ export default function HomePage() {
             const status = getRentalStatus(rental);
             return (
             <Accordion type="single" collapsible className="w-full" key={rental.id}>
-                <AccordionItem value={rental.id} className="border-none">
-                <Card className="h-full flex flex-col">
+                <AccordionItem value={rental.id} className="border rounded-lg shadow-sm overflow-hidden">
+                <Card className="h-full flex flex-col border-none shadow-none rounded-b-none">
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
                         <div>
@@ -201,16 +202,13 @@ export default function HomePage() {
                         <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
                     </div>
                     </CardHeader>
-                    <CardContent className="flex-grow flex flex-col justify-between pt-0">
-                    <div className="text-center">
-                        <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-center">
-                        Ver Detalhes
-                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-1" />
+                    <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
+                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 justify-center rounded-none border-t group">
+                            <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                         </AccordionTrigger>
-                    </div>
-                    <AccordionContent className="pt-4">
-                        <RentalCardActions rental={rental} status={status} />
-                    </AccordionContent>
+                        <AccordionContent className="p-4">
+                            <RentalCardActions rental={rental} status={status} />
+                        </AccordionContent>
                     </CardContent>
                 </Card>
                 </AccordionItem>
