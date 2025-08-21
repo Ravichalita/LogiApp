@@ -21,7 +21,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicRoutes = ['/login', '/signup'];
-// Add verify-email to the list of routes that DON'T require an authenticated user.
 const nonAuthRoutes = ['/login', '/signup', '/verify-email'];
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,41 +46,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { auth, db } = firebase;
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-          if (!firebaseUser.emailVerified && !pathname.startsWith('/verify-email')) {
-             router.push('/verify-email');
-             setLoading(false);
-             return;
-          }
-
-          if(firebaseUser.emailVerified && pathname.startsWith('/verify-email')) {
-             router.push('/');
-          }
-          
-          let userDocSnap;
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          
-          // Retry logic to handle Firestore replication delay
-          for (let i = 0; i < 5; i++) {
-              userDocSnap = await getDoc(userDocRef);
-              if (userDocSnap.exists()) {
-                  break;
-              }
-              await delay(i < 2 ? 500: 1000); // wait longer on later retries
-          }
-          
-          if (userDocSnap && userDocSnap.exists()) {
-            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-            setUser(firebaseUser);
-            setUserAccount(userAccountData);
-            setAccountId(userAccountData.accountId);
-          } else {
-            console.error("User document not found in Firestore for UID:", firebaseUser.uid, "after multiple retries.");
-            // Logging out to be safe.
-            await signOut(auth);
-            setUser(null);
-            setUserAccount(null);
-            setAccountId(null);
-          }
+        let userDocSnap;
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        
+        // Retry logic to handle Firestore replication delay
+        for (let i = 0; i < 5; i++) {
+            userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) break;
+            await delay(i < 2 ? 500 : 1000);
+        }
+        
+        if (userDocSnap && userDocSnap.exists()) {
+          const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+          setUser(firebaseUser);
+          setUserAccount(userAccountData);
+          setAccountId(userAccountData.accountId);
+        } else {
+          console.error("User document not found in Firestore for UID:", firebaseUser.uid, "after multiple retries.");
+          await signOut(auth); // Log out to prevent inconsistent state
+          setUser(null);
+          setUserAccount(null);
+          setAccountId(null);
+        }
       } else {
         setUser(null);
         setUserAccount(null);
@@ -91,22 +77,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firebase]); 
+  }, [firebase]);
 
   useEffect(() => {
     if (loading) return;
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
-    
-    if (!user && !isNonAuthRoute) {
-      router.push('/login');
-    } 
-    else if (user && publicRoutes.some(route => pathname.startsWith(route))) {
-      router.push('/');
+
+    if (user) {
+      if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
+        router.push('/verify-email');
+      } else if (user.emailVerified && (publicRoutes.some(route => pathname.startsWith(route)) || pathname.startsWith('/verify-email'))) {
+        router.push('/');
+      }
+    } else {
+      if (!isNonAuthRoute) {
+        router.push('/login');
+      }
     }
   }, [user, loading, pathname, router]);
-
 
   const logout = async () => {
     if (!firebase) return;
@@ -116,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccountId(null);
     router.push('/login');
   };
-  
+
   const isAppLoading = loading || (!user && !nonAuthRoutes.some(route => pathname.startsWith(route)));
 
   if (isAppLoading) {
@@ -126,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       </div>
     );
   }
-
 
   return (
     <AuthContext.Provider value={{ user, userAccount, accountId, loading, logout }}>
