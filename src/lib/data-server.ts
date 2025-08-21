@@ -82,7 +82,7 @@ export async function createAccountForNewUser(userId: string, email: string) {
         const userRef = doc(db, 'users', userId);
         batch.set(userRef, {
             email: email,
-            accountId: accountId, // This was the missing piece
+            accountId: accountId,
             role: 'admin', // First user is always an admin
         });
 

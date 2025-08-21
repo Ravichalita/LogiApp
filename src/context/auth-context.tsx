@@ -34,32 +34,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // User is authenticated with Firebase
         if (firebaseUser.emailVerified) {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          try {
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
             const userDocSnap = await getDoc(userDocRef);
+
             if (userDocSnap.exists()) {
-              const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-              setUser(firebaseUser);
-              setUserAccount(userAccountData);
-              setAccountId(userAccountData.accountId);
+                const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                setUser(firebaseUser);
+                setUserAccount(userAccountData);
+                setAccountId(userAccountData.accountId);
             } else {
-              // This can happen in a brief moment after signup before the server action completes.
-              // Instead of logging an error, we wait. If it persists, it's a real issue.
-              console.warn("User document not found for UID:", firebaseUser.uid, "- This might be temporary after signup.");
-              setUser(firebaseUser); // Set the user, but account is null
-              setUserAccount(null);
-              setAccountId(null);
+                // This can happen briefly after signup before the server action completes.
+                // We'll let the router logic handle redirection if needed, but for now, we're not fully "logged in".
+                 console.warn("User document not found for UID:", firebaseUser.uid, "- This might be temporary after signup.");
+                 // Keep user null until we have the account data.
+                 setUser(null);
+                 setUserAccount(null);
+                 setAccountId(null);
             }
-          } catch (error) {
-            console.error("Error fetching user document:", error);
-            await signOut(auth);
-            setUser(null);
-            setUserAccount(null);
-            setAccountId(null);
-          }
         } else {
-          // Email not verified
+          // Email not verified, redirect to verification page
           setUser(null);
           setUserAccount(null);
           setAccountId(null);
@@ -85,16 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
     
-    // If not logged in and not on a public page, redirect to login
+    // If we're not loading, and there's no user, and we're not on a public route, redirect to login.
     if (!user && !isPublicRoute) {
       router.push('/login');
     } 
-    // If logged in, email is verified, but account data is still loading, wait.
-    // Except if we are on an auth page, then we can redirect away.
-    else if (user && user.emailVerified && !accountId && !isPublicRoute) {
-       // Still loading account details, do nothing, show spinner
-    }
-    // If logged in and on an auth page, redirect to home
+    // If there is a user and they are on an auth page (login/signup), redirect to home.
     else if (user && authRoutes.some(route => pathname.startsWith(route))) {
       router.push('/');
     }
@@ -109,9 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
-  const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
-  // Show a global spinner if we are loading auth state or account data, but not on public pages
-  if (loading || (user && !accountId && !isAuthPage)) {
+  // The main loading condition for the app.
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="large" />
