@@ -2,7 +2,7 @@
 'use server';
 import * as admin from 'firebase-admin';
 
-// This function initializes Firebase Admin SDK and is meant to be used in server-side code (Server Actions, API Routes).
+// Esta função inicializa o Firebase Admin SDK e destina-se ao uso em código do lado do servidor.
 export async function getFirebaseAdmin() {
     if (admin.apps.length > 0) {
         const app = admin.app();
@@ -11,14 +11,17 @@ export async function getFirebaseAdmin() {
         return { app, db, auth };
     }
 
-    const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    // A chave da conta de serviço é esperada como uma string codificada em Base64.
+    const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-    if (!serviceAccountEnv) {
-        throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set. This is required for server-side Firebase Admin operations.');
+    if (!serviceAccountBase64) {
+        throw new Error('A variável de ambiente FIREBASE_SERVICE_ACCOUNT_BASE64 não está definida. Isso é necessário para operações do lado do servidor do Firebase Admin.');
     }
 
     try {
-        const serviceAccount = JSON.parse(serviceAccountEnv);
+        // Decodifique a string Base64 para obter o JSON da conta de serviço.
+        const decodedServiceAccount = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+        const serviceAccount = JSON.parse(decodedServiceAccount);
             
         const app = admin.initializeApp({
              credential: admin.credential.cert(serviceAccount),
@@ -29,10 +32,10 @@ export async function getFirebaseAdmin() {
 
         return { app, db, auth };
     } catch (e) {
-        console.error("Failed to initialize Firebase Admin:", e);
+        console.error("Falha ao inicializar o Firebase Admin:", e);
         if (e instanceof Error) {
-             throw new Error(`Could not initialize Firebase Admin: ${e.message}`);
+             throw new Error(`Não foi possível inicializar o Firebase Admin: ${e.message}`);
         }
-        throw new Error("An unknown error occurred during Firebase Admin initialization.");
+        throw new Error("Ocorreu um erro desconhecido durante a inicialização do Firebase Admin.");
     }
 }
