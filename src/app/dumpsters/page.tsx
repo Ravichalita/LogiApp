@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { startOfToday, format, isAfter } from 'date-fns';
+import { startOfToday, format, isAfter, isSameDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 
@@ -78,9 +78,8 @@ export default function DumpstersPage() {
     const today = startOfToday();
     const scheduledRentalsMap = new Map<string, Rental>();
     
-    // Get the earliest future rental for each dumpster
+    // Get the earliest future or current rental for each dumpster
     pendingRentals
-      .filter(r => isAfter(r.rentalDate, today) || r.rentalDate.getTime() === today.getTime())
       .sort((a,b) => a.rentalDate.getTime() - b.rentalDate.getTime())
       .forEach(r => {
         if (!scheduledRentalsMap.has(r.dumpsterId)) {
@@ -91,23 +90,28 @@ export default function DumpstersPage() {
     return dumpsters.map(d => {
       const rental = scheduledRentalsMap.get(d.id);
       
-      // If a rental is scheduled for today, it's considered 'Alugada'
-      if (d.status === 'Disponível' && rental && rental.rentalDate.getTime() === today.getTime()) {
-        return {
-            ...d,
-            status: 'Alugada'
-        };
+      if (d.status === 'Disponível' && rental) {
+        const rentalDate = new Date(rental.rentalDate);
+        // If a rental is scheduled for today, it's considered 'Alugada' for display purposes
+        if (isSameDay(rentalDate, today)) {
+          return {
+              ...d,
+              status: 'Alugada',
+              originalStatus: 'Disponível', 
+          };
+        }
+        
+        // If a rental is scheduled for a future date, it's 'Reservada'
+        if (isAfter(rentalDate, today)) {
+          const formattedDate = format(rental.rentalDate, "dd/MM/yy");
+          return { 
+            ...d, 
+            status: `Reservada para ${formattedDate}`,
+            originalStatus: 'Disponível'
+          };
+        }
       }
-      
-      // If a rental is scheduled for a future date, it's 'Reservada'
-      if (d.status === 'Disponível' && rental && isAfter(rental.rentalDate, today)) {
-        const formattedDate = format(rental.rentalDate, "dd/MM/yy");
-        return { 
-          ...d, 
-          status: `Reservada para ${formattedDate}`,
-          originalStatus: 'Disponível'
-        };
-      }
+      // Return the dumpster with its original status if no relevant rental is found
       return d;
     }).sort((a, b) => a.name.localeCompare(b.name));
 
