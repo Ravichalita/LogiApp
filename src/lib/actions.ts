@@ -410,11 +410,6 @@ export async function updateUserRoleStatus(accountId: string, userId: string, ro
     
     try {
         const userDocRef = getFirestore().doc(`users/${userId}`);
-        const userDoc = await userDocRef.get();
-
-        if (!userDoc.exists || userDoc.data()?.accountId !== accountId) {
-             return { message: 'error', error: 'Usuário não encontrado ou não pertence a esta conta.' };
-        }
         
         await userDocRef.update({ role, status });
         revalidatePath('/team');

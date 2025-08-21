@@ -3,34 +3,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isUserAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to get the user's account ID and role from the users collection
+    // Helper functions
     function getUserData(userId) {
       return get(/databases/$(database)/documents/users/$(userId)).data;
     }
-
-    match /users/{userId} {
-      // Allow a user to read another user's document IF they belong to the same account.
-      // This is necessary for the team management page to list all users.
-      // `resource.data` refers to the document being accessed (the user document with {userId}).
-      allow read: if isUserAuthenticated() &&
-                   getUserData(request.auth.uid).accountId == resource.data.accountId;
-
-      // Only admins can update user roles or statuses.
-      allow update: if isUserAuthenticated() &&
-                     getUserData(request.auth.uid).role == 'admin' &&
-                     getUserData(request.auth.uid).accountId == resource.data.accountId;
-
-      // Creation and deletion are handled by secure server-side actions, not allowed on client.
-      allow create, delete: if false;
+    
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Any authenticated user can read/write data within their own account's subcollections.
+    // Rules for account subcollections (clients, dumpsters, rentals, etc.)
+    // A user can read/write to any document inside an account if their user document
+    // says they belong to that account.
     match /accounts/{accountId}/{document=**} {
-      allow read, write: if isUserAuthenticated() && getUserData(request.auth.uid).accountId == accountId;
+      allow read, write: if isSignedIn() && getUserData(request.auth.uid).accountId == accountId;
+    }
+
+    // Rules for the users collection
+    match /users/{userId} {
+      // Allow a user to read another user's document if they are in the same account.
+      allow read: if isSignedIn() && getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
+
+      // Allow a user to update another user's document ONLY if the requester is an admin of that account.
+      allow update: if isSignedIn() && getUserData(request.auth.uid).role == 'admin' && getUserData(request.auth.uid).accountId == getUserData(userId).accountId;
+      
+      // Client-side creation and deletion is disallowed. This must be done via server actions.
+      allow create, delete: if false;
     }
   }
 }
