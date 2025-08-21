@@ -79,6 +79,7 @@ export default function DumpstersPage() {
     const today = startOfToday();
     
     const scheduledRentalsMap = new Map<string, Rental>();
+    // Pre-process rentals to find the earliest future rental for each dumpster
     pendingRentals
       .sort((a, b) => a.rentalDate.getTime() - b.rentalDate.getTime())
       .forEach(rental => {
@@ -99,7 +100,7 @@ export default function DumpstersPage() {
         const rentalDate = new Date(rental.rentalDate);
         // Only if the rental is strictly in the future, it's 'Reservada'.
         if (isAfter(rentalDate, today)) {
-          const formattedDate = format(rental.rentalDate, "dd/MM/yy");
+          const formattedDate = format(rentalDate, "dd/MM/yy");
           return { 
             ...d, 
             derivedStatus: `Reservada para ${formattedDate}`,
@@ -107,7 +108,9 @@ export default function DumpstersPage() {
         }
       }
       
-      // If 'Disponível' and no future reservations, it remains 'Disponível'.
+      // If 'Disponível' and no future reservations, or if the reservation starts today, it remains 'Disponível' 
+      // (and will be marked 'Alugada' by the system if a rental starts today).
+      // If the createRental action correctly sets the status to 'Alugada', this path is for truly available dumpsters.
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
