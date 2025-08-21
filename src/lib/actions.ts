@@ -69,10 +69,9 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
       });
 
       // Garante que o documento do usuário seja criado no Firestore
+      // e que os custom claims sejam definidos.
       await ensureUserDocument(newUserRecord, accountIdToJoin);
       
-      // A criação no cliente envia o email, então essa ação agora é só para o caso do admin
-      // Como estamos criando no servidor, o e-mail não é enviado automaticamente.
       // O fluxo de ir para /verify-email e clicar em reenviar é agora mandatório.
       
       return {
@@ -411,7 +410,12 @@ export async function updateUserRoleStatus(accountId: string, userId: string, ro
     try {
         const userDocRef = getFirestore().doc(`users/${userId}`);
         
-        await userDocRef.update({ role, status });
+        await getFirestore().runTransaction(async (transaction) => {
+            transaction.update(userDocRef, { role, status });
+            // Update the custom claims on the auth token as well
+            await adminAuth.setCustomUserClaims(userId, { accountId, role });
+        });
+        
         revalidatePath('/team');
         return { message: 'success' };
 

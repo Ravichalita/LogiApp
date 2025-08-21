@@ -50,14 +50,13 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
 export async function ensureUserDocument(userRecord: UserRecord, existingAccountId?: string | null): Promise<string> {
     const userDocRef = firestore.doc(`users/${userRecord.uid}`);
 
-    try {
-        const docSnap = await userDocRef.get();
+    return firestore.runTransaction(async (transaction) => {
+        const docSnap = await transaction.get(userDocRef);
         if (docSnap.exists) {
             console.warn(`User document for ${userRecord.uid} already exists.`);
             return docSnap.data()?.accountId;
         }
 
-        const batch = firestore.batch();
         let accountId: string;
         let role: 'admin' | 'viewer' = 'viewer';
 
@@ -68,7 +67,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
         } else {
             // First user, or user from a new domain, becomes the admin of a new account.
             const accountRef = firestore.collection("accounts").doc();
-            batch.set(accountRef, {
+            transaction.set(accountRef, {
                 ownerId: userRecord.uid,
                 name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
                 createdAt: FieldValue.serverTimestamp(),
@@ -77,24 +76,28 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             role = 'admin'; // The creator of an account is the admin.
         }
 
-        batch.set(userDocRef, {
+        const userAccountData = {
             email: userRecord.email,
             name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário sem nome',
             accountId: accountId,
             role: role,
             status: 'ativo', // Default status is active
-        });
+        };
 
-        await batch.commit();
+        transaction.set(userDocRef, userAccountData);
+        
+        // This is a critical step: Set custom claims on the user's auth token.
+        // These claims are used in Firestore security rules for secure and efficient access control.
+        await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
 
         return accountId;
-    } catch (error) {
-        console.error("Error in ensureUserDocument, attempting to clean up Auth user:", error);
-        // If the database operation fails, we should not leave an orphaned auth user.
+    }).catch(async (error) => {
+        console.error("Error in ensureUserDocument transaction, attempting to clean up Auth user:", error);
+        // If the database transaction fails, we should not leave an orphaned auth user.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });
         // Re-throw the original error to be handled by the caller action.
         throw error;
-    }
+    });
 }

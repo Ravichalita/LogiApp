@@ -1,46 +1,53 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper functions
-    function isUserAuthenticated() {
+    
+    // As informações da conta do usuário (incluindo o ID da conta) são armazenadas
+    // como custom claims no token de autenticação do Firebase.
+    // Isso evita a necessidade de uma busca extra no banco de dados (get()) dentro das regras,
+    // que é ineficiente e muitas vezes não permitido em regras de listagem de coleção.
+    function getAccountId() {
+      return request.auth.token.accountId;
+    }
+
+    function isAuth() {
       return request.auth != null;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isUserInAccount(accountId) {
-      return isUserAuthenticated() && getUserData().accountId == accountId;
-    }
-
-    function isUserAdmin(accountId) {
-      return isUserInAccount(accountId) && getUserData().role == 'admin';
-    }
-
-    // Match all collections under a specific account
-    match /accounts/{accountId}/{document=**} {
-      allow read, write: if isUserInAccount(accountId);
+    // Verifica se o usuário autenticado pertence à conta que está tentando acessar.
+    function userIsInAccount(accountId) {
+      return isAuth() && getAccountId() == accountId;
     }
     
-    // Rules for the 'users' collection
+    // Verifica se o usuário autenticado tem a função de 'admin' na sua conta.
+    function isAdmin() {
+      return isAuth() && request.auth.token.role == 'admin';
+    }
+
+    match /accounts/{accountId} {
+      // Regra geral para todas as subcoleções dentro de uma conta (clients, dumpsters, rentals, etc.)
+      match /{documents=**} {
+        allow read, write: if userIsInAccount(accountId);
+      }
+    }
+
     match /users/{userId} {
-      // Allow a user to read another user's document if they are in the same account
-      allow get: if isUserAuthenticated() && getUserData().accountId == get(/databases/$(database)/documents/users/$(userId)).data.accountId;
-
-      // Allow a user to list users only if they are querying by their own accountId
-      allow list: if isUserAuthenticated() && request.query.where.get("accountId") == getUserData().accountId;
-
-      // Allow user to create their own document (signup) - handled by actions
-      allow create: if true; 
+      allow get: if isAuth() && 
+                    (request.auth.uid == userId || 
+                    get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId());
       
-      // Allow an admin to update a user's role/status in the same account
-      allow update: if isUserAdmin(getUserData().accountId) && getUserData().accountId == resource.data.accountId;
+      // Permite a listagem de usuários somente se a consulta for filtrada pelo accountId do usuário solicitante.
+      // Isso impede que um usuário liste usuários de outras contas.
+      allow list: if isAuth() && request.query.where.get("accountId")[2] == getAccountId();
       
-      // Allow an admin to delete a user from the same account
-      allow delete: if isUserAdmin(getUserData().accountId);
+      // Permite a criação por qualquer pessoa (signup). A lógica de associação à conta é tratada no backend.
+      allow create: if true;
+      
+      // Permite a atualização apenas se o usuário for um administrador da mesma conta.
+      allow update: if isAuth() && isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId();
+
+      // Permite a exclusão apenas por administradores da mesma conta.
+      allow delete: if isAuth() && isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getAccountId();
     }
   }
 }

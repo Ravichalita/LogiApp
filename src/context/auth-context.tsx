@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onAuthStateChanged, User, signOut, Auth, Firestore } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut, Auth, Firestore, getIdToken, getIdTokenResult } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
@@ -48,12 +48,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         // Use onSnapshot to listen for real-time updates to the user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const unsubUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
+        const unsubUserDoc = onSnapshot(userDocRef, async (userDocSnap) => {
           if (userDocSnap.exists()) {
             const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
+            
+            // This is the key change: we check if the custom claims on the token
+            // match the data in Firestore. If not, we force a token refresh.
+            // This ensures our security rules always have the latest accountId and role.
+            const tokenResult = await getIdTokenResult(firebaseUser);
+            const needsRefresh = tokenResult.claims.accountId !== userAccountData.accountId ||
+                                tokenResult.claims.role !== userAccountData.role;
+
+            if (needsRefresh) {
+               await getIdToken(firebaseUser, true); // Force refresh
+            }
+
           } else {
              // This might happen briefly after creation due to replication delay
              console.log("User document not yet available for UID:", firebaseUser.uid);
@@ -86,13 +98,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
     const isSignupRoute = pathname.startsWith('/signup');
+    const isInviteFlow = isSignupRoute && !!user;
+
 
     if (user) { // User is logged in
       if (!user.emailVerified && !isVerifyRoute) {
         router.push('/verify-email');
       } else if (user.emailVerified && isVerifyRoute) {
         router.push('/');
-      } else if (isNonAuthRoute) {
+      } else if (isNonAuthRoute && !isInviteFlow) {
         // Logged-in user trying to access login page. Redirect them.
         router.push('/');
       }
