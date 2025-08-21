@@ -51,22 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(firebaseUser);
             setUserAccount(userAccountData);
             setAccountId(userAccountData.accountId);
-            // Once we have the user data, we can stop the main loading spinner
-            setLoading(false);
+            setLoading(false); // Stop loading ONLY when we have all the data
           } else {
              // This can happen if the user is authenticated but their Firestore document
              // has not been created yet or was deleted (e.g., during signup failure cleanup).
-             // We should log them out to avoid being in a broken state.
+             // We log them out to avoid being in a broken state.
              console.error("User is authenticated but no user document found. Logging out.");
              signOut(auth);
              // setLoading(false) will be called in the 'else' block below
           }
         }, (error) => {
-            console.error("Error listening to user document (permissions issue?):", error);
-            // If we can't read the user document (e.g., due to permissions),
-            // it's safer to log the user out.
+            console.error("Error listening to user document:", error);
+            // If we can't read the user document, it's a permissions issue. Log out.
             signOut(auth);
-            // setLoading(false) will be called in the 'else' block below
         });
         
         // This will be called when the onAuthStateChanged listener is cleaned up
