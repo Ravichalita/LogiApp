@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { getRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays, ChevronDown, Filter } from 'lucide-react';
+import { Truck, User, MapPin, Calendar, Mail, Phone, Home, FileText, CircleDollarSign, CalendarDays, ChevronDown, Filter, Plus, Minus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Accordion,
@@ -209,8 +209,10 @@ export default function DashboardPage() {
 
                     <Accordion type="single" collapsible>
                         <AccordionItem value="client-details" className="border-b-0">
-                            <AccordionTrigger className="font-medium hover:no-underline py-0">
-                                Ver Detalhes do Cliente
+                            <AccordionTrigger className="group flex w-full items-center justify-start font-medium hover:no-underline py-0 text-sm">
+                                <span>Ver Detalhes do Cliente</span>
+                                <Plus className="ml-2 h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]:hidden" />
+                                <Minus className="ml-2 h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=closed]:hidden" />
                             </AccordionTrigger>
                             <AccordionContent className="space-y-4 pt-4">
                                 <div className="flex items-start gap-3">
