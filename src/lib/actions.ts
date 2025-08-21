@@ -4,9 +4,42 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRental, createAccountForNewUser } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRental } from './data';
 import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
+import * as admin from 'firebase-admin';
+
+// This function is self-contained to ensure firebase-admin is only used server-side.
+async function createAccountForNewUserWithAdmin(userId: string, email: string) {
+    if (!admin.apps.length) {
+      admin.initializeApp();
+    }
+    const adminDb = admin.firestore();
+
+    try {
+        const batch = adminDb.batch();
+
+        const accountRef = adminDb.collection('accounts').doc();
+        batch.set(accountRef, {
+            ownerId: userId,
+            name: `${email}'s Account`,
+            createdAt: new Date(),
+        });
+
+        const userRef = adminDb.collection('users').doc(userId);
+        batch.set(userRef, {
+            email: email,
+            accountId: accountRef.id,
+            role: 'admin',
+        });
+
+        await batch.commit();
+
+    } catch(error) {
+        console.error("Error creating account and user document with Admin SDK:", error);
+        throw new Error("Falha ao salvar informações do usuário no banco de dados.");
+    }
+}
 
 
 const createUserAccountSchema = z.object({
@@ -24,8 +57,7 @@ export async function createUserAccountAction(data: z.infer<typeof createUserAcc
   }
 
   try {
-    // This function now uses the Admin SDK and is guaranteed to work from the server.
-    await createAccountForNewUser(validatedFields.data.userId, validatedFields.data.email);
+    await createAccountForNewUserWithAdmin(validatedFields.data.userId, validatedFields.data.email);
     return { message: 'success' };
   } catch (e: any) {
     console.error("Error in createUserAccountAction:", e);
@@ -386,3 +418,5 @@ export async function resetBillingDataAction(accountId: string) {
         return { message: 'error', error: 'Ocorreu um erro ao tentar zerar os dados de faturamento.' };
     }
 }
+
+    
