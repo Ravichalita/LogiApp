@@ -59,6 +59,7 @@ export default function DumpstersPage() {
         setDumpsters(data);
         if(loading) setLoading(false);
       });
+      // This now fetches all active and future rentals
       const unsubscribeRentals = getPendingRentals(user.uid, (data) => {
         setPendingRentals(data);
       });
@@ -88,24 +89,15 @@ export default function DumpstersPage() {
       });
 
     return dumpsters.map(d => {
-      // If status is already fixed (Alugada, Em Manutenção), just return it.
+      // If status is fixed from DB (Alugada, Em Manutenção), just return it.
       if (d.status === 'Alugada' || d.status === 'Em Manutenção') {
         return { ...d };
       }
       
-      // If status is 'Disponível', check for rentals
+      // If status is 'Disponível', check for future rentals
       const rental = scheduledRentalsMap.get(d.id);
       if (rental) {
         const rentalDate = new Date(rental.rentalDate);
-        
-        // If a rental is scheduled for today, it's considered 'Alugada' for display purposes
-        if (isSameDay(rentalDate, today)) {
-          return {
-              ...d,
-              status: 'Alugada',
-              originalStatus: 'Disponível', 
-          };
-        }
         
         // If a rental is scheduled for a future date, it's 'Reservada'
         if (isAfter(rentalDate, today)) {
@@ -118,7 +110,8 @@ export default function DumpstersPage() {
         }
       }
       
-      // If 'Disponível' and no relevant rentals, return as is.
+      // If 'Disponível' and no relevant rentals, or rental is for today, it remains 'Disponível'
+      // because the DB status will be changed to 'Alugada' on creation.
       return d;
     }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -189,7 +182,7 @@ export default function DumpstersPage() {
                                     <TableHead>Identificador</TableHead>
                                     <TableHead>Cor</TableHead>
                                     <TableHead>Tamanho (m³)</TableHead>
-                                    <TableHead>Ações</TableHead>
+                                    <TableHead>Status / Ações</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

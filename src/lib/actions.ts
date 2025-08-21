@@ -228,7 +228,7 @@ export async function createRental(userId: string, prevState: any, formData: For
         await addRental(userId, {
             ...validatedFields.data,
             status: 'Ativo',
-        });
+        }, validatedFields.data.dumpsterId);
     } catch (e) {
         console.error(e);
         return { errors: {}, message: 'Falha ao criar aluguel.' };
