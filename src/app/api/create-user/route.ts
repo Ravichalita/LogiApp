@@ -7,9 +7,10 @@ function initializeFirebaseAdmin() {
   // Check if an app is already initialized to prevent errors.
   if (!admin.apps.length) {
     try {
-      // When deployed to Google Cloud, the SDK automatically detects the project credentials.
+      // Use application default credentials for authentication in Google Cloud environments.
       admin.initializeApp({
-        projectId: "caambacontrol3", // Explicitly specifying the Project ID
+        credential: admin.credential.applicationDefault(),
+        projectId: "caambacontrol3",
       });
     } catch (error: any) {
       console.error('Firebase admin initialization error', error.stack);
