@@ -77,7 +77,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
+  const isReservedOrRented = dumpster.status === 'Alugada' || dumpster.status.startsWith('Reservada');
   const realStatus = dumpster.originalStatus || dumpster.status;
   
   const getStatusVariant = (status: EnhancedDumpster['status']): 'default' | 'destructive' | 'secondary' => {

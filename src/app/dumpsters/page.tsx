@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster, DumpsterStatus } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -76,22 +76,28 @@ export default function DumpstersPage() {
 
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
-    const scheduledRentalsMap = new Map<string, Rental>();
     
-    // Get the earliest future or current rental for each dumpster
+    // Create a map for easy lookup of the earliest future or current rental for each dumpster
+    const scheduledRentalsMap = new Map<string, Rental>();
     pendingRentals
-      .sort((a,b) => a.rentalDate.getTime() - b.rentalDate.getTime())
-      .forEach(r => {
-        if (!scheduledRentalsMap.has(r.dumpsterId)) {
-          scheduledRentalsMap.set(r.dumpsterId, r);
+      .sort((a,b) => a.rentalDate.getTime() - b.rentalDate.getTime()) // Sort by date to get the earliest
+      .forEach(rental => {
+        if (!scheduledRentalsMap.has(rental.dumpsterId)) {
+          scheduledRentalsMap.set(rental.dumpsterId, rental);
         }
       });
 
     return dumpsters.map(d => {
-      const rental = scheduledRentalsMap.get(d.id);
+      // If status is already fixed (Alugada, Em Manutenção), just return it.
+      if (d.status === 'Alugada' || d.status === 'Em Manutenção') {
+        return { ...d };
+      }
       
-      if (d.status === 'Disponível' && rental) {
+      // If status is 'Disponível', check for rentals
+      const rental = scheduledRentalsMap.get(d.id);
+      if (rental) {
         const rentalDate = new Date(rental.rentalDate);
+        
         // If a rental is scheduled for today, it's considered 'Alugada' for display purposes
         if (isSameDay(rentalDate, today)) {
           return {
@@ -111,7 +117,8 @@ export default function DumpstersPage() {
           };
         }
       }
-      // Return the dumpster with its original status if no relevant rental is found
+      
+      // If 'Disponível' and no relevant rentals, return as is.
       return d;
     }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -131,7 +138,7 @@ export default function DumpstersPage() {
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
     if (!user) return;
-    const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
+    const isReservedOrRented = dumpster.status === 'Alugada' || dumpster.status.startsWith('Reservada');
     if (isReservedOrRented) return;
 
     const realStatus = dumpster.originalStatus || dumpster.status;
@@ -209,7 +216,7 @@ export default function DumpstersPage() {
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
                         {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
-                            const isReservedOrRented = dumpster.status === 'Alugada' || !!dumpster.originalStatus;
+                           const isReservedOrRented = dumpster.status === 'Alugada' || dumpster.status.startsWith('Reservada');
                            return (
                             <div key={dumpster.id} className="border rounded-lg p-4 space-y-3">
                                 <div className="flex justify-between items-start">
