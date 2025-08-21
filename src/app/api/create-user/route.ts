@@ -2,19 +2,20 @@
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK if not already initialized
-// This ensures the SDK is ready for server-side operations.
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      projectId: "caambacontrol3", // Specify your Project ID
-    });
-  } catch (error: any) {
-    console.error('Firebase admin initialization error', error.stack);
+// Function to initialize Firebase Admin SDK if it hasn't been already.
+function initializeFirebaseAdmin() {
+  // Check if an app is already initialized to prevent errors.
+  if (!admin.apps.length) {
+    try {
+      // When deployed to Google Cloud, the SDK automatically detects the project credentials.
+      admin.initializeApp({
+        projectId: "caambacontrol3", // Explicitly specifying the Project ID
+      });
+    } catch (error: any) {
+      console.error('Firebase admin initialization error', error.stack);
+    }
   }
 }
-
-const adminDb = admin.firestore();
 
 /**
  * API route to create an account and a user document in Firestore.
@@ -23,6 +24,10 @@ const adminDb = admin.firestore();
  */
 export async function POST(request: Request) {
   try {
+    // Ensure Firebase Admin is initialized for every API call
+    initializeFirebaseAdmin();
+    const adminDb = admin.firestore();
+
     const { userId, email } = await request.json();
 
     if (!userId || !email) {
@@ -36,7 +41,7 @@ export async function POST(request: Request) {
     batch.set(accountRef, {
       ownerId: userId,
       name: `${email}'s Account`,
-      createdAt: new Date(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // 2. Create the user document and link it to the new account

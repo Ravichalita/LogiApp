@@ -8,8 +8,7 @@ import { addClient, addDumpster, updateClient as updateClientData, updateDumpste
 import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
-// Note: The createUserAccountAction has been removed from this file.
-// The logic for creating a user and account document is now handled in
+// Note: The logic for creating a user and account document is now handled in
 // the dedicated API route `/api/create-user/route.ts` to ensure
 // the Firebase Admin SDK is used in a pure server environment.
 
