@@ -2,32 +2,48 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if the user belongs to the account
-    function isUserInAccount(accountId) {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
-    }
     
-    // Helper function to check if the user is an admin of the account
-    function isUserAdmin(accountId) {
-      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      return userDoc.accountId == accountId && userDoc.role == 'admin';
+    // Helper functions
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    match /accounts/{accountId}/{document=**} {
-      allow read, write: if isUserInAccount(accountId);
+    // Check if the requesting user belongs to a specific account
+    function isUserInAccount(accountId) {
+      return isUserAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
     }
     
+    // Check if the requesting user is an admin of a specific account
+    function isUserAdmin(accountId) {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isUserInAccount(accountId) && userData.role == 'admin';
+    }
+
+    // Accounts collection
+    match /accounts/{accountId} {
+      allow read: if isUserInAccount(accountId);
+      allow write: if isUserAdmin(accountId);
+
+      // Subcollections within accounts (clients, dumpsters, etc.)
+      match /{collection}/{docId} {
+        allow read, write: if isUserInAccount(accountId);
+      }
+    }
+    
+    // Users collection
     match /users/{userId} {
-      // Allow a user to read another user's document if they are in the same account.
-      allow read: if isUserInAccount(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
-      
-      // Allow a user to update/delete another user if they are an admin of that account.
-      allow write: if isUserAdmin(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
-      
-      // Allow users to create their own user document during signup.
-      allow create: if request.auth.uid == userId;
+      // Allow a user to read their own document
+      allow get: if isUserAuthenticated() && request.auth.uid == userId;
+      // Allow admins to update user documents within their account
+      allow update: if isUserAdmin(resource.data.accountId);
+      // Allow admins to delete users from their account
+      allow delete: if isUserAdmin(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
+
+      // Allow authenticated users to list all users that belong to their same account.
+      // This is necessary for the "Team" page.
+      allow list: if isUserAuthenticated() &&
+                   exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                   request.query.where.get("accountId")[2][0] == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId;
     }
   }
 }

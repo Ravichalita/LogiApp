@@ -63,9 +63,8 @@ export default function TeamPage() {
     }
   }, [accountId, isAdmin]);
   
-  const sortedMembers = useMemo(() => {
-    return [...members].sort((a, b) => a.name.localeCompare(b.name));
-  }, [members]);
+  // Client-side sorting is no longer needed as the query is ordered.
+  // The 'members' state will be naturally ordered.
 
   if (loading) {
     return (
@@ -100,7 +99,7 @@ export default function TeamPage() {
         <CardHeader>
           <CardTitle>Membros da Equipe</CardTitle>
           <CardDescription>
-            {sortedMembers.length} usuário(s) nesta conta.
+            {members.length} usuário(s) nesta conta.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -115,8 +114,8 @@ export default function TeamPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedMembers.length > 0 ? (
-                  sortedMembers.map((member) => (
+                {members.length > 0 ? (
+                  members.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell>
                         <div className="font-medium">{member.name}</div>

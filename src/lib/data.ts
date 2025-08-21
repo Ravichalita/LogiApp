@@ -168,7 +168,11 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
 // #region User/Team Data
 export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
   const usersCollection = collection(db, 'users');
-  const q = query(usersCollection, where('accountId', '==', accountId));
+  const q = query(
+    usersCollection, 
+    where('accountId', '==', accountId),
+    orderBy('name', 'asc') // Re-add ordering, as the new rules will support it
+  );
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const users = querySnapshot.docs.map(doc => ({
@@ -176,6 +180,9 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
       ...doc.data()
     } as UserAccount));
     callback(users);
+  }, (error) => {
+      console.error("Error fetching team members:", error);
+      // You can also add more robust error handling here, like updating UI state
   });
 
   return unsubscribe;
