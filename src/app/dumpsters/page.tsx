@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
-import { getDumpsters, getPendingRentals } from '@/lib/data';
+import { getDumpsters, getRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox } from './dumpster-actions';
@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { startOfToday, format, isAfter } from 'date-fns';
+import { startOfToday, format, isAfter, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 
@@ -47,7 +47,7 @@ function DumpsterTableSkeleton() {
 export default function DumpstersPage() {
   const { user } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
-  const [pendingRentals, setPendingRentals] = useState<Rental[]>([]);
+  const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -59,9 +59,9 @@ export default function DumpstersPage() {
         setDumpsters(data);
         if(loading) setLoading(false);
       });
-      // This now fetches all active and future rentals
-      const unsubscribeRentals = getPendingRentals(user.uid, (data) => {
-        setPendingRentals(data);
+      // Fetch all active and future rentals to determine derived status
+      const unsubscribeRentals = getRentals(user.uid, (data) => {
+        setAllRentals(data);
       });
       
       return () => {
@@ -70,49 +70,53 @@ export default function DumpstersPage() {
       }
     } else {
         setDumpsters([]);
-        setPendingRentals([]);
+        setAllRentals([]);
         setLoading(false);
     }
   }, [user, loading]);
 
  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
-    const today = startOfToday();
+    const today = new Date();
     
-    // Create a map for quick lookup of the earliest rental for each dumpster
-    const rentalsMap = new Map<string, Rental>();
-    pendingRentals
-      .sort((a, b) => a.rentalDate.getTime() - b.rentalDate.getTime())
-      .forEach(rental => {
-        if (!rentalsMap.has(rental.dumpsterId)) {
-          rentalsMap.set(rental.dumpsterId, rental);
-        }
-      });
+    // Create a map for quick lookup of rentals for each dumpster
+    const rentalsByDumpster = new Map<string, Rental[]>();
+    allRentals.forEach(rental => {
+        const existing = rentalsByDumpster.get(rental.dumpsterId) || [];
+        rentalsByDumpster.set(rental.dumpsterId, [...existing, rental]);
+    });
 
     return dumpsters.map(d => {
-      // Priority 1: If status from DB is 'Alugada' or 'Em Manutenção', it's final.
-      if (d.status === 'Alugada' || d.status === 'Em Manutenção') {
+      // Priority 1: If status from DB is 'Em Manutenção', it's final.
+      if (d.status === 'Em Manutenção') {
         return { ...d, derivedStatus: d.status };
       }
       
-      // Priority 2: If status is 'Disponível', check for future reservations.
-      const rental = rentalsMap.get(d.id);
-      if (rental) {
-        const rentalDate = new Date(rental.rentalDate);
-        // isAfter checks if the first date is after the second one.
-        if (isAfter(rentalDate, today)) {
-          const formattedDate = format(rentalDate, "dd/MM/yy");
-          return { 
-            ...d, 
-            derivedStatus: `Reservada para ${formattedDate}`,
-          };
-        }
+      const dumpsterRentals = rentalsByDumpster.get(d.id);
+      
+      // Check for active rentals
+      const activeRental = dumpsterRentals?.find(r => 
+        isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) })
+      );
+
+      if(activeRental) {
+        return { ...d, derivedStatus: 'Alugada' };
+      }
+
+      // Check for future reservations
+       const futureRental = dumpsterRentals
+        ?.filter(r => isAfter(new Date(r.rentalDate), today))
+        .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0]; // get the soonest one
+
+      if (futureRental) {
+         const formattedDate = format(new Date(futureRental.rentalDate), "dd/MM/yy");
+         return { ...d, derivedStatus: `Reservada para ${formattedDate}` };
       }
       
       // If none of the above, it's 'Disponível'.
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-  }, [dumpsters, pendingRentals]);
+  }, [dumpsters, allRentals]);
 
 
   const filteredDumpsters = useMemo(() => {

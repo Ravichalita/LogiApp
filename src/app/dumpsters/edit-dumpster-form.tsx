@@ -86,7 +86,6 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Disponível">Disponível</SelectItem>
-            <SelectItem value="Alugada">Alugada</SelectItem>
             <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
           </SelectContent>
         </Select>

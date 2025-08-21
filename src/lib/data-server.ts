@@ -88,45 +88,14 @@ export async function deleteDumpster(userId: string, docId: string) {
 }
 
 // Rentals
-export async function addRental(userId: string, rental: Omit<Rental, 'id'>, dumpsterId: string) {
-  if (!userId) throw new Error('Usuário não autenticado.');
-
-  const batch = adminDb.batch();
-
-  // 1. Add the new rental document
-  const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc();
-  batch.set(rentalRef, { ...rental, createdAt: new Date() });
-
-  // 2. Update the dumpster's status to 'Alugada'
-  const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
-  batch.update(dumpsterRef, { status: 'Alugada' });
-
-  await batch.commit();
-
-  return { id: rentalRef.id };
+export async function addRental(userId: string, rental: Omit<Rental, 'id'>) {
+    if (!userId) throw new Error('Usuário não autenticado.');
+    return addDocument(userId, 'rentals', rental);
 }
 
-export async function deleteRental(userId: string, rentalId: string) {
+export async function cancelRental(userId: string, rentalId: string) {
     return deleteDocument(userId, 'rentals', rentalId);
 }
-
-export async function cancelRentalAndUpdateDumpster(userId: string, rentalId: string, dumpsterId: string) {
-    if (!userId) throw new Error('Usuário não autenticado.');
-    if (!rentalId || !dumpsterId) throw new Error('IDs de aluguel ou caçamba ausentes.');
-
-    const batch = adminDb.batch();
-
-    // 1. Delete the active rental document
-    const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
-    batch.delete(rentalRef);
-
-    // 2. Set the dumpster status back to 'Disponível'
-    const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
-    batch.update(dumpsterRef, { status: 'Disponível' });
-
-    await batch.commit();
-}
-
 
 export async function getRentalById(userId: string, rentalId: string): Promise<Rental | null> {
     return getDocumentById(userId, 'rentals', rentalId) as Promise<Rental | null>;
@@ -137,9 +106,9 @@ export async function updateRental(userId: string, rentalId: string, data: Parti
   return await updateDocument(userId, 'rentals', rentalId, data);
 }
 
-export async function completeRental(userId: string, rentalId: string, dumpsterId: string, completedRentalData: Omit<CompletedRental, 'id'>) {
+export async function completeRental(userId: string, rentalId: string, completedRentalData: Omit<CompletedRental, 'id'>) {
     if (!userId) throw new Error('Usuário não autenticado.');
-    if (!rentalId || !dumpsterId) throw new Error('IDs de aluguel ou caçamba ausentes.');
+    if (!rentalId) throw new Error('ID do aluguel ausente.');
 
     const batch = adminDb.batch();
 
@@ -147,11 +116,7 @@ export async function completeRental(userId: string, rentalId: string, dumpsterI
     const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
     batch.delete(rentalRef);
 
-    // 2. Set the dumpster status back to 'Disponível'
-    const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
-    batch.update(dumpsterRef, { status: 'Disponível' });
-
-    // 3. Create a new record in the 'completedRentals' collection for statistics
+    // 2. Create a new record in the 'completedRentals' collection for statistics
     const completedRentalRef = adminDb.collection('users').doc(userId).collection('completedRentals').doc();
     batch.set(completedRentalRef, completedRentalData);
 

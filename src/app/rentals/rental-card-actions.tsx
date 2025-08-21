@@ -57,7 +57,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const handleCancelAction = () => {
      startCancelTransition(async () => {
         if (!user) return;
-        const result = await cancelRentalAction(user.uid, rental.id, rental.dumpsterId);
+        const result = await cancelRentalAction(user.uid, rental.id);
         if (result.message === 'error') {
             toast({ title: "Erro", description: result.error, variant: "destructive"});
         } else {
@@ -77,7 +77,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         {status.text !== 'Pendente' && (
             <form ref={finishFormRef} action={handleFinishAction} className="w-full col-span-2">
                 <input type="hidden" name="rentalId" value={rental.id} />
-                <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
                 <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                   {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
                   Finalizar

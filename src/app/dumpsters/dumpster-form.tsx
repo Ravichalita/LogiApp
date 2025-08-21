@@ -90,7 +90,6 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="Disponível">Disponível</SelectItem>
-            <SelectItem value="Alugada">Alugada</SelectItem>
             <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
           </SelectContent>
         </Select>

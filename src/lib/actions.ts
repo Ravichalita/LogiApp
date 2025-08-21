@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRentalAndUpdateDumpster } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRental } from './data-server';
 import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -12,7 +12,7 @@ import { differenceInCalendarDays } from 'date-fns';
 const dumpsterSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres.'),
-  status: z.enum(['Disponível', 'Alugada', 'Em Manutenção']),
+  status: z.enum(['Disponível', 'Em Manutenção']),
   color: z.string().min(3, 'A cor deve ter pelo menos 3 caracteres.'),
   size: z.coerce.number().min(1, 'O tamanho deve ser maior que 0.'),
 });
@@ -228,7 +228,7 @@ export async function createRental(userId: string, prevState: any, formData: For
         await addRental(userId, {
             ...validatedFields.data,
             status: 'Ativo',
-        }, validatedFields.data.dumpsterId);
+        });
     } catch (e) {
         console.error(e);
         return { errors: {}, message: 'Falha ao criar aluguel.' };
@@ -245,10 +245,9 @@ export async function finishRentalAction(userId: string, formData: FormData) {
         throw new Error("Usuário não autenticado.");
     }
     const rentalId = formData.get('rentalId') as string;
-    const dumpsterId = formData.get('dumpsterId') as string;
     
-    if (!rentalId || !dumpsterId) {
-      throw new Error("ID do aluguel ou da caçamba ausente.");
+    if (!rentalId) {
+      throw new Error("ID do aluguel ausente.");
     }
 
     try {
@@ -270,11 +269,10 @@ export async function finishRentalAction(userId: string, formData: FormData) {
             rentalDays,
         };
 
-        await completeRental(userId, rentalId, dumpsterId, completedRentalData);
+        await completeRental(userId, rentalId, completedRentalData);
 
     } catch (e) {
         console.error(e);
-        // This will be caught by Next.js error boundary
         throw new Error("Falha ao finalizar o aluguel.");
     }
 
@@ -284,16 +282,16 @@ export async function finishRentalAction(userId: string, formData: FormData) {
     redirect('/');
 }
 
-export async function cancelRentalAction(userId: string, rentalId: string, dumpsterId: string) {
+export async function cancelRentalAction(userId: string, rentalId: string) {
     if (!userId) {
         return { message: 'error', error: 'Usuário não autenticado.' };
     }
-    if (!rentalId || !dumpsterId) {
-        return { message: 'error', error: 'Informações do aluguel ou caçamba ausentes.' };
+    if (!rentalId) {
+        return { message: 'error', error: 'Informações do aluguel ausentes.' };
     }
 
     try {
-        await cancelRentalAndUpdateDumpster(userId, rentalId, dumpsterId);
+        await cancelRental(userId, rentalId);
     } catch (e: any) {
         console.error("Error canceling rental:", e);
         return { message: 'error', error: 'Falha ao cancelar o aluguel.' };

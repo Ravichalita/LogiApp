@@ -1,7 +1,7 @@
 
 
-export type DumpsterStatus = "Disponível" | "Alugada" | "Em Manutenção";
-export type DerivedDumpsterStatus = DumpsterStatus | `Reservada para ${string}`;
+export type DumpsterStatus = "Disponível" | "Em Manutenção";
+export type DerivedDumpsterStatus = DumpsterStatus | "Alugada" | `Reservada para ${string}`;
 
 
 export interface FirestoreEntity {
@@ -38,7 +38,7 @@ export interface Rental extends FirestoreEntity {
   longitude?: number;
   rentalDate: Date;
   returnDate: Date;
-  status: "Ativo" | "Concluído";
+  status: "Ativo";
   value: number; // Daily value
 }
 
