@@ -43,28 +43,12 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Create the user in Firebase Auth
+      // 1. Create the user in Firebase Auth.
+      // The Firebase Function trigger will handle creating the user documents.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // 2. Call our secure API endpoint to create the Firestore documents
-      const response = await fetch('/api/create-user', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId: user.uid, email: user.email }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        // This is the critical error handling that was missing.
-        // It catches failures from our API route.
-        throw new Error(result.error || 'Falha ao criar os documentos do usuário no banco de dados.');
-      }
       
-      // 3. Send verification email
+      // 2. Send verification email
       await sendEmailVerification(user);
       toast({
         title: 'Verificação Necessária',
@@ -72,6 +56,9 @@ export default function SignupPage() {
           'Enviamos um link de verificação para o seu e-mail. Por favor, clique nele para ativar sua conta.',
       });
 
+      // 3. Redirect to the verify-email page.
+      // The user document will be created in the background by the function.
+      // The AuthProvider will handle routing once the user is verified and re-logins.
       router.push('/verify-email');
 
     } catch (error: any) {
@@ -83,7 +70,6 @@ export default function SignupPage() {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'A senha é muito fraca.';
       } else {
-        // This will now catch the error thrown from our API fetch
         errorMessage = error.message || errorMessage;
       }
       toast({
