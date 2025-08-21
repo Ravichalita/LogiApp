@@ -57,7 +57,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const handleCancelAction = () => {
      startCancelTransition(async () => {
         if (!user) return;
-        const result = await cancelRentalAction(user.uid, rental.id);
+        const result = await cancelRentalAction(user.uid, rental.id, rental.dumpsterId);
         if (result.message === 'error') {
             toast({ title: "Erro", description: result.error, variant: "destructive"});
         } else {
@@ -100,7 +100,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         Você tem certeza?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                        Esta ação não pode ser desfeita. Isso irá cancelar permanentemente o agendamento deste aluguel.
+                        Esta ação não pode ser desfeita. Isso irá cancelar permanentemente o agendamento deste aluguel e a caçamba voltará a ficar disponível.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

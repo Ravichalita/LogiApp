@@ -110,6 +110,24 @@ export async function deleteRental(userId: string, rentalId: string) {
     return deleteDocument(userId, 'rentals', rentalId);
 }
 
+export async function cancelRentalAndUpdateDumpster(userId: string, rentalId: string, dumpsterId: string) {
+    if (!userId) throw new Error('Usuário não autenticado.');
+    if (!rentalId || !dumpsterId) throw new Error('IDs de aluguel ou caçamba ausentes.');
+
+    const batch = adminDb.batch();
+
+    // 1. Delete the active rental document
+    const rentalRef = adminDb.collection('users').doc(userId).collection('rentals').doc(rentalId);
+    batch.delete(rentalRef);
+
+    // 2. Set the dumpster status back to 'Disponível'
+    const dumpsterRef = adminDb.collection('users').doc(userId).collection('dumpsters').doc(dumpsterId);
+    batch.update(dumpsterRef, { status: 'Disponível' });
+
+    await batch.commit();
+}
+
+
 export async function getRentalById(userId: string, rentalId: string): Promise<Rental | null> {
     return getDocumentById(userId, 'rentals', rentalId) as Promise<Rental | null>;
 }

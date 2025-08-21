@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, deleteRental } from './data-server';
+import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRentalAndUpdateDumpster } from './data-server';
 import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
 
@@ -284,16 +284,16 @@ export async function finishRentalAction(userId: string, formData: FormData) {
     redirect('/');
 }
 
-export async function cancelRentalAction(userId: string, rentalId: string) {
+export async function cancelRentalAction(userId: string, rentalId: string, dumpsterId: string) {
     if (!userId) {
         return { message: 'error', error: 'Usuário não autenticado.' };
     }
-    if (!rentalId) {
-        return { message: 'error', error: 'ID do aluguel não fornecido.' };
+    if (!rentalId || !dumpsterId) {
+        return { message: 'error', error: 'Informações do aluguel ou caçamba ausentes.' };
     }
 
     try {
-        await deleteRental(userId, rentalId);
+        await cancelRentalAndUpdateDumpster(userId, rentalId, dumpsterId);
     } catch (e: any) {
         console.error("Error canceling rental:", e);
         return { message: 'error', error: 'Falha ao cancelar o aluguel.' };
