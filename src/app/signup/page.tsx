@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Truck } from 'lucide-react';
-import { createUserAccountAction } from '@/lib/actions';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -48,16 +47,21 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Call a server action to create the user account and user document in Firestore
-      const result = await createUserAccountAction({
-        userId: user.uid,
-        email: user.email!,
+      // 2. Call our secure API endpoint to create the Firestore documents
+      const response = await fetch('/api/create-user', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId: user.uid, email: user.email }),
       });
-      
-      if (result.message === 'error') {
-        throw new Error(result.error);
-      }
 
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Falha ao criar os documentos do usuário no banco de dados.');
+      }
+      
       // 3. Send verification email
       await sendEmailVerification(user);
       toast({
@@ -67,6 +71,7 @@ export default function SignupPage() {
       });
 
       router.push('/verify-email');
+
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
       if (error.code === 'auth/email-already-in-use') {

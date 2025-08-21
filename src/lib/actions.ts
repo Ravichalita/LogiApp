@@ -7,68 +7,11 @@ import { redirect } from 'next/navigation';
 import { addClient, addDumpster, updateClient as updateClientData, updateDumpster as updateDumpsterData, deleteClient as deleteClientData, deleteDumpster as deleteDumpsterData, addRental, completeRental, getRentalById, deleteAllCompletedRentals, updateRental as updateRentalData, cancelRental } from './data';
 import type { Dumpster, DumpsterStatus, Rental } from './types';
 import { differenceInCalendarDays } from 'date-fns';
-import * as admin from 'firebase-admin';
 
-// Helper function to initialize admin and create user/account docs
-async function createAccountForNewUserWithAdmin(userId: string, email: string) {
-    // Initialize Firebase Admin SDK if not already initialized
-    if (!admin.apps.length) {
-       // Providing the projectId is crucial for the Admin SDK to know which project to connect to.
-      admin.initializeApp({
-        projectId: "caambacontrol3"
-      });
-    }
-    const adminDb = admin.firestore();
-
-    try {
-        const batch = adminDb.batch();
-
-        const accountRef = adminDb.collection('accounts').doc();
-        batch.set(accountRef, {
-            ownerId: userId,
-            name: `${email}'s Account`,
-            createdAt: new Date(),
-        });
-
-        const userRef = adminDb.collection('users').doc(userId);
-        batch.set(userRef, {
-            email: email,
-            accountId: accountRef.id,
-            role: 'admin',
-        });
-
-        await batch.commit();
-
-    } catch(error) {
-        console.error("Error creating account and user document with Admin SDK:", error);
-        throw new Error("Falha ao salvar informações do usuário no banco de dados.");
-    }
-}
-
-
-const createUserAccountSchema = z.object({
-  userId: z.string().min(1, 'User ID is required.'),
-  email: z.string().email('Invalid email format.'),
-});
-
-export async function createUserAccountAction(data: z.infer<typeof createUserAccountSchema>) {
-  const validatedFields = createUserAccountSchema.safeParse(data);
-  if (!validatedFields.success) {
-    return {
-      message: 'error',
-      error: 'Dados de usuário inválidos.',
-    };
-  }
-
-  try {
-    await createAccountForNewUserWithAdmin(validatedFields.data.userId, validatedFields.data.email);
-    return { message: 'success' };
-  } catch (e: any) {
-    console.error("Error in createUserAccountAction:", e);
-    return { message: 'error', error: e.message || 'Falha ao criar a conta no Firestore.' };
-  }
-}
-
+// Note: The createUserAccountAction has been removed from this file.
+// The logic for creating a user and account document is now handled in
+// the dedicated API route `/api/create-user/route.ts` to ensure
+// the Firebase Admin SDK is used in a pure server environment.
 
 const dumpsterSchema = z.object({
   id: z.string().optional(),
@@ -422,5 +365,3 @@ export async function resetBillingDataAction(accountId: string) {
         return { message: 'error', error: 'Ocorreu um erro ao tentar zerar os dados de faturamento.' };
     }
 }
-
-    
