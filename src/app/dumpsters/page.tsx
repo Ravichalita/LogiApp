@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { startOfToday, format, isAfter, isSameDay } from 'date-fns';
+import { startOfToday, format, isAfter } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 
@@ -78,10 +78,10 @@ export default function DumpstersPage() {
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
     
-    // Create a map for easy lookup of the earliest future or current rental for each dumpster
+    // Create a map for easy lookup of the earliest future rental for each dumpster
     const scheduledRentalsMap = new Map<string, Rental>();
     pendingRentals
-      .sort((a,b) => a.rentalDate.getTime() - b.rentalDate.getTime()) // Sort by date to get the earliest
+      .sort((a, b) => a.rentalDate.getTime() - b.rentalDate.getTime()) // Sort by date to get the earliest
       .forEach(rental => {
         if (!scheduledRentalsMap.has(rental.dumpsterId)) {
           scheduledRentalsMap.set(rental.dumpsterId, rental);
@@ -89,30 +89,27 @@ export default function DumpstersPage() {
       });
 
     return dumpsters.map(d => {
-      // If status is fixed from DB (Alugada, Em Manutenção), just return it.
+      // Priority 1: If status is 'Alugada' or 'Em Manutenção' from DB, it's the final status.
       if (d.status === 'Alugada' || d.status === 'Em Manutenção') {
-        return { ...d };
+        return { ...d, derivedStatus: d.status };
       }
       
-      // If status is 'Disponível', check for future rentals
+      // Priority 2: If status is 'Disponível', check for future rentals
       const rental = scheduledRentalsMap.get(d.id);
       if (rental) {
         const rentalDate = new Date(rental.rentalDate);
-        
         // If a rental is scheduled for a future date, it's 'Reservada'
         if (isAfter(rentalDate, today)) {
           const formattedDate = format(rental.rentalDate, "dd/MM/yy");
           return { 
             ...d, 
-            status: `Reservada para ${formattedDate}`,
-            originalStatus: 'Disponível'
+            derivedStatus: `Reservada para ${formattedDate}`,
           };
         }
       }
       
-      // If 'Disponível' and no relevant rentals, or rental is for today, it remains 'Disponível'
-      // because the DB status will be changed to 'Alugada' on creation.
-      return d;
+      // If 'Disponível' and no future reservations, it remains 'Disponível'
+      return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
   }, [dumpsters, pendingRentals]);
@@ -131,11 +128,10 @@ export default function DumpstersPage() {
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
     if (!user) return;
-    const isReservedOrRented = dumpster.status === 'Alugada' || dumpster.status.startsWith('Reservada');
+    const isReservedOrRented = dumpster.derivedStatus !== 'Disponível' && dumpster.derivedStatus !== 'Em Manutenção';
     if (isReservedOrRented) return;
 
-    const realStatus = dumpster.originalStatus || dumpster.status;
-    const newStatus = realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível';
+    const newStatus = dumpster.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
     startTransition(async () => {
         const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
@@ -209,7 +205,7 @@ export default function DumpstersPage() {
                         {/* Cards for smaller screens */}
                         <div className="md:hidden space-y-4">
                         {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
-                           const isReservedOrRented = dumpster.status === 'Alugada' || dumpster.status.startsWith('Reservada');
+                           const isReservedOrRented = dumpster.derivedStatus !== 'Disponível' && dumpster.derivedStatus !== 'Em Manutenção';
                            return (
                             <div key={dumpster.id} className="border rounded-lg p-4 space-y-3">
                                 <div className="flex justify-between items-start">

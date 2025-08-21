@@ -44,8 +44,7 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
     handleToggleStatus: () => void;
     isReservedOrRented: boolean;
 }) {
-    const realStatus = dumpster.originalStatus || dumpster.status;
-    const isMaintenance = realStatus === 'Em Manutenção';
+    const isMaintenance = dumpster.status === 'Em Manutenção';
 
     return (
         <div className="flex items-center space-x-2">
@@ -77,10 +76,9 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const isReservedOrRented = dumpster.status === 'Alugada' || dumpster.status.startsWith('Reservada');
-  const realStatus = dumpster.originalStatus || dumpster.status;
+  const isReservedOrRented = dumpster.derivedStatus !== 'Disponível' && dumpster.derivedStatus !== 'Em Manutenção';
   
-  const getStatusVariant = (status: EnhancedDumpster['status']): 'default' | 'destructive' | 'secondary' => {
+  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' => {
     if (status.startsWith('Reservada')) return 'secondary';
     switch (status) {
       case 'Disponível':
@@ -116,7 +114,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
 
   const handleToggleStatus = () => {
     if (!user || isReservedOrRented) return;
-    const newStatus = realStatus === 'Disponível' ? 'Em Manutenção' : 'Disponível';
+    const newStatus = dumpster.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
     
     startTransition(async () => {
         const result = await updateDumpsterStatusAction(user.uid, dumpster.id, newStatus);
@@ -140,10 +138,10 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
       <div className="flex items-center justify-end gap-4">
         {/* Status Badge */}
         <Badge
-          variant={getStatusVariant(dumpster.status)}
+          variant={getStatusVariant(dumpster.derivedStatus)}
           className={cn('text-xs', isPending && 'opacity-50')}
         >
-          {dumpster.status}
+          {dumpster.derivedStatus}
         </Badge>
         
         {/* Checkbox for desktop view */}
@@ -187,7 +185,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
               <DialogHeader>
                 <DialogTitle>Editar Caçamba</DialogTitle>
               </DialogHeader>
-              <EditDumpsterForm dumpster={{...dumpster, status: realStatus}} onSave={() => setIsEditDialogOpen(false)} />
+              <EditDumpsterForm dumpster={dumpster} onSave={() => setIsEditDialogOpen(false)} />
             </DialogContent>
 
             <AlertDialogContent>

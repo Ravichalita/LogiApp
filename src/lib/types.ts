@@ -16,8 +16,7 @@ export interface Dumpster extends FirestoreEntity {
 }
 
 export interface EnhancedDumpster extends Dumpster {
-    status: DerivedDumpsterStatus;
-    originalStatus?: DumpsterStatus;
+    derivedStatus: DerivedDumpsterStatus;
 }
 
 
