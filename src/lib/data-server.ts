@@ -2,8 +2,8 @@
 'use server';
 
 import type { UserRecord } from "firebase-admin/auth";
-import { getFirebaseAdmin } from "./firebase-server";
-import { serverTimestamp, writeBatch, doc, collection, getDoc } from "firebase/firestore";
+import { adminDb, adminAuth } from "./firebase-admin";
+import { serverTimestamp, writeBatch, doc, collection, getDoc } from "firebase-admin/firestore";
 
 /**
  * Ensures a user document exists in Firestore after user creation.
@@ -15,8 +15,7 @@ import { serverTimestamp, writeBatch, doc, collection, getDoc } from "firebase/f
  * @throws An error if the document creation fails after multiple retries.
  */
 export async function ensureUserDocument(userRecord: UserRecord): Promise<string> {
-    const { db } = await getFirebaseAdmin();
-    const userDocRef = doc(db, 'users', userRecord.uid);
+    const userDocRef = doc(adminDb, 'users', userRecord.uid);
 
     try {
         // First, check if the document already exists (e.g., from a previous, interrupted run)
@@ -26,9 +25,9 @@ export async function ensureUserDocument(userRecord: UserRecord): Promise<string
         }
 
         // If it doesn't exist, create it in a batch write for atomicity
-        const batch = writeBatch(db);
+        const batch = writeBatch(adminDb);
 
-        const accountRef = doc(collection(db, "accounts"));
+        const accountRef = doc(collection(adminDb, "accounts"));
         batch.set(accountRef, {
             ownerId: userRecord.uid,
             name: `${userRecord.email}'s Account`,
@@ -59,8 +58,7 @@ export async function ensureUserDocument(userRecord: UserRecord): Promise<string
         console.error("Error in ensureUserDocument:", error);
         // If there's an error, it's safer to delete the auth user
         // to allow them to try signing up again.
-        const { auth } = await getFirebaseAdmin();
-        await auth.deleteUser(userRecord.uid).catch(delErr => {
+        await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`Failed to cleanup auth user ${userRecord.uid} after doc creation failure:`, delErr)
         });
         throw error; // Re-throw the original error to be caught by the action

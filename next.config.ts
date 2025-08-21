@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -7,6 +8,10 @@ const nextConfig: NextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // This is required for Server Actions to work with the Firebase Admin SDK
+  experimental: {
+    serverComponentsExternalPackages: ['firebase-admin'],
   },
 };
 

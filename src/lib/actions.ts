@@ -12,16 +12,13 @@ import {
   where,
   getDocs,
   writeBatch,
-  setDoc,
-} from 'firebase/firestore';
-import { getFirebase } from './firebase';
+} from 'firebase-admin/firestore';
+import { adminAuth, adminDb } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema } from './types';
 import type { Rental } from './types';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { getFirebaseAdmin } from './firebase-server';
 import { ensureUserDocument } from './data-server';
 
 
@@ -52,12 +49,16 @@ export async function signupAction(prevState: any, formData: FormData) {
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
-      return { message: validatedFields.error.flatten().fieldErrors._errors[0] };
+      const fieldErrors = validatedFields.error.flatten().fieldErrors;
+      // Return the first error found in any field
+      const firstError = Object.values(fieldErrors).flat()[0] || 'Por favor, verifique os campos.';
+      if (fieldErrors._errors && fieldErrors._errors.length > 0) {
+        return { message: fieldErrors._errors[0] };
+      }
+      return { message: firstError };
   }
 
   const { email, password } = validatedFields.data;
-  const { app } = await getFirebaseAdmin();
-  const adminAuth = getAdminAuth(app);
 
   try {
       // 1. Create user in Firebase Auth
@@ -69,9 +70,6 @@ export async function signupAction(prevState: any, formData: FormData) {
 
       // 2. Ensure Firestore documents are created and synced
       await ensureUserDocument(userRecord);
-
-      // 3. Send verification email (optional, as client can also trigger this)
-      // For this app, we let the client-side handle verification prompts.
 
       return { message: 'success' };
   } catch (e) {
@@ -94,9 +92,8 @@ export async function createClient(accountId: string, prevState: any, formData: 
     };
   }
 
-  const { db } = getFirebase();
   try {
-    const clientsCollection = collection(db, `accounts/${accountId}/clients`);
+    const clientsCollection = collection(adminDb, `accounts/${accountId}/clients`);
     await addDoc(clientsCollection, {
       ...validatedFields.data,
       createdAt: serverTimestamp(),
@@ -120,9 +117,8 @@ export async function updateClient(accountId: string, prevState: any, formData: 
     
     const { id, ...clientData } = validatedFields.data;
 
-    const { db } = getFirebase();
     try {
-        const clientDoc = doc(db, `accounts/${accountId}/clients`, id);
+        const clientDoc = doc(adminDb, `accounts/${accountId}/clients`, id);
         await updateDoc(clientDoc, {
           ...clientData,
           updatedAt: serverTimestamp(),
@@ -136,10 +132,9 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 
 
 export async function deleteClientAction(accountId: string, clientId: string) {
-  const { db } = getFirebase();
   try {
     // Optional: Check for associated rentals before deleting
-    await deleteDoc(doc(db, `accounts/${accountId}/clients`, clientId));
+    await deleteDoc(doc(adminDb, `accounts/${accountId}/clients`, clientId));
     revalidatePath('/clients');
     return { message: 'success' };
   } catch (e) {
@@ -164,9 +159,8 @@ export async function createDumpster(accountId: string, prevState: any, formData
     };
   }
 
-  const { db } = getFirebase();
   try {
-    const dumpstersCollection = collection(db, `accounts/${accountId}/dumpsters`);
+    const dumpstersCollection = collection(adminDb, `accounts/${accountId}/dumpsters`);
     await addDoc(dumpstersCollection, {
       ...validatedFields.data,
       createdAt: serverTimestamp(),
@@ -193,9 +187,8 @@ export async function updateDumpster(accountId: string, prevState: any, formData
 
   const { id, ...dumpsterData } = validatedFields.data;
 
-  const { db } = getFirebase();
   try {
-    const dumpsterDoc = doc(db, `accounts/${accountId}/dumpsters`, id);
+    const dumpsterDoc = doc(adminDb, `accounts/${accountId}/dumpsters`, id);
     await updateDoc(dumpsterDoc, {
       ...dumpsterData,
       updatedAt: serverTimestamp(),
@@ -209,9 +202,8 @@ export async function updateDumpster(accountId: string, prevState: any, formData
 }
 
 export async function deleteDumpsterAction(accountId: string, dumpsterId: string) {
-  const { db } = getFirebase();
   try {
-    await deleteDoc(doc(db, `accounts/${accountId}/dumpsters`, dumpsterId));
+    await deleteDoc(doc(adminDb, `accounts/${accountId}/dumpsters`, dumpsterId));
     revalidatePath('/dumpsters');
     revalidatePath('/');
     return { message: 'success' };
@@ -221,9 +213,8 @@ export async function deleteDumpsterAction(accountId: string, dumpsterId: string
 }
 
 export async function updateDumpsterStatusAction(accountId: string, dumpsterId: string, newStatus: 'Disponível' | 'Em Manutenção') {
-    const { db } = getFirebase();
     try {
-        const dumpsterRef = doc(db, `accounts/${accountId}/dumpsters`, dumpsterId);
+        const dumpsterRef = doc(adminDb, `accounts/${accountId}/dumpsters`, dumpsterId);
         await updateDoc(dumpsterRef, { status: newStatus });
         revalidatePath('/dumpsters');
         revalidatePath('/');
@@ -261,12 +252,10 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     };
   }
 
-  const { db } = getFirebase();
   try {
     const rentalData = validatedFields.data;
-    const newRentalRef = doc(collection(db, `accounts/${accountId}/rentals`));
     
-    await addDoc(collection(db, `accounts/${accountId}/rentals`), {
+    await addDoc(collection(adminDb, `accounts/${accountId}/rentals`), {
       ...rentalData,
       createdAt: serverTimestamp(),
     });
@@ -286,18 +275,17 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     
-    const { db } = getFirebase();
-    const batch = writeBatch(db);
+    const batch = writeBatch(adminDb);
     
     try {
-        const rentalRef = doc(db, `accounts/${accountId}/rentals`, rentalId);
-        const rentalSnap = await getDocs(query(collection(db, `accounts/${accountId}/rentals`), where('__name__', '==', rentalId)));
+        const rentalRef = doc(adminDb, `accounts/${accountId}/rentals`, rentalId);
+        const rentalSnap = await rentalRef.get();
         
-        if (rentalSnap.empty) {
+        if (!rentalSnap.exists()) {
             throw new Error('Aluguel não encontrado.');
         }
         
-        const rentalData = rentalSnap.docs[0].data() as Rental;
+        const rentalData = rentalSnap.data() as Rental;
 
         const rentalDate = new Date(rentalData.rentalDate);
         const returnDate = new Date(rentalData.returnDate);
@@ -322,7 +310,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         }
 
         // Add to completed_rentals
-        const newCompletedRentalRef = doc(collection(db, `accounts/${accountId}/completed_rentals`));
+        const newCompletedRentalRef = doc(collection(adminDb, `accounts/${accountId}/completed_rentals`));
         batch.set(newCompletedRentalRef, validatedFields.data);
 
         // Delete from active rentals
@@ -345,9 +333,8 @@ export async function cancelRentalAction(accountId: string, rentalId: string) {
     if (!rentalId) {
         return { message: 'error', error: 'Rental ID is missing.' };
     }
-    const { db } = getFirebase();
     try {
-        await deleteDoc(doc(db, `accounts/${accountId}/rentals`, rentalId));
+        await deleteDoc(doc(adminDb, `accounts/${accountId}/rentals`, rentalId));
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
@@ -367,9 +354,8 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     
     const { id, ...rentalData } = validatedFields.data;
 
-    const { db } = getFirebase();
     try {
-        const rentalDoc = doc(db, `accounts/${accountId}/rentals`, id);
+        const rentalDoc = doc(adminDb, `accounts/${accountId}/rentals`, id);
         await updateDoc(rentalDoc, {
           ...rentalData,
           updatedAt: serverTimestamp(),
@@ -386,13 +372,12 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
 // #region Stats Actions
 export async function resetBillingDataAction(accountId: string) {
-  const { db } = getFirebase();
   try {
-    const completedRentalsRef = collection(db, `accounts/${accountId}/completed_rentals`);
+    const completedRentalsRef = collection(adminDb, `accounts/${accountId}/completed_rentals`);
     const q = query(completedRentalsRef);
     const querySnapshot = await getDocs(q);
 
-    const batch = writeBatch(db);
+    const batch = writeBatch(adminDb);
     querySnapshot.docs.forEach((doc) => {
       batch.delete(doc.ref);
     });

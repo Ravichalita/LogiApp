@@ -1,7 +1,7 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {firebase} from '@genkit-ai/firebase';
-import { getFirebase } from '@/lib/firebase';
+import { getFirebase } from '@/lib/firebase-client';
 
 // Ensure Firebase is initialized before Genkit uses it
 getFirebase();

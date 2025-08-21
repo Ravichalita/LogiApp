@@ -7,13 +7,11 @@ import {
   onSnapshot,
   orderBy,
   getDocs,
-  where,
   doc,
   getDoc,
 } from 'firebase/firestore';
-import { getFirebase } from './firebase';
+import { getFirebase } from './firebase-client';
 import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental } from './types';
-import { useAuth } from '@/context/auth-context';
 
 type Unsubscribe = () => void;
 
@@ -147,7 +145,7 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
             const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
             const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
 
-            const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
+            const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientSnap]);
 
             return {
                 id: rentalDoc.id,
