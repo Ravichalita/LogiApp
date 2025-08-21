@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -23,16 +24,9 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-       if (!userCredential.user.emailVerified) {
-         toast({
-            title: 'Verificação Pendente',
-            description: 'Por favor, verifique seu e-mail antes de fazer login. Um novo link de verificação foi enviado.',
-            variant: 'default',
-         });
-         router.push('/verify-email');
-         return;
-       }
+      await signInWithEmailAndPassword(auth, email, password);
+      // The AuthProvider will handle redirection and email verification checks.
+      // We just need to push to a default page upon successful auth.
       router.push('/');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
