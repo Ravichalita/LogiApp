@@ -3,7 +3,7 @@
 
 import type { UserRecord } from "firebase-admin/auth";
 import { adminDb, adminAuth } from "./firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 const firestore = getFirestore();
 
@@ -33,7 +33,7 @@ export async function ensureUserDocument(userRecord: UserRecord): Promise<string
         batch.set(accountRef, {
             ownerId: userRecord.uid,
             name: `${userRecord.email}'s Account`,
-            createdAt: firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
 
         batch.set(userDocRef, {
@@ -66,3 +66,5 @@ export async function ensureUserDocument(userRecord: UserRecord): Promise<string
         throw error; // Re-throw the original error to be caught by the action
     }
 }
+
+    

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
@@ -86,7 +86,7 @@ export async function createClient(accountId: string, prevState: any, formData: 
     const clientsCollection = firestore.collection(`accounts/${accountId}/clients`);
     await clientsCollection.add({
       ...validatedFields.data,
-      createdAt: firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/clients');
     return { message: 'success' };
@@ -111,7 +111,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
         const clientDoc = firestore.doc(`accounts/${accountId}/clients/${id}`);
         await clientDoc.update({
           ...clientData,
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/clients');
         return { message: 'success' };
@@ -153,7 +153,7 @@ export async function createDumpster(accountId: string, prevState: any, formData
     const dumpstersCollection = firestore.collection(`accounts/${accountId}/dumpsters`);
     await dumpstersCollection.add({
       ...validatedFields.data,
-      createdAt: firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
     return { message: 'success' };
@@ -181,7 +181,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
     const dumpsterDoc = firestore.doc(`accounts/${accountId}/dumpsters/${id}`);
     await dumpsterDoc.update({
       ...dumpsterData,
-      updatedAt: firestore.FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
     revalidatePath('/'); // Also revalidate home page as dumpster status might affect rentals
@@ -247,7 +247,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     
     await firestore.collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
-      createdAt: firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
   } catch (e) {
@@ -287,7 +287,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         const completedRentalData = {
             ...rentalData,
             originalRentalId: rentalId,
-            completedDate: firestore.FieldValue.serverTimestamp(),
+            completedDate: FieldValue.serverTimestamp(),
             rentalDays,
             totalValue
         };
@@ -300,7 +300,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         }
 
         // Add to completed_rentals
-        const newCompletedRentalRef = firestore.doc(firestore.collection(`accounts/${accountId}/completed_rentals`));
+        const newCompletedRentalRef = firestore.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, validatedFields.data);
 
         // Delete from active rentals
@@ -348,7 +348,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         const rentalDoc = firestore.doc(`accounts/${accountId}/rentals/${id}`);
         await rentalDoc.update({
           ...rentalData,
-          updatedAt: firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/');
         return { message: 'success' };
@@ -381,3 +381,5 @@ export async function resetBillingDataAction(accountId: string) {
   }
 }
 // #endregion
+
+    
