@@ -7,13 +7,6 @@ import { getPopulatedRentals } from '@/lib/data';
 import type { PopulatedRental, Rental } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel"
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -122,16 +115,9 @@ export default function HomePage() {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
-            <div className="px-12">
-                 <Carousel>
-                    <CarouselContent>
-                        <CarouselItem>
-                            <RentalCardSkeleton />
-                        </CarouselItem>
-                    </CarouselContent>
-                    <CarouselPrevious />
-                    <CarouselNext />
-                </Carousel>
+            <div className="space-y-4">
+                 <RentalCardSkeleton />
+                 <RentalCardSkeleton />
             </div>
         </div>
     )
@@ -160,57 +146,45 @@ export default function HomePage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
-        <div className="px-12">
-            <Carousel opts={{ align: "start" }} className="w-full">
-                <CarouselContent>
-                    {sortedRentals.map((rental) => {
-                       const status = getRentalStatus(rental);
-                       return (
-                            <CarouselItem key={rental.id} className="md:basis-1/2 lg:basis-1/3">
-                                <div className="p-1 h-full">
-                                    <Accordion type="single" collapsible className="w-full">
-                                        <AccordionItem value={rental.id} className="border-none">
-                                            <Card className="h-full flex flex-col">
-                                                <CardHeader className="pb-4">
-                                                    <div className="flex items-start justify-between">
-                                                        <div>
-                                                            <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
-                                                            <CardDescription>
-                                                                Para <span className="font-semibold">{rental.client?.name}</span>
-                                                            </CardDescription>
-                                                        </div>
-                                                        <Badge variant={status.variant}>{status.text}</Badge>
-                                                    </div>
-                                                    <div className="flex items-center text-sm text-muted-foreground pt-2">
-                                                        <Calendar className="mr-2 h-4 w-4"/>
-                                                        <span>Retirada em {format(rental.returnDate, "dd/MM/yy", { locale: ptBR })}</span>
-                                                    </div>
-                                                </CardHeader>
-                                                <CardContent className="flex-grow flex flex-col justify-between pt-0">
-                                                    <div className="text-center">
-                                                        <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-center">
-                                                            Ver Detalhes
-                                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-1" />
-                                                        </AccordionTrigger>
-                                                    </div>
-                                                    <AccordionContent className="pt-4">
-                                                        <RentalCardActions rental={rental} status={status} />
-                                                    </AccordionContent>
-                                                </CardContent>
-                                            </Card>
-                                        </AccordionItem>
-                                    </Accordion>
-                                </div>
-                            </CarouselItem>
-                        )
-                    })}
-                </CarouselContent>
-                 <CarouselPrevious />
-                <CarouselNext />
-            </Carousel>
-        </div>
+      <div className="space-y-4">
+        {sortedRentals.map((rental) => {
+            const status = getRentalStatus(rental);
+            return (
+            <Accordion type="single" collapsible className="w-full" key={rental.id}>
+                <AccordionItem value={rental.id} className="border-none">
+                <Card className="h-full flex flex-col">
+                    <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                        <div>
+                        <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
+                        <CardDescription>
+                            Para <span className="font-semibold">{rental.client?.name}</span>
+                        </CardDescription>
+                        </div>
+                        <Badge variant={status.variant}>{status.text}</Badge>
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground pt-2">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                    </div>
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col justify-between pt-0">
+                    <div className="text-center">
+                        <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-center">
+                        Ver Detalhes
+                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-1" />
+                        </AccordionTrigger>
+                    </div>
+                    <AccordionContent className="pt-4">
+                        <RentalCardActions rental={rental} status={status} />
+                    </AccordionContent>
+                    </CardContent>
+                </Card>
+                </AccordionItem>
+            </Accordion>
+            );
+        })}
+      </div>
     </div>
   );
 }
-
-    
