@@ -16,9 +16,7 @@ const firestore = getFirestore();
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     const usersRef = firestore.collection('users');
     // We search for any user whose email ends with the given domain.
-    // Firestore doesn't support "endsWith" queries, so we fetch one user
-    // with the domain and assume all users from that domain share the account.
-    const q = usersRef.where('email', '>=', `@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
+    const q = usersRef.where('email', '>=', `a@${domain}`).where('email', '<=', `z@${domain}`).limit(1);
 
     try {
         const snapshot = await q.get();
@@ -69,7 +67,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             const accountRef = firestore.collection("accounts").doc();
             batch.set(accountRef, {
                 ownerId: userRecord.uid,
-                name: `${userRecord.displayName}'s Account`,
+                name: `${userRecord.displayName || userRecord.email}'s Account`,
                 createdAt: FieldValue.serverTimestamp(),
             });
             accountId = accountRef.id;
@@ -78,7 +76,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
 
         batch.set(userDocRef, {
             email: userRecord.email,
-            name: userRecord.displayName || userRecord.email?.split('@')[0],
+            name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário sem nome',
             accountId: accountId,
             role: role,
             status: 'ativo', // Default status

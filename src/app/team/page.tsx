@@ -64,7 +64,7 @@ export default function TeamPage() {
   }, [accountId, isAdmin]);
   
   const sortedMembers = useMemo(() => {
-    return [...members].sort((a, b) => a.name.localeCompare(b.name));
+    return [...members].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
   }, [members]);
 
   if (loading) {
@@ -119,7 +119,7 @@ export default function TeamPage() {
                   sortedMembers.map((member) => (
                     <TableRow key={member.id}>
                       <TableCell>
-                        <div className="font-medium">{member.name}</div>
+                        <div className="font-medium">{member.name || member.email}</div>
                         <div className="text-sm text-muted-foreground">{member.email}</div>
                       </TableCell>
                       <TableCell>
