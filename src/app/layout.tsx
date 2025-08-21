@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${inter.variable} ${roboto_mono.variable} font-sans bg-muted/40`}
+        className={`${inter.variable} ${roboto_mono.variable} font-sans bg-muted`}
       >
         <AuthProvider>
             <div className="flex flex-col min-h-screen">
