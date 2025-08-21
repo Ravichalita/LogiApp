@@ -202,7 +202,7 @@ export default function DashboardPage() {
                     </div>
                  </AccordionTrigger>
                 <AccordionContent>
-                  <div className="p-6 pt-2">
+                  <div className="p-6 pt-2 flex flex-col h-full">
                     <RentalCardActions rental={rental} status={status} />
 
                     <Separator className="my-6" />

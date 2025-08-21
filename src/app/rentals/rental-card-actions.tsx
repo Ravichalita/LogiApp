@@ -92,7 +92,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
             <div className="flex items-start gap-3">
@@ -136,11 +136,9 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             </div>
         </div>
       </div>
-       <div className="space-y-4">
-        <p className="font-medium">Ações</p>
-         <div className="flex flex-col w-full gap-2">
+       <div className="flex flex-col md:flex-row w-full gap-2 mt-auto md:ml-auto md:w-auto">
             {status.text !== 'Pendente' && (
-                <form ref={finishFormRef} action={handleFinishAction} className="w-full">
+                <form ref={finishFormRef} action={handleFinishAction} className="w-full md:w-auto">
                     <input type="hidden" name="rentalId" value={rental.id} />
                     <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                     {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
@@ -177,7 +175,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </AlertDialog>
             )}
         </div>
-      </div>
     </div>
   );
 }
