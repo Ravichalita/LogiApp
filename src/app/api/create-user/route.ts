@@ -2,21 +2,9 @@
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 
-// Function to initialize Firebase Admin SDK if it hasn't been already.
-function initializeFirebaseAdmin() {
-  // Check if an app is already initialized to prevent errors.
-  if (!admin.apps.length) {
-    try {
-      // Use application default credentials for authentication in Google Cloud environments.
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-        projectId: "caambacontrol3",
-      });
-    } catch (error: any) {
-      console.error('Firebase admin initialization error', error.stack);
-    }
-  }
-}
+// This function must be inside the POST handler or be structured in a way
+// that ensures it's only called on the server side when needed.
+// The current approach moves initialization inside the POST handler.
 
 /**
  * API route to create an account and a user document in Firestore.
@@ -26,7 +14,12 @@ function initializeFirebaseAdmin() {
 export async function POST(request: Request) {
   try {
     // Ensure Firebase Admin is initialized for every API call
-    initializeFirebaseAdmin();
+    if (!admin.apps.length) {
+        admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
+            projectId: "caambacontrol3",
+        });
+    }
     const adminDb = admin.firestore();
 
     const { userId, email } = await request.json();
