@@ -74,7 +74,9 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
     callback([]);
     return () => {};
   }
-
+  
+  // This query now correctly fetches all rentals that are not yet completed,
+  // which includes pending (future), active, and overdue rentals.
   const rentalsQuery = query(
     collection(db, 'users', userId, 'rentals'),
     where('status', '==', 'Ativo')
@@ -93,10 +95,12 @@ export const getRentals = (userId: string, callback: (rentals: PopulatedRental[]
     const populatedRentals = rentals.map(rental => {
       const client = clients.find(c => c.id === rental.clientId);
       const dumpster = dumpsters.find(d => d.id === rental.dumpsterId);
-      if (!client || !dumpster) return null;
+      if (!client || !dumpster) return null; // Should not happen if data is consistent
       return { ...rental, client, dumpster };
     }).filter(Boolean) as PopulatedRental[];
-     callback(populatedRentals.sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime()));
+    
+    // Sort by return date so the most urgent ones appear first
+    callback(populatedRentals.sort((a, b) => new Date(a.returnDate).getTime() - new Date(b.returnDate).getTime()));
   }, 'rentals', rentalsQuery);
 };
 
@@ -105,9 +109,11 @@ export const getPendingRentals = (userId: string, callback: (rentals: Rental[]) 
     callback([]);
     return () => {};
   }
+   // This query fetches all rentals that are not yet completed.
+   // The logic to determine if it's "pending" vs "active" is handled on the client.
    const rentalsQuery = query(
     collection(db, 'users', userId, 'rentals'),
-    where('rentalDate', '>=', Timestamp.fromDate(startOfToday()))
+     where('status', '==', 'Ativo')
   );
   return getCollection<Rental>(userId, callback, 'rentals', rentalsQuery);
 }

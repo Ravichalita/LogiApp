@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { RentalCardActions } from './rentals/rental-card-actions';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import { differenceInCalendarDays, startOfToday } from 'date-fns';
+import { differenceInCalendarDays, startOfToday, isBefore, isAfter } from 'date-fns';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,22 @@ function calculateRentalDays(startDate: Date, endDate: Date): number {
 function formatPhoneNumberForWhatsApp(phone: string): string {
     const digitsOnly = phone.replace(/\D/g, '');
     return `55${digitsOnly}`;
+}
+
+type RentalStatus = { text: string; variant: 'default' | 'destructive' | 'secondary' | 'success' };
+
+export function getRentalStatus(rental: PopulatedRental): RentalStatus {
+    const today = startOfToday();
+    const rentalDate = new Date(rental.rentalDate);
+    const returnDate = new Date(rental.returnDate);
+    
+    if (isBefore(returnDate, today)) {
+      return { text: 'Em Atraso', variant: 'destructive' };
+    }
+    if (isAfter(rentalDate, today)) {
+      return { text: 'Pendente', variant: 'secondary' };
+    }
+    return { text: 'Ativo', variant: 'success' };
 }
 
 
@@ -106,30 +122,10 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const getRentalStatus = (rental: PopulatedRental): { text: string; variant: 'default' | 'destructive' | 'secondary' | 'success' } => {
-    const today = startOfToday();
-    const rentalDate = new Date(rental.rentalDate);
-    const returnDate = new Date(rental.returnDate);
-    
-    if (rental.status !== 'Ativo') {
-        // This case shouldn't happen based on the query, but as a fallback
-        return { text: rental.status, variant: 'secondary'};
-    }
-    
-    if (rentalDate > today) {
-      return { text: 'Pendente', variant: 'secondary' };
-    }
-    if (returnDate < today) {
-      return { text: 'Em Atraso', variant: 'destructive' };
-    }
-    return { text: 'Ativo', variant: 'success' };
-  };
-
-
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-headline font-bold">Aluguéis Ativos</h1>
+        <h1 className="text-3xl font-headline font-bold">Aluguéis e Agendamentos</h1>
       </div>
 
        {loading ? (
@@ -149,7 +145,7 @@ export default function DashboardPage() {
 
             return (
               <AccordionItem value={rental.id} key={rental.id} className="border rounded-lg shadow-sm bg-card overflow-hidden">
-                <div className="p-6 pb-4">
+                <div className="p-6 pb-0">
                     <div className="flex justify-between items-start">
                         <div className="flex-1 text-left">
                             <div className="flex items-center gap-2">
@@ -162,13 +158,13 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div className="flex flex-col items-end text-right ml-4">
-                            <span className="text-sm text-muted-foreground">Retirada</span>
-                            <span className="font-semibold text-base">{format(rental.returnDate, "dd/MM/yyyy")}</span>
+                            <span className="text-sm text-muted-foreground">{status.text === 'Pendente' ? 'Início' : 'Retirada'}</span>
+                            <span className="font-semibold text-base">{format(status.text === 'Pendente' ? rental.rentalDate : rental.returnDate, "dd/MM/yyyy")}</span>
                         </div>
                     </div>
                 </div>
-                 <AccordionTrigger>
-                    <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full mt-4">
+                 <AccordionTrigger className="w-full pt-4 hover:no-underline">
+                    <div className="flex justify-center p-2 bg-muted/50 hover:bg-muted cursor-pointer w-full">
                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                     </div>
                  </AccordionTrigger>
@@ -200,7 +196,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="space-y-4">
                             <p className="font-medium">Ações</p>
-                            <RentalCardActions rental={rental}/>
+                            <RentalCardActions rental={rental} status={status} />
                         </div>
                     </div>
                     <Separator className="my-6" />
@@ -262,5 +258,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

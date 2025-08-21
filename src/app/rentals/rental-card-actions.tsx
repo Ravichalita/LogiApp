@@ -14,13 +14,22 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { isRedirectError } from 'next/dist/client/components/redirect';
 import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
+import type { getRentalStatus } from '../page';
 
-export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
+interface RentalCardActionsProps {
+    rental: PopulatedRental;
+    status: ReturnType<typeof getRentalStatus>;
+}
+
+
+export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
   const finishFormRef = useRef<HTMLFormElement>(null);
+  const isFinalizeDisabled = status.text !== 'Ativo' && status.text !== 'Em Atraso';
+
 
   const handleFinishAction = (formData: FormData) => {
     startTransition(async () => {
@@ -62,7 +71,7 @@ export function RentalCardActions({ rental }: { rental: PopulatedRental }) {
         <form ref={finishFormRef} action={handleFinishAction} className="w-full">
             <input type="hidden" name="rentalId" value={rental.id} />
             <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isPending}>
+            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isPending || isFinalizeDisabled}>
               <CheckCircle />
               Finalizar
             </Button>
