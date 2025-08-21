@@ -40,25 +40,18 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             const userData = docSnap.data();
             const accountId = userData?.accountId;
             if (accountId) {
-                // This is a safety check. If the user doc exists but claims are missing, set them.
-                if (!userRecord.customClaims?.accountId) {
-                     await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userData.role || 'viewer' });
-                }
+                 await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userData.role || 'viewer' });
                 return accountId;
             }
-             // If doc exists but has no accountId, something is wrong.
-             // We will proceed to create/assign one.
         }
 
         let accountId: string;
         let role: 'admin' | 'viewer';
 
         if (existingAccountId) {
-            // User is being invited to an existing account.
             accountId = existingAccountId;
-            role = 'viewer'; // Invited users are viewers by default.
+            role = 'viewer'; 
         } else {
-            // This is a new user creating a new account.
             const accountRef = firestore.collection("accounts").doc();
             transaction.set(accountRef, {
                 ownerId: userRecord.uid,
@@ -66,7 +59,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
                 createdAt: FieldValue.serverTimestamp(),
             });
             accountId = accountRef.id;
-            role = 'admin'; // The creator of an account is always the admin.
+            role = 'admin';
         }
 
         const userAccountData = {
@@ -79,17 +72,14 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
 
         transaction.set(userDocRef, userAccountData);
         
-        // This is a critical step: Set custom claims on the user's auth token.
-        // These claims are used in Firestore security rules for secure and efficient access control.
         await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
 
         return accountId;
     }).catch(async (error) => {
         console.error("Error in ensureUserDocument transaction, attempting to clean up Auth user:", error);
-        // If the transaction fails, we should delete the auth user to prevent an orphaned account.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });
-        throw error; // Re-throw the original error to be handled by the caller
+        throw error;
     });
 }

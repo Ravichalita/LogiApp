@@ -2,33 +2,35 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isSameAccount(accountId) {
-      return request.auth.token.accountId == accountId;
-    }
-    
-    function isAdmin() {
-      return request.auth.token.role == 'admin';
-    }
-
+  
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
-    match /users/{userId} {
-      allow get: if isOwner(userId) || (isSameAccount(resource.data.accountId) && isAdmin());
-      allow list: if isSameAccount(request.query.where.accountId);
-      allow create: if true; 
-      allow update: if isOwner(userId) || (isSameAccount(resource.data.accountId) && isAdmin());
-      allow delete: if isSameAccount(resource.data.accountId) && isAdmin();
+    function isSignedIn() {
+      return request.auth != null;
     }
-
+    
+    function isUserInAccount(accountId) {
+      return request.auth.token.accountId == accountId;
+    }
+    
+    // Users can read their own user document.
+    // Listing users is allowed if querying for users within the same account.
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if isUserInAccount(request.query.where.accountId);
+      allow update: if isOwner(userId);
+    }
+    
+    // Accounts can only be accessed by users belonging to that account.
     match /accounts/{accountId} {
-        allow read, write: if isSameAccount(accountId);
-
-        match /{collection}/{docId} {
-            allow read, write: if isSameAccount(accountId);
-        }
+      allow get: if isUserInAccount(accountId);
+      
+      // All subcollections can be accessed if the user belongs to the account.
+      match /{collection}/{docId} {
+        allow read, write: if isUserInAccount(accountId);
+      }
     }
   }
 }

@@ -32,36 +32,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser) {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const unsubUserDoc = onSnapshot(userDocRef, (userDocSnap) => {
-          if (userDocSnap.exists()) {
-            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-            setUser(firebaseUser);
-            setUserAccount(userAccountData);
-            setAccountId(userAccountData.accountId);
-            setLoading(false);
-          } else {
-            console.error("Authenticated user has no user document. Logging out.");
-            signOut(auth);
-            setLoading(false);
-          }
-        }, (error) => {
-          console.error("Permission error fetching user document. Logging out.", error);
-          signOut(auth);
-          setLoading(false);
-        });
-        return () => unsubUserDoc();
-      } else {
-        setUser(null);
+      setUser(firebaseUser); // Set Firebase user immediately
+      if (!firebaseUser) {
+        // If no user, reset everything and finish loading
         setUserAccount(null);
         setAccountId(null);
         setLoading(false);
       }
+      // Note: We don't fetch the user doc here directly. 
+      // This will be handled by the second useEffect, triggered by `user` state change.
     });
 
     return () => unsubscribe();
-  }, [auth, db]);
+  }, [auth]);
+
+  useEffect(() => {
+    if (!user) {
+      // Not logged in, no need to fetch user doc
+      return;
+    }
+
+    // User is logged in, now fetch their user document from Firestore
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubUserDoc = onSnapshot(userDocRef, 
+      (userDocSnap) => {
+        if (userDocSnap.exists()) {
+          const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+          setUserAccount(userAccountData);
+          setAccountId(userAccountData.accountId);
+        } else {
+          // This case might happen if the user doc creation failed.
+          // Log out to prevent being stuck.
+          console.error("User document not found for authenticated user. Logging out.");
+          signOut(auth);
+        }
+        setLoading(false); // Finish loading once we have the user doc (or tried to get it)
+      }, 
+      (error) => {
+        console.error("Error fetching user document:", error);
+        // This likely means a permission error on the user doc itself.
+        // The most common cause is a user trying to access the app before their custom claims are set.
+        // We log them out to allow for a clean retry.
+        signOut(auth);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubUserDoc();
+  }, [user, auth, db]);
+
 
   useEffect(() => {
     if (loading) return;
@@ -92,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const isAuthPage = nonAuthRoutes.includes(pathname) || pathname === '/verify-email';
 
+  // Show a global loader while we are verifying auth state and fetching user profile
   if (loading && !isAuthPage) {
     return (
       <div className="flex h-screen items-center justify-center">
