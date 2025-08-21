@@ -11,6 +11,7 @@ import * as admin from 'firebase-admin';
 
 // This function is self-contained to ensure firebase-admin is only used server-side.
 async function createAccountForNewUserWithAdmin(userId: string, email: string) {
+    // Initialize Firebase Admin SDK if not already initialized
     if (!admin.apps.length) {
       admin.initializeApp();
     }
