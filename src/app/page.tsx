@@ -285,13 +285,13 @@ export default function HomePage() {
                                     Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
                                 </p>
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                             <div className="flex items-center gap-4 text-base text-muted-foreground mt-2">
                                 <div className="flex items-center gap-1.5">
-                                    <User className="h-4 w-4" /> 
+                                    <User className="h-5 w-5" /> 
                                     <span>{rental.assignedToUser?.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-4 w-4" />
+                                    <Calendar className="h-5 w-5" />
                                     <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
                                 </div>
                             </div>
