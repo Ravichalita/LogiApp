@@ -128,8 +128,8 @@ export default function FinancePage() {
                  <StatCard title="Aluguéis Finalizados (Mês)" value={String(monthlyCompletions)} icon={Truck} loading={isLoading} />
             </div>
 
-             <div className="grid gap-6 lg:grid-cols-2 mb-6">
-                <Card>
+             <div className="grid gap-6 lg:grid-cols-5 mb-6">
+                <Card className="lg:col-span-2">
                     <CardHeader>
                         <CardTitle>Faturamento por Cliente</CardTitle>
                         <CardDescription>Receita gerada por cada cliente no período total.</CardDescription>
@@ -138,49 +138,50 @@ export default function FinancePage() {
                         {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={clientChartData} />}
                     </CardContent>
                 </Card>
-                 <Card>
+                <Card className="lg:col-span-3">
                     <CardHeader>
-                        <CardTitle>Configurações</CardTitle>
-                        <CardDescription>Ajustes de preços e custos para o sistema.</CardDescription>
+                        <CardTitle>Histórico de Faturamento</CardTitle>
+                        <CardDescription>Lista de todos os aluguéis finalizados.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
+                        {isLoading ? <Skeleton className="h-40 w-full" /> : (
+                            <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Cliente</TableHead>
+                                    <TableHead className="text-right">Finalizado em</TableHead>
+                                    <TableHead className="text-right">Valor Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {completedRentals.length > 0 ? completedRentals.map(rental => (
+                                    <TableRow key={rental.id}>
+                                        <TableCell className="font-medium">{rental.client?.name ?? 'N/A'}</TableCell>
+                                        <TableCell className="text-right">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(rental.totalValue)}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                        )}
                     </CardContent>
                 </Card>
              </div>
-
-            <Card>
+             
+             <Card>
                 <CardHeader>
-                    <CardTitle>Histórico de Faturamento</CardTitle>
-                    <CardDescription>Lista de todos os aluguéis finalizados.</CardDescription>
+                    <CardTitle>Configurações</CardTitle>
+                    <CardDescription>Ajustes de preços e custos para o sistema.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isLoading ? <Skeleton className="h-40 w-full" /> : (
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Cliente</TableHead>
-                                <TableHead className="text-right">Finalizado em</TableHead>
-                                <TableHead className="text-right">Valor Total</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {completedRentals.length > 0 ? completedRentals.map(rental => (
-                                <TableRow key={rental.id}>
-                                    <TableCell className="font-medium">{rental.client?.name ?? 'N/A'}</TableCell>
-                                    <TableCell className="text-right">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(rental.totalValue)}</TableCell>
-                                </TableRow>
-                            )) : (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                    )}
+                    {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
                 </CardContent>
             </Card>
+
         </div>
     );
 }
