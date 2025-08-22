@@ -279,10 +279,12 @@ export default function HomePage() {
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
                         <div>
-                        <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
-                        <CardDescription>
-                            Para <span className="font-semibold">{rental.client?.name}</span>
-                        </CardDescription>
+                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                           <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
+                           <p className="text-muted-foreground">
+                                Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
+                            </p>
+                        </div>
                          <CardDescription className="flex items-center gap-1.5 pt-1">
                             <User className="h-3.5 w-3.5" /> 
                             {rental.assignedToUser?.name}
