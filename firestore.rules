@@ -2,37 +2,60 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
+  
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
     function isAccountMember(accountId) {
-      return request.auth != null && request.auth.token.accountId == accountId;
+      return isSignedIn() && request.auth.token.accountId == accountId;
     }
     
     function isAdmin() {
-      return request.auth != null && request.auth.token.role == 'admin';
+      return request.auth.token.role == 'admin';
     }
 
+    // Accounts: Only signed-in users can create an account for themselves.
+    // Account data is mostly read-only from the client to prevent tampering.
     match /accounts/{accountId} {
       allow read: if isAccountMember(accountId);
-      allow create: if request.auth.uid == accountId; 
-      allow update: if isAdmin() && isAccountMember(accountId);
-    }
-    
-    match /users/{userId} {
-      allow read: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || (isAdmin() && isAccountMember(resource.data.accountId));
-      allow delete: if isAdmin() && isAccountMember(resource.data.accountId);
+      allow create: if isSignedIn() && accountId == request.auth.uid;
+      // Updates are handled by server-side logic (e.g., adding members).
+      allow update, delete: if false; 
+
+      // Subcollections
+      
+       match /clients/{clientId} {
+        allow read, write: if isAdmin();
+      }
+      
+      match /dumpsters/{dumpsterId} {
+        allow read, write: if isAdmin();
+      }
+      
+      match /completed_rentals/{rentalId} {
+         allow read, write: if isAdmin();
+      }
+
+      match /rentals/{rentalId} {
+        allow get: if isAccountMember(accountId);
+
+        allow list: if 
+          (isAdmin() && request.query.where.accountId == request.auth.token.accountId) ||
+          (request.query.where.accountId == request.auth.token.accountId && request.query.where.assignedTo == request.auth.uid);
+
+        allow write: if isAdmin();
+      }
     }
 
-    match /accounts/{accountId}/rentals/{rentalId} {
-        allow get: if isAccountMember(accountId);
-        allow list: if isAdmin() && isAccountMember(accountId) || (isAccountMember(accountId) && request.query.where.assignedTo == request.auth.uid);
-        allow write: if isAdmin() && isAccountMember(accountId);
-    }
-    
-    match /accounts/{accountId}/{collection}/{documentId} {
-      allow read: if isAccountMember(accountId);
-      allow write: if isAdmin() && isAccountMember(accountId);
+    // Users: Users can create their own document, and read it.
+    // Admins of the same account can also read it.
+    // Updates and deletes are handled by server-side logic.
+    match /users/{userId} {
+      allow create: if request.auth.uid == userId;
+      allow read: if request.auth.uid == userId || (isAccountMember(resource.data.accountId));
+      allow update, delete: if isAdmin();
     }
   }
 }
