@@ -101,10 +101,13 @@ export function getPopulatedRentals(
     callback: (rentals: PopulatedRental[]) => void,
     assignedToId?: string
 ): Unsubscribe {
-    const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
+    // Use a collection group query to fetch rentals across all accounts.
+    const rentalsCollectionGroup = collectionGroup(db, 'rentals');
     
-    let q: Query<DocumentData> = query(rentalsCollection, where("accountId", "==", accountId));
+    // Base query filters by the user's account ID for security.
+    let q: Query<DocumentData> = query(rentalsCollectionGroup, where("accountId", "==", accountId));
     
+    // If assignedToId is provided (for viewers), add a filter for it.
     if (assignedToId) {
         q = query(q, where("assignedTo", "==", assignedToId));
     }

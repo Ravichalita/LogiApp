@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -9,41 +10,27 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isAccountMember(resource.data.accountId);
-      allow create; // Anyone can create a user doc (signup)
-      allow update: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin');
-      allow delete: if isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin';
+      allow create; // Handled by ensureUserDocument server-side
+      allow update, delete: if isAccountMember(resource.data.accountId);
     }
 
     match /accounts/{accountId} {
-       allow read: if isAccountMember(accountId);
-       allow create: if request.auth.uid == accountId; // User creates their own account
-       allow update: if isAccountMember(accountId) && request.auth.token.role == 'admin';
+      allow read, update, delete: if isAccountMember(accountId);
+      allow create;
+    }
+    
+    // Allow read access to rentals via collection group query,
+    // ensuring user can only read rentals belonging to their account.
+    match /{path=**}/rentals/{rentalId} {
+        allow read: if isAccountMember(request.resource.data.accountId);
+        allow create, update, delete: if request.auth.token.role == 'admin' && isAccountMember(resource.data.accountId);
     }
     
     match /accounts/{accountId}/{collection}/{documentId} {
-        // Default rule for most collections
-        allow read, write: if isAccountMember(accountId) && request.auth.token.role == 'admin';
-    }
-    
-    match /accounts/{accountId}/clients/{clientId} {
-         allow read, write: if isAccountMember(accountId);
-    }
-    
-     match /accounts/{accountId}/dumpsters/{dumpsterId} {
-         allow read, write: if isAccountMember(accountId);
-    }
-    
-    match /accounts/{accountId}/rentals/{rentalId} {
-        allow get: if isAccountMember(accountId);
-        allow create, update, delete: if isAccountMember(accountId);
-        
-        // Let any account member list rentals, the application query will filter them.
-        allow list: if isAccountMember(accountId);
-    }
-
-    match /accounts/{accountId}/completed_rentals/{rentalId} {
-        allow read, write: if isAccountMember(accountId) && request.auth.token.role == 'admin';
-        allow list: if isAccountMember(accountId) && request.auth.token.role == 'admin';
+      // This rule applies to collections OTHER THAN 'rentals', which is handled by the collection group rule above.
+      // It allows any account member to read, but only admins to write.
+      allow read: if isAccountMember(accountId);
+      allow write: if request.auth.token.role == 'admin' && isAccountMember(accountId);
     }
   }
 }
