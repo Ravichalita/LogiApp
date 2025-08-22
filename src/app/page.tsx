@@ -144,8 +144,10 @@ export default function HomePage() {
     });
   }, [rentals, statusFilter]);
   
+  // Use a combined loading state to prevent premature rendering
+  const isLoading = authLoading || dataLoading;
 
-  if (dataLoading) {
+  if (isLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
@@ -157,7 +159,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0 && !dataLoading) {
+  if (rentals.length === 0 && !isLoading) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -241,5 +243,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

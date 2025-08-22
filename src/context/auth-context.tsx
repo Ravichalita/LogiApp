@@ -44,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (firebaseUser) {
             setUser(firebaseUser);
+            // Force refresh the token to get custom claims
+            await firebaseUser.getIdToken(true);
             setAuthLoading(false); // Auth part is done, now wait for user doc
 
             const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -55,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setRole(userAccountData.role);
                 } else {
                     try {
-                        await ensureUserDocumentOnClient();
-                        // The snapshot will re-trigger with the new data
+                        const token = await firebaseUser.getIdToken();
+                        await fetch('/api/ensure-user', { headers: { Authorization: `Bearer ${token}` } });
                     } catch (error) {
                         console.error("Failed to ensure user document on client:", error);
                         signOut(auth);
@@ -154,5 +156,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    
