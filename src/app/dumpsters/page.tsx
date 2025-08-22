@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { isAfter, isWithinInterval, startOfToday, format } from 'date-fns';
+import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -96,9 +96,10 @@ export default function DumpstersPage() {
       const dumpsterRentals = allRentals.filter(r => r.dumpsterId === d.id);
       
       const activeRental = dumpsterRentals.find(r => {
-          const rentalStart = new Date(r.rentalDate);
-          const rentalEnd = new Date(r.returnDate);
-          return isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
+          const rentalStart = parseISO(r.rentalDate);
+          const rentalEnd = parseISO(r.returnDate);
+          // A rental is active if today is the rental day, or between rental and return, or if it's overdue.
+          return isToday(rentalStart) || isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
       });
 
       if(activeRental) {
@@ -106,11 +107,11 @@ export default function DumpstersPage() {
       }
 
       const futureRental = dumpsterRentals
-        .filter(r => isAfter(new Date(r.rentalDate), today))
+        .filter(r => isAfter(parseISO(r.rentalDate), today))
         .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0]; 
 
       if (futureRental) {
-         const formattedDate = format(new Date(futureRental.rentalDate), "dd/MM/yy");
+         const formattedDate = format(parseISO(futureRental.rentalDate), "dd/MM/yy");
          return { ...d, derivedStatus: `Reservada para ${formattedDate}` };
       }
       
