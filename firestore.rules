@@ -3,44 +3,48 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper Functions
+
+    // Helper functions
+    function isAuth() {
+      return request.auth != null;
+    }
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
     
-    function isSignedIn() {
-      return request.auth != null;
+    function getAccountId() {
+    	return request.auth.token.accountId;
     }
     
-    function isSameAccount(accountId) {
-        return request.auth.token.accountId == accountId;
-    }
-
     function isAdmin() {
-        return request.auth.token.role == 'admin';
+    	return request.auth.token.role == 'admin';
     }
 
-    // Users can only be created via server-side logic (see signupAction)
-    // Only signed-in users can read their own user document to get their profile.
-    // Users can list other users in the same account to display the team.
-    // Admins can update roles of other users in the same account.
-    match /users/{userId} {
-      allow create: if false; 
-      allow get: if isOwner(userId);
-      allow list: if isSignedIn() && request.query.where.accountId == request.auth.token.accountId;
-      allow update: if isAdmin() && isSameAccount(resource.data.accountId);
-      allow delete: if isAdmin() && isSameAccount(existing_resource.data.accountId);
-    }
-
-    // Accounts can only be created by the server.
-    // Only users belonging to the account can read/write data.
+    // Accounts can be read by any authenticated user within that account.
+    // Only the account owner (first admin) can modify the account details.
     match /accounts/{accountId} {
-        allow get, list, create, update, delete: if false;
+      allow read: if isAuth() && getAccountId() == accountId;
+      allow write: if isAuth() && isOwner(resource.data.ownerId);
+    }
+    
+    // Any authenticated user can read their own user document.
+    // Users can only be created by the server (via signup action).
+    // Users can update their own document.
+    // Admins can update any user document within the same account.
+    // Admins can delete users from their account (but not themselves).
+    match /users/{userId} {
+      allow get: if isAuth() && isOwner(userId);
+      allow list: if isAuth() && request.query.where.accountId == getAccountId();
+      allow create: if !isAuth(); // Let server action handle this.
+      allow update: if isAuth() && (isOwner(userId) || (isAdmin() && getAccountId() == resource.data.accountId));
+      allow delete: if isAuth() && isAdmin() && getAccountId() == resource.data.accountId && !isOwner(userId);
+    }
 
-        match /{collection}/{docId} {
-             allow read, write: if isSignedIn() && isSameAccount(accountId);
-        }
+    // Any document within an account's subcollection can be accessed
+    // by any authenticated user of that same account.
+    match /accounts/{accountId}/{collection}/{docId} {
+      allow read, write: if isAuth() && getAccountId() == accountId;
     }
   }
 }

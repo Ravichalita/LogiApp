@@ -31,54 +31,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser); // Set Firebase user immediately
-      if (!firebaseUser) {
-        // If no user, reset everything and finish loading
-        setUserAccount(null);
-        setAccountId(null);
-        setLoading(false);
-      }
-      // Note: We don't fetch the user doc here directly. 
-      // This will be handled by the second useEffect, triggered by `user` state change.
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+             // Force refresh the token to get the latest custom claims.
+             // This is crucial after signup to ensure the `accountId` claim is present.
+            await firebaseUser.getIdToken(true);
+            setUser(firebaseUser);
+        } else {
+            setUser(null);
+            setUserAccount(null);
+            setAccountId(null);
+            setLoading(false);
+        }
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, [auth]);
 
-  useEffect(() => {
-    if (!user) {
-      // Not logged in, no need to fetch user doc
-      return;
-    }
 
-    // User is logged in, now fetch their user document from Firestore
+  useEffect(() => {
+    if (!user) return;
+    
+    // User is authenticated, listen to their document in Firestore for profile info
     const userDocRef = doc(db, 'users', user.uid);
-    const unsubUserDoc = onSnapshot(userDocRef, 
+    const unsubscribeDoc = onSnapshot(userDocRef, 
       (userDocSnap) => {
         if (userDocSnap.exists()) {
           const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
           setUserAccount(userAccountData);
           setAccountId(userAccountData.accountId);
         } else {
-          // This case might happen if the user doc creation failed.
-          // Log out to prevent being stuck.
+          // This can happen in a race condition during signup/cleanup.
+          // Logging out prevents being stuck in a bad state.
           console.error("User document not found for authenticated user. Logging out.");
           signOut(auth);
         }
-        setLoading(false); // Finish loading once we have the user doc (or tried to get it)
+        setLoading(false); // Finish loading once we have the user doc (or confirmed it's missing)
       }, 
       (error) => {
         console.error("Error fetching user document:", error);
-        // This likely means a permission error on the user doc itself.
-        // The most common cause is a user trying to access the app before their custom claims are set.
-        // We log them out to allow for a clean retry.
-        signOut(auth);
+        signOut(auth); // Log out on critical errors
         setLoading(false);
       }
     );
 
-    return () => unsubUserDoc();
+    return () => unsubscribeDoc();
   }, [user, auth, db]);
 
 

@@ -33,33 +33,39 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
 export async function ensureUserDocument(userRecord: UserRecord, existingAccountId?: string | null): Promise<string> {
     const userDocRef = firestore.doc(`users/${userRecord.uid}`);
 
-    return firestore.runTransaction(async (transaction) => {
-        const docSnap = await transaction.get(userDocRef);
-        if (docSnap.exists) {
+    try {
+        const userDoc = await userDocRef.get();
+        if (userDoc.exists) {
             console.warn(`User document for ${userRecord.uid} already exists.`);
-            const userData = docSnap.data();
-            const accountId = userData?.accountId;
+            const accountId = userDoc.data()?.accountId;
             if (accountId) {
-                 await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userData.role || 'viewer' });
+                // If the doc exists but claims are missing, set them.
+                await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userDoc.data()?.role || 'viewer' });
                 return accountId;
             }
         }
 
         let accountId: string;
         let role: 'admin' | 'viewer';
+        let accountName: string;
 
         if (existingAccountId) {
             accountId = existingAccountId;
-            role = 'viewer'; 
+            role = 'viewer';
+            const accountDoc = await firestore.doc(`accounts/${accountId}`).get();
+            accountName = accountDoc.exists() ? accountDoc.data()?.name : "Equipe";
+
         } else {
+            // New user, new account
             const accountRef = firestore.collection("accounts").doc();
-            transaction.set(accountRef, {
-                ownerId: userRecord.uid,
-                name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
-                createdAt: FieldValue.serverTimestamp(),
-            });
             accountId = accountRef.id;
             role = 'admin';
+            accountName = `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`;
+            await accountRef.set({
+                ownerId: userRecord.uid,
+                name: accountName,
+                createdAt: FieldValue.serverTimestamp(),
+            });
         }
 
         const userAccountData = {
@@ -70,16 +76,18 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             status: 'ativo',
         };
 
-        transaction.set(userDocRef, userAccountData);
+        await userDocRef.set(userAccountData);
         
+        // This is the most critical step: setting the custom claims on the token.
         await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
 
         return accountId;
-    }).catch(async (error) => {
-        console.error("Error in ensureUserDocument transaction, attempting to clean up Auth user:", error);
+    } catch (error) {
+        console.error("Error in ensureUserDocument, attempting to clean up Auth user:", error);
+        // If anything fails, delete the user to prevent an orphaned auth account.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
         });
-        throw error;
-    });
+        throw new Error(`Failed to create user and account: ${error instanceof Error ? error.message : String(error)}`);
+    }
 }
