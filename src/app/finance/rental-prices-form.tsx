@@ -14,20 +14,24 @@ import type { Account, RentalPrice } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
-
-const formatCurrency = (value: number | undefined | null): string => {
-    if (value === undefined || value === null) return '';
-    const numberValue = Number(value);
-    if (isNaN(numberValue)) return '';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numberValue);
+const formatBRL = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
 };
 
-const parseCurrency = (value: string): number => {
-  if (!value) return 0;
-  const numberString = value.replace(/\D/g, '');
-  if (numberString === '') return 0;
-  return parseFloat(numberString) / 100;
-}
+const formatCurrencyForInput = (valueInCents: string): string => {
+    if (!valueInCents) return '';
+    const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
+    
+    if (numericValue === 0) return '0,00';
+
+    const reais = Math.floor(numericValue / 100);
+    const centavos = (numericValue % 100).toString().padStart(2, '0');
+    
+    return `${reais},${centavos}`;
+};
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -47,11 +51,11 @@ export function RentalPricesForm({ account }: { account: Account }) {
     // This local state holds the prices for editing
     const [prices, setPrices] = useState<RentalPrice[]>(account.rentalPrices || []);
     
-    // This state will hold the raw string value from the input for each price item
+    // This state will hold the raw string value from the input for each price item, but as cents
     const [displayValues, setDisplayValues] = useState<Record<string, string>>(() => {
         const initialDisplayValues: Record<string, string> = {};
         (account.rentalPrices || []).forEach(p => {
-            initialDisplayValues[p.id] = formatCurrency(p.value).replace('R$\xa0', '');
+            initialDisplayValues[p.id] = (p.value * 100).toFixed(0);
         });
         return initialDisplayValues;
     });
@@ -72,17 +76,15 @@ export function RentalPricesForm({ account }: { account: Account }) {
     }, [state, toast]);
     
     const handlePriceValueChange = (id: string, value: string) => {
-        // Allow only numbers and comma
-        const rawValue = value.replace(/[^0-9,]/g, '');
+        const cents = value.replace(/\D/g, '');
+        setDisplayValues(prev => ({ ...prev, [id]: cents }));
         
-        setDisplayValues(prev => ({ ...prev, [id]: rawValue }));
-
-        // Update the actual numeric value in the prices state
-        const numericValue = parseCurrency(rawValue.replace(',', '.'));
+        const numericValue = parseInt(cents, 10) || 0;
         setPrices(currentPrices =>
-            currentPrices.map(p => (p.id === id ? { ...p, value: numericValue } : p))
+            currentPrices.map(p => (p.id === id ? { ...p, value: numericValue / 100 } : p))
         );
     };
+
 
     const handleNameChange = (id: string, name: string) => {
         setPrices(currentPrices =>
@@ -95,7 +97,7 @@ export function RentalPricesForm({ account }: { account: Account }) {
     const addPrice = () => {
         const newId = nanoid(5);
         setPrices(currentPrices => [...currentPrices, { id: newId, name: '', value: 0 }]);
-        setDisplayValues(prev => ({...prev, [newId]: ''}));
+        setDisplayValues(prev => ({...prev, [newId]: '0'}));
     }
     
     const removePrice = (id: string) => {
@@ -134,9 +136,9 @@ export function RentalPricesForm({ account }: { account: Account }) {
                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                                     <Input
                                         placeholder="0,00"
-                                        value={displayValues[price.id] ?? ''}
+                                        value={formatCurrencyForInput(displayValues[price.id] ?? '0')}
                                         onChange={e => handlePriceValueChange(price.id, e.target.value)}
-                                        className="pl-8"
+                                        className="pl-8 text-right"
                                         required
                                     />
                                 </div>
