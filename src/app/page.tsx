@@ -102,10 +102,10 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // Only proceed if auth is resolved and we have an accountId
-    if (!authLoading && accountId) {
+    // Only proceed if auth is resolved and we have an accountId and userAccount
+    if (!authLoading && accountId && userAccount) {
       setDataLoading(true);
-      const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
+      const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user?.uid;
 
       const unsubscribe = getPopulatedRentals(
@@ -116,7 +116,7 @@ export default function HomePage() {
         },
         userIdToFilter
       );
-
+      
       return () => unsubscribe();
     } else if (!authLoading) {
       // Auth is resolved but no user/account, so stop loading.
