@@ -27,7 +27,6 @@ const navLinks = [
 export function Header() {
   const pathname = usePathname();
   const { user, userAccount, logout } = useAuth();
-  const isAdmin = userAccount?.role === 'admin';
 
   const renderNavLinks = () =>
     navLinks.map((link) => (
