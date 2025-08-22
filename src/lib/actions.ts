@@ -471,4 +471,32 @@ export async function updateRentalPricesAction(accountId: string, prevState: any
         return { error: handleFirebaseError(e) };
     }
 }
+
+export async function resetFinancialDataAction(accountId: string) {
+    if (!accountId) {
+        return { message: 'error', error: 'Conta não identificada.' };
+    }
+
+    try {
+        const db = getFirestore();
+        const rentalsCollection = db.collection(`accounts/${accountId}/completed_rentals`);
+        const snapshot = await rentalsCollection.get();
+
+        if (snapshot.empty) {
+            return { message: 'success', info: 'Nenhum dado financeiro para zerar.' };
+        }
+
+        const batch = db.batch();
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
 // #endregion

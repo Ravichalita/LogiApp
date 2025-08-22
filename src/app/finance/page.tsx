@@ -13,6 +13,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RentalPricesForm } from './rental-prices-form';
 import { RevenueByClientChart } from './revenue-by-client-chart';
+import { ResetButton } from './reset-button';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -180,6 +181,10 @@ export default function FinancePage() {
                     {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
                 </CardContent>
             </Card>
+
+            <div className="mt-8 text-center">
+                {accountId && <ResetButton accountId={accountId} />}
+            </div>
 
         </div>
     );
