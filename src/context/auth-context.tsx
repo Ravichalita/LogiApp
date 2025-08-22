@@ -35,36 +35,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          // Get token result to access custom claims
-          const tokenResult = await getIdTokenResult(firebaseUser);
-          const claims = tokenResult.claims as { accountId?: string; role?: UserRole };
-          
-          if (claims.accountId && claims.role) {
-            setAccountId(claims.accountId);
-            setRole(claims.role);
-            setUser(firebaseUser);
-          } else {
-            // This can happen briefly after signup before claims are set.
-            // Force a refresh to get the new claims.
-            await firebaseUser.getIdToken(true);
-            const refreshedTokenResult = await getIdTokenResult(firebaseUser);
-            const refreshedClaims = refreshedTokenResult.claims as { accountId?: string; role?: UserRole };
-
-            if (refreshedClaims.accountId && refreshedClaims.role) {
-                setAccountId(refreshedClaims.accountId);
-                setRole(refreshedClaims.role);
-                setUser(firebaseUser);
-            } else {
-                 // If claims are still not present, something is wrong.
-                 console.error("Claims não encontradas no token. Deslogando.");
-                 await signOut(auth);
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao obter custom claims:", error);
-          await signOut(auth);
-        }
+        setUser(firebaseUser); // Set user immediately
+         const tokenResult = await getIdTokenResult(firebaseUser);
+         const claims = tokenResult.claims as { role?: UserRole };
+         setRole(claims.role || null);
       } else {
         setUser(null);
         setUserAccount(null);
@@ -83,21 +57,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     
+    // User is authenticated, now get their profile from Firestore
     const userDocRef = doc(db, 'users', user.uid);
     const unsubscribeDoc = onSnapshot(userDocRef, 
       (userDocSnap) => {
         if (userDocSnap.exists()) {
           const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
           setUserAccount(userAccountData);
+          setAccountId(userAccountData.accountId); // Get accountId from Firestore doc
+          setRole(userAccountData.role); // Also update role from Firestore
         } else {
-          console.error("Documento do usuário não encontrado. Deslogando.");
-          signOut(auth);
+          // This might happen if the user doc is not created yet
+          console.warn("Documento do usuário ainda não existe, aguardando...");
         }
-        setLoading(false); 
+        // Defer setting loading to false until we have account data or timeout
+        if (userDocSnap.exists() || !user) {
+            setLoading(false);
+        }
       }, 
       (error) => {
         console.error("Erro ao buscar documento do usuário:", error);
-        signOut(auth);
+        signOut(auth); // Log out on error
         setLoading(false);
       }
     );
@@ -140,12 +120,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // If user is authenticated but doesn't have an accountId claim, show an error/wait screen.
+  // If user is authenticated but doesn't have an accountId, show a waiting screen.
   if (user && !accountId && !loading && !isAuthPage) {
       return (
-          <div className="flex h-screen flex-col items-center justify-center gap-4 text-center">
+          <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
                <Spinner size="large" />
-               <p className="text-muted-foreground">Configurando sua conta... <br/>Se esta tela persistir, tente sair e entrar novamente.</p>
+               <p className="text-muted-foreground">Configurando sua conta... <br/>Este processo pode levar um momento. Se esta tela persistir, tente sair e entrar novamente.</p>
                <Button onClick={logout} variant="outline">Sair</Button>
           </div>
       )
