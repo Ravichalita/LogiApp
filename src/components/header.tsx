@@ -64,7 +64,7 @@ export function Header() {
 
         <div className="flex flex-1 items-center justify-end space-x-2">
             {(isAdmin || permissions?.canAccessFinance) && (
-                 <Button variant="ghost" size="icon" asChild>
+                 <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/finance">
                         <DollarSign className="h-5 w-5" />
                         <span className="sr-only">Financeiro</span>
@@ -72,7 +72,7 @@ export function Header() {
                 </Button>
             )}
             {(isAdmin || permissions?.canAccessTeam) && (
-               <Button variant="ghost" size="icon" asChild>
+               <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/team">
                         <Users className="h-5 w-5" />
                         <span className="sr-only">Equipe</span>
