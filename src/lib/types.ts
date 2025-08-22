@@ -57,7 +57,7 @@ export const RentalSchema = z.object({
   value: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
-  assignedTo: z.string(),
+  assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
 });
 
 export const UpdateRentalSchema = z.object({

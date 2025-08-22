@@ -3,14 +3,14 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Dumpster, Location } from '@/lib/types';
+import type { Client, Dumpster, Location, UserAccount } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, User } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -38,14 +38,16 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 interface RentalFormProps {
   dumpsters: DumpsterForForm[];
   clients: Client[];
+  team: UserAccount[];
 }
 
-export function RentalForm({ dumpsters, clients }: RentalFormProps) {
+export function RentalForm({ dumpsters, clients, team }: RentalFormProps) {
   const { accountId, user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(user?.uid);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
@@ -56,7 +58,8 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
     setRentalDate(new Date());
-  }, []);
+    setAssignedToId(user?.uid)
+  }, [user]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -159,6 +162,19 @@ export function RentalForm({ dumpsters, clients }: RentalFormProps) {
           </SelectContent>
         </Select>
         {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
+      </div>
+      
+       <div className="space-y-2">
+        <Label htmlFor="assignedTo">Designar para</Label>
+        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione um membro da equipe" />
+          </SelectTrigger>
+          <SelectContent>
+            {team.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
       </div>
       
       <div className="space-y-2">

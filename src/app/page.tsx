@@ -95,23 +95,28 @@ function RentalCardSkeleton() {
 
 
 export default function HomePage() {
-  const { accountId } = useAuth();
+  const { user, accountId, userAccount } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    if (accountId) {
+    if (accountId && user && userAccount) {
       setLoading(true);
+      
+      const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
+      const userIdToFilter = canViewAll ? undefined : user.uid;
+
       const unsubscribe = getPopulatedRentals(accountId, (data) => {
         setRentals(data);
         setLoading(false);
-      });
+      }, userIdToFilter);
+      
       return () => unsubscribe();
     } else {
         setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, user, userAccount]);
   
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -149,7 +154,7 @@ export default function HomePage() {
              <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Truck className="h-10 w-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Nenhum aluguel ativo</h2>
+            <h2 className="text-2xl font-bold font-headline mb-2">Nenhum aluguel encontrado</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
                 Você ainda não tem nenhum aluguel agendado ou em andamento. Comece cadastrando um novo aluguel.
             </p>

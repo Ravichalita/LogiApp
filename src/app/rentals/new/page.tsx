@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { fetchClients, getDumpsters, getRentals } from '@/lib/data';
+import { fetchClients, getDumpsters, getRentals, fetchTeamMembers } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalForm, type DumpsterForForm } from './rental-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -10,13 +10,14 @@ import { Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Client, Dumpster, Rental } from '@/lib/types';
+import type { Client, Dumpster, Rental, UserAccount } from '@/lib/types';
 import { isAfter, isWithinInterval, startOfToday, format } from 'date-fns';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [team, setTeam] = useState<UserAccount[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,6 +27,9 @@ export default function NewRentalPage() {
         setLoading(true);
         const userClients = await fetchClients(accountId);
         setClients(userClients);
+
+        const teamMembers = await fetchTeamMembers(accountId);
+        setTeam(teamMembers);
 
         const unsubDumpsters = getDumpsters(accountId, setDumpsters);
         const unsubRentals = getRentals(accountId, setAllRentals);
@@ -43,6 +47,7 @@ export default function NewRentalPage() {
         setDumpsters([]);
         setClients([]);
         setAllRentals([]);
+        setTeam([]);
     }
   }, [accountId]);
 
@@ -103,7 +108,7 @@ export default function NewRentalPage() {
               </div>
             </div>
           ) : (dumpstersForForm.length > 0 && clients.length > 0) ? (
-             <RentalForm dumpsters={dumpstersForForm} clients={clients} />
+             <RentalForm dumpsters={dumpstersForForm} clients={clients} team={team} />
           ) : (
             <Alert>
               <Truck className="h-4 w-4" />

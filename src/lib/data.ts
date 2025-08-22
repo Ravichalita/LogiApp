@@ -10,6 +10,8 @@ import {
   doc,
   getDoc,
   where,
+  Query,
+  DocumentData,
   collectionGroup,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
@@ -94,9 +96,18 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
     return unsubscribe;
 }
 
-export function getPopulatedRentals(accountId: string, callback: (rentals: PopulatedRental[]) => void): Unsubscribe {
+export function getPopulatedRentals(
+    accountId: string, 
+    callback: (rentals: PopulatedRental[]) => void,
+    assignedToId?: string
+): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId));
+    
+    let q: Query<DocumentData> = query(rentalsCollection, where("accountId", "==", accountId));
+    
+    if (assignedToId) {
+        q = query(q, where("assignedTo", "==", assignedToId));
+    }
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
@@ -136,10 +147,11 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
   const unsubscribe = onSnapshot(q, async (querySnapshot) => {
     const rentals: CompletedRental[] = querySnapshot.docs.map(doc => {
       const data = doc.data();
+      const completedDate = data.completedDate?.toDate ? data.completedDate.toDate() : new Date(data.completedDate);
       return {
         id: doc.id,
         ...data,
-        completedDate: data.completedDate.toDate(),
+        completedDate: completedDate,
       } as CompletedRental;
     });
 
@@ -231,5 +243,27 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
   });
 
   return unsubscribe;
+}
+
+export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]> {
+  if (!accountId) return [];
+  const accountRef = doc(db, 'accounts', accountId);
+  const accountSnap = await getDoc(accountRef);
+  if (!accountSnap.exists()) return [];
+
+  const memberIds = accountSnap.data()?.members as string[] || [];
+  if (memberIds.length === 0) return [];
+
+  try {
+    const memberPromises = memberIds.map(id => getDoc(doc(db, 'users', id)));
+    const memberDocSnaps = await Promise.all(memberPromises);
+    const users = memberDocSnaps
+      .filter(docSnap => docSnap.exists())
+      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as UserAccount));
+    return users.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    console.error("Error fetching team members' documents:", error);
+    return [];
+  }
 }
 // #endregion

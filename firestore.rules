@@ -1,42 +1,33 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAccountMember(accountId) {
-      // Check if the user is authenticated and if their token's accountId matches the document's accountId.
       return request.auth != null && request.auth.token.accountId == accountId;
     }
 
-    match /accounts/{accountId} {
-      // Only admins of the account can manage account-level details.
-      // Creation is handled by the user signup logic.
-      allow read, update, delete: if isAccountMember(accountId) && request.auth.token.role == 'admin';
-      allow create: if request.auth.uid == accountId; // A user can create their own account document.
-    }
-
     match /users/{userId} {
-      // A user can always get their own document.
-      // An admin can get any user document within their account.
-      allow get: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin');
-
-      // A user can create their own user document during signup.
-      allow create: if request.auth.uid == userId;
-
-      // A user can update their own profile, or an admin can update any user in their account.
-      allow update: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin');
-
-      // Only an admin can remove a user from an account. A user can't delete themselves this way.
-      allow delete: if isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin';
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
+      // Admins can read other users' data within the same account
+      allow get: if request.auth != null && request.auth.token.role == 'admin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId;
     }
 
-    // Rules for all subcollections within an account (clients, dumpsters, rentals, etc.)
+    match /accounts/{accountId} {
+       allow create: if request.auth != null && request.auth.uid == accountId;
+       allow read, update, delete: if isAccountMember(accountId) && request.auth.token.role == 'admin';
+    }
+    
     match /accounts/{accountId}/{collection}/{documentId} {
-      // Any member of the account can read the data.
+      // Any authenticated member of the account can read data
       allow read: if isAccountMember(accountId);
       
-      // Only admins can write (create, update, delete) data.
-      // This will be expanded later to use granular permissions.
+      // Allow list for users to see rentals assigned to them
+      allow list: if collection == 'rentals' && request.auth.uid == request.query.assignedTo;
+
+      // Only admins can write data by default
       allow write: if isAccountMember(accountId) && request.auth.token.role == 'admin';
     }
   }
