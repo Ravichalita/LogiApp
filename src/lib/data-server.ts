@@ -4,6 +4,7 @@
 import type { UserRecord } from "firebase-admin/auth";
 import { adminAuth } from "./firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { PermissionsSchema } from "./types";
 
 const firestore = getFirestore();
 
@@ -47,6 +48,7 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
 
             let accountId: string;
             let role: 'admin' | 'viewer';
+            let permissions: ReturnType<typeof PermissionsSchema.parse>;
             const accountRef = inviterAccountId ? firestore.doc(`accounts/${inviterAccountId}`) : null;
 
             if (accountRef) { // This is an invite flow
@@ -56,9 +58,18 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 }
                 accountId = inviterAccountId!;
                 role = 'viewer'; 
+                permissions = PermissionsSchema.parse({}); // All false by default for viewer
             } else { // This is a first-time signup for a new account
                 accountId = userRecord.uid; // The first user's UID becomes the account ID
                 role = 'admin';
+                permissions = PermissionsSchema.parse({
+                    canAccessTeam: true,
+                    canAccessStats: true,
+                    canEditClients: true,
+                    canEditDumpsters: true,
+                    canEditRentals: true,
+                    canDeleteItems: true,
+                });
                 const newAccountRef = firestore.doc(`accounts/${accountId}`);
                 transaction.set(newAccountRef, {
                     ownerId: userRecord.uid,
@@ -73,6 +84,7 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 accountId: accountId,
                 role: role,
                 status: 'ativo',
+                permissions: permissions,
                 createdAt: FieldValue.serverTimestamp(),
             };
 

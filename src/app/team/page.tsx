@@ -6,36 +6,29 @@ import { useAuth } from '@/context/auth-context';
 import type { UserAccount } from '@/lib/types';
 import { getTeamMembers } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { TeamActions } from './team-actions';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, ChevronDown } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { UserPermissionsForm } from './user-permissions-form';
 
-function TeamTableSkeleton() {
+function TeamListSkeleton() {
     return (
-         <div className="border rounded-md">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>E-mail</TableHead>
-                        <TableHead>Função</TableHead>
-                        <TableHead className="w-[64px]"></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {[...Array(2)].map((_, i) => (
-                        <TableRow key={i}>
-                            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                            <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                            <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                            <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+        <div className="space-y-4">
+            {[...Array(2)].map((_, i) => (
+                <div key={i} className="border rounded-lg shadow-sm p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                        <div className='space-y-1'>
+                             <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-40" />
+                        </div>
+                        <Skeleton className="h-8 w-8" />
+                    </div>
+                    <Skeleton className="h-6 w-20" />
+                </div>
+            ))}
         </div>
     );
 }
@@ -88,41 +81,35 @@ export default function TeamPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <TeamTableSkeleton /> : (
-                         <div className="border rounded-md">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nome</TableHead>
-                                        <TableHead>E-mail</TableHead>
-                                        <TableHead>Função</TableHead>
-                                        <TableHead><span className="sr-only">Ações</span></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {team.length > 0 ? team.map(member => (
-                                        <TableRow key={member.id}>
-                                            <TableCell className="font-medium">{member.name}</TableCell>
-                                            <TableCell className="text-muted-foreground">{member.email}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
-                                                    {member.role === 'admin' ? 'Admin' : 'Viewer'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                               <TeamActions member={member} />
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">
-                                                Nenhum membro na equipe ainda.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                         </div>
+                    {loading ? <TeamListSkeleton /> : (
+                        team.length > 0 ? (
+                            <Accordion type="multiple" className="space-y-4">
+                                {team.map(member => (
+                                    <AccordionItem value={member.id} key={member.id} className="border rounded-lg shadow-sm">
+                                        <div className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-medium">{member.name}</div>
+                                                    <div className="text-sm text-muted-foreground">{member.email}</div>
+                                                </div>
+                                                <TeamActions member={member} />
+                                            </div>
+                                             <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="mt-2">
+                                                {member.role === 'admin' ? 'Admin' : 'Viewer'}
+                                             </Badge>
+                                            <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start [&>svg]:ml-1">
+                                                Gerenciar Permissões
+                                            </AccordionTrigger>
+                                        </div>
+                                        <AccordionContent>
+                                            <UserPermissionsForm member={member} />
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        ) : (
+                            <p className="text-center text-muted-foreground py-8">Nenhum membro na equipe ainda.</p>
+                        )
                     )}
                 </CardContent>
             </Card>

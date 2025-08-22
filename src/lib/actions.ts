@@ -6,7 +6,7 @@ import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
 import { ensureUserDocument } from './data-server';
 import { headers } from 'next/headers';
@@ -103,6 +103,25 @@ export async function updateUserRoleAction(accountId: string, userId: string, ne
         }
         await adminAuth.setCustomUserClaims(userId, { role: newRole, accountId });
         await userRef.update({ role: newRole });
+        revalidatePath('/team');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function updateUserPermissionsAction(accountId: string, userId: string, permissions: z.infer<typeof PermissionsSchema>) {
+    try {
+        const db = getFirestore();
+        const userRef = db.doc(`users/${userId}`);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
+             throw new Error("Usuário não encontrado ou não pertence a esta conta.");
+        }
+
+        const validatedPermissions = PermissionsSchema.parse(permissions);
+
+        await userRef.update({ permissions: validatedPermissions });
         revalidatePath('/team');
         return { message: 'success' };
     } catch(e) {

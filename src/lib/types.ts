@@ -4,6 +4,19 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
 
+// #region Permissions
+export const PermissionsSchema = z.object({
+    canAccessTeam: z.boolean().default(false),
+    canAccessStats: z.boolean().default(false),
+    canEditClients: z.boolean().default(false),
+    canEditDumpsters: z.boolean().default(false),
+    canEditRentals: z.boolean().default(false),
+    canDeleteItems: z.boolean().default(false),
+}).default({});
+
+export type Permissions = z.infer<typeof PermissionsSchema>;
+// #endregion
+
 // #region Base Schemas
 export const ClientSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
@@ -73,6 +86,7 @@ export const UserAccountSchema = z.object({
   email: z.string(),
   role: z.enum(['admin', 'viewer']),
   status: z.enum(['ativo', 'inativo']),
+  permissions: PermissionsSchema,
 });
 
 export const SignupSchema = z
@@ -95,7 +109,7 @@ export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: str
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
-export type CompletedRental = z.infer<typeof CompletedRentalSchema> & { id: string; completedDate: Date | string, accountId: string };
+export type CompletedRental = z.infer<typeof CompletedRentalSchema> & { id: string; completedDate: Date, accountId: string };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
 export type UserStatus = UserAccount['status'];

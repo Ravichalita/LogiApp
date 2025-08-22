@@ -28,6 +28,7 @@ export function Header() {
   const pathname = usePathname();
   const { user, userAccount, logout } = useAuth();
   const isAdmin = userAccount?.role === 'admin';
+  const permissions = userAccount?.permissions;
 
   const renderNavLinks = () =>
     navLinks.map((link) => (
@@ -62,13 +63,15 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-           <Button variant="ghost" size="icon" asChild>
-                <Link href="/stats">
-                    <BarChart3 className="h-5 w-5" />
-                    <span className="sr-only">Estatísticas</span>
-                </Link>
-            </Button>
-            {isAdmin && (
+           {permissions?.canAccessStats && (
+            <Button variant="ghost" size="icon" asChild>
+                  <Link href="/stats">
+                      <BarChart3 className="h-5 w-5" />
+                      <span className="sr-only">Estatísticas</span>
+                  </Link>
+              </Button>
+           )}
+            {permissions?.canAccessTeam && (
                <Button variant="ghost" size="icon" asChild>
                     <Link href="/team">
                         <Users className="h-5 w-5" />

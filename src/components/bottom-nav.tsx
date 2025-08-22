@@ -3,28 +3,36 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users } from 'lucide-react';
+import { Home, LayoutGrid, Users, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
 
-const navLinks = [
+const baseNavLinks = [
   { href: '/', label: 'Painel', icon: Home },
   { href: '/dumpsters', label: 'Caçambas', icon: LayoutGrid },
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
+const statsLink = { href: '/stats', label: 'Stats', icon: BarChart3 };
+
 export function BottomNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, userAccount } = useAuth();
 
   if (!user) {
     return null;
   }
+  
+  const navLinks = [...baseNavLinks];
+  if(userAccount?.permissions?.canAccessStats) {
+      // Insert stats link before the last item (or as desired)
+      navLinks.splice(3, 0, statsLink);
+  }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
-      <div className="grid h-16 grid-cols-3">
+      <div className={cn("grid h-16", navLinks.length === 4 ? "grid-cols-4" : "grid-cols-3")}>
         {navLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
@@ -37,7 +45,7 @@ export function BottomNav() {
             )}
           >
             <Icon className="h-6 w-6" />
-            <span>{label}</span>
+            <span className="text-xs">{label}</span>
           </Link>
         ))}
       </div>
