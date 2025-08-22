@@ -33,13 +33,20 @@ function SubmitButton() {
 }
 
 export default function SignupPage() {
-  const { user: inviter, accountId: inviterAccountId } = useAuth();
+  const { user: inviter, accountId: inviterAccountId, setIsInviteFlow } = useAuth();
   const [state, formAction] = useActionState(signupAction.bind(null, inviterAccountId), initialState);
   const router = useRouter();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
 
   const isInviteFlow = !!inviter;
+
+  useEffect(() => {
+    // Inform the AuthProvider if this is an invite flow
+    setIsInviteFlow(isInviteFlow);
+    // Cleanup on component unmount
+    return () => setIsInviteFlow(false);
+  }, [isInviteFlow, setIsInviteFlow]);
 
   useEffect(() => {
     if (state.message === 'success') {

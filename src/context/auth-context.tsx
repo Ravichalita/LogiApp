@@ -1,7 +1,7 @@
 
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
 import { onIdTokenChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
@@ -18,6 +18,8 @@ interface AuthContextType {
   role: UserRole | null;
   loading: boolean;
   logout: () => Promise<void>;
+  isInviteFlow: boolean;
+  setIsInviteFlow: (isInvite: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInviteFlow, setIsInviteFlow] = useState(false);
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
@@ -42,7 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (firebaseUser) {
             setUser(firebaseUser);
             
-            // The user's profile document in Firestore is the source of truth for the account ID.
             const userDocRef = doc(db, 'users', firebaseUser.uid);
             const unsubscribeDoc = onSnapshot(userDocRef, async (userDocSnap) => {
                 if (userDocSnap.exists()) {
@@ -51,17 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setAccountId(userAccountData.accountId);
                     setRole(userAccountData.role);
                 } else {
-                    // User is authenticated, but their user document doesn't exist.
-                    // This happens on the very first login to an empty database.
-                    // Call a server action to create the necessary documents.
                     try {
                         await ensureUserDocumentOnClient();
-                        // The user document is now being created. The onSnapshot listener 
-                        // will fire again with the new data, and the state will be updated.
-                        // We don't need to do anything else here.
                     } catch (error) {
                         console.error("Failed to ensure user document on client:", error);
-                        // If document creation fails, something is seriously wrong. Log out.
                         signOut(auth);
                     }
                 }
@@ -96,11 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (user) {
        if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
          router.push('/verify-email');
-       } else if (user.emailVerified && nonAuthRoutes.includes(pathname)) {
+       } else if (user.emailVerified && nonAuthRoutes.includes(pathname) && !isInviteFlow) {
          router.push('/');
       }
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname, router, isInviteFlow]);
 
   const logout = async () => {
     await signOut(auth);
@@ -127,8 +122,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
   }
 
+  const contextValue = {
+    user,
+    userAccount,
+    accountId,
+    role,
+    loading,
+    logout,
+    isInviteFlow,
+    setIsInviteFlow,
+  };
+
   return (
-    <AuthContext.Provider value={{ user, userAccount, accountId, role, loading, logout }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
