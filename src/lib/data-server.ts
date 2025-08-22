@@ -8,14 +8,12 @@ const firestore = getFirestore();
 
 /**
  * Finds an existing account ID based on the user's email domain.
- * This allows new users from the same company to join the same account.
+ * This logic is currently disabled in favor of an invite-only system.
  * @param domain The email domain of the user signing up.
- * @returns The accountId if found, otherwise null.
+ * @returns Null, as this lookup is disabled.
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
-    if (!domain) return null;
-    // This logic can be expanded. For now, it's a placeholder.
-    // Example: Check a 'domains' collection or similar.
+    // This logic is disabled. New users must be invited.
     return null;
 }
 
@@ -24,12 +22,21 @@ export async function findAccountByEmailDomain(domain: string): Promise<string |
  * This is a critical function for security and multi-tenancy.
  *
  * @param userRecord The user record from Firebase Admin Auth.
- * @param existingAccountId Optional ID of an existing account to join (for invites).
+ * @param existingAccountId The required ID of an existing account to join (for invites).
  * @returns The ID of the account the user is associated with.
- * @throws An error if the transaction fails, and attempts to clean up the auth user.
+ * @throws An error if the transaction fails, or if no accountId is provided.
  */
 export async function ensureUserDocument(userRecord: UserRecord, existingAccountId?: string | null): Promise<string> {
     const userDocRef = firestore.doc(`users/${userRecord.uid}`);
+
+    // This is the core business logic change: a user can only be created if they are being added to an existing account.
+    if (!existingAccountId) {
+        // Clean up the created auth user if they don't have an account to join.
+        await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
+             console.error(`CRÍTICO: Falha ao limpar usuário auth ${userRecord.uid} que não tinha uma conta para entrar.`, delErr)
+        });
+        throw new Error("Novos usuários devem ser convidados para uma conta existente.");
+    }
 
     try {
         return await firestore.runTransaction(async (transaction) => {
@@ -38,8 +45,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
                 console.warn(`Documento de usuário para ${userRecord.uid} já existe.`);
                 const accountId = userDoc.data()?.accountId;
                 if (accountId) {
-                    // Ensure claims are set even if doc exists but claims are missing
-                    if (!userRecord.customClaims?.accountId || !userRecord.customClaims?.role) {
+                     if (!userRecord.customClaims?.accountId || !userRecord.customClaims?.role) {
                          const role = userDoc.data()?.role || 'viewer';
                          await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
                     }
@@ -47,25 +53,8 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
                 }
             }
 
-            let accountId: string;
-            let role: 'admin' | 'viewer';
-
-            if (existingAccountId) {
-                // Joining an existing account via invite
-                accountId = existingAccountId;
-                role = 'viewer';
-            } else {
-                // Creating a new account
-                const accountRef = firestore.collection("accounts").doc();
-                accountId = accountRef.id;
-                role = 'admin'; 
-                transaction.set(accountRef, {
-                    ownerId: userRecord.uid,
-                    name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
-                    createdAt: FieldValue.serverTimestamp(),
-                    members: [userRecord.uid],
-                });
-            }
+            const accountId = existingAccountId;
+            const role = 'viewer'; // New users invited to an account are always 'viewer' by default.
 
             const userAccountData = {
                 email: userRecord.email!,
@@ -80,6 +69,12 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             
             // Set custom claims AFTER the transaction is successful
             await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
+
+            // Also add the new user's ID to the account's member list
+            const accountRef = firestore.doc(`accounts/${accountId}`);
+            transaction.update(accountRef, {
+                members: FieldValue.arrayUnion(userRecord.uid)
+            });
 
             return accountId;
         });

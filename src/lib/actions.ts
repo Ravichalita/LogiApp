@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
-import { ensureUserDocument, findAccountByEmailDomain } from './data-server';
+import { ensureUserDocument } from './data-server';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -53,20 +53,19 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      let accountIdToJoin = inviterAccountId;
-      if (!accountIdToJoin) {
-          const domain = email.split('@')[1];
-          accountIdToJoin = await findAccountByEmailDomain(domain);
+      // If it's not an invite flow from an existing admin, block the registration.
+      if (!inviterAccountId) {
+          return { ...prevState, message: "Novos cadastros devem ser convidados por um administrador de conta existente." };
       }
 
       const newUserRecord = await adminAuth.createUser({
           email,
           password,
           displayName: name,
-          emailVerified: true, // Set to true for dev purposes if needed
+          emailVerified: true, // Set to true for dev purposes
       });
 
-      await ensureUserDocument(newUserRecord, accountIdToJoin);
+      await ensureUserDocument(newUserRecord, inviterAccountId);
       
       return {
         ...prevState,
