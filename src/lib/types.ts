@@ -154,7 +154,8 @@ export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: str
 export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
-    accountId: string 
+    accountId: string;
+    assignedToUser?: UserAccount | null;
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];

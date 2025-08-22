@@ -48,7 +48,7 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
         const rentalPromises = rentalsSnap.docs.map(async (rentalDoc) => {
             const rentalData = toSerializableObject(rentalDoc.data());
 
-            // Fetch client and dumpster data in parallel
+            // Fetch client, dumpster, and user data in parallel
             const clientPromise = rentalData.clientId 
                 ? adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get()
                 : Promise.resolve(null);
@@ -56,14 +56,19 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
             const dumpsterPromise = rentalData.dumpsterId
                 ? adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get()
                 : Promise.resolve(null);
+            
+            const assignedToPromise = rentalData.assignedTo
+                ? adminDb.doc(`users/${rentalData.assignedTo}`).get()
+                : Promise.resolve(null);
 
-            const [clientSnap, dumpsterSnap] = await Promise.all([clientPromise, dumpsterPromise]);
+            const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise]);
 
             return {
                 ...rentalData,
                 id: rentalDoc.id,
                 client: clientSnap ? docToSerializable(clientSnap) : null,
                 dumpster: dumpsterSnap ? docToSerializable(dumpsterSnap) : null,
+                assignedToUser: assignedToSnap ? docToSerializable(assignedToSnap) : null,
             } as CompletedRental;
         });
 

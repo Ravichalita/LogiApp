@@ -168,6 +168,7 @@ export default function FinancePage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Cliente</TableHead>
+                                    <TableHead>Designado para</TableHead>
                                     <TableHead className="text-right">Finalizado em</TableHead>
                                     <TableHead className="text-right">Valor Total</TableHead>
                                 </TableRow>
@@ -176,12 +177,13 @@ export default function FinancePage() {
                                 {completedRentals.length > 0 ? completedRentals.map(rental => (
                                     <TableRow key={rental.id}>
                                         <TableCell className="font-medium">{rental.client?.name ?? 'N/A'}</TableCell>
+                                        <TableCell>{rental.assignedToUser?.name ?? 'N/A'}</TableCell>
                                         <TableCell className="text-right">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(rental.totalValue)}</TableCell>
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
+                                        <TableCell colSpan={4} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
