@@ -82,7 +82,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
   const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
 
-  const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso') || !canEdit;
+  const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso');
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
