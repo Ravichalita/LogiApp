@@ -28,7 +28,9 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
       id: doc.id,
       ...doc.data()
     } as Client));
-    callback(clients);
+    // Sort clients by name on the client-side
+    const sortedClients = clients.sort((a, b) => a.name.localeCompare(b.name));
+    callback(sortedClients);
   }, (error) => {
       console.error("Error fetching clients:", error);
       // Optionally call callback with empty array or handle error state
@@ -42,7 +44,8 @@ export async function fetchClients(accountId: string): Promise<Client[]> {
     const clientsCollection = collection(db, `accounts/${accountId}/clients`);
     const q = query(clientsCollection, where("accountId", "==", accountId));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+    const clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+    return clients.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // #endregion
@@ -191,14 +194,16 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     return () => {};
   }
   const usersCollection = collection(db, 'users');
-  const q = query(usersCollection, where('accountId', '==', accountId), orderBy('name', 'asc'));
+  const q = query(usersCollection, where('accountId', '==', accountId));
   
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const users = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as UserAccount));
-    callback(users);
+    // Sort users by name on the client-side
+    const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
+    callback(sortedUsers);
   }, (error) => {
       console.error("Error fetching team members:", error);
       callback([]);
