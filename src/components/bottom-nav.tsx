@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users, Settings } from 'lucide-react';
+import { Home, LayoutGrid, Users, Settings, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
@@ -14,6 +14,7 @@ const baseNavLinks = [
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
+const financeLink = { href: '/finance', label: 'Financeiro', icon: DollarSign };
 const teamLink = { href: '/team', label: 'Equipe', icon: Settings };
 
 export function BottomNav() {
@@ -28,16 +29,25 @@ export function BottomNav() {
   
   const navLinks = [...baseNavLinks];
 
+  if(isAdmin || permissions?.canAccessStats) {
+      navLinks.push(financeLink);
+  }
+
   if(isAdmin || permissions?.canAccessTeam) {
     navLinks.push(teamLink)
   }
 
+  const getGridColsClass = () => {
+    switch (navLinks.length) {
+        case 5: return "grid-cols-5";
+        case 4: return "grid-cols-4";
+        default: return "grid-cols-3";
+    }
+  }
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
-      <div className={cn(
-          "grid h-16",
-          navLinks.length === 4 ? "grid-cols-4" : "grid-cols-3"
-      )}>
+      <div className={cn("grid h-16", getGridColsClass())}>
         {navLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
