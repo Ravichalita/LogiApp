@@ -2,31 +2,39 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    function isAuth() {
+      return request.auth != null;
+    }
 
     function isAdmin() {
-      return request.auth.token.role == 'admin';
+      return isAuth() && request.auth.token.role == 'admin';
     }
 
-    function isMemberOfAccount(accountId) {
-      return request.auth.token.accountId == accountId;
+    function isOwner(accountId) {
+      return isAuth() && request.auth.token.accountId == accountId;
     }
-    
-    // User profile can be read by the user themselves or by an admin of the same account
+
+    // Accounts can be read by their members.
+    // Only admins can create/update account details.
+    match /accounts/{accountId} {
+      allow read: if isOwner(accountId);
+      allow write: if isAdmin() && isOwner(accountId);
+
+      // Sub-collections can be read/listed by account members.
+      // Writing is restricted to admins.
+      match /{collection}/{docId} {
+        allow read, list: if isOwner(accountId);
+        allow write: if isAdmin() && isOwner(accountId);
+      }
+    }
+
+    // User documents can only be read by other users in the same account.
+    // This prevents listing all users in the system.
+    // User documents are written via server-side actions, not directly by clients.
     match /users/{userId} {
-      allow read: if request.auth.uid == userId || (isAdmin() && isMemberOfAccount(resource.data.accountId));
-      allow update: if request.auth.uid == userId; // Users can update their own profile
-      // Create and delete are handled by server-side actions
-      allow create, delete: if false; 
-      allow list: if false; // List operations on root users collection are disallowed for clients
-    }
-
-    // Rules for all subcollections under a specific account
-    match /accounts/{accountId}/{document=**} {
-      // Any authenticated member of the account can read or list documents
-      allow read, list: if isMemberOfAccount(accountId);
-      
-      // Only admins of the account can write documents
-      allow write: if isAdmin() && isMemberOfAccount(accountId);
+      allow get: if isAuth() && request.auth.token.accountId == resource.data.accountId;
+      allow read, write: if false; // List/write is disallowed from client.
     }
   }
 }

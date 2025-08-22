@@ -136,10 +136,12 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
             const data = doc.data();
+            // Firestore timestamps need to be converted to JS dates
+            const completedDate = data.completedDate?.toDate ? data.completedDate.toDate() : new Date();
             return {
                 id: doc.id,
                 ...data,
-                completedDate: data.completedDate.toDate(),
+                completedDate: completedDate,
             } as CompletedRental;
         });
 
@@ -185,25 +187,31 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     callback([]);
     return () => {};
   }
-  // Listen for changes on the account document to get the list of member IDs
+  
+  // This function listens for changes to the account document itself.
   const accountRef = doc(db, 'accounts', accountId);
+  
   const unsubscribe = onSnapshot(accountRef, async (accountSnap) => {
     if (!accountSnap.exists()) {
+      console.warn(`Account document ${accountId} does not exist.`);
       callback([]);
       return;
     }
+    
+    // Get the list of member IDs from the account document.
     const memberIds = accountSnap.data()?.members as string[] || [];
     if (memberIds.length === 0) {
       callback([]);
       return;
     }
 
-    // Fetch the user document for each member ID
     try {
+      // Create a promise to fetch each user's document based on their ID.
       const memberPromises = memberIds.map(id => getDoc(doc(db, 'users', id)));
-      const memberDocs = await Promise.all(memberPromises);
+      const memberDocSnaps = await Promise.all(memberPromises);
       
-      const users = memberDocs
+      // Filter out any documents that don't exist and map the data.
+      const users = memberDocSnaps
         .filter(docSnap => docSnap.exists())
         .map(docSnap => ({
           id: docSnap.id,
