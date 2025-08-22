@@ -80,6 +80,40 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
   }
 }
 
+export async function updateUserRoleAction(accountId: string, userId: string, newRole: UserRole) {
+    try {
+        const db = getFirestore();
+        const userRef = db.doc(`users/${userId}`);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
+             throw new Error("Usuário não encontrado ou não pertence a esta conta.");
+        }
+        await adminAuth.setCustomUserClaims(userId, { accountId, role: newRole });
+        await userRef.update({ role: newRole });
+        revalidatePath('/team');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function removeTeamMemberAction(accountId: string, userId: string) {
+    try {
+        const db = getFirestore();
+        const userRef = db.doc(`users/${userId}`);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
+             throw new Error("Usuário não encontrado ou não pertence a esta conta.");
+        }
+        await adminAuth.deleteUser(userId);
+        await userRef.delete();
+        revalidatePath('/team');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
 
 // #endregion
 

@@ -1,25 +1,46 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // A user can always read their own user document.
-    // This is the key to allowing the app to load the user's profile and accountId.
-    match /users/{userId} {
-      allow get: if request.auth.uid == userId;
-       // Users can only be created during signup, linked to their auth UID.
-      allow create: if request.auth.uid == userId;
-      // Allow an admin to update a user's role within the same account.
-      allow update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' &&
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId;
-      // You can only list users that belong to your own account.
-      allow list: if request.auth.token.accountId == request.query.where.accountId;
+    
+    // Helper Functions
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isSameAccount(accountId) {
+        return request.auth.token.accountId == accountId;
     }
 
-    // For any document within an account, allow read/write
-    // if the user's accountId (from their user doc) matches the accountId in the path.
-    match /accounts/{accountId}/{collection}/{docId} {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == accountId;
+    function isAdmin() {
+        return request.auth.token.role == 'admin';
+    }
+
+    // Users can only be created via server-side logic (see signupAction)
+    // Only signed-in users can read their own user document to get their profile.
+    // Users can list other users in the same account to display the team.
+    // Admins can update roles of other users in the same account.
+    match /users/{userId} {
+      allow create: if false; 
+      allow get: if isOwner(userId);
+      allow list: if isSignedIn() && request.query.where.accountId == request.auth.token.accountId;
+      allow update: if isAdmin() && isSameAccount(resource.data.accountId);
+      allow delete: if isAdmin() && isSameAccount(existing_resource.data.accountId);
+    }
+
+    // Accounts can only be created by the server.
+    // Only users belonging to the account can read/write data.
+    match /accounts/{accountId} {
+        allow get, list, create, update, delete: if false;
+
+        match /{collection}/{docId} {
+             allow read, write: if isSignedIn() && isSameAccount(accountId);
+        }
     }
   }
 }

@@ -183,3 +183,27 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
     return unsubscribe;
 }
 // #endregion
+
+// #region Team Data
+export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
+  if (!accountId) {
+    callback([]);
+    return () => {};
+  }
+  const usersCollection = collection(db, 'users');
+  const q = query(usersCollection, where('accountId', '==', accountId), orderBy('name', 'asc'));
+  
+  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const users = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as UserAccount));
+    callback(users);
+  }, (error) => {
+      console.error("Error fetching team members:", error);
+      callback([]);
+  });
+
+  return unsubscribe;
+}
+// #endregion
