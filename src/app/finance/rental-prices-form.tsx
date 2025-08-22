@@ -18,14 +18,19 @@ import { nanoid } from 'nanoid';
 const formatCurrencyInput = (value: string | number): string => {
   if (value === '' || value === null || value === undefined) return '';
   let stringValue = String(value).replace(/\D/g, '');
+  
+  // Allow the field to be empty if the user deletes everything
   if (stringValue === '') return '';
+
   const numberValue = parseFloat(stringValue) / 100;
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numberValue);
 };
 
+
 const parseCurrency = (value: string): number => {
   if (!value) return 0;
-  return Number(value.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+  const numberString = value.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+  return parseFloat(numberString) || 0;
 }
 
 function SubmitButton() {
@@ -58,20 +63,26 @@ export function RentalPricesForm({ account }: { account: Account }) {
             });
         }
     }, [state, toast]);
+    
+    // Handles changes to the raw input value from the user
+    const handleRawPriceChange = (id: string, rawValue: string) => {
+      const formattedValue = formatCurrencyInput(rawValue);
+      const numericValue = parseCurrency(formattedValue);
 
-    const handlePriceChange = (id: string, field: 'name' | 'value', value: string) => {
+      setPrices(currentPrices =>
+        currentPrices.map(p =>
+          p.id === id ? { ...p, value: numericValue } : p
+        )
+      );
+    }
+    
+    const handleNameChange = (id: string, name: string) => {
         setPrices(currentPrices =>
-            currentPrices.map(p => {
-                if (p.id === id) {
-                    if (field === 'value') {
-                        return { ...p, value: parseCurrency(formatCurrencyInput(value)) };
-                    }
-                    return { ...p, [field]: value };
-                }
-                return p;
-            })
-        );
-    };
+            currentPrices.map(p =>
+                p.id === id ? { ...p, name: name } : p
+            )
+        )
+    }
 
     const addPrice = () => {
         setPrices(currentPrices => [...currentPrices, { id: nanoid(5), name: '', value: 0 }]);
@@ -101,13 +112,13 @@ export function RentalPricesForm({ account }: { account: Account }) {
                                 <Input
                                     placeholder="Nome (Ex: Padrão 5m³)"
                                     value={price.name}
-                                    onChange={e => handlePriceChange(price.id, 'name', e.target.value)}
+                                    onChange={e => handleNameChange(price.id, e.target.value)}
                                     required
                                 />
                                 <Input
                                     placeholder="R$ 0,00"
                                     value={formatCurrencyInput(price.value)}
-                                    onChange={e => handlePriceChange(price.id, 'value', e.target.value)}
+                                    onChange={e => handleRawPriceChange(price.id, e.target.value)}
                                     required
                                 />
                         </div>
