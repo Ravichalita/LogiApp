@@ -36,27 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
         setLoading(true);
         if (firebaseUser) {
-             // Force refresh the token to get latest claims after signup/login
-            await getIdToken(firebaseUser, true);
-            const tokenResult = await getIdTokenResult(firebaseUser);
-            const claims = tokenResult.claims as { role?: UserRole; accountId?: string };
-
             setUser(firebaseUser);
-            setRole(claims.role || null);
-            
-            // The accountId from the claim is used for security rules.
-            // The accountId from the user document is used for data fetching on the client.
-            // We wait for the user document to be loaded before setting loading to false.
+            // The user's profile document in Firestore is the source of truth for the account ID.
             const userDocRef = doc(db, 'users', firebaseUser.uid);
             const unsubscribeDoc = onSnapshot(userDocRef, (userDocSnap) => {
                 if (userDocSnap.exists()) {
                     const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                     setUserAccount(userAccountData);
                     setAccountId(userAccountData.accountId);
-                } else {
-                    console.warn("Documento do usuário ainda não existe, aguardando...");
+                    setRole(userAccountData.role);
                 }
-                setLoading(false); // Done loading once we have the document snapshot (or know it doesn't exist)
+                // Stop loading once we have the user document or know it doesn't exist yet.
+                setLoading(false);
             }, (error) => {
                 console.error("Erro ao buscar documento do usuário:", error);
                 signOut(auth);

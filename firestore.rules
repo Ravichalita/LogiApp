@@ -1,24 +1,42 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isOwner(accId) {
-      return request.auth.token.accountId == accId;
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    match /accounts/{accountId} {
-      allow read, write: if isOwner(accountId);
+    function isRequestingOwnData(userId) {
+      return isUserAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getAccountId() {
+      return request.auth.token.accountId;
     }
     
+    function isAccountMember() {
+        return isUserAuthenticated() && getAccountId() != null;
+    }
+
+    function isAdmin() {
+        return isAccountMember() && request.auth.token.role == 'admin';
+    }
+
+    match /accounts/{accountId}/{document=**} {
+      allow read, write: if false; // Disallow direct access to account docs
+    }
+
     match /users/{userId} {
-      allow get: if request.auth.uid == userId;
-      allow list: if request.auth.token.accountId == resource.data.accountId;
-      allow update: if request.auth.uid == userId;
+      allow get: if isRequestingOwnData(userId);
+      allow list: if isAdmin() && request.query.where.get('accountId') == getAccountId();
+      allow update: if isRequestingOwnData(userId);
+      allow create, delete: if false;
     }
 
     match /{collection}/{docId} {
-      allow read, write, delete: if isOwner(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId);
+       allow read: if isAccountMember() && resource.data.accountId == getAccountId();
+       allow list: if isAccountMember() && request.query.where.get('accountId') == getAccountId();
+       allow create, update, delete: if isAdmin() && request.resource.data.accountId == getAccountId();
     }
   }
 }
