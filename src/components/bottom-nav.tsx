@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users, BarChart3, Settings } from 'lucide-react';
+import { Home, LayoutGrid, Users, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
@@ -14,7 +14,6 @@ const baseNavLinks = [
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
-const financeLink = { href: '/finance', label: 'Financeiro', icon: BarChart3 };
 const teamLink = { href: '/team', label: 'Equipe', icon: Settings };
 
 export function BottomNav() {
@@ -29,10 +28,6 @@ export function BottomNav() {
   
   const navLinks = [...baseNavLinks];
 
-  if(isAdmin || permissions?.canAccessStats) {
-      navLinks.push(financeLink);
-  }
-
   if(isAdmin || permissions?.canAccessTeam) {
     navLinks.push(teamLink)
   }
@@ -41,7 +36,6 @@ export function BottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
       <div className={cn(
           "grid h-16",
-          navLinks.length === 5 ? "grid-cols-5" : 
           navLinks.length === 4 ? "grid-cols-4" : "grid-cols-3"
       )}>
         {navLinks.map(({ href, label, icon: Icon }) => (

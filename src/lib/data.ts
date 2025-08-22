@@ -13,7 +13,7 @@ import {
   DocumentData,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental, UserAccount, Account } from './types';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account } from './types';
 
 type Unsubscribe = () => void;
 
@@ -160,62 +160,6 @@ export function getPopulatedRentals(
     });
 
     return unsubscribe;
-}
-// #endregion
-
-// #region Completed Rental Data
-export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
-  const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-  const q = query(rentalsCollection, where("accountId", "==", accountId));
-
-  const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-    const rentals: CompletedRental[] = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      const completedDate = data.completedDate?.toDate ? data.completedDate.toDate() : new Date(data.completedDate);
-      return {
-        id: doc.id,
-        ...data,
-        completedDate: completedDate,
-      } as CompletedRental;
-    });
-
-    if (rentals.length === 0) {
-      callback([]);
-      return;
-    }
-
-    try {
-      const populatePromises = rentals.map(async (rental) => {
-        const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rental.dumpsterId));
-        const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rental.clientId));
-        const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
-
-        return {
-          ...rental,
-          dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
-          client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-        };
-      });
-
-      const populatedResults = await Promise.all(populatePromises);
-      const validPopulatedRentals = populatedResults.filter(
-        (r): r is PopulatedCompletedRental => r !== null && !!r.client && !!r.dumpster
-      );
-      
-      const sortedRentals = validPopulatedRentals.sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
-      
-      callback(sortedRentals);
-
-    } catch (error) {
-      console.error("Error populating completed rentals:", error);
-      callback([]);
-    }
-  }, (error) => {
-    console.error("Error fetching completed rentals snapshot:", error);
-    callback([]);
-  });
-
-  return unsubscribe;
 }
 // #endregion
 

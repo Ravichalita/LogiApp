@@ -406,7 +406,6 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         await batch.commit();
 
         revalidatePath('/');
-        revalidatePath('/stats');
         
     } catch(e) {
          console.error("Failed to finish rental:", e);
@@ -458,30 +457,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 // #endregion
 
 // #region Finance Actions
-export async function resetBillingDataAction(accountId: string) {
-  try {
-    const completedRentalsRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`);
-    const querySnapshot = await completedRentalsRef.get();
-
-    if(querySnapshot.empty){
-        return { message: 'success' };
-    }
-
-    const batch = getFirestore().batch();
-    querySnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-
-    await batch.commit();
-
-    revalidatePath('/finance');
-    return { message: 'success' };
-  } catch (e) {
-    return { message: 'error', error: handleFirebaseError(e) as string };
-  }
-}
-
-
 export async function updateDefaultPriceAction(accountId: string, prevState: any, formData: FormData) {
     const validatedFields = DefaultPriceSchema.safeParse(Object.fromEntries(formData.entries()));
 
@@ -496,7 +471,6 @@ export async function updateDefaultPriceAction(accountId: string, prevState: any
         await accountRef.update({
             defaultRentalValue: validatedFields.data.defaultRentalValue ?? FieldValue.delete()
         });
-        revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {
         return { error: handleFirebaseError(e) };

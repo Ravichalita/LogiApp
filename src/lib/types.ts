@@ -18,7 +18,6 @@ export type Account = z.infer<typeof AccountSchema>;
 // #region Permissions
 export const PermissionsSchema = z.object({
     canAccessTeam: z.boolean().default(false),
-    canAccessStats: z.boolean().default(false),
     canEditClients: z.boolean().default(false),
     canEditDumpsters: z.boolean().default(false),
     canEditRentals: z.boolean().default(false),
