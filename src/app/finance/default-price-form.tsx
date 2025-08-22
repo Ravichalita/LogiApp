@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useEffect, useState, useTransition, useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { updateDefaultPriceAction } from '@/lib/actions';
 import type { Account } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,7 @@ function SubmitButton() {
 export function DefaultPriceForm({ account }: { account: Account }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
-    const [state, formAction] = useFormState(updateDefaultPriceAction.bind(null, accountId!), { error: null });
+    const [state, formAction] = useActionState(updateDefaultPriceAction.bind(null, accountId!), { error: null });
 
     const [price, setPrice] = useState(formatCurrencyInput(account.defaultRentalValue || ''));
     
@@ -76,6 +76,9 @@ export function DefaultPriceForm({ account }: { account: Account }) {
         const newFormData = new FormData();
         if(parsedValue !== undefined) {
              newFormData.append('defaultRentalValue', String(parsedValue));
+        } else {
+             // explicitly send empty value to be deleted.
+             newFormData.append('defaultRentalValue', '');
         }
         formAction(newFormData);
     }
