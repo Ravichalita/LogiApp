@@ -39,8 +39,10 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             console.warn(`User document for ${userRecord.uid} already exists.`);
             const accountId = userDoc.data()?.accountId;
             if (accountId) {
-                // If the doc exists but claims are missing, set them.
-                await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role: userDoc.data()?.role || 'viewer' });
+                 const role = userDoc.data()?.role || 'viewer';
+                 if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
+                    await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
+                 }
                 return accountId;
             }
         }
@@ -51,7 +53,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
 
         if (existingAccountId) {
             accountId = existingAccountId;
-            role = 'viewer';
+            role = 'viewer'; // Users invited to an existing account start as viewers
             const accountDoc = await firestore.doc(`accounts/${accountId}`).get();
             accountName = accountDoc.exists() ? accountDoc.data()?.name : "Equipe";
 
@@ -59,7 +61,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             // New user, new account
             const accountRef = firestore.collection("accounts").doc();
             accountId = accountRef.id;
-            role = 'admin';
+            role = 'admin'; // The first user is the admin
             accountName = `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`;
             await accountRef.set({
                 ownerId: userRecord.uid,
@@ -74,6 +76,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
             accountId: accountId,
             role: role,
             status: 'ativo',
+            createdAt: FieldValue.serverTimestamp(),
         };
 
         await userDocRef.set(userAccountData);

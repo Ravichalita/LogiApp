@@ -1,52 +1,48 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- Helper Functions ---
-    function isSignedIn() {
+
+    // Helper functions
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isUserAuthenticated() {
       return request.auth != null;
     }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    
+    function getUserRole() {
+      return request.auth.token.role;
     }
     
+    function getUserAccountId() {
+        return request.auth.token.accountId;
+    }
+
     function isSameAccount(accountId) {
-      return isSignedIn() && request.auth.token.accountId == accountId;
+      return getUserAccountId() == accountId;
+    }
+    
+    function isAdmin() {
+      return getUserRole() == 'admin';
     }
 
-    function isAdmin(accountId) {
-      return isSameAccount(accountId) && request.auth.token.role == 'admin';
-    }
-
-    // --- User Profiles ---
-    // Users can read their own document.
-    // Admins can list users within their own account.
-    // Users can be created via the signup server action.
-    // Admins can update roles or delete users in their account.
+    // USERS
+    // Users can read their own document to get their profile info (like accountId)
+    // Admins can update roles of other users in the same account
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isAdmin(request.query.where.accountId);
-      allow create: if isSignedIn(); // Further secured by server-side logic in actions.ts
-      allow update, delete: if isAdmin(resource.data.accountId);
+      allow get: if isOwner(userId) || (isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getUserAccountId());
+      allow list: if isAdmin() && request.query.where.accountId == getUserAccountId();
+      allow create: if isUserAuthenticated(); // Handled by signup server-side logic
+      allow update: if isAdmin() && request.resource.data.accountId == getUserAccountId();
+      allow delete: if isAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.accountId == getUserAccountId();
     }
-    
-    // --- Account Data ---
-    // Any document inside an account's subcollection can only be accessed 
-    // by a user belonging to that same account.
+
+    // ACCOUNTS & SUBCOLLECTIONS
+    // Users can access data inside an account only if their token's accountId matches.
     match /accounts/{accountId}/{collection}/{docId} {
-        allow read, write: if isSameAccount(accountId);
-    }
-    
-    // --- Top-level 'accounts' collection (for metadata) ---
-    // Only allow reads for admins of that account to get account metadata.
-    // Creation is handled by the server-side action.
-    match /accounts/{accountId} {
-      allow get: if isAdmin(accountId);
-      allow create: if isSignedIn(); // Server-side logic handles this
-      allow update: if isAdmin(accountId);
+      allow read, write, delete: if isUserAuthenticated() && isSameAccount(accountId);
     }
   }
 }
