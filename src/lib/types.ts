@@ -18,9 +18,11 @@ export type Account = z.infer<typeof AccountSchema>;
 // #region Permissions
 export const PermissionsSchema = z.object({
     canAccessTeam: z.boolean().default(false),
+    canAccessStats: z.boolean().default(false),
     canEditClients: z.boolean().default(false),
     canEditDumpsters: z.boolean().default(false),
     canEditRentals: z.boolean().default(false),
+    canDeleteItems: z.boolean().default(true),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;
@@ -121,7 +123,12 @@ export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: str
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
-export type CompletedRental = z.infer<typeof CompletedRentalSchema> & { id: string; completedDate: Date, accountId: string };
+// Make completedDate a string to allow for serialization from server component
+export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
+    id: string; 
+    completedDate: string; // Serialized as ISO string
+    accountId: string 
+};
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
 export type UserStatus = UserAccount['status'];

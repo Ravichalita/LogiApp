@@ -5,6 +5,37 @@ import { getFirestore } from 'firebase-admin/firestore';
 import type { CompletedRental, Client, Dumpster, Account, UserAccount } from './types';
 import { adminDb } from './firebase-admin';
 
+// Helper to convert Timestamps to serializable format
+const toSerializableObject = (obj: any): any => {
+    if (!obj) return obj;
+    if (typeof obj !== 'object') return obj;
+
+    if (obj.toDate && typeof obj.toDate === 'function') {
+        return obj.toDate().toISOString();
+    }
+    
+    if (Array.isArray(obj)) {
+        return obj.map(toSerializableObject);
+    }
+    
+    const newObj: { [key: string]: any } = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            newObj[key] = toSerializableObject(obj[key]);
+        }
+    }
+    return newObj;
+}
+
+// Helper function to safely convert a Firestore document snapshot to a serializable object
+const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot): any => {
+  if (!doc.exists) {
+    return null;
+  }
+  return toSerializableObject({ id: doc.id, ...doc.data() });
+};
+
+
 export async function getCompletedRentals(accountId: string): Promise<CompletedRental[]> {
     try {
         const rentalsCol = adminDb.collection(`accounts/${accountId}/completed_rentals`);
@@ -15,7 +46,7 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
         }
 
         const rentalPromises = rentalsSnap.docs.map(async (rentalDoc) => {
-            const rentalData = rentalDoc.data();
+            const rentalData = toSerializableObject(rentalDoc.data());
 
             // Fetch client and dumpster data in parallel
             const clientPromise = rentalData.clientId 
@@ -29,20 +60,20 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
             const [clientSnap, dumpsterSnap] = await Promise.all([clientPromise, dumpsterPromise]);
 
             return {
-                id: rentalDoc.id,
                 ...rentalData,
-                client: clientSnap?.exists ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-                dumpster: dumpsterSnap?.exists ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
+                id: rentalDoc.id,
+                client: clientSnap ? docToSerializable(clientSnap) : null,
+                dumpster: dumpsterSnap ? docToSerializable(dumpsterSnap) : null,
             } as CompletedRental;
         });
 
-        const rentals = await Promise.all(rentalPromises);
+        let rentals = await Promise.all(rentalPromises);
         
         // Sort by completion date, most recent first
         return rentals.sort((a, b) => {
-            const dateA = a.completedDate?.toDate ? a.completedDate.toDate() : new Date(0);
-            const dateB = b.completedDate?.toDate ? b.completedDate.toDate() : new Date(0);
-            return dateB.getTime() - dateA.getTime();
+            const dateA = a.completedDate ? new Date(a.completedDate).getTime() : 0;
+            const dateB = b.completedDate ? new Date(b.completedDate).getTime() : 0;
+            return dateB - dateA;
         });
 
     } catch (error) {
@@ -57,7 +88,7 @@ export async function getAccount(accountId: string): Promise<Account | null> {
         if (!accountDoc.exists) {
             return null;
         }
-        return { id: accountDoc.id, ...accountDoc.data() } as Account;
+        return docToSerializable(accountDoc) as Account;
     } catch(error) {
         console.error("Error fetching account data:", error);
         return null;

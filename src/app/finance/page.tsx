@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, Truck, TrendingUp } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DefaultPriceForm } from './default-price-form';
 
@@ -74,21 +74,21 @@ export default function FinancePage() {
 
     const monthlyRevenue = completedRentals
         .filter(r => {
-            const completedDate = r.completedDate?.toDate ? r.completedDate.toDate() : new Date(r.completedDate);
+            const completedDate = parseISO(r.completedDate);
             return completedDate.getMonth() === currentMonth && completedDate.getFullYear() === currentYear;
         })
         .reduce((acc, r) => acc + r.totalValue, 0);
 
     const yearlyRevenue = completedRentals
         .filter(r => {
-             const completedDate = r.completedDate?.toDate ? r.completedDate.toDate() : new Date(r.completedDate);
+             const completedDate = parseISO(r.completedDate);
              return completedDate.getFullYear() === currentYear;
         })
         .reduce((acc, r) => acc + r.totalValue, 0);
     
     const monthlyCompletions = completedRentals
         .filter(r => {
-             const completedDate = r.completedDate?.toDate ? r.completedDate.toDate() : new Date(r.completedDate);
+             const completedDate = parseISO(r.completedDate);
              return completedDate.getMonth() === currentMonth && completedDate.getFullYear() === currentYear;
         }).length;
 
@@ -129,7 +129,7 @@ export default function FinancePage() {
                                     {completedRentals.length > 0 ? completedRentals.map(rental => (
                                         <TableRow key={rental.id}>
                                             <TableCell className="font-medium">{rental.client?.name ?? 'N/A'}</TableCell>
-                                            <TableCell className="text-right">{format(rental.completedDate.toDate(), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                                            <TableCell className="text-right">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                             <TableCell className="text-right">{formatCurrency(rental.totalValue)}</TableCell>
                                         </TableRow>
                                     )) : (
