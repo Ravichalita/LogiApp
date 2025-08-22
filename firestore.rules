@@ -1,42 +1,65 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isUserAuthenticated() {
+    function isAuth() {
       return request.auth != null;
     }
 
-    function isUserAdmin() {
-      return isUserAuthenticated() && request.auth.token.role == 'admin';
+    function isVerified() {
+      return isAuth() && request.auth.token.email_verified;
+    }
+    
+    function isAdmin() {
+      return isVerified() && request.auth.token.role == 'admin';
     }
 
-    function isMemberOfAccount(accountId) {
-      return isUserAuthenticated() && request.auth.token.accountId == accountId;
+    function isViewer() {
+       return isVerified() && request.auth.token.role == 'viewer';
+    }
+    
+    match /accounts/{accountId}/{document=**} {
+      allow read, write: if false; // Deny all access by default to subcollections
     }
 
-    function isQueryingOwnAccountData() {
-      return request.query.filters.size() == 1 &&
-             'accountId' in request.query.filters &&
-             request.query.filters.accountId == request.auth.token.accountId;
+    // Rules for collections under an account
+    match /accounts/{accountId}/clients/{clientId} {
+      allow get: if isVerified() && request.auth.token.accountId == accountId;
+      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
+      allow write: if isAdmin() && request.auth.token.accountId == accountId;
+    }
+    
+    match /accounts/{accountId}/dumpsters/{dumpsterId} {
+      allow get: if isVerified() && request.auth.token.accountId == accountId;
+      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
+      allow write: if isAdmin() && request.auth.token.accountId == accountId;
+    }
+    
+    match /accounts/{accountId}/rentals/{rentalId} {
+      allow get: if isVerified() && request.auth.token.accountId == accountId;
+      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
+      allow write: if isAdmin() && request.auth.token.accountId == accountId;
     }
 
-    match /accounts/{accountId} {
-      allow read: if isMemberOfAccount(accountId);
-      allow write: if isUserAdmin(); // Only admins can modify account details
+    match /accounts/{accountId}/completed_rentals/{rentalId} {
+      allow get: if isVerified() && request.auth.token.accountId == accountId;
+      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
+      allow write: if isAdmin() && request.auth.token.accountId == accountId;
     }
 
+    // Rules for the root `users` collection
     match /users/{userId} {
-      allow get: if isUserAuthenticated();
-      allow list: if isUserAdmin() && isQueryingOwnAccountData();
-      allow create: if isUserAdmin(); // Only admins can invite/create new users
-      allow update, delete: if isUserAdmin();
-    }
-
-    match /accounts/{accountId}/{collection}/{docId} {
-      allow read: if isMemberOfAccount(accountId);
-      allow list: if isMemberOfAccount(accountId) && isQueryingOwnAccountData();
-      allow write: if isUserAdmin() && isMemberOfAccount(accountId);
+       // Only admins can query the list of users for their account
+       allow list: if isAdmin() && request.query.where.accountId == request.auth.token.accountId;
+       
+       // Any verified user can see their own user document
+       // Admins can see any user document within their account
+       allow get: if isVerified() && (request.auth.uid == userId || (isAdmin() && resource.data.accountId == request.auth.token.accountId));
+       
+       // Admins can create/update/delete users in their account. A user can't delete themselves this way.
+       allow write: if isAdmin() && request.resource.data.accountId == request.auth.token.accountId;
     }
   }
 }
