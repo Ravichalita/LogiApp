@@ -102,13 +102,13 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // We should only fetch data when the authentication state is fully resolved.
+    // Wait until authentication is fully resolved
     if (authLoading) {
       setDataLoading(true);
       return;
     }
 
-    // If authentication is resolved and we have an accountId, we can fetch data.
+    // If authentication is resolved, check if we have the necessary data to fetch rentals
     if (accountId && userAccount) {
       setDataLoading(true);
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
@@ -116,16 +116,16 @@ export default function HomePage() {
       
       const unsubscribe = getPopulatedRentals(accountId, (data) => {
         setRentals(data);
-        setDataLoading(false);
+        setDataLoading(false); // Stop loading once data is fetched
       }, userIdToFilter);
       
       return () => unsubscribe();
     } else {
       // If auth is resolved but there's no user/account, there's no data to fetch.
       setRentals([]);
-      setDataLoading(false);
+      setDataLoading(false); // Stop loading as there is nothing to fetch
     }
-  }, [authLoading, accountId, userAccount, user]);
+  }, [authLoading, accountId, userAccount, user]); // Depend on auth state
   
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -144,7 +144,7 @@ export default function HomePage() {
     });
   }, [rentals, statusFilter]);
   
-  // Use a combined loading state to prevent premature rendering
+  // The combined loading state
   const isLoading = authLoading || dataLoading;
 
   if (isLoading) {

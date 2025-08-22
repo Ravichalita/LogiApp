@@ -56,11 +56,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setAccountId(userAccountData.accountId);
                     setRole(userAccountData.role);
                 } else {
-                    try {
+                    // This can happen briefly during signup. The ensureUserDocument call handles it.
+                    // We'll retry in a moment if the document doesn't appear.
+                     try {
                         const token = await firebaseUser.getIdToken();
+                        // This server action will create the user doc if it's missing.
+                        // The onSnapshot listener will then pick it up.
                         await fetch('/api/ensure-user', { headers: { Authorization: `Bearer ${token}` } });
                     } catch (error) {
                         console.error("Failed to ensure user document on client:", error);
+                        // If it fails, log the user out to prevent an infinite loop.
                         signOut(auth);
                     }
                 }
@@ -122,12 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       </div>
     );
   }
-
+  
+  // This case handles a state where auth is resolved but the user document is missing
+  // and hasn't been created yet, which can happen if there's a backend delay.
+  // It gives the user an option to recover instead of being stuck.
   if (user && !accountId && !loading && !isAuthPage) {
       return (
           <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
                <Spinner size="large" />
-               <p className="text-muted-foreground">Configurando sua conta... <br/>Este processo pode levar um momento. Se esta tela persistir, tente sair e entrar novamente.</p>
+               <p className="text-muted-foreground">Finalizando configuração da sua conta... <br/>Este processo pode levar um momento. Se esta tela persistir, tente sair e entrar novamente.</p>
                <Button onClick={logout} variant="outline">Sair</Button>
           </div>
       )
