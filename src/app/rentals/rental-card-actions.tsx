@@ -90,7 +90,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
-  const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
   const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
 
   const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso');
@@ -237,7 +236,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
       </div>
        <div className="flex w-full items-center gap-2 mt-auto">
-            {canDelete && (
+            {canEdit && (
                  <AlertDialog>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -285,5 +284,3 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
-
-    
