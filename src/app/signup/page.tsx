@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { Truck, AlertCircle, UserPlus } from 'lucide-react';
+import { Truck, AlertCircle, UserPlus, ArrowLeft } from 'lucide-react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { useAuth } from '@/context/auth-context';
@@ -68,8 +68,14 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
+      <Card className="w-full max-w-sm relative">
+        {isInviteFlow && (
+            <Button variant="ghost" size="icon" className="absolute top-4 left-4" onClick={() => router.back()}>
+                <ArrowLeft className="h-5 w-5" />
+                <span className="sr-only">Voltar</span>
+            </Button>
+        )}
+        <CardHeader className="text-center pt-12">
            <div className="mx-auto mb-4">
                 {isInviteFlow ? <UserPlus className="h-10 w-10 text-primary" /> : <Truck className="h-10 w-10 text-primary" />}
             </div>
@@ -123,7 +129,14 @@ export default function SignupPage() {
                 required
               />
             </div>
-            <SubmitButton />
+            <div className="flex flex-col gap-2 pt-2">
+                 <SubmitButton />
+                 {isInviteFlow && (
+                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                        Cancelar
+                    </Button>
+                 )}
+            </div>
              {state.message && state.message !== 'success' && (
               <div className="flex items-center gap-2 text-sm text-destructive pt-2">
                 <AlertCircle className="h-4 w-4" />
