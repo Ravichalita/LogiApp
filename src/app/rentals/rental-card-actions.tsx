@@ -235,8 +235,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         </Accordion>
 
       </div>
-       <div className="flex flex-col md:flex-row w-full gap-2 mt-auto">
-            <form ref={finishFormRef} action={handleFinishAction} className="w-full md:w-auto flex-grow">
+       <div className="flex w-full items-center gap-2 mt-auto">
+            <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
                 <input type="hidden" name="rentalId" value={rental.id} />
                 <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                 {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
