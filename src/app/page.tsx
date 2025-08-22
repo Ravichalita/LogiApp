@@ -99,11 +99,8 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (accountId && userAccount) {
+    // We wait until auth is no longer loading and we have an accountId
+    if (!authLoading && accountId && userAccount) {
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user?.uid;
 
@@ -116,10 +113,12 @@ export default function HomePage() {
       );
       
       return () => unsubscribe();
-    } else {
+    } else if (!authLoading) {
+      // If auth is done loading but there's no accountId, clear rentals
       setRentals([]);
     }
-  }, [authLoading, accountId, user, userAccount]);
+    // No cleanup needed if still loading
+  }, [authLoading, accountId, userAccount, user]);
 
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
