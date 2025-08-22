@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -7,28 +6,33 @@ service cloud.firestore {
     function isAccountMember(accountId) {
       return request.auth != null && request.auth.token.accountId == accountId;
     }
-
-    match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      // Admins can read other users' data within the same account
-      allow get: if request.auth != null && request.auth.token.role == 'admin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId;
+    
+    function isAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
     }
 
     match /accounts/{accountId} {
-       allow create: if request.auth != null && request.auth.uid == accountId;
-       allow read, update, delete: if isAccountMember(accountId) && request.auth.token.role == 'admin';
+      allow read: if isAccountMember(accountId);
+      allow create: if request.auth.uid == accountId; 
+      allow update: if isAdmin() && isAccountMember(accountId);
+    }
+    
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || (isAdmin() && isAccountMember(resource.data.accountId));
+      allow delete: if isAdmin() && isAccountMember(resource.data.accountId);
+    }
+
+    match /accounts/{accountId}/rentals/{rentalId} {
+        allow get: if isAccountMember(accountId);
+        allow list: if isAdmin() && isAccountMember(accountId) || (isAccountMember(accountId) && request.query.where.assignedTo == request.auth.uid);
+        allow write: if isAdmin() && isAccountMember(accountId);
     }
     
     match /accounts/{accountId}/{collection}/{documentId} {
-      // Any authenticated member of the account can read data
       allow read: if isAccountMember(accountId);
-      
-      // Allow list for users to see rentals assigned to them
-      allow list: if collection == 'rentals' && request.auth.uid == request.query.assignedTo;
-
-      // Only admins can write data by default
-      allow write: if isAccountMember(accountId) && request.auth.token.role == 'admin';
+      allow write: if isAdmin() && isAccountMember(accountId);
     }
   }
 }
