@@ -96,26 +96,36 @@ function RentalCardSkeleton() {
 
 
 export default function HomePage() {
-  const { user, accountId, userAccount, loading } = useAuth();
+  const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // Only proceed if authentication is fully resolved and we have an accountId.
-    if (!loading && accountId && userAccount) {
+    // We should only fetch data when the authentication state is fully resolved.
+    if (authLoading) {
+      setDataLoading(true);
+      return;
+    }
+
+    // If authentication is resolved and we have an accountId, we can fetch data.
+    if (accountId && userAccount) {
+      setDataLoading(true);
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user?.uid;
-
+      
       const unsubscribe = getPopulatedRentals(accountId, (data) => {
         setRentals(data);
+        setDataLoading(false);
       }, userIdToFilter);
       
       return () => unsubscribe();
-    } else if (!loading) {
-      // Handle cases where user is logged out or doesn't have an account
+    } else {
+      // If auth is resolved but there's no user/account, there's no data to fetch.
       setRentals([]);
+      setDataLoading(false);
     }
-  }, [loading, accountId, userAccount, user]);
+  }, [authLoading, accountId, userAccount, user]);
   
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -135,7 +145,7 @@ export default function HomePage() {
   }, [rentals, statusFilter]);
   
 
-  if (loading) {
+  if (dataLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
@@ -147,7 +157,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0 && !loading) {
+  if (rentals.length === 0 && !dataLoading) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -231,3 +241,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

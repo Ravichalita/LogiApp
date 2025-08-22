@@ -103,6 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await signOut(auth);
+    // Reset state immediately on logout
+    setUser(null);
+    setUserAccount(null);
+    setAccountId(null);
+    setRole(null);
     router.push('/login');
   };
   
@@ -149,3 +154,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    
