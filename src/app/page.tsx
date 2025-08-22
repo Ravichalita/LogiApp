@@ -140,54 +140,32 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // Não faz nada até a autenticação estar completamente pronta.
-    if (authLoading) return;
-    
-    // Se não há conta ou permissões, limpa a lista e encerra.
-    if (!accountId || !userAccount) {
-      setRentals([]);
+    // Wait until auth is complete and we have an accountId
+    if (authLoading || !accountId) {
       return;
     }
-
-    const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
+    
+    // Determine if the user is an admin or has specific permissions to view all rentals
+    const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
     
-    let unsubscribe = () => {};
-
-    // Função para (re)inscrever no listener
-    const subscribeToRentals = () => {
-      // Cancela a inscrição anterior, se houver
-      unsubscribe(); 
-
-      unsubscribe = getPopulatedRentals(
-        accountId,
-        (data) => {
-          setRentals(data);
-          setError(null); // Limpa erros em caso de sucesso
-        },
-        userIdToFilter,
-        async () => { // Callback de erro
-            console.error("Firestore permission-denied. Attempting token refresh and retry...");
-            try {
-                if (user) {
-                    await user.getIdToken(true); // Força refresh do token
-                    // Não re-inscrevemos aqui para evitar loop infinito.
-                    // A mudança de estado no onIdTokenChanged deve idealmente resolver.
-                    // Se o erro persistir, pode indicar um problema nas regras.
-                }
-            } catch (e) {
-                console.error("Token refresh failed:", e);
-                setError(new Error("Falha ao atualizar permissões. Tente recarregar a página."));
-            }
-        }
-      );
-    }
+    const unsubscribe = getPopulatedRentals(
+      accountId,
+      (data) => {
+        setRentals(data);
+        setError(null); // Clear errors on successful data fetch
+      },
+      (err) => {
+        console.error("Firestore permission denied:", err);
+        setError(err); // Set error state to display to the user
+      },
+      userIdToFilter
+    );
     
-    subscribeToRentals();
-    
-    // Cleanup: cancela a inscrição quando o componente desmontar ou as dependências mudarem
+    // Cleanup subscription on component unmount
     return () => unsubscribe();
   }, [authLoading, accountId, userAccount, user]);
+
 
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -223,7 +201,7 @@ export default function HomePage() {
             </div>
             <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
-                Não foi possível carregar os aluguéis. Por favor, recarregue a página. Se o problema persistir, contate o suporte.
+                Não foi possível carregar os aluguéis. Verifique suas permissões e recarregue a página. Se o problema persistir, contate o suporte.
             </p>
              <Button onClick={() => window.location.reload()}>
                 Recarregar Página
@@ -232,7 +210,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0 && !authLoading) {
+  if (!authLoading && rentals.length === 0) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -316,3 +294,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

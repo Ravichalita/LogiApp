@@ -7,7 +7,7 @@ import { onIdTokenChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount, UserRole } from '@/lib/types';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(firebaseUser);
       
       try {
-        // 1. Enviar token ao servidor para garantir/criar user doc e claims
         const token = await firebaseUser.getIdToken();
         const res = await fetch('/api/ensure-user', {
           method: 'POST',
@@ -64,10 +63,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Falha ao garantir o documento do usuário: ' + res.statusText);
         }
 
-        // 2. Forçar refresh do token para pegar as custom claims que o backend pode ter setado
-        await firebaseUser.getIdToken(true);
+        await firebaseUser.getIdToken(true); // Force refresh token
 
-        // 3. Carregar o documento do usuário no Firestore client
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDocSnap = await getDoc(userDocRef);
         
@@ -84,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        console.error("[AuthContext] Error:", error);
         setUserAccount(null);
         setAccountId(null);
         setRole(null);
@@ -145,3 +142,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    
