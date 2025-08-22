@@ -42,13 +42,21 @@ interface RentalFormProps {
   rentalPrices?: RentalPrice[];
 }
 
-const formatCurrencyInput = (value: string | number): string => {
-  if (value === '' || value === null || value === undefined) return '';
-  let stringValue = String(value).replace(/\D/g, '');
-  if (stringValue === '') return '';
-  const numberValue = parseFloat(stringValue) / 100;
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numberValue);
+const formatCurrencyForInput = (valueInCents: string): string => {
+    if (!valueInCents) return '0,00';
+    const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
+    const reais = Math.floor(numericValue / 100);
+    const centavos = (numericValue % 100).toString().padStart(2, '0');
+    return `${reais.toLocaleString('pt-BR')},${centavos}`;
 };
+
+const formatCurrencyForDisplay = (value: number): string => {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+};
+
 
 export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFormProps) {
   const { accountId, user } = useAuth();
@@ -129,9 +137,17 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
     setPriceId(selectedPriceId);
     const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
     if(selectedPrice) {
-        setValue(formatCurrencyInput(selectedPrice.value));
+        // Here we format the value which is in Reais (e.g. 250.00) to cents string ("25000")
+        const valueInCents = (selectedPrice.value * 100).toString();
+        setValue(formatCurrencyForInput(valueInCents));
     }
   }
+  
+  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    setValue(formatCurrencyForInput(rawValue));
+  }
+
 
   return (
     <form action={handleFormAction} className="space-y-6">
@@ -267,7 +283,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                     <SelectContent>
                         {rentalPrices.map(p => (
                             <SelectItem key={p.id} value={p.id}>
-                                {p.name} ({formatCurrencyInput(p.value)})
+                                {p.name} ({formatCurrencyForDisplay(p.value)})
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -276,10 +292,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                     id="value"
                     name="value"
                     value={value}
-                    onChange={(e) => setValue(formatCurrencyInput(e.target.value))}
+                    onChange={handleValueChange}
                     placeholder="R$ 0,00"
                     required
-                    className="w-1/3"
+                    className="w-1/3 text-right"
                     />
             </div>
         ) : (
@@ -287,9 +303,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             id="value"
             name="value"
             value={value}
-            onChange={(e) => setValue(formatCurrencyInput(e.target.value))}
+            onChange={handleValueChange}
             placeholder="R$ 0,00"
             required
+            className="text-right"
             />
         )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
