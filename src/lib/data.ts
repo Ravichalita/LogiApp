@@ -99,7 +99,8 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
 export function getPopulatedRentals(
     accountId: string, 
     callback: (rentals: PopulatedRental[]) => void,
-    assignedToId?: string
+    assignedToId?: string,
+    onError?: (error: Error) => void
 ): Unsubscribe {
     // Use a collection group query to fetch rentals across all accounts.
     const rentalsCollectionGroup = collectionGroup(db, 'rentals');
@@ -137,7 +138,11 @@ export function getPopulatedRentals(
         callback(populatedRentals.filter(r => r.client && r.dumpster && r.assignedToUser));
     }, (error) => {
         console.error("Error fetching populated rentals:", error);
-        callback([]);
+        if (onError) {
+            onError(error);
+        } else {
+            callback([]);
+        }
     });
 
     return unsubscribe;

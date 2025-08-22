@@ -7,8 +7,7 @@ import { onIdTokenChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount, UserRole } from '@/lib/types';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -37,70 +36,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await signOut(auth);
-    setUser(null);
-    setUserAccount(null);
-    setAccountId(null);
-    setRole(null);
-    router.push('/login');
-  }, [auth, router]);
+  }, [auth]);
 
   useEffect(() => {
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      if (firebaseUser) {
-        try {
-          const idToken = await firebaseUser.getIdToken();
-          // Force refresh the token to get custom claims. This is crucial.
-          await firebaseUser.getIdToken(true);
-          setUser(firebaseUser);
-
-          // Now that we have a fresh token, ensure the user document exists on the server.
-          // This call also sets custom claims if they are missing.
-          const res = await fetch('/api/ensure-user', {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${idToken}` },
-          });
-
-          if (!res.ok) {
-             throw new Error('Falha ao garantir o documento do usuário.');
-          }
-          
-          const { accountId: userAccountId } = await res.json();
-
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const unsubscribeDoc = onSnapshot(userDocRef, (userDocSnap) => {
-            if (userDocSnap.exists()) {
-              const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-              setUserAccount(userAccountData);
-              setAccountId(userAccountData.accountId);
-              setRole(userAccountData.role);
-              setLoading(false); // All data is loaded, stop loading.
-            } else {
-               // This should ideally not happen after ensure-user call, but as a fallback:
-               console.error("User document not found after server-side check.");
-               logout();
-            }
-          }, (error) => {
-            console.error("Erro ao buscar documento do usuário:", error);
-            logout();
-          });
-          return () => unsubscribeDoc();
-
-        } catch (error) {
-          console.error("[ensureUserDocumentOnClient] Error:", error);
-          logout();
-        }
-      } else {
+      if (!firebaseUser) {
         setUser(null);
         setUserAccount(null);
         setAccountId(null);
         setRole(null);
         setLoading(false);
+        return;
+      }
+      
+      setUser(firebaseUser);
+      
+      try {
+        // 1. Enviar token ao servidor para garantir/criar user doc e claims
+        const token = await firebaseUser.getIdToken();
+        const res = await fetch('/api/ensure-user', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Falha ao garantir o documento do usuário: ' + res.statusText);
+        }
+
+        // 2. Forçar refresh do token para pegar as custom claims que o backend pode ter setado
+        await firebaseUser.getIdToken(true);
+
+        // 3. Carregar o documento do usuário no Firestore client
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists()) {
+            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+            setUserAccount(userAccountData);
+            setAccountId(userAccountData.accountId);
+            setRole(userAccountData.role);
+        } else {
+             console.error("User document not found in Firestore after server-side check.");
+             setUserAccount(null);
+             setAccountId(null);
+             setRole(null);
+        }
+
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        setUserAccount(null);
+        setAccountId(null);
+        setRole(null);
+      } finally {
+        setLoading(false);
       }
     });
 
     return () => unsubscribeAuth();
-  }, [auth, db, logout]);
+  }, [auth, db]);
 
   useEffect(() => {
     if (loading) return;

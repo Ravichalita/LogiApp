@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useAuth } from '@/context/auth-context';
+import { useEffect, useState, useMemo, useContext } from 'react';
+import { AuthContext, useAuth } from '@/context/auth-context';
 import { getPopulatedRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
@@ -51,44 +51,84 @@ const filterOptions: { label: string, value: RentalStatusFilter }[] = [
 
 function RentalCardSkeleton() {
     return (
-        <Card className="h-full flex flex-col">
-            <CardHeader>
-                 <div className="flex items-center justify-between">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-5 w-20" />
-                </div>
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-1/3 mt-1" />
-            </CardHeader>
-            <CardContent className="flex-grow flex flex-col justify-between">
-                <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                         <Skeleton className="h-5 w-5 rounded-full mt-1" />
-                        <div className="flex flex-col gap-2 w-full">
-                            <Skeleton className="h-4 w-1/4" />
-                            <Skeleton className="h-5 w-full" />
+        <div className="space-y-4">
+                 <Card className="h-full flex flex-col">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-5 w-20" />
                         </div>
-                    </div>
-                     <div className="flex items-start gap-3">
-                         <Skeleton className="h-5 w-5 rounded-full mt-1" />
-                        <div className="flex flex-col gap-2 w-full">
-                            <Skeleton className="h-4 w-1/4" />
-                            <Skeleton className="h-5 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-4 w-1/3 mt-1" />
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col justify-between">
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-full" />
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-3/4" />
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-1/2" />
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                     <div className="flex items-start gap-3">
-                         <Skeleton className="h-5 w-5 rounded-full mt-1" />
-                        <div className="flex flex-col gap-2 w-full">
-                            <Skeleton className="h-4 w-1/4" />
-                            <Skeleton className="h-5 w-1/2" />
+                        <div className="flex flex-col md:flex-row w-full gap-2 mt-4">
+                            <Skeleton className="h-10 w-full" />
                         </div>
-                    </div>
-                </div>
-                 <div className="flex flex-col md:flex-row w-full gap-2 mt-4">
-                    <Skeleton className="h-10 w-full" />
-                </div>
-            </CardContent>
-        </Card>
+                    </CardContent>
+                </Card>
+                 <Card className="h-full flex flex-col">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-5 w-20" />
+                        </div>
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-4 w-1/3 mt-1" />
+                    </CardHeader>
+                    <CardContent className="flex-grow flex flex-col justify-between">
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-full" />
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-3/4" />
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-1/2" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col md:flex-row w-full gap-2 mt-4">
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+        </div>
     )
 }
 
@@ -96,28 +136,57 @@ function RentalCardSkeleton() {
 export default function HomePage() {
   const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
+  const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // We wait until auth is no longer loading and we have an accountId
-    if (!authLoading && accountId && userAccount) {
-      const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
-      const userIdToFilter = canViewAll ? undefined : user?.uid;
+    // Não faz nada até a autenticação estar completamente pronta.
+    if (authLoading) return;
+    
+    // Se não há conta ou permissões, limpa a lista e encerra.
+    if (!accountId || !userAccount) {
+      setRentals([]);
+      return;
+    }
 
-      const unsubscribe = getPopulatedRentals(
+    const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
+    const userIdToFilter = canViewAll ? undefined : user?.uid;
+    
+    let unsubscribe = () => {};
+
+    // Função para (re)inscrever no listener
+    const subscribeToRentals = () => {
+      // Cancela a inscrição anterior, se houver
+      unsubscribe(); 
+
+      unsubscribe = getPopulatedRentals(
         accountId,
         (data) => {
           setRentals(data);
+          setError(null); // Limpa erros em caso de sucesso
         },
-        userIdToFilter
+        userIdToFilter,
+        async () => { // Callback de erro
+            console.error("Firestore permission-denied. Attempting token refresh and retry...");
+            try {
+                if (user) {
+                    await user.getIdToken(true); // Força refresh do token
+                    // Não re-inscrevemos aqui para evitar loop infinito.
+                    // A mudança de estado no onIdTokenChanged deve idealmente resolver.
+                    // Se o erro persistir, pode indicar um problema nas regras.
+                }
+            } catch (e) {
+                console.error("Token refresh failed:", e);
+                setError(new Error("Falha ao atualizar permissões. Tente recarregar a página."));
+            }
+        }
       );
-      
-      return () => unsubscribe();
-    } else if (!authLoading) {
-      // If auth is done loading but there's no accountId, clear rentals
-      setRentals([]);
     }
-    // No cleanup needed if still loading
+    
+    subscribeToRentals();
+    
+    // Cleanup: cancela a inscrição quando o componente desmontar ou as dependências mudarem
+    return () => unsubscribe();
   }, [authLoading, accountId, userAccount, user]);
 
   const filteredAndSortedRentals = useMemo(() => {
@@ -141,10 +210,24 @@ export default function HomePage() {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
-            <div className="space-y-4">
-                 <RentalCardSkeleton />
-                 <RentalCardSkeleton />
+            <RentalCardSkeleton />
+        </div>
+    )
+  }
+  
+  if (error) {
+       return (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
+             <div className="p-4 bg-destructive/10 rounded-full mb-4">
+                <Truck className="h-10 w-10 text-destructive" />
             </div>
+            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+                Não foi possível carregar os aluguéis. Por favor, recarregue a página. Se o problema persistir, contate o suporte.
+            </p>
+             <Button onClick={() => window.location.reload()}>
+                Recarregar Página
+            </Button>
         </div>
     )
   }
