@@ -1,40 +1,32 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    function isAuth() {
-      return request.auth != null;
+    function isAccountMember(accountId) {
+      return request.auth.token.accountId == accountId;
     }
-
+    
     function isAdmin() {
-      return isAuth() && request.auth.token.role == 'admin';
+      return request.auth.token.role == 'admin';
     }
 
-    function isOwner(accountId) {
-      return isAuth() && request.auth.token.accountId == accountId;
-    }
-
-    // Accounts can be read by their members.
-    // Only admins can create/update account details.
     match /accounts/{accountId} {
-      allow read: if isOwner(accountId);
-      allow write: if isAdmin() && isOwner(accountId);
+      allow read: if isAccountMember(accountId);
+      allow write: if isAdmin() && isAccountMember(accountId);
 
-      // Sub-collections can be read/listed by account members.
-      // Writing is restricted to admins.
+      // Subcollections
       match /{collection}/{docId} {
-        allow read, list: if isOwner(accountId);
-        allow write: if isAdmin() && isOwner(accountId);
+        allow read, write: if isAccountMember(accountId) && (collection == 'clients' || collection == 'dumpsters' || collection == 'rentals' || collection == 'completed_rentals');
       }
     }
 
-    // User documents can only be read by other users in the same account.
-    // This prevents listing all users in the system.
-    // User documents are written via server-side actions, not directly by clients.
     match /users/{userId} {
-      allow get: if isAuth() && request.auth.token.accountId == resource.data.accountId;
-      allow read, write: if false; // List/write is disallowed from client.
+      allow read: if request.auth.uid == userId || (exists(resource.data) && request.auth.token.accountId == resource.data.accountId);
+      allow create; // Allow creation for new sign-ups, ensureUserDocument handles security.
+      allow update: if request.auth.uid == userId || isAdmin();
+      allow delete: if isAdmin();
     }
   }
 }

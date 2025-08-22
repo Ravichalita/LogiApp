@@ -130,55 +130,56 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 
 // #region Completed Rental Data
 export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
-    const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const rentals = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            const completedDate = data.completedDate?.toDate ? data.completedDate.toDate() : new Date();
-            return {
-                id: doc.id,
-                ...data,
-                completedDate: completedDate,
-            } as CompletedRental;
-        });
+  const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
+  const q = query(rentalsCollection, where("accountId", "==", accountId));
 
-        const sortedRentals = rentals.sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
-
-        const populatePromises = sortedRentals.map(async (rental) => {
-            try {
-                const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rental.dumpsterId));
-                const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rental.clientId));
-                const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
-
-                return {
-                    ...rental,
-                    dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
-                    client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-                };
-            } catch (error) {
-                console.error(`Error populating rental ${rental.id}:`, error);
-                return null;
-            }
-        });
-
-        Promise.all(populatePromises).then(populatedResults => {
-            const validPopulatedRentals = populatedResults.filter(
-                (r): r is PopulatedCompletedRental => r !== null && !!r.client && !!r.dumpster
-            );
-            callback(validPopulatedRentals);
-        }).catch(error => {
-            console.error("Error in Promise.all for populating rentals:", error);
-            callback([]);
-        });
-
-    }, (error) => {
-        console.error("Error fetching populated completed rentals:", error);
-        callback([]);
+  const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+    const rentals: CompletedRental[] = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        completedDate: data.completedDate.toDate(),
+      } as CompletedRental;
     });
 
-    return unsubscribe;
+    if (rentals.length === 0) {
+      callback([]);
+      return;
+    }
+
+    try {
+      const populatePromises = rentals.map(async (rental) => {
+        const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rental.dumpsterId));
+        const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rental.clientId));
+        const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
+
+        return {
+          ...rental,
+          dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
+          client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
+        };
+      });
+
+      const populatedResults = await Promise.all(populatePromises);
+      const validPopulatedRentals = populatedResults.filter(
+        (r): r is PopulatedCompletedRental => r !== null && !!r.client && !!r.dumpster
+      );
+      
+      const sortedRentals = validPopulatedRentals.sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
+      
+      callback(sortedRentals);
+
+    } catch (error) {
+      console.error("Error populating completed rentals:", error);
+      callback([]);
+    }
+  }, (error) => {
+    console.error("Error fetching completed rentals snapshot:", error);
+    callback([]);
+  });
+
+  return unsubscribe;
 }
 // #endregion
 
