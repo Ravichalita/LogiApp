@@ -15,7 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useMemo } from 'react';
-import { format, getMonth, getYear } from 'date-fns';
+import { format, getMonth, getYear, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface StatsDisplayProps {
@@ -52,8 +52,13 @@ export function StatsDisplay({ rentals }: StatsDisplayProps) {
     let revenueThisYear = 0;
 
     for (const rental of rentals) {
-      const rentalYear = getYear(rental.completedDate);
-      const rentalMonth = getMonth(rental.completedDate);
+      // Ensure completedDate is a Date object
+      const completedDate = typeof rental.completedDate === 'string' 
+        ? parseISO(rental.completedDate) 
+        : rental.completedDate;
+        
+      const rentalYear = getYear(completedDate);
+      const rentalMonth = getMonth(completedDate);
 
       if (rentalYear === currentYear) {
         rentalsThisYear++;
