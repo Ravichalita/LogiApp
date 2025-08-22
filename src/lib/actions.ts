@@ -319,7 +319,6 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     value: numericValue,
     status: 'Pendente',
     createdBy: createdBy,
-    assignedTo: createdBy,
   });
 
   if (!validatedFields.success) {
