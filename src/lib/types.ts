@@ -91,7 +91,7 @@ export const UpdateRentalSchema = z.object({
 });
 
 
-export const CompletedRentalSchema = RentalSchema.omit({ status: true }).extend({
+export const CompletedRentalSchema = RentalSchema.extend({
     originalRentalId: z.string(),
     completedDate: z.custom<FieldValue>(),
     rentalDays: z.number().positive(),

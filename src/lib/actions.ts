@@ -390,16 +390,9 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             totalValue,
             accountId, 
         };
-
-        const validatedFields = CompletedRentalSchema.safeParse(completedRentalData);
-
-        if (!validatedFields.success) {
-            console.error("Validation failed for completed rental:", validatedFields.error.flatten().fieldErrors);
-            throw new Error("Dados inválidos para finalizar o aluguel.");
-        }
-
+        
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
-        batch.set(newCompletedRentalRef, validatedFields.data);
+        batch.set(newCompletedRentalRef, completedRentalData);
 
         batch.delete(rentalRef);
         
