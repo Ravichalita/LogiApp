@@ -4,7 +4,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals } from '@/lib/data';
-import type { PopulatedRental, Rental } from '@/lib/types';
+import type { PopulatedRental } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
 import {
   Accordion,
@@ -20,8 +20,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ptBR } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -34,7 +32,7 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   if (isAfter(today, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
-  if (isToday(rentalDate) || isAfter(today, rentalDate) && isBefore(today, returnDate) || isToday(returnDate)) {
+  if (isToday(rentalDate) || (isAfter(today, rentalDate) && isBefore(today, returnDate)) || isToday(returnDate)) {
      return { text: 'Ativo', variant: 'success', order: 2 };
   }
   if (isBefore(today, rentalDate)) {
@@ -99,16 +97,13 @@ export default function HomePage() {
   const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
-  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) {
-      setDataLoading(true);
       return;
     }
 
     if (accountId && userAccount) {
-      setDataLoading(true);
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user?.uid;
 
@@ -116,16 +111,13 @@ export default function HomePage() {
         accountId,
         (data) => {
           setRentals(data);
-          setDataLoading(false);
         },
         userIdToFilter
       );
       
       return () => unsubscribe();
     } else {
-      // If not authenticated or still loading, clear existing rentals and stop loading
       setRentals([]);
-      setDataLoading(false);
     }
   }, [authLoading, accountId, user, userAccount]);
 
@@ -146,7 +138,7 @@ export default function HomePage() {
     });
   }, [rentals, statusFilter]);
 
-  if (authLoading || dataLoading) {
+  if (authLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
@@ -158,7 +150,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0) {
+  if (rentals.length === 0 && !authLoading) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
