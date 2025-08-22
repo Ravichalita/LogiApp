@@ -38,8 +38,14 @@ export const RentalSchema = z.object({
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
   deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
+  latitude: z.preprocess(
+    (val) => (val === undefined || val === null || val === '' ? undefined : parseFloat(String(val))),
+    z.number().optional()
+  ),
+  longitude: z.preprocess(
+    (val) => (val === undefined || val === null || val === '' ? undefined : parseFloat(String(val))),
+    z.number().optional()
+  ),
   value: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),

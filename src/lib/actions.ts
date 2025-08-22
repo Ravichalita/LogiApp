@@ -241,8 +241,6 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   const validatedFields = RentalSchema.safeParse({
     ...rawData,
     value: numericValue,
-    latitude: rawData.latitude ? parseFloat(rawData.latitude as string) : undefined,
-    longitude: rawData.longitude ? parseFloat(rawData.longitude as string) : undefined,
     status: 'Pendente',
     createdBy: createdBy,
     assignedTo: createdBy, // Default assignment to creator
