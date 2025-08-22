@@ -5,7 +5,7 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText, MoreVertical } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText, MoreVertical, Plus, Minus } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -191,10 +191,11 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="client-details" className="border-none">
-                <Separator />
-                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-center">
+                 <Separator />
+                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start group">
+                    <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
+                    <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
                     Detalhes do Cliente
-                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 ml-1" />
                 </AccordionTrigger>
                 <AccordionContent className="pt-3 space-y-3">
                      <div className="flex items-start gap-3">
@@ -284,3 +285,5 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
+
+    
