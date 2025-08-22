@@ -3,16 +3,17 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onIdTokenChanged, User, signOut } from 'firebase/auth';
+import { onIdTokenChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
-import type { UserAccount } from '@/lib/types';
+import type { UserAccount, UserRole } from '@/lib/types';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
   userAccount: UserAccount | null;
   accountId: string | null;
+  role: UserRole | null;
   loading: boolean;
   logout: () => Promise<void>;
 }
@@ -25,23 +26,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // Use onIdTokenChanged to listen for auth changes AND token refreshes
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
+      if (firebaseUser) {
+        try {
+          // Get token result to access custom claims
+          const tokenResult = await getIdTokenResult(firebaseUser);
+          const claims = tokenResult.claims as { accountId?: string; role?: UserRole };
+          
+          if (claims.accountId && claims.role) {
+            setAccountId(claims.accountId);
+            setRole(claims.role);
             setUser(firebaseUser);
-            // The rest of the logic (fetching user doc) will be triggered by the `user` state change
-        } else {
-            setUser(null);
-            setUserAccount(null);
-            setAccountId(null);
-            setLoading(false); // No user, stop loading
+          } else {
+            // This can happen briefly after signup before claims are set.
+            // Force a refresh to get the new claims.
+            await firebaseUser.getIdToken(true);
+            const refreshedTokenResult = await getIdTokenResult(firebaseUser);
+            const refreshedClaims = refreshedTokenResult.claims as { accountId?: string; role?: UserRole };
+
+            if (refreshedClaims.accountId && refreshedClaims.role) {
+                setAccountId(refreshedClaims.accountId);
+                setRole(refreshedClaims.role);
+                setUser(firebaseUser);
+            } else {
+                 // If claims are still not present, something is wrong.
+                 console.error("Claims não encontradas no token. Deslogando.");
+                 await signOut(auth);
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao obter custom claims:", error);
+          await signOut(auth);
         }
+      } else {
+        setUser(null);
+        setUserAccount(null);
+        setAccountId(null);
+        setRole(null);
+        setLoading(false);
+      }
     });
 
     return () => unsubscribeAuth();
@@ -49,28 +79,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
-      // If user is null (logged out), no need to fetch profile
+      setLoading(false);
       return;
     }
     
-    // User is authenticated, listen to their document in Firestore for profile info
     const userDocRef = doc(db, 'users', user.uid);
     const unsubscribeDoc = onSnapshot(userDocRef, 
       (userDocSnap) => {
         if (userDocSnap.exists()) {
           const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
           setUserAccount(userAccountData);
-          setAccountId(userAccountData.accountId);
         } else {
-          console.error("User document not found for authenticated user. Logging out.");
+          console.error("Documento do usuário não encontrado. Deslogando.");
           signOut(auth);
         }
-        // Finish loading only after we have the user and their profile (or lack thereof)
         setLoading(false); 
       }, 
       (error) => {
-        console.error("Error fetching user document:", error);
-        signOut(auth); // Log out on critical errors
+        console.error("Erro ao buscar documento do usuário:", error);
+        signOut(auth);
         setLoading(false);
       }
     );
@@ -78,14 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribeDoc();
   }, [user, auth, db]);
 
-
   useEffect(() => {
-    if (loading) return; // Don't redirect until we are sure of the auth state
+    if (loading) return;
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
-    
-    // Special case: an existing user can access signup page to invite others
     const isInviteFlow = pathname.startsWith('/signup') && !!user;
 
     if (user) {
@@ -95,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/');
       }
     } else {
-      // No user, but not on an auth-allowed page, so redirect to login
       if (!isNonAuthRoute) {
         router.push('/login');
       }
@@ -104,17 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await signOut(auth);
-    // Clear state immediately on logout
-    setUser(null);
-    setUserAccount(null);
-    setAccountId(null);
-    setLoading(true); // Set to loading while we redirect
     router.push('/login');
   };
   
   const isAuthPage = nonAuthRoutes.includes(pathname) || pathname === '/verify-email';
 
-  // Show a global loader while we are verifying auth state and fetching user profile
   if (loading && !isAuthPage) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -123,8 +140,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // If user is authenticated but doesn't have an accountId claim, show an error/wait screen.
+  if (user && !accountId && !loading && !isAuthPage) {
+      return (
+          <div className="flex h-screen flex-col items-center justify-center gap-4 text-center">
+               <Spinner size="large" />
+               <p className="text-muted-foreground">Configurando sua conta... <br/>Se esta tela persistir, tente sair e entrar novamente.</p>
+               <Button onClick={logout} variant="outline">Sair</Button>
+          </div>
+      )
+  }
+
   return (
-    <AuthContext.Provider value={{ user, userAccount, accountId, loading, logout }}>
+    <AuthContext.Provider value={{ user, userAccount, accountId, role, loading, logout }}>
       {children}
     </AuthContext.Provider>
   );

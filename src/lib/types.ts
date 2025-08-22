@@ -2,14 +2,16 @@
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 
+const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
+
 // #region Base Schemas
 export const ClientSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   phone: z.string().min(10, { message: "O telefone deve ter pelo menos 10 caracteres." }),
   email: z.string().email({ message: "Formato de e-mail inválido." }).optional().or(z.literal('')),
   address: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-  latitude: z.coerce.number().optional(),
-  longitude: z.coerce.number().optional(),
+  latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
+  longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
   observations: z.string().optional(),
 });
 
@@ -38,14 +40,8 @@ export const RentalSchema = z.object({
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
   deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-  latitude: z.preprocess(
-    (val) => (val === undefined || val === null || val === '' ? undefined : parseFloat(String(val))),
-    z.number().optional()
-  ),
-  longitude: z.preprocess(
-    (val) => (val === undefined || val === null || val === '' ? undefined : parseFloat(String(val))),
-    z.number().optional()
-  ),
+  latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
+  longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
   value: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
@@ -95,11 +91,11 @@ export const SignupSchema = z
 
 
 // #region TypeScript Types
-export type Client = z.infer<typeof ClientSchema> & { id: string };
-export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string };
+export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
+export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
-export type Rental = z.infer<typeof RentalSchema> & { id: string };
-export type CompletedRental = z.infer<typeof CompletedRentalSchema> & { id: string; completedDate: Date };
+export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
+export type CompletedRental = z.infer<typeof CompletedRentalSchema> & { id: string; completedDate: Date, accountId: string };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
 export type UserStatus = UserAccount['status'];
@@ -107,7 +103,7 @@ export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada';
-export type EnhancedDumpster = Dumpster & { derivedStatus: string }; // Using string to accommodate "Reservada para DD/MM/YY"
+export type EnhancedDumpster = Dumpster & { derivedStatus: string };
 export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId'> & {
     id: string;
     dumpster: Dumpster | null;

@@ -64,7 +64,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
           email,
           password,
           displayName: name,
-          emailVerified: false,
+          emailVerified: false, // Set to true for dev purposes if needed
       });
 
       await ensureUserDocument(newUserRecord, accountIdToJoin);
@@ -105,8 +105,8 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
-        await adminAuth.deleteUser(userId);
         await userRef.delete();
+        await adminAuth.deleteUser(userId);
         revalidatePath('/team');
         return { message: 'success' };
     } catch (e) {
@@ -133,6 +133,7 @@ export async function createClient(accountId: string, prevState: any, formData: 
     const clientsCollection = getFirestore().collection(`accounts/${accountId}/clients`);
     await clientsCollection.add({
       ...validatedFields.data,
+      accountId,
       createdAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/clients');
@@ -170,7 +171,6 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 
 export async function deleteClientAction(accountId: string, clientId: string) {
   try {
-    // Optional: Check for associated rentals before deleting
     await getFirestore().doc(`accounts/${accountId}/clients/${clientId}`).delete();
     revalidatePath('/clients');
     return { message: 'success' };
@@ -200,6 +200,7 @@ export async function createDumpster(accountId: string, prevState: any, formData
     const dumpstersCollection = getFirestore().collection(`accounts/${accountId}/dumpsters`);
     await dumpstersCollection.add({
       ...validatedFields.data,
+      accountId,
       createdAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
@@ -231,7 +232,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
       updatedAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
-    revalidatePath('/'); // Also revalidate home page as dumpster status might affect rentals
+    revalidatePath('/');
     return { message: 'success' };
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) };
@@ -277,7 +278,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     value: numericValue,
     status: 'Pendente',
     createdBy: createdBy,
-    assignedTo: createdBy, // Default assignment to creator
+    assignedTo: createdBy,
   });
 
   if (!validatedFields.success) {
@@ -293,6 +294,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     
     await getFirestore().collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
+      accountId,
       createdAt: FieldValue.serverTimestamp(),
     });
 
@@ -346,11 +348,9 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             throw new Error("Dados inválidos para finalizar o aluguel.");
         }
 
-        // Add to completed_rentals
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, validatedFields.data);
 
-        // Delete from active rentals
         batch.delete(rentalRef);
         
         await batch.commit();
@@ -412,6 +412,10 @@ export async function resetBillingDataAction(accountId: string) {
   try {
     const completedRentalsRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`);
     const querySnapshot = await completedRentalsRef.get();
+
+    if(querySnapshot.empty){
+        return { message: 'success' };
+    }
 
     const batch = getFirestore().batch();
     querySnapshot.docs.forEach((doc) => {

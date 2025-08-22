@@ -15,9 +15,6 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     if (!domain) return null;
-    // In a real app, you might query a dedicated 'domains' collection
-    // to map company domains to account IDs.
-    // For this app, we'll keep it simple and not auto-join accounts by domain.
     return null;
 }
 
@@ -36,7 +33,7 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
     try {
         const userDoc = await userDocRef.get();
         if (userDoc.exists) {
-            console.warn(`User document for ${userRecord.uid} already exists.`);
+            console.warn(`Documento de usuário para ${userRecord.uid} já existe.`);
             const accountId = userDoc.data()?.accountId;
             if (accountId) {
                  const role = userDoc.data()?.role || 'viewer';
@@ -49,29 +46,23 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
 
         let accountId: string;
         let role: 'admin' | 'viewer';
-        let accountName: string;
 
         if (existingAccountId) {
             accountId = existingAccountId;
-            role = 'viewer'; // Users invited to an existing account start as viewers
-            const accountDoc = await firestore.doc(`accounts/${accountId}`).get();
-            accountName = accountDoc.exists() ? accountDoc.data()?.name : "Equipe";
-
+            role = 'viewer';
         } else {
-            // New user, new account
             const accountRef = firestore.collection("accounts").doc();
             accountId = accountRef.id;
-            role = 'admin'; // The first user is the admin
-            accountName = `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`;
+            role = 'admin'; 
             await accountRef.set({
                 ownerId: userRecord.uid,
-                name: accountName,
+                name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
                 createdAt: FieldValue.serverTimestamp(),
             });
         }
 
         const userAccountData = {
-            email: userRecord.email,
+            email: userRecord.email!,
             name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário',
             accountId: accountId,
             role: role,
@@ -81,16 +72,14 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
 
         await userDocRef.set(userAccountData);
         
-        // This is the most critical step: setting the custom claims on the token.
         await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
 
         return accountId;
     } catch (error) {
-        console.error("Error in ensureUserDocument, attempting to clean up Auth user:", error);
-        // If anything fails, delete the user to prevent an orphaned auth account.
+        console.error("Erro em ensureUserDocument, tentando limpar usuário Auth:", error);
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
-            console.error(`CRITICAL: Failed to cleanup auth user ${userRecord.uid} after doc creation failure. Please delete manually.`, delErr)
+            console.error(`CRÍTICO: Falha ao limpar usuário auth ${userRecord.uid} após falha na criação do documento. Por favor, delete manualmente.`, delErr)
         });
-        throw new Error(`Failed to create user and account: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Falha ao criar usuário e conta: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
