@@ -47,13 +47,13 @@ export function ResetButton({ accountId }: { accountId: string }) {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="flex justify-center items-center mt-8">
        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <div className="flex items-center space-x-2">
                 <Button 
                     variant="destructive"
                     size="icon"
-                    className="rounded-full h-12 w-12 z-10"
+                    className="rounded-full h-12 w-12 z-10 flex-shrink-0"
                     onClick={() => setIsExpanded(!isExpanded)}
                     aria-expanded={isExpanded}
                 >
@@ -62,14 +62,14 @@ export function ResetButton({ accountId }: { accountId: string }) {
                 
                 <div 
                     className={cn(
-                        "transition-all duration-300 ease-in-out overflow-hidden",
+                        "transition-all duration-300 ease-in-out overflow-hidden flex items-center",
                         isExpanded ? "max-w-xs" : "max-w-0"
                     )}
                 >
                     <AlertDialogTrigger asChild>
                          <Button
                             variant="destructive"
-                            className="whitespace-nowrap -ml-4 pl-8 pr-4"
+                            className="whitespace-nowrap -ml-4 pl-8 pr-4 h-12 rounded-r-full rounded-l-none"
                             onClick={() => setIsDialogOpen(true)}
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
