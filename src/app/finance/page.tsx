@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, Truck, TrendingUp } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { DefaultPriceForm } from './default-price-form';
+import { RentalPricesForm } from './rental-prices-form';
 
 function formatCurrency(value: number | undefined | null) {
     if (value === undefined || value === null) {
@@ -150,7 +150,7 @@ export default function FinancePage() {
                              <CardDescription>Ajustes de preços e custos para o sistema.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                           {isLoading || !account ? <Skeleton className="h-24 w-full" /> : <DefaultPriceForm account={account} />}
+                           {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
                         </CardContent>
                     </Card>
                 </div>

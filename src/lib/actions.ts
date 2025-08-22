@@ -6,7 +6,7 @@ import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, DefaultPriceSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
 import { ensureUserDocument } from './data-server';
 import { headers } from 'next/headers';
@@ -457,20 +457,22 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 // #endregion
 
 // #region Finance Actions
-export async function updateDefaultPriceAction(accountId: string, prevState: any, formData: FormData) {
-    const validatedFields = DefaultPriceSchema.safeParse(Object.fromEntries(formData.entries()));
-
+export async function updateRentalPricesAction(accountId: string, prevState: any, formData: FormData) {
+    const data = JSON.parse(formData.get('rentalPrices') as string);
+    const validatedFields = RentalPricesSchema.safeParse({ rentalPrices: data });
+    
     if (!validatedFields.success) {
         return {
-            error: validatedFields.error.flatten().fieldErrors.defaultRentalValue?.[0]
+            error: validatedFields.error.flatten().fieldErrors,
         };
     }
 
     try {
         const accountRef = getFirestore().doc(`accounts/${accountId}`);
         await accountRef.update({
-            defaultRentalValue: validatedFields.data.defaultRentalValue ?? FieldValue.delete()
+            rentalPrices: validatedFields.data.rentalPrices ?? []
         });
+        revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {
         return { error: handleFirebaseError(e) };

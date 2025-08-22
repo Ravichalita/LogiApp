@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useId } from 'react';
+import { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateRentalPricesAction } from '@/lib/actions';
@@ -11,8 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import type { Account, RentalPrice } from '@/lib/types';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 
@@ -83,6 +82,10 @@ export function RentalPricesForm({ account }: { account: Account }) {
     }
     
     const customFormAction = (formData: FormData) => {
+        // Clear previous formData and set the new one
+        for(let key of formData.keys()){
+            formData.delete(key);
+        }
         formData.set('rentalPrices', JSON.stringify(prices));
         formAction(formData);
     }
@@ -91,27 +94,31 @@ export function RentalPricesForm({ account }: { account: Account }) {
          <form action={customFormAction} className="space-y-4">
             <div className="space-y-3">
                 <Label>Tabela de Preços da Diária</Label>
-                {prices.map((price, index) => (
-                    <div key={price.id} className="flex items-center gap-2 p-2 border rounded-md">
-                       <div className="grid grid-cols-2 gap-2 flex-grow">
-                            <Input
-                                placeholder="Nome (Ex: Padrão 5m³)"
-                                value={price.name}
-                                onChange={e => handlePriceChange(price.id, 'name', e.target.value)}
-                                required
-                            />
-                             <Input
-                                placeholder="R$ 0,00"
-                                value={formatCurrencyInput(price.value)}
-                                onChange={e => handlePriceChange(price.id, 'value', e.target.value)}
-                                required
-                            />
-                       </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removePrice(price.id)} aria-label="Remover Preço">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                    </div>
-                ))}
+                {prices.length > 0 ? (
+                    prices.map((price) => (
+                        <div key={price.id} className="flex items-center gap-2 p-2 border rounded-md">
+                        <div className="grid grid-cols-2 gap-2 flex-grow">
+                                <Input
+                                    placeholder="Nome (Ex: Padrão 5m³)"
+                                    value={price.name}
+                                    onChange={e => handlePriceChange(price.id, 'name', e.target.value)}
+                                    required
+                                />
+                                <Input
+                                    placeholder="R$ 0,00"
+                                    value={formatCurrencyInput(price.value)}
+                                    onChange={e => handlePriceChange(price.id, 'value', e.target.value)}
+                                    required
+                                />
+                        </div>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removePrice(price.id)} aria-label="Remover Preço">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum preço cadastrado.</p>
+                )}
                  <Button type="button" variant="outline" size="sm" className="w-full" onClick={addPrice}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Adicionar Novo Preço

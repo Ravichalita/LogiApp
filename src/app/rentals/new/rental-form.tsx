@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Dumpster, Location, UserAccount } from '@/lib/types';
+import type { Client, Dumpster, Location, UserAccount, RentalPrice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,24 +39,18 @@ interface RentalFormProps {
   dumpsters: DumpsterForForm[];
   clients: Client[];
   team: UserAccount[];
-  defaultPrice?: number;
+  rentalPrices?: RentalPrice[];
 }
 
-const formatCurrencyInput = (value: number | string) => {
-    if (typeof value === 'number') {
-        value = value.toFixed(2);
-    }
-    let inputValue = String(value).replace(/\D/g, '');
-    if (!inputValue) return '';
-    inputValue = (Number(inputValue) / 100).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    });
-    return inputValue;
+const formatCurrencyInput = (value: string | number): string => {
+  if (value === '' || value === null || value === undefined) return '';
+  let stringValue = String(value).replace(/\D/g, '');
+  if (stringValue === '') return '';
+  const numberValue = parseFloat(stringValue) / 100;
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numberValue);
 };
 
-
-export function RentalForm({ dumpsters, clients, team, defaultPrice }: RentalFormProps) {
+export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFormProps) {
   const { accountId, user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -69,15 +63,13 @@ export function RentalForm({ dumpsters, clients, team, defaultPrice }: RentalFor
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState('');
+  const [priceId, setPriceId] = useState<string | undefined>();
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
     setRentalDate(new Date());
     setAssignedToId(user?.uid)
-    if(defaultPrice) {
-        setValue(formatCurrencyInput(defaultPrice));
-    }
-  }, [user, defaultPrice]);
+  }, [user]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -133,9 +125,13 @@ export function RentalForm({ dumpsters, clients, team, defaultPrice }: RentalFor
     });
   };
 
-  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(formatCurrencyInput(e.target.value));
-  };
+  const handlePriceSelection = (selectedPriceId: string) => {
+    setPriceId(selectedPriceId);
+    const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
+    if(selectedPrice) {
+        setValue(formatCurrencyInput(selectedPrice.value));
+    }
+  }
 
   return (
     <form action={handleFormAction} className="space-y-6">
@@ -262,14 +258,40 @@ export function RentalForm({ dumpsters, clients, team, defaultPrice }: RentalFor
       </div>
        <div className="space-y-2">
         <Label htmlFor="value">Valor da Diária (R$)</Label>
-        <Input
-          id="value"
-          name="value"
-          value={value}
-          onChange={handleValueChange}
-          placeholder="R$ 0,00"
-          required
-        />
+        {(rentalPrices && rentalPrices.length > 0) ? (
+            <div className="flex gap-2">
+                <Select onValueChange={handlePriceSelection} value={priceId}>
+                     <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma tabela de preço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {rentalPrices.map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                                {p.name} ({formatCurrencyInput(p.value)})
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                 <Input
+                    id="value"
+                    name="value"
+                    value={value}
+                    onChange={(e) => setValue(formatCurrencyInput(e.target.value))}
+                    placeholder="R$ 0,00"
+                    required
+                    className="w-1/3"
+                    />
+            </div>
+        ) : (
+            <Input
+            id="value"
+            name="value"
+            value={value}
+            onChange={(e) => setValue(formatCurrencyInput(e.target.value))}
+            placeholder="R$ 0,00"
+            required
+            />
+        )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 

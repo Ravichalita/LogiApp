@@ -31,13 +31,15 @@ export default function NewRentalPage() {
 
         const teamMembers = await fetchTeamMembers(accountId);
         setTeam(teamMembers);
-
+        
+        const unsubAccount = getAccount(accountId, (acc) => {
+            setAccount(acc);
+            // set loading false only after account is fetched
+            setLoading(false);
+        });
         const unsubDumpsters = getDumpsters(accountId, setDumpsters);
         const unsubRentals = getRentals(accountId, setAllRentals);
-        const unsubAccount = getAccount(accountId, setAccount);
         
-        setLoading(false);
-
         return () => {
           unsubDumpsters();
           unsubRentals();
@@ -116,7 +118,7 @@ export default function NewRentalPage() {
                 dumpsters={dumpstersForForm} 
                 clients={clients} 
                 team={team} 
-                defaultPrice={account?.defaultRentalValue}
+                rentalPrices={account?.rentalPrices}
              />
           ) : (
             <Alert>

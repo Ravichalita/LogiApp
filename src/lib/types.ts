@@ -5,10 +5,19 @@ import { FieldValue } from 'firebase-admin/firestore';
 const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
 
 // #region Account
+
+export const RentalPriceSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: "O nome da tabela de preço é obrigatório." }),
+  value: z.coerce.number().min(0, "O valor deve ser zero ou maior."),
+});
+
+export type RentalPrice = z.infer<typeof RentalPriceSchema>;
+
 export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
-    defaultRentalValue: z.number().positive().optional(),
+    rentalPrices: z.array(RentalPriceSchema).optional().default([]),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -112,9 +121,10 @@ export const SignupSchema = z
     path: ['confirmPassword'],
   });
 
-export const DefaultPriceSchema = z.object({
-    defaultRentalValue: z.coerce.number().min(0, "O valor deve ser zero ou maior.").optional(),
+export const RentalPricesSchema = z.object({
+    rentalPrices: z.array(RentalPriceSchema).optional().default([]),
 });
+
 // #endregion
 
 
