@@ -10,6 +10,7 @@ import {
   doc,
   getDoc,
   where,
+  collectionGroup,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
 import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental, UserAccount } from './types';
@@ -128,16 +129,11 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 // #endregion
 
 // #region Completed Rental Data
-export function getPopulatedCompletedRentals(callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
-    // This query now fetches across all accounts, as per the open security rule.
-    const rentalsCollectionGroup = collectionGroup(db, 'completed_rentals');
-
-    const unsubscribe = onSnapshot(rentalsCollectionGroup, (querySnapshot) => {
-        if (querySnapshot.empty) {
-            callback([]);
-            return;
-        }
-
+export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
+    const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -148,12 +144,6 @@ export function getPopulatedCompletedRentals(callback: (rentals: PopulatedComple
         });
 
         const populatePromises = rentals.map(async (rental) => {
-            // We need to fetch the associated client/dumpster from the correct account.
-            const accountId = rental.accountId;
-            if (!accountId) {
-                 console.error(`Rental ${rental.id} is missing an accountId.`);
-                 return null;
-            }
             try {
                 const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rental.dumpsterId));
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rental.clientId));
@@ -166,7 +156,7 @@ export function getPopulatedCompletedRentals(callback: (rentals: PopulatedComple
                 };
             } catch (error) {
                 console.error(`Error populating rental ${rental.id}:`, error);
-                return null;
+                return null; // Return null for failed population
             }
         });
 
@@ -177,7 +167,7 @@ export function getPopulatedCompletedRentals(callback: (rentals: PopulatedComple
             callback(validPopulatedRentals);
         }).catch(error => {
             console.error("Error in Promise.all for populating rentals:", error);
-            callback([]);
+            callback([]); // On error, return empty array
         });
 
     }, (error) => {

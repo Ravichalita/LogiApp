@@ -1,47 +1,47 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper Functions
-    function isAuth() {
+    
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUser(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
+    function isSameUser(userId) {
+      return request.auth.uid == userId;
     }
 
-    function isSignedInUser(userId) {
-      return isAuth() && request.auth.uid == userId;
+    function isAdmin() {
+      return request.auth.token.role == 'admin';
+    }
+    
+    function isViewer() {
+       return request.auth.token.role == 'viewer';
     }
 
     function isMemberOfAccount(accountId) {
-      return isAuth() && request.auth.token.accountId == accountId;
-    }
-    
-    function isAdmin() {
-      return isAuth() && request.auth.token.role == 'admin';
+        return request.auth.token.accountId == accountId;
     }
 
-    // Match statements for collections
-    match /users/{userId} {
-      allow read: if isAuth() && (isMemberOfAccount(resource.data.accountId) || isSignedInUser(userId));
-      allow list: if isAdmin() && request.query.where.accountId == request.auth.token.accountId;
-      allow create: if isAuth(); // Allow creation during signup, handled by server-side logic.
-      allow update: if isAdmin() && isMemberOfAccount(resource.data.accountId);
-      allow delete: if isAdmin() && isMemberOfAccount(resource.data.accountId);
-    }
-    
     match /accounts/{accountId} {
-       allow read, write: if isAdmin() && isMemberOfAccount(accountId);
+        allow read: if isSignedIn() && isMemberOfAccount(accountId);
+        allow write: if isSignedIn() && isAdmin() && isMemberOfAccount(accountId);
+
+        // This rule applies to all subcollections of an account
+        match /{collection}/{docId} {
+             allow read: if isSignedIn() && isMemberOfAccount(accountId);
+             allow list: if isSignedIn() && isMemberOfAccount(accountId) && request.query.where.accountId == accountId;
+             allow write: if isSignedIn() && isAdmin() && isMemberOfAccount(accountId);
+        }
     }
 
-    match /accounts/{accountId}/{collection}/{docId} {
-       allow read: if isMemberOfAccount(accountId);
-       allow list: if isMemberOfAccount(accountId) && request.query.where.accountId == request.auth.token.accountId;
-       allow write: if isAdmin() && isMemberOfAccount(accountId);
+    match /users/{userId} {
+        allow get: if isSignedIn();
+        allow create: if true; // Allows signup
+        allow update: if isSignedIn() && isSameUser(userId);
+        allow delete: if isSignedIn() && isAdmin();
+        
+        allow list: if isSignedIn() && isAdmin() && isMemberOfAccount(request.query.where.accountId);
     }
   }
 }

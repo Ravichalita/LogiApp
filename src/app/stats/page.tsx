@@ -107,14 +107,15 @@ export default function StatsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setLoading(true);
-        // Call the function without accountId, as it will now fetch all data
-        const unsubscribe = getPopulatedCompletedRentals((data) => {
-            setCompletedRentals(data);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
+        if (accountId) {
+            setLoading(true);
+            const unsubscribe = getPopulatedCompletedRentals(accountId, (data) => {
+                setCompletedRentals(data);
+                setLoading(false);
+            });
+            return () => unsubscribe();
+        }
+    }, [accountId]);
 
     const sortedCompletedRentals = useMemo(() => {
         return [...completedRentals].sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
