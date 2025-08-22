@@ -96,28 +96,32 @@ function RentalCardSkeleton() {
 
 
 export default function HomePage() {
-  const { user, accountId, userAccount } = useAuth();
+  const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    if (accountId && user && userAccount) {
-      setLoading(true);
+    // Only proceed if auth is no longer loading and all required data is present.
+    if (!authLoading && accountId && user && userAccount) {
+      setLoadingData(true);
       
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user.uid;
 
       const unsubscribe = getPopulatedRentals(accountId, (data) => {
         setRentals(data);
-        setLoading(false);
+        setLoadingData(false);
       }, userIdToFilter);
       
       return () => unsubscribe();
-    } else {
-        setLoading(false);
     }
-  }, [accountId, user, userAccount]);
+    
+    // If auth is done loading but we don't have the required data, stop the data loading.
+    if (!authLoading && (!accountId || !user || !userAccount)) {
+        setLoadingData(false);
+    }
+  }, [accountId, user, userAccount, authLoading]);
   
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -137,7 +141,7 @@ export default function HomePage() {
   }, [rentals, statusFilter]);
   
 
-  if (loading) {
+  if (authLoading || loadingData) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
