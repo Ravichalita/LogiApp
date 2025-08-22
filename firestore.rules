@@ -1,30 +1,34 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+  
+    function isAdmin() {
+      return request.auth.token.role == 'admin';
+    }
     
     function isAccountMember(accountId) {
       return request.auth.token.accountId == accountId;
-    }
-    
-    function isAdmin() {
-      return request.auth.token.role == 'admin';
     }
 
     match /accounts/{accountId} {
       allow read: if isAccountMember(accountId);
       allow write: if isAdmin() && isAccountMember(accountId);
 
-      // Subcollections
+      // Sub-collections that belong to an account
       match /{collection}/{docId} {
-        allow read, write: if isAccountMember(accountId) && (collection == 'clients' || collection == 'dumpsters' || collection == 'rentals' || collection == 'completed_rentals');
+        allow read, write: if isAccountMember(accountId);
+      }
+      
+      // Specifically for completed_rentals list
+      match /completed_rentals/{rentalId} {
+         allow list: if isAccountMember(accountId);
       }
     }
 
     match /users/{userId} {
-      allow read: if request.auth.uid == userId || (exists(resource.data) && request.auth.token.accountId == resource.data.accountId);
-      allow create; // Allow creation for new sign-ups, ensureUserDocument handles security.
+      allow get: if request.auth.token.accountId == resource.data.accountId;
+      allow create;
       allow update: if request.auth.uid == userId || isAdmin();
       allow delete: if isAdmin();
     }
