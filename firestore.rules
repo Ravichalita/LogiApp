@@ -2,37 +2,46 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper functions
+    
+    // Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
-
-    function isOwner(accountId) {
+    
+    function isAccountMember(accountId) {
       return isSignedIn() && request.auth.token.accountId == accountId;
     }
-    
+
     function isAdmin() {
         return request.auth.token.role == 'admin';
     }
 
-    // User profile documents
-    match /users/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner(resource.data.accountId));
-      allow list: if isSignedIn() && isOwner(request.query.filters.accountId);
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && request.auth.uid == userId;
-      allow delete: if isSignedIn() && isAdmin() && isOwner(resource.data.accountId);
-    }
-    
-    // Account documents - only accessible by backend functions for now
+    // Rules for Accounts
     match /accounts/{accountId} {
-      allow read, write: if false; 
+      allow read: if isAccountMember(accountId);
+      allow write: if isAccountMember(accountId) && isAdmin();
     }
 
-    // Subcollections within accounts
+    // Rules for Users
+    match /users/{userId} {
+      allow get: if isAccountMember(resource.data.accountId);
+      allow list: if request.query.where.get("accountId")[2] == request.auth.token.accountId && isAdmin();
+      allow create: if isSignedIn(); // Allow creation during signup
+      allow update: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && isAdmin());
+      allow delete: if isAccountMember(resource.data.accountId) && isAdmin();
+    }
+
+    // Rules for App Data (Clients, Dumpsters, Rentals)
     match /accounts/{accountId}/{collection}/{docId} {
-        allow read, write: if isSignedIn() && isOwner(accountId);
+      allow read, get: if isAccountMember(accountId);
+      allow list: if request.query.where.get("accountId")[2] == accountId && isAccountMember(accountId);
+      allow write: if isAccountMember(accountId) && isAdmin();
+    }
+    
+     match /accounts/{accountId}/completed_rentals/{rentalId} {
+        allow read, get: if isAccountMember(accountId);
+        allow list: if request.query.where.get("accountId")[2] == accountId && isAccountMember(accountId);
+        allow create, update, delete: if isAccountMember(accountId) && isAdmin();
     }
   }
 }
