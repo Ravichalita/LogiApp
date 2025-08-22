@@ -1,55 +1,38 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
     // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isUserInAccount(accountId) {
+    function isOwner(accountId) {
       return isSignedIn() && request.auth.token.accountId == accountId;
     }
     
-    function isAdmin(accountId) {
-        return isUserInAccount(accountId) && request.auth.token.role == 'admin';
+    function isAdmin() {
+        return request.auth.token.role == 'admin';
     }
 
-    // Accounts
-    match /accounts/{accountId} {
-      allow read: if isUserInAccount(accountId);
-    }
-    
-    // Users
+    // User profile documents
     match /users/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn() && request.query.filters[0][2] == request.auth.token.accountId;
-      allow update: if isUserInAccount(resource.data.accountId) && request.auth.uid == userId;
-      // Create and delete are handled by server-side actions
-      allow create, delete: if false; 
-    }
-
-    // Dumpsters
-    match /dumpsters/{dumpsterId} {
-      allow read, list: if isUserInAccount(resource.data.accountId);
-      allow create, update, delete: if isAdmin(resource.data.accountId);
-    }
-
-    // Clients
-    match /clients/{clientId} {
-      allow read, list: if isUserInAccount(resource.data.accountId);
-      allow create, update, delete: if isAdmin(resource.data.accountId);
-    }
-
-    // Rentals
-    match /rentals/{rentalId} {
-      allow read, list: if isUserInAccount(resource.data.accountId);
-      allow create, update, delete: if isAdmin(resource.data.accountId);
+      allow read: if isSignedIn() && (request.auth.uid == userId || isOwner(resource.data.accountId));
+      allow list: if isSignedIn() && isOwner(request.query.filters.accountId);
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && isAdmin() && isOwner(resource.data.accountId);
     }
     
-     // Completed Rentals
-    match /completed_rentals/{rentalId} {
-      allow read, list: if isUserInAccount(resource.data.accountId);
-       allow create, update, delete: if isAdmin(resource.data.accountId);
+    // Account documents - only accessible by backend functions for now
+    match /accounts/{accountId} {
+      allow read, write: if false; 
+    }
+
+    // Subcollections within accounts
+    match /accounts/{accountId}/{collection}/{docId} {
+        allow read, write: if isSignedIn() && isOwner(accountId);
     }
   }
 }
