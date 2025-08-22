@@ -28,12 +28,10 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
       id: doc.id,
       ...doc.data()
     } as Client));
-    // Sort clients by name on the client-side
     const sortedClients = clients.sort((a, b) => a.name.localeCompare(b.name));
     callback(sortedClients);
   }, (error) => {
       console.error("Error fetching clients:", error);
-      // Optionally call callback with empty array or handle error state
       callback([]);
   });
 
@@ -82,7 +80,6 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
             return {
                 id: doc.id,
                 ...data,
-                // Convert Firestore Timestamps to ISO strings
                 rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
                 returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
             } as Rental;
@@ -120,7 +117,7 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
         });
 
         const populatedRentals = await Promise.all(rentalPromises);
-        callback(populatedRentals.filter(r => r.client && r.dumpster)); // Filter out rentals with missing relations
+        callback(populatedRentals.filter(r => r.client && r.dumpster));
     }, (error) => {
         console.error("Error fetching populated rentals:", error);
         callback([]);
@@ -158,26 +155,48 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
     const q = query(rentalsCollection, where("accountId", "==", accountId));
 
-    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-        const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
-            const rentalData = rentalDoc.data() as Omit<CompletedRental, 'id' | 'completedDate'> & { completedDate: any };
-
-            const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
-            const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
-
-            const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
-
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const rentals = querySnapshot.docs.map(doc => {
+            const data = doc.data();
             return {
-                id: rentalDoc.id,
-                ...rentalData,
-                completedDate: rentalData.completedDate.toDate(),
-                dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
-                client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-            };
+                id: doc.id,
+                ...data,
+                completedDate: data.completedDate.toDate(),
+            } as CompletedRental
         });
 
-        const populatedRentals = await Promise.all(rentalPromises);
-        callback(populatedRentals.filter(r => r.client && r.dumpster)); // Filter out rentals with missing relations
+        if (rentals.length === 0) {
+            callback([]);
+            return;
+        }
+
+        const populatePromises = rentals.map(async (rental) => {
+            try {
+                const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rental.dumpsterId));
+                const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rental.clientId));
+                const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
+
+                return {
+                    ...rental,
+                    dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
+                    client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
+                };
+            } catch (error) {
+                console.error(`Error populating rental ${rental.id}:`, error);
+                return null; 
+            }
+        });
+
+        Promise.all(populatePromises).then(populatedResults => {
+            const validPopulatedRentals = populatedResults.filter(
+                (r): r is PopulatedCompletedRental => r !== null && !!r.client && !!r.dumpster
+            );
+            callback(validPopulatedRentals);
+        }).catch(error => {
+            console.error("Error in Promise.all for populating rentals:", error);
+            callback([]);
+        });
+
     }, (error) => {
         console.error("Error fetching populated completed rentals:", error);
         callback([]);
@@ -201,7 +220,6 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
       id: doc.id,
       ...doc.data()
     } as UserAccount));
-    // Sort users by name on the client-side
     const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
     callback(sortedUsers);
   }, (error) => {
