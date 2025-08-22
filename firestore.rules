@@ -2,46 +2,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isSignedIn() {
+
+    function isUserAuthenticated() {
       return request.auth != null;
     }
 
-    function isSameUser(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return request.auth.token.role == 'admin';
-    }
-    
-    function isViewer() {
-       return request.auth.token.role == 'viewer';
+    function isUserAdmin() {
+      return isUserAuthenticated() && request.auth.token.role == 'admin';
     }
 
     function isMemberOfAccount(accountId) {
-        return request.auth.token.accountId == accountId;
+      return isUserAuthenticated() && request.auth.token.accountId == accountId;
+    }
+
+    function isQueryingOwnAccountData() {
+      return request.query.filters.size() == 1 &&
+             'accountId' in request.query.filters &&
+             request.query.filters.accountId == request.auth.token.accountId;
     }
 
     match /accounts/{accountId} {
-        allow read: if isSignedIn() && isMemberOfAccount(accountId);
-        allow write: if isSignedIn() && isAdmin() && isMemberOfAccount(accountId);
-
-        // This rule applies to all subcollections of an account
-        match /{collection}/{docId} {
-             allow read: if isSignedIn() && isMemberOfAccount(accountId);
-             allow list: if isSignedIn() && isMemberOfAccount(accountId) && request.query.where.accountId == accountId;
-             allow write: if isSignedIn() && isAdmin() && isMemberOfAccount(accountId);
-        }
+      allow read: if isMemberOfAccount(accountId);
+      allow write: if isUserAdmin(); // Only admins can modify account details
     }
 
     match /users/{userId} {
-        allow get: if isSignedIn();
-        allow create: if true; // Allows signup
-        allow update: if isSignedIn() && isSameUser(userId);
-        allow delete: if isSignedIn() && isAdmin();
-        
-        allow list: if isSignedIn() && isAdmin() && isMemberOfAccount(request.query.where.accountId);
+      allow get: if isUserAuthenticated();
+      allow list: if isUserAdmin() && isQueryingOwnAccountData();
+      allow create: if isUserAdmin(); // Only admins can invite/create new users
+      allow update, delete: if isUserAdmin();
+    }
+
+    match /accounts/{accountId}/{collection}/{docId} {
+      allow read: if isMemberOfAccount(accountId);
+      allow list: if isMemberOfAccount(accountId) && isQueryingOwnAccountData();
+      allow write: if isUserAdmin() && isMemberOfAccount(accountId);
     }
   }
 }
