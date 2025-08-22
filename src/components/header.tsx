@@ -63,7 +63,7 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-           {permissions?.canAccessStats && (
+           {(isAdmin || permissions?.canAccessStats) && (
             <Button variant="ghost" size="icon" asChild>
                   <Link href="/stats">
                       <BarChart3 className="h-5 w-5" />
@@ -71,7 +71,7 @@ export function Header() {
                   </Link>
               </Button>
            )}
-            {permissions?.canAccessTeam && (
+            {(isAdmin || permissions?.canAccessTeam) && (
                <Button variant="ghost" size="icon" asChild>
                     <Link href="/team">
                         <Users className="h-5 w-5" />
