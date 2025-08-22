@@ -445,11 +445,18 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
     
     const { id, ...rentalData } = validatedFields.data;
+    
+    // Remove undefined fields to prevent Firestore errors
+    const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined));
+
+    if (Object.keys(updateData).length === 0) {
+        return { message: 'success', info: 'Nenhum campo para atualizar.' };
+    }
 
     try {
         const rentalDoc = getFirestore().doc(`accounts/${accountId}/rentals/${id}`);
         await rentalDoc.update({
-          ...rentalData,
+          ...updateData,
           updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/');
