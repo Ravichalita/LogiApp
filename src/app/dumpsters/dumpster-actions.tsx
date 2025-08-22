@@ -45,6 +45,9 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
     isReservedOrRented: boolean;
 }) {
     const isMaintenance = dumpster.status === 'Em Manutenção';
+    const { userAccount } = useAuth();
+    const canEdit = userAccount?.role === 'admin' || userAccount?.permissions?.canEditDumpsters;
+
 
     return (
         <div className="flex items-center space-x-2">
@@ -52,14 +55,14 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
                 id={`maintenance-${dumpster.id}`} 
                 checked={isMaintenance}
                 onCheckedChange={handleToggleStatus}
-                disabled={isPending || isReservedOrRented}
+                disabled={isPending || isReservedOrRented || !canEdit}
                 aria-label="Marcar como em manutenção"
             />
             <Label 
                 htmlFor={`maintenance-${dumpster.id}`}
                 className={cn(
                     "text-sm font-medium leading-none",
-                    (isPending || isReservedOrRented) && "text-muted-foreground cursor-not-allowed"
+                    (isPending || isReservedOrRented || !canEdit) && "text-muted-foreground cursor-not-allowed"
                 )}
             >
                 Em Manutenção
@@ -70,7 +73,7 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
 
 
 export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
-  const { accountId } = useAuth();
+  const { accountId, userAccount } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -78,6 +81,10 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
   const isRented = dumpster.derivedStatus === 'Alugada';
+
+  const isAdmin = userAccount?.role === 'admin';
+  const canEdit = isAdmin || userAccount?.permissions?.canEditDumpsters;
+  const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
   
   const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' => {
     if (status.startsWith('Reservada')) return 'secondary';
@@ -166,23 +173,30 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
-                  </DropdownMenuItem>
-                </DialogTrigger>
-                <DropdownMenuSeparator />
-                <AlertDialogTrigger asChild disabled={isRented || isReserved}>
-                  <DropdownMenuItem 
-                    className="text-destructive" 
-                    onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                    disabled={isRented || isReserved}
-                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Excluir
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
+                {canEdit && (
+                    <DialogTrigger asChild>
+                        <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                        </DropdownMenuItem>
+                    </DialogTrigger>
+                )}
+                
+                {canDelete && (
+                    <>
+                    <DropdownMenuSeparator />
+                    <AlertDialogTrigger asChild disabled={isRented || isReserved}>
+                    <DropdownMenuItem 
+                        className="text-destructive" 
+                        onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                        disabled={isRented || isReserved}
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                    </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 

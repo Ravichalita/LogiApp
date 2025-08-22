@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useTransition } from 'react';
 import { deleteClientAction } from '@/lib/actions';
@@ -33,11 +34,16 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 
 export function ClientActions({ client }: { client: Client }) {
-  const { accountId } = useAuth();
+  const { accountId, userAccount } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  const isAdmin = userAccount?.role === 'admin';
+  const canEdit = isAdmin || userAccount?.permissions?.canEditClients;
+  const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
+
 
   const handleDelete = () => {
     if (!accountId) {
@@ -74,18 +80,22 @@ export function ClientActions({ client }: { client: Client }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DialogTrigger asChild>
-                 <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
+              {canEdit && (
+                <DialogTrigger asChild>
+                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
+                    </DropdownMenuItem>
+                </DialogTrigger>
+              )}
+              {canDelete && (
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true);}}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Excluir
                   </DropdownMenuItem>
-              </DialogTrigger>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true);}}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Excluir
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
+                </AlertDialogTrigger>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

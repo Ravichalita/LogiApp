@@ -11,6 +11,7 @@ import { NewItemDialog } from "./new-item-dialog";
 export function FloatingActionButton() {
     const { user, userAccount } = useAuth();
     const pathname = usePathname();
+    const isAdmin = userAccount?.role === 'admin';
 
     if (!user) {
         return null;
@@ -23,30 +24,46 @@ export function FloatingActionButton() {
 
 
     const getFabContent = () => {
+        const permissions = userAccount?.permissions;
+
         switch (pathname) {
             case '/clients':
-                return <NewItemDialog itemType="client" />;
+                if (isAdmin || permissions?.canEditClients) {
+                    return <NewItemDialog itemType="client" />;
+                }
+                return null;
             case '/dumpsters':
-                return <NewItemDialog itemType="dumpster" />;
+                if (isAdmin || permissions?.canEditDumpsters) {
+                    return <NewItemDialog itemType="dumpster" />;
+                }
+                return null;
             case '/team':
-                if (userAccount?.role !== 'admin') return null;
-                return <NewItemDialog itemType="team" />;
+                if (isAdmin || permissions?.canAccessTeam) {
+                    return <NewItemDialog itemType="team" />;
+                }
+                return null;
             case '/':
             default:
-                 return (
-                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                         <Link href="/rentals/new">
-                            <Plus className="h-8 w-8" />
-                            <span className="sr-only">Novo Aluguel</span>
-                        </Link>
-                    </Button>
-                );
+                 if (isAdmin || permissions?.canEditRentals) {
+                    return (
+                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                            <Link href="/rentals/new">
+                                <Plus className="h-8 w-8" />
+                                <span className="sr-only">Novo Aluguel</span>
+                            </Link>
+                        </Button>
+                    );
+                 }
+                 return null;
         }
     }
 
+    const content = getFabContent();
+    if (!content) return null;
+
     return (
         <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50">
-            {getFabContent()}
+            {content}
         </div>
     )
 }

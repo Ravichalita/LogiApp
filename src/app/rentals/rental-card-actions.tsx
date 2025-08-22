@@ -71,13 +71,18 @@ function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
-  const { accountId } = useAuth();
+  const { accountId, userAccount } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
   const [isCanceling, startCancelTransition] = useTransition();
   const { toast } = useToast();
   
   const finishFormRef = useRef<HTMLFormElement>(null);
-  const isFinalizeDisabled = status.text !== 'Ativo' && status.text !== 'Em Atraso';
+
+  const isAdmin = userAccount?.role === 'admin';
+  const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
+  const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
+
+  const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso') || !canEdit;
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
@@ -133,12 +138,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </p>
                 </div>
             </div>
-            <EditRentalPeriodDialog rental={rental}>
-                 <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                    <Edit className="h-4 w-4" />
-                    <span className="sr-only">Editar Período</span>
-                </Button>
-            </EditRentalPeriodDialog>
+            {canEdit && (
+              <EditRentalPeriodDialog rental={rental}>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Editar Período</span>
+                  </Button>
+              </EditRentalPeriodDialog>
+            )}
         </div>
         <div className="flex items-start gap-3">
             <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
@@ -205,7 +212,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </form>
             )}
 
-            {status.text === 'Pendente' && (
+            {status.text === 'Pendente' && canDelete && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive" className="w-full">
