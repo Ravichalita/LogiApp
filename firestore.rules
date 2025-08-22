@@ -1,65 +1,41 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    function isVerified() {
-      return isAuth() && request.auth.token.email_verified;
-    }
     
     function isAdmin() {
-      return isVerified() && request.auth.token.role == 'admin';
+      return request.auth.token.role == 'admin';
     }
 
-    function isViewer() {
-       return isVerified() && request.auth.token.role == 'viewer';
-    }
-    
-    match /accounts/{accountId}/{document=**} {
-      allow read, write: if false; // Deny all access by default to subcollections
+    // Accounts can only be read by their members. Creation is handled server-side.
+    match /accounts/{accountId} {
+      allow read: if request.auth.token.accountId == accountId;
+      allow write: if false; // All writes are managed by server-side actions
     }
 
-    // Rules for collections under an account
-    match /accounts/{accountId}/clients/{clientId} {
-      allow get: if isVerified() && request.auth.token.accountId == accountId;
-      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
-      allow write: if isAdmin() && request.auth.token.accountId == accountId;
-    }
-    
-    match /accounts/{accountId}/dumpsters/{dumpsterId} {
-      allow get: if isVerified() && request.auth.token.accountId == accountId;
-      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
-      allow write: if isAdmin() && request.auth.token.accountId == accountId;
-    }
-    
-    match /accounts/{accountId}/rentals/{rentalId} {
-      allow get: if isVerified() && request.auth.token.accountId == accountId;
-      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
+    // Subcollections can only be accessed by members of the parent account.
+    // Writes are restricted to admins.
+    match /accounts/{accountId}/{collection}/{docId} {
+      allow get: if request.auth.token.accountId == accountId;
+      allow list: if request.auth.token.accountId == accountId && request.query.where.accountId == accountId;
       allow write: if isAdmin() && request.auth.token.accountId == accountId;
     }
 
-    match /accounts/{accountId}/completed_rentals/{rentalId} {
-      allow get: if isVerified() && request.auth.token.accountId == accountId;
-      allow list: if request.query.filters.size() == 1 && 'accountId' in request.query.filters && request.query.filters.accountId == request.auth.token.accountId;
-      allow write: if isAdmin() && request.auth.token.accountId == accountId;
-    }
-
-    // Rules for the root `users` collection
+    // Rules for the root 'users' collection
     match /users/{userId} {
-       // Only admins can query the list of users for their account
-       allow list: if isAdmin() && request.query.where.accountId == request.auth.token.accountId;
-       
-       // Any verified user can see their own user document
-       // Admins can see any user document within their account
-       allow get: if isVerified() && (request.auth.uid == userId || (isAdmin() && resource.data.accountId == request.auth.token.accountId));
-       
-       // Admins can create/update/delete users in their account. A user can't delete themselves this way.
-       allow write: if isAdmin() && request.resource.data.accountId == request.auth.token.accountId;
+      // Allow admins to list all users within their own account
+      allow list: if isAdmin() && request.query.filters.size() == 1 && request.query.filters.accountId == request.auth.token.accountId;
+
+      // Allow a user to read their own document,
+      // OR an admin to read any user's document in the same account
+      allow get: if request.auth.uid == userId || (isAdmin() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId);
+      
+      // Allow admins to update users in their account (e.g., change role)
+      // Only admins of the target user's account can update them.
+      allow update: if isAdmin() && request.auth.token.accountId == resource.data.accountId;
+
+      // Disallow direct creation/deletion from client. This is handled by secure backend actions.
+      allow create, delete: if false; 
     }
   }
 }
