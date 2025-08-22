@@ -10,6 +10,7 @@ import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, Upda
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
 import { ensureUserDocument } from './data-server';
 import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -38,17 +39,25 @@ function handleFirebaseError(error: unknown): string {
 
 export async function ensureUserDocumentOnClient() {
     'use server';
-    const authorization = headers().get('Authorization');
-    if (!authorization?.startsWith('Bearer ')) {
-        throw new Error('No Firebase ID token was passed.');
-    }
-    const idToken = authorization.split('Bearer ')[1];
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const user = await adminAuth.getUser(decodedToken.uid);
+    try {
+        const authorization = headers().get('Authorization');
+        if (!authorization?.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'No Firebase ID token was passed.' }, { status: 401 });
+        }
+        const idToken = authorization.split('Bearer ')[1];
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const user = await adminAuth.getUser(decodedToken.uid);
 
-    // Call the main server-side function to create documents if needed
-    await ensureUserDocument(user);
-    revalidatePath('/'); // Revalidate to reflect changes
+        // Call the main server-side function to create documents if needed
+        const accountId = await ensureUserDocument(user);
+        
+        return NextResponse.json({ message: 'success', accountId });
+
+    } catch (error) {
+        console.error("[ensureUserDocumentOnClient] Error:", error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: 'Failed to ensure user document', details: message }, { status: 500 });
+    }
 }
 
 

@@ -102,31 +102,29 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // Wait until authentication is fully resolved
-    if (authLoading) {
+    // Only proceed if auth is resolved and we have an accountId
+    if (!authLoading && accountId) {
       setDataLoading(true);
-      return;
-    }
-
-    // If authentication is resolved, check if we have the necessary data to fetch rentals
-    if (accountId && userAccount) {
-      setDataLoading(true);
-      const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
+      const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user?.uid;
-      
-      const unsubscribe = getPopulatedRentals(accountId, (data) => {
-        setRentals(data);
-        setDataLoading(false); // Stop loading once data is fetched
-      }, userIdToFilter);
-      
+
+      const unsubscribe = getPopulatedRentals(
+        accountId,
+        (data) => {
+          setRentals(data);
+          setDataLoading(false); // Stop loading once data is fetched
+        },
+        userIdToFilter
+      );
+
       return () => unsubscribe();
-    } else {
-      // If auth is resolved but there's no user/account, there's no data to fetch.
+    } else if (!authLoading) {
+      // Auth is resolved but no user/account, so stop loading.
+      setDataLoading(false);
       setRentals([]);
-      setDataLoading(false); // Stop loading as there is nothing to fetch
     }
-  }, [authLoading, accountId, userAccount, user]); // Depend on auth state
-  
+  }, [authLoading, accountId, userAccount, user]); // Re-run when auth state changes
+
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
      .filter(rental => {
@@ -143,7 +141,7 @@ export default function HomePage() {
         return parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime();
     });
   }, [rentals, statusFilter]);
-  
+
   // The combined loading state
   const isLoading = authLoading || dataLoading;
 

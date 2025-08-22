@@ -9,7 +9,6 @@ import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { ensureUserDocumentOnClient } from '@/lib/actions';
 
 interface AuthContextType {
   user: User | null;
@@ -31,66 +30,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [userDocLoading, setUserDocLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
 
+  const logout = useCallback(async () => {
+    await signOut(auth);
+    setUser(null);
+    setUserAccount(null);
+    setAccountId(null);
+    setRole(null);
+    router.push('/login');
+  }, [auth, router]);
+
   useEffect(() => {
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
-        setAuthLoading(true);
-        setUserDocLoading(true);
+      setLoading(true);
+      if (firebaseUser) {
+        try {
+          // Force refresh the token to get custom claims. This is crucial.
+          await firebaseUser.getIdToken(true);
+          setUser(firebaseUser);
 
-        if (firebaseUser) {
-            setUser(firebaseUser);
-            // Force refresh the token to get custom claims
-            await firebaseUser.getIdToken(true);
-            setAuthLoading(false); // Auth part is done, now wait for user doc
+          // Now that we have a fresh token, ensure the user document exists on the server.
+          // This call also sets custom claims if they are missing.
+          const res = await fetch('/api/ensure-user', {
+              headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+          });
 
-            const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const unsubscribeDoc = onSnapshot(userDocRef, async (userDocSnap) => {
-                if (userDocSnap.exists()) {
-                    const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-                    setUserAccount(userAccountData);
-                    setAccountId(userAccountData.accountId);
-                    setRole(userAccountData.role);
-                } else {
-                    // This can happen briefly during signup. The ensureUserDocument call handles it.
-                    // We'll retry in a moment if the document doesn't appear.
-                     try {
-                        const token = await firebaseUser.getIdToken();
-                        // This server action will create the user doc if it's missing.
-                        // The onSnapshot listener will then pick it up.
-                        await fetch('/api/ensure-user', { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (error) {
-                        console.error("Failed to ensure user document on client:", error);
-                        // If it fails, log the user out to prevent an infinite loop.
-                        signOut(auth);
-                    }
-                }
-                setUserDocLoading(false); // User doc part is done
-            }, (error) => {
-                console.error("Erro ao buscar documento do usuário:", error);
-                signOut(auth);
-                setUserDocLoading(false);
-            });
-            return () => unsubscribeDoc();
+          if (!res.ok) {
+             throw new Error('Falha ao garantir o documento do usuário.');
+          }
+          
+          const { accountId: userAccountId } = await res.json();
 
-        } else {
-            setUser(null);
-            setUserAccount(null);
-            setAccountId(null);
-            setRole(null);
-            setAuthLoading(false);
-            setUserDocLoading(false);
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const unsubscribeDoc = onSnapshot(userDocRef, (userDocSnap) => {
+            if (userDocSnap.exists()) {
+              const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+              setUserAccount(userAccountData);
+              setAccountId(userAccountData.accountId);
+              setRole(userAccountData.role);
+              setLoading(false); // All data is loaded, stop loading.
+            } else {
+               // This should ideally not happen after ensure-user call, but as a fallback:
+               console.error("User document not found after server-side check.");
+               logout();
+            }
+          }, (error) => {
+            console.error("Erro ao buscar documento do usuário:", error);
+            logout();
+          });
+          return () => unsubscribeDoc();
+
+        } catch (error) {
+          console.error("Error during auth state change handling:", error);
+          logout();
         }
+      } else {
+        setUser(null);
+        setUserAccount(null);
+        setAccountId(null);
+        setRole(null);
+        setLoading(false);
+      }
     });
 
     return () => unsubscribeAuth();
-  }, [auth, db]);
-
-  const loading = authLoading || userDocLoading;
+  }, [auth, db, logout]);
 
   useEffect(() => {
     if (loading) return;
@@ -107,16 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user, loading, pathname, router]);
-
-  const logout = async () => {
-    await signOut(auth);
-    // Reset state immediately on logout
-    setUser(null);
-    setUserAccount(null);
-    setAccountId(null);
-    setRole(null);
-    router.push('/login');
-  };
   
   const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
   
@@ -127,26 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  
-  // This case handles a state where auth is resolved but the user document is missing
-  // and hasn't been created yet, which can happen if there's a backend delay.
-  // It gives the user an option to recover instead of being stuck.
-  if (user && !accountId && !loading && !isAuthPage) {
-      return (
-          <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
-               <Spinner size="large" />
-               <p className="text-muted-foreground">Finalizando configuração da sua conta... <br/>Este processo pode levar um momento. Se esta tela persistir, tente sair e entrar novamente.</p>
-               <Button onClick={logout} variant="outline">Sair</Button>
-          </div>
-      )
-  }
 
   const contextValue = {
     user,
     userAccount,
     accountId,
     role,
-    loading: loading,
+    loading,
     logout,
   };
 

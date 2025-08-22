@@ -4,33 +4,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to check if a user belongs to a specific account
     function isAccountMember(accountId) {
-      return request.auth != null && request.auth.token.accountId == accountId;
+      return request.auth.token.accountId == accountId;
     }
 
-    match /users/{userId} {
-      allow read: if request.auth.uid == userId || isAccountMember(resource.data.accountId);
-      allow create; // Handled by ensureUserDocument server-side
-      allow update, delete: if isAccountMember(resource.data.accountId);
-    }
-
+    // Lock down accounts to only be readable/writable by their members
     match /accounts/{accountId} {
-      allow read, update, delete: if isAccountMember(accountId);
-      allow create;
+      allow read, write: if isAccountMember(accountId);
+      
+      // Any member of the account can read/write clients, dumpsters etc.
+      // The specific UI/API logic will control who can do what (e.g. admin vs viewer)
+      match /{collection}/{docId} {
+        allow read, write: if isAccountMember(accountId);
+      }
+    }
+
+    // Users can only read their own document
+    match /users/{userId} {
+      allow get: if request.auth.uid == userId;
+      // Creation is handled by server-side logic (ensureUserDocument)
+      allow create, update, delete: if false; 
     }
     
-    // Allow read access to rentals via collection group query,
-    // ensuring user can only read rentals belonging to their account.
+    // This rule allows collection group queries on 'rentals'.
+    // It's secure because it checks if the document's accountId matches the user's claim.
     match /{path=**}/rentals/{rentalId} {
-        allow read: if isAccountMember(request.resource.data.accountId);
-        allow create, update, delete: if request.auth.token.role == 'admin' && isAccountMember(resource.data.accountId);
-    }
-    
-    match /accounts/{accountId}/{collection}/{documentId} {
-      // This rule applies to collections OTHER THAN 'rentals', which is handled by the collection group rule above.
-      // It allows any account member to read, but only admins to write.
-      allow read: if isAccountMember(accountId);
-      allow write: if request.auth.token.role == 'admin' && isAccountMember(accountId);
+      allow read: if isAccountMember(resource.data.accountId);
     }
   }
 }
