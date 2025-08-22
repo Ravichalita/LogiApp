@@ -278,13 +278,11 @@ export default function HomePage() {
                 <Card className="h-full flex flex-col border-none shadow-none rounded-b-none">
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-                               <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
-                               <p className="text-muted-foreground">
-                                    Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
-                                </p>
-                            </div>
+                        <div className="flex flex-row items-baseline gap-4 flex-wrap">
+                           <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
+                           <p className="text-muted-foreground">
+                                Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
+                            </p>
                         </div>
                          <div className="flex flex-col items-end gap-1 ml-2">
                             <Badge variant={status.variant}>{status.text}</Badge>
@@ -322,3 +320,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
