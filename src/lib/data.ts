@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -94,7 +95,7 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
 
 export function getPopulatedRentals(accountId: string, callback: (rentals: PopulatedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('rentalDate', 'asc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
