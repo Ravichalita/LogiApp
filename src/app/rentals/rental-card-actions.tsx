@@ -81,6 +81,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
   const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
+  const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
 
   const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso');
   
@@ -147,13 +148,16 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
               </EditRentalPeriodDialog>
             )}
         </div>
-        <div className="flex items-start gap-3">
-            <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-            <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
-                <span className="font-medium">{formatCurrency(totalValue)}</span>
+        
+        {canSeeFinance && (
+            <div className="flex items-start gap-3">
+                <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                    <span className="font-medium">{formatCurrency(totalValue)}</span>
+                </div>
             </div>
-        </div>
+        )}
 
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="client-details" className="border-none">
