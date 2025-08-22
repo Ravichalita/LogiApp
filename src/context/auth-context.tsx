@@ -31,17 +31,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userDocLoading, setUserDocLoading] = useState(true);
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
-        setLoading(true);
+        setAuthLoading(true);
+        setUserDocLoading(true);
+
         if (firebaseUser) {
             setUser(firebaseUser);
-            
+            setAuthLoading(false); // Auth part is done, now wait for user doc
+
             const userDocRef = doc(db, 'users', firebaseUser.uid);
             const unsubscribeDoc = onSnapshot(userDocRef, async (userDocSnap) => {
                 if (userDocSnap.exists()) {
@@ -52,16 +56,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 } else {
                     try {
                         await ensureUserDocumentOnClient();
+                        // The snapshot will re-trigger with the new data
                     } catch (error) {
                         console.error("Failed to ensure user document on client:", error);
                         signOut(auth);
                     }
                 }
-                setLoading(false);
+                setUserDocLoading(false); // User doc part is done
             }, (error) => {
                 console.error("Erro ao buscar documento do usuário:", error);
                 signOut(auth);
-                setLoading(false);
+                setUserDocLoading(false);
             });
             return () => unsubscribeDoc();
 
@@ -70,13 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUserAccount(null);
             setAccountId(null);
             setRole(null);
-            setLoading(false);
+            setAuthLoading(false);
+            setUserDocLoading(false);
         }
     });
 
     return () => unsubscribeAuth();
   }, [auth, db]);
 
+  const loading = authLoading || userDocLoading;
 
   useEffect(() => {
     if (loading) return;

@@ -96,35 +96,26 @@ function RentalCardSkeleton() {
 
 
 export default function HomePage() {
-  const { user, accountId, userAccount, loading: authLoading } = useAuth();
+  const { user, accountId, userAccount, loading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    if (authLoading) {
-      // Still waiting for auth context to resolve, do nothing yet.
-      return;
-    }
-
-    if (accountId && user && userAccount) {
-      setLoadingData(true);
-      
+    // Only proceed if authentication is fully resolved and we have an accountId.
+    if (!loading && accountId && userAccount) {
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
-      const userIdToFilter = canViewAll ? undefined : user.uid;
+      const userIdToFilter = canViewAll ? undefined : user?.uid;
 
       const unsubscribe = getPopulatedRentals(accountId, (data) => {
         setRentals(data);
-        setLoadingData(false);
       }, userIdToFilter);
       
       return () => unsubscribe();
-    } else {
-      // Auth is resolved, but we don't have the necessary data (e.g., user logged out)
-      setLoadingData(false);
+    } else if (!loading) {
+      // Handle cases where user is logged out or doesn't have an account
       setRentals([]);
     }
-  }, [accountId, user, userAccount, authLoading]);
+  }, [loading, accountId, userAccount, user]);
   
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -144,7 +135,7 @@ export default function HomePage() {
   }, [rentals, statusFilter]);
   
 
-  if (authLoading || loadingData) {
+  if (loading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
@@ -156,7 +147,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0 && !loadingData) {
+  if (rentals.length === 0 && !loading) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
