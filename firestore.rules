@@ -1,42 +1,32 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isUserAuthenticated() {
+    // Functions
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function isRequestingOwnData(userId) {
-      return isUserAuthenticated() && request.auth.uid == userId;
+    function isAccountMember(accountId) {
+      return isSignedIn() && request.auth.token.accountId == accountId;
     }
 
-    function getAccountId() {
-      return request.auth.token.accountId;
+    function isAdmin(accountId) {
+      return isAccountMember(accountId) && request.auth.token.role == 'admin';
+    }
+
+    // A user can read their own document to get their profile information.
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+
+      // Only admins of the same account can list or read other user documents.
+      allow list: if isAdmin(request.query.resource.data.accountId);
     }
     
-    function isAccountMember() {
-        return isUserAuthenticated() && getAccountId() != null;
-    }
-
-    function isAdmin() {
-        return isAccountMember() && request.auth.token.role == 'admin';
-    }
-
-    match /accounts/{accountId}/{document=**} {
-      allow read, write: if false; // Disallow direct access to account docs
-    }
-
-    match /users/{userId} {
-      allow get: if isRequestingOwnData(userId);
-      allow list: if isAdmin() && request.query.where.get('accountId') == getAccountId();
-      allow update: if isRequestingOwnData(userId);
-      allow create, delete: if false;
-    }
-
-    match /{collection}/{docId} {
-       allow read: if isAccountMember() && resource.data.accountId == getAccountId();
-       allow list: if isAccountMember() && request.query.where.get('accountId') == getAccountId();
-       allow create, update, delete: if isAdmin() && request.resource.data.accountId == getAccountId();
+    // Account collections can only be accessed by members of that account.
+    // Write operations are restricted to admins.
+    match /accounts/{accountId}/{collection}/{docId} {
+      allow read: if isAccountMember(accountId);
+      allow write: if isAdmin(accountId);
     }
   }
 }
