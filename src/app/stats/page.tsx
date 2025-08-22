@@ -107,18 +107,14 @@ export default function StatsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (accountId) {
-            setLoading(true);
-            const unsubscribe = getPopulatedCompletedRentals(accountId, (data) => {
-                setCompletedRentals(data);
-                setLoading(false);
-            });
-            return () => unsubscribe();
-        } else {
-            setCompletedRentals([]);
+        setLoading(true);
+        // Call the function without accountId, as it will now fetch all data
+        const unsubscribe = getPopulatedCompletedRentals((data) => {
+            setCompletedRentals(data);
             setLoading(false);
-        }
-    }, [accountId]);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const sortedCompletedRentals = useMemo(() => {
         return [...completedRentals].sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
@@ -155,9 +151,11 @@ export default function StatsPage() {
                     <TabsContent value="history" className="mt-6">
                         <CompletedRentalsTable rentals={sortedCompletedRentals} />
                     </TabsContent>
-                     <div className="mt-8 flex justify-start">
-                        <ResetDataButton />
-                    </div>
+                     {accountId && (
+                        <div className="mt-8 flex justify-start">
+                            <ResetDataButton />
+                        </div>
+                    )}
                 </Tabs>
             )}
         </div>
