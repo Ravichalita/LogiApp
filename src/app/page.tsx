@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useContext } from 'react';
-import { AuthContext, useAuth } from '@/context/auth-context';
+import { useEffect, useState, useMemo } from 'react';
+import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
@@ -140,8 +140,12 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // Wait until auth is complete and we have an accountId
-    if (authLoading || !accountId) {
+    if (authLoading) {
+      return; // Wait until auth context is no longer loading
+    }
+    
+    if (!accountId) {
+      setRentals([]); // Clear data if no accountId
       return;
     }
     
