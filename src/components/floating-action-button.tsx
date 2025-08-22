@@ -3,13 +3,13 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NewItemDialog } from "./new-item-dialog";
 
 export function FloatingActionButton() {
-    const { user } = useAuth();
+    const { user, userAccount } = useAuth();
     const pathname = usePathname();
 
     if (!user) {
@@ -28,6 +28,16 @@ export function FloatingActionButton() {
                 return <NewItemDialog itemType="client" />;
             case '/dumpsters':
                 return <NewItemDialog itemType="dumpster" />;
+            case '/team':
+                if (userAccount?.role !== 'admin') return null;
+                return (
+                     <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                         <Link href="/signup">
+                            <UserPlus className="h-7 w-7" />
+                            <span className="sr-only">Convidar Membro</span>
+                        </Link>
+                    </Button>
+                );
             case '/':
             default:
                  return (

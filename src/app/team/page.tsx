@@ -11,9 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { TeamActions } from './team-actions';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { UserPlus, ShieldAlert } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 
 function TeamTableSkeleton() {
     return (
@@ -78,17 +76,9 @@ export default function TeamPage() {
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <div>
-                     <h1 className="text-3xl font-headline font-bold">Equipe</h1>
-                     <p className="text-muted-foreground mt-1">Gerencie os membros e as permissões da sua conta.</p>
-                </div>
-                <Button asChild>
-                    <Link href="/signup">
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Convidar Membro
-                    </Link>
-                </Button>
+            <div className="mb-6">
+                 <h1 className="text-3xl font-headline font-bold">Equipe</h1>
+                 <p className="text-muted-foreground mt-1">Gerencie os membros e as permissões da sua conta.</p>
             </div>
              <Card>
                 <CardHeader>
