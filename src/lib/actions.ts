@@ -6,7 +6,7 @@ import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, DefaultPriceSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
 import { ensureUserDocument } from './data-server';
 import { headers } from 'next/headers';
@@ -457,7 +457,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
 // #endregion
 
-// #region Stats Actions
+// #region Finance Actions
 export async function resetBillingDataAction(accountId: string) {
   try {
     const completedRentalsRef = getFirestore().collection(`accounts/${accountId}/completed_rentals`);
@@ -474,10 +474,32 @@ export async function resetBillingDataAction(accountId: string) {
 
     await batch.commit();
 
-    revalidatePath('/stats');
+    revalidatePath('/finance');
     return { message: 'success' };
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) as string };
   }
+}
+
+
+export async function updateDefaultPriceAction(accountId: string, prevState: any, formData: FormData) {
+    const validatedFields = DefaultPriceSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return {
+            error: validatedFields.error.flatten().fieldErrors.defaultRentalValue?.[0]
+        };
+    }
+
+    try {
+        const accountRef = getFirestore().doc(`accounts/${accountId}`);
+        await accountRef.update({
+            defaultRentalValue: validatedFields.data.defaultRentalValue ?? FieldValue.delete()
+        });
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { error: handleFirebaseError(e) };
+    }
 }
 // #endregion

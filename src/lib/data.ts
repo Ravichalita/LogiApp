@@ -5,21 +5,36 @@ import {
   collection,
   query,
   onSnapshot,
-  orderBy,
   getDocs,
   doc,
   getDoc,
   where,
   Query,
   DocumentData,
-  collectionGroup,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental, UserAccount } from './types';
+import type { Client, Dumpster, Rental, CompletedRental, PopulatedCompletedRental, PopulatedRental, UserAccount, Account } from './types';
 
 type Unsubscribe = () => void;
 
 const { db } = getFirebase();
+
+// #region Account Data
+export function getAccount(accountId: string, callback: (account: Account | null) => void): Unsubscribe {
+    const accountRef = doc(db, `accounts/${accountId}`);
+    const unsubscribe = onSnapshot(accountRef, (docSnap) => {
+        if (docSnap.exists()) {
+            callback({ id: docSnap.id, ...docSnap.data() } as Account);
+        } else {
+            callback(null);
+        }
+    }, (error) => {
+        console.error("Error fetching account:", error);
+        callback(null);
+    });
+    return unsubscribe;
+}
+// #endregion
 
 // #region Client Data
 export function getClients(accountId: string, callback: (clients: Client[]) => void): Unsubscribe {

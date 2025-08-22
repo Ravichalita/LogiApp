@@ -14,7 +14,7 @@ const baseNavLinks = [
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
-const statsLink = { href: '/stats', label: 'Stats', icon: BarChart3 };
+const financeLink = { href: '/finance', label: 'Financeiro', icon: BarChart3 };
 const teamLink = { href: '/team', label: 'Equipe', icon: Settings };
 
 export function BottomNav() {
@@ -30,7 +30,7 @@ export function BottomNav() {
   const navLinks = [...baseNavLinks];
 
   if(isAdmin || permissions?.canAccessStats) {
-      navLinks.push(statsLink);
+      navLinks.push(financeLink);
   }
 
   if(isAdmin || permissions?.canAccessTeam) {

@@ -65,9 +65,9 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-2">
            {(isAdmin || permissions?.canAccessStats) && (
             <Button variant="ghost" size="icon" asChild>
-                  <Link href="/stats">
+                  <Link href="/finance">
                       <BarChart3 className="h-5 w-5" />
-                      <span className="sr-only">Estatísticas</span>
+                      <span className="sr-only">Financeiro</span>
                   </Link>
               </Button>
            )}

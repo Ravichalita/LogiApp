@@ -4,6 +4,17 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
 
+// #region Account
+export const AccountSchema = z.object({
+    id: z.string(),
+    ownerId: z.string(),
+    defaultRentalValue: z.number().positive().optional(),
+});
+export type Account = z.infer<typeof AccountSchema>;
+
+// #endregion
+
+
 // #region Permissions
 export const PermissionsSchema = z.object({
     canAccessTeam: z.boolean().default(false),
@@ -100,6 +111,9 @@ export const SignupSchema = z
     path: ['confirmPassword'],
   });
 
+export const DefaultPriceSchema = z.object({
+    defaultRentalValue: z.coerce.number().min(0, "O valor deve ser zero ou maior.").optional(),
+});
 // #endregion
 
 

@@ -39,9 +39,24 @@ interface RentalFormProps {
   dumpsters: DumpsterForForm[];
   clients: Client[];
   team: UserAccount[];
+  defaultPrice?: number;
 }
 
-export function RentalForm({ dumpsters, clients, team }: RentalFormProps) {
+const formatCurrencyInput = (value: number | string) => {
+    if (typeof value === 'number') {
+        value = value.toFixed(2);
+    }
+    let inputValue = String(value).replace(/\D/g, '');
+    if (!inputValue) return '';
+    inputValue = (Number(inputValue) / 100).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+    return inputValue;
+};
+
+
+export function RentalForm({ dumpsters, clients, team, defaultPrice }: RentalFormProps) {
   const { accountId, user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -59,7 +74,10 @@ export function RentalForm({ dumpsters, clients, team }: RentalFormProps) {
     // Initialize dates only on the client to avoid hydration mismatch
     setRentalDate(new Date());
     setAssignedToId(user?.uid)
-  }, [user]);
+    if(defaultPrice) {
+        setValue(formatCurrencyInput(defaultPrice));
+    }
+  }, [user, defaultPrice]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -116,13 +134,7 @@ export function RentalForm({ dumpsters, clients, team }: RentalFormProps) {
   };
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let inputValue = e.target.value;
-    inputValue = inputValue.replace(/\D/g, ''); // Remove non-digits
-    inputValue = (Number(inputValue) / 100).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    });
-    setValue(inputValue);
+    setValue(formatCurrencyInput(e.target.value));
   };
 
   return (
