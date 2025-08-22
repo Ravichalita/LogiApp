@@ -9,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus } from './types';
 import { ensureUserDocument } from './data-server';
+import { headers } from 'next/headers';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -32,7 +33,24 @@ function handleFirebaseError(error: unknown): string {
   return message;
 }
 
+
 // #region Auth Actions
+
+export async function ensureUserDocumentOnClient() {
+    'use server';
+    const authorization = headers().get('Authorization');
+    if (!authorization?.startsWith('Bearer ')) {
+        throw new Error('No Firebase ID token was passed.');
+    }
+    const idToken = authorization.split('Bearer ')[1];
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    const user = await adminAuth.getUser(decodedToken.uid);
+
+    // Call the main server-side function to create documents if needed
+    await ensureUserDocument(user);
+    revalidatePath('/'); // Revalidate to reflect changes
+}
+
 
 export async function signupAction(inviterAccountId: string | null, prevState: any, formData: FormData) {
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
@@ -55,19 +73,13 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      // If it's a public sign-up (not an invite), block it.
-      if (!isInviteFlow) {
-          return { ...prevState, message: "Novos cadastros devem ser convidados por um administrador." };
-      }
-
       const newUserRecord = await adminAuth.createUser({
           email,
           password,
           displayName: name,
-          emailVerified: true, // Auto-verify for simplicity in an invite-only system
+          emailVerified: true, 
       });
 
-      // The ensureUserDocument function requires the inviter's accountId to associate the new user.
       await ensureUserDocument(newUserRecord, inviterAccountId);
       
       return {
@@ -106,7 +118,7 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
-        // Remove from the account's team list if you have one.
+        
         const accountRef = db.doc(`accounts/${accountId}`);
         await accountRef.update({
             members: FieldValue.arrayRemove(userId)
@@ -349,7 +361,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             completedDate: FieldValue.serverTimestamp(),
             rentalDays,
             totalValue,
-            accountId, // Ensure accountId is part of the completed rental doc
+            accountId, 
         };
 
         const validatedFields = CompletedRentalSchema.safeParse(completedRentalData);

@@ -30,3 +30,12 @@ export function getFirebase() {
   const db = getFirestore(app);
   return { app, auth, db };
 }
+
+// Add this function to be callable from the AuthProvider
+export async function getFirebaseIdToken() {
+    const { auth } = getFirebase();
+    if (!auth.currentUser) {
+        return null;
+    }
+    return await auth.currentUser.getIdToken(true); // Force refresh
+}

@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
+import { ensureUserDocumentOnClient } from '@/lib/actions';
 
 interface AuthContextType {
   user: User | null;
@@ -40,19 +41,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         if (firebaseUser) {
             setUser(firebaseUser);
+            
             // The user's profile document in Firestore is the source of truth for the account ID.
             const userDocRef = doc(db, 'users', firebaseUser.uid);
-            const unsubscribeDoc = onSnapshot(userDocRef, (userDocSnap) => {
+            const unsubscribeDoc = onSnapshot(userDocRef, async (userDocSnap) => {
                 if (userDocSnap.exists()) {
                     const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                     setUserAccount(userAccountData);
                     setAccountId(userAccountData.accountId);
                     setRole(userAccountData.role);
                 } else {
-                    // This can happen briefly during account creation.
-                    // We don't null out data here to avoid flicker.
+                    // User is authenticated, but their user document doesn't exist.
+                    // This happens on the very first login to an empty database.
+                    // Call a server action to create the necessary documents.
+                    try {
+                        await ensureUserDocumentOnClient();
+                        // The user document is now being created. The onSnapshot listener 
+                        // will fire again with the new data, and the state will be updated.
+                        // We don't need to do anything else here.
+                    } catch (error) {
+                        console.error("Failed to ensure user document on client:", error);
+                        // If document creation fails, something is seriously wrong. Log out.
+                        signOut(auth);
+                    }
                 }
-                // Stop loading once we have the user document or know it doesn't exist yet.
                 setLoading(false);
             }, (error) => {
                 console.error("Erro ao buscar documento do usuário:", error);
@@ -75,21 +87,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    if (loading) return; // Don't do anything until loading is false
+    if (loading) return;
 
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
     if (!user && !isPublicRoute) {
-      // If no user and not on a public route, redirect to login
       router.push('/login');
     } else if (user) {
-      // If there is a user...
-      if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
-        // and email is not verified and we are not on the verification page, redirect there
-        router.push('/verify-email');
-      } else if (user.emailVerified && isPublicRoute) {
-        // and email is verified and we are on a public route, redirect to home
-        router.push('/');
+       if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
+         router.push('/verify-email');
+       } else if (user.emailVerified && nonAuthRoutes.includes(pathname)) {
+         router.push('/');
       }
     }
   }, [user, loading, pathname, router]);
@@ -99,9 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
   
-  const isAuthPage = nonAuthRoutes.includes(pathname) || pathname === '/verify-email';
+  const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
   
-  // While loading, and not on an auth page, show a full-screen spinner.
   if (loading && !isAuthPage) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -110,7 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // If authenticated but accountId is still missing after loading, something is wrong.
   if (user && !accountId && !loading && !isAuthPage) {
       return (
           <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
@@ -121,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
   }
 
-  // If not loading, render children.
   return (
     <AuthContext.Provider value={{ user, userAccount, accountId, role, loading, logout }}>
       {children}
