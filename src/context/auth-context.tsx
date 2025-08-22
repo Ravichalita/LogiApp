@@ -46,6 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setUserAccount(userAccountData);
                     setAccountId(userAccountData.accountId);
                     setRole(userAccountData.role);
+                } else {
+                    // This can happen briefly during account creation.
+                    // We don't null out data here to avoid flicker.
                 }
                 // Stop loading once we have the user document or know it doesn't exist yet.
                 setLoading(false);

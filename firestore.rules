@@ -1,49 +1,62 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // A user is signed in and has a valid token with claims.
+    // Helper functions
     function isSignedIn() {
-      return request.auth != null && request.auth.token.accountId != null;
+      return request.auth != null;
     }
 
-    // The user's role is 'admin'.
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.role == 'admin';
-    }
-
-    // The resource being accessed belongs to the user's account.
-    function isSameAccount(res) {
-      return isSignedIn() && res.data.accountId == request.auth.token.accountId;
+    function isUserAccountOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
     
-    // The query to list documents is filtered by the user's account.
-    function isQueryingOwnAccount() {
-      return isSignedIn() && request.query.resource.data.accountId == request.auth.token.accountId;
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAccountAdmin(accountId) {
+      return isSignedIn() && getUserData().role == 'admin' && getUserData().accountId == accountId;
     }
 
-    // User Profile Rules
+    function isAccountMember(accountId) {
+      return isSignedIn() && getUserData().accountId == accountId;
+    }
+
+    // Matches
     match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && request.auth.uid == userId;
-      // Admins can list users in their own account.
-      allow list: if isAdmin() && isQueryingOwnAccount();
-      // Only server-side actions can create or delete users.
-      allow create, delete: if false;
+      allow get: if isUserAccountOwner(userId) || isAccountAdmin(getUserData().accountId);
+      allow list: if isAccountAdmin(getUserData().accountId);
+      allow update: if isUserAccountOwner(userId);
+      allow create, delete: if false; // Disallow client-side creation/deletion
     }
     
-    // Account Rules (e.g., /accounts/{accountId})
-    // Only allow server-side access or highly restricted admin access.
-     match /accounts/{accountId} {
-       allow read, write: if false; // Adjust if specific client-side account management is needed.
-     }
-
-    // Tenant Data Rules
-    match /{collection}/{docId} {
-      allow read, list: if isSignedIn() && isQueryingOwnAccount();
-      allow create, update, delete: if isAdmin() && isSameAccount(resource);
+    match /accounts/{accountId} {
+       allow get: if isAccountMember(accountId);
+       // Allow members to see who is in their own account.
+       match /team/{userId} {
+         allow read: if isAccountMember(accountId);
+         allow write: if isAccountAdmin(accountId); // Only admins can change team members
+       }
+       
+       // Data collections within an account
+       match /clients/{clientId} {
+          allow read, list: if isAccountMember(accountId);
+          allow write: if isAccountAdmin(accountId);
+       }
+       match /dumpsters/{dumpsterId} {
+          allow read, list: if isAccountMember(accountId);
+          allow write: if isAccountAdmin(accountId);
+       }
+       match /rentals/{rentalId} {
+          allow read, list: if isAccountMember(accountId);
+          allow write: if isAccountAdmin(accountId);
+       }
+       match /completed_rentals/{rentalId} {
+          allow read, list: if isAccountMember(accountId);
+          allow write: if isAccountAdmin(accountId);
+       }
     }
   }
 }

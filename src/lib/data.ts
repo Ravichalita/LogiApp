@@ -21,7 +21,7 @@ const { db } = getFirebase();
 // #region Client Data
 export function getClients(accountId: string, callback: (clients: Client[]) => void): Unsubscribe {
   const clientsCollection = collection(db, `accounts/${accountId}/clients`);
-  const q = query(clientsCollection, where("accountId", "==", accountId));
+  const q = query(clientsCollection, where("accountId", "==", accountId), orderBy('name', 'asc'));
   
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const clients = querySnapshot.docs.map(doc => ({
@@ -40,7 +40,7 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
 
 export async function fetchClients(accountId: string): Promise<Client[]> {
     const clientsCollection = collection(db, `accounts/${accountId}/clients`);
-    const q = query(clientsCollection, where("accountId", "==", accountId));
+    const q = query(clientsCollection, where("accountId", "==", accountId), orderBy('name', 'asc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
 }
