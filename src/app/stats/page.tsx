@@ -4,7 +4,7 @@
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { StatsDisplay } from './stats-display';
-import type { CompletedRental, PopulatedCompletedRental } from '@/lib/types';
+import type { PopulatedCompletedRental } from '@/lib/types';
 import { getPopulatedCompletedRentals } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -102,33 +102,43 @@ function ResetDataButton() {
 
 
 export default function StatsPage() {
-    const { accountId } = useAuth();
+    const { accountId, loading: authLoading } = useAuth();
     const [completedRentals, setCompletedRentals] = useState<PopulatedCompletedRental[]>([]);
-    const [loading, setLoading] = useState(true);
-
+    
     useEffect(() => {
-        if (accountId) {
-            setLoading(true);
-            const unsubscribe = getPopulatedCompletedRentals(accountId, (data) => {
-                setCompletedRentals(data);
-                setLoading(false);
-            });
-            return () => unsubscribe();
-        }
+        if (!accountId) {
+            setCompletedRentals([]);
+            return;
+        };
+
+        const unsubscribe = getPopulatedCompletedRentals(accountId, (data) => {
+            setCompletedRentals(data);
+        });
+        return () => unsubscribe();
+        
     }, [accountId]);
 
     const sortedCompletedRentals = useMemo(() => {
         return [...completedRentals].sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
     }, [completedRentals]);
 
+    if (authLoading) {
+        return (
+             <div className="container mx-auto py-8 px-4 md:px-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h1 className="text-3xl font-headline font-bold">Estatísticas</h1>
+                </div>
+                <StatsSkeleton />
+            </div>
+        )
+    }
+
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <h1 className="text-3xl font-headline font-bold">Estatísticas</h1>
             </div>
-            {loading ? (
-                <StatsSkeleton />
-            ) : completedRentals.length === 0 ? (
+            {completedRentals.length === 0 ? (
                 <div className="text-center py-20 bg-card rounded-lg border">
                     <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground" />
                     <h2 className="mt-4 text-xl font-semibold font-headline">Nenhum dado para exibir</h2>
