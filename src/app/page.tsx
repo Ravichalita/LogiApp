@@ -278,24 +278,26 @@ export default function HomePage() {
                 <Card className="h-full flex flex-col border-none shadow-none rounded-b-none">
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                        <div>
-                        <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
-                           <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
-                           <p className="text-muted-foreground">
-                                Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
-                            </p>
-                        </div>
-                         <CardDescription className="flex items-center gap-1.5 pt-1">
-                            <User className="h-3.5 w-3.5" /> 
-                            {rental.assignedToUser?.name}
-                        </CardDescription>
-                        </div>
-                         <div className="flex flex-col items-end gap-1">
-                            <Badge variant={status.variant}>{status.text}</Badge>
-                             <div className="flex items-center text-xs text-muted-foreground">
-                                <Calendar className="mr-1.5 h-3.5 w-3.5" />
-                                <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                        <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:items-baseline sm:gap-2">
+                               <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
+                               <p className="text-muted-foreground">
+                                    Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
+                                </p>
                             </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                                <div className="flex items-center gap-1.5">
+                                    <User className="h-4 w-4" /> 
+                                    <span>{rental.assignedToUser?.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                                </div>
+                            </div>
+                        </div>
+                         <div className="flex flex-col items-end gap-1 ml-2">
+                            <Badge variant={status.variant}>{status.text}</Badge>
                         </div>
                     </div>
                     </CardHeader>
