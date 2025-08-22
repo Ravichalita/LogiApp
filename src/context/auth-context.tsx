@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       if (firebaseUser) {
         try {
+          const idToken = await firebaseUser.getIdToken();
           // Force refresh the token to get custom claims. This is crucial.
           await firebaseUser.getIdToken(true);
           setUser(firebaseUser);
@@ -56,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Now that we have a fresh token, ensure the user document exists on the server.
           // This call also sets custom claims if they are missing.
           const res = await fetch('/api/ensure-user', {
-              headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+              method: 'POST',
+              headers: { Authorization: `Bearer ${idToken}` },
           });
 
           if (!res.ok) {
@@ -85,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return () => unsubscribeDoc();
 
         } catch (error) {
-          console.error("Error during auth state change handling:", error);
+          console.error("[ensureUserDocumentOnClient] Error:", error);
           logout();
         }
       } else {
