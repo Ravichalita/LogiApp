@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { StatsDisplay } from './stats-display';
 import type { CompletedRental, PopulatedCompletedRental } from '@/lib/types';
@@ -120,6 +120,10 @@ export default function StatsPage() {
         }
     }, [accountId]);
 
+    const sortedCompletedRentals = useMemo(() => {
+        return [...completedRentals].sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
+    }, [completedRentals]);
+
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -146,10 +150,10 @@ export default function StatsPage() {
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="overview" className="mt-6">
-                        <StatsDisplay rentals={completedRentals} />
+                        <StatsDisplay rentals={sortedCompletedRentals} />
                     </TabsContent>
                     <TabsContent value="history" className="mt-6">
-                        <CompletedRentalsTable rentals={completedRentals} />
+                        <CompletedRentalsTable rentals={sortedCompletedRentals} />
                     </TabsContent>
                      <div className="mt-8 flex justify-start">
                         <ResetDataButton />

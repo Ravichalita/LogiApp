@@ -133,7 +133,7 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 // #region Completed Rental Data
 export function getCompletedRentals(accountId: string, callback: (rentals: CompletedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('completedDate', 'desc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
@@ -156,7 +156,7 @@ export function getCompletedRentals(accountId: string, callback: (rentals: Compl
 
 export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('completedDate', 'desc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
