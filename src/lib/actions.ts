@@ -87,7 +87,7 @@ export async function updateUserRoleAction(accountId: string, userId: string, ne
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
-        await adminAuth.setCustomUserClaims(userId, { role: newRole });
+        await adminAuth.setCustomUserClaims(userId, { role: newRole, accountId });
         await userRef.update({ role: newRole });
         revalidatePath('/team');
         return { message: 'success' };
@@ -165,6 +165,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
         const clientDoc = getFirestore().doc(`accounts/${accountId}/clients/${id}`);
         await clientDoc.update({
           ...clientData,
+          accountId,
           updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/clients');
@@ -235,6 +236,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
     const dumpsterDoc = getFirestore().doc(`accounts/${accountId}/dumpsters/${id}`);
     await dumpsterDoc.update({
       ...dumpsterData,
+      accountId,
       updatedAt: FieldValue.serverTimestamp(),
     });
     revalidatePath('/dumpsters');
