@@ -1,42 +1,47 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions to reduce duplication
-    function isOwner(accId) {
-      return request.auth.token.accountId == accId;
+    // Helper Functions
+    function isAuth() {
+      return request.auth != null;
     }
+
+    function getUser(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    function isSignedInUser(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    function isMemberOfAccount(accountId) {
+      return isAuth() && request.auth.token.accountId == accountId;
+    }
+    
     function isAdmin() {
-      return request.auth.token.role == 'admin';
-    }
-    function isMember(accId) {
-      return request.auth.token.accountId == accId;
+      return isAuth() && request.auth.token.role == 'admin';
     }
 
-    // Accounts can only be read by their members. Creation is handled server-side.
-    match /accounts/{accountId} {
-      allow read: if isMember(accountId);
-      allow write: if false; // Disallow all client-side writes
-    }
-
-    // A user can read their own document. Admins can list all users in their account.
+    // Match statements for collections
     match /users/{userId} {
-      allow get: if isMember(resource.data.accountId);
-      allow list: if isAdmin() && request.query.resource.data.accountId == request.auth.token.accountId;
-      allow create, update, delete: if isAdmin();
+      allow read: if isAuth() && (isMemberOfAccount(resource.data.accountId) || isSignedInUser(userId));
+      allow list: if isAdmin() && request.query.where.accountId == request.auth.token.accountId;
+      allow create: if isAuth(); // Allow creation during signup, handled by server-side logic.
+      allow update: if isAdmin() && isMemberOfAccount(resource.data.accountId);
+      allow delete: if isAdmin() && isMemberOfAccount(resource.data.accountId);
+    }
+    
+    match /accounts/{accountId} {
+       allow read, write: if isAdmin() && isMemberOfAccount(accountId);
     }
 
-    // Rules for all subcollections under an account
     match /accounts/{accountId}/{collection}/{docId} {
-      // Only members of the account can access these documents
-      allow get: if isMember(accountId);
-      
-      // Allow list operations only if they are querying for their own account's data
-      allow list: if isMember(accountId) && request.query.resource.data.accountId == request.auth.token.accountId;
-
-      // Only admins of the account can write data
-      allow create, update, delete: if isAdmin() && isOwner(accountId);
+       allow read: if isMemberOfAccount(accountId);
+       allow list: if isMemberOfAccount(accountId) && request.query.where.accountId == request.auth.token.accountId;
+       allow write: if isAdmin() && isMemberOfAccount(accountId);
     }
   }
 }
