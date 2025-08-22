@@ -290,11 +290,13 @@ export default function HomePage() {
                             {rental.assignedToUser?.name}
                         </CardDescription>
                         </div>
-                        <Badge variant={status.variant}>{status.text}</Badge>
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground pt-2">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                         <div className="flex flex-col items-end gap-1">
+                            <Badge variant={status.variant}>{status.text}</Badge>
+                             <div className="flex items-center text-xs text-muted-foreground">
+                                <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                                <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                            </div>
+                        </div>
                     </div>
                     </CardHeader>
                     <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
