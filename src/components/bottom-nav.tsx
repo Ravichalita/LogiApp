@@ -29,7 +29,7 @@ export function BottomNav() {
   
   const navLinks = [...baseNavLinks];
 
-  if(isAdmin || permissions?.canAccessStats) {
+  if(isAdmin || permissions?.canAccessFinance) {
       navLinks.push(financeLink);
   }
 

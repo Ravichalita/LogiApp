@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 
 const permissionLabels: Record<keyof Omit<Permissions, 'canDeleteItems'>, string> = {
   canAccessTeam: 'Acessar tela de Equipe',
-  canAccessStats: 'Acessar tela de Estatísticas',
+  canAccessFinance: 'Acessar controle financeiro',
   canEditClients: 'Editar e Excluir Clientes',
   canEditDumpsters: 'Editar e Excluir Caçambas',
   canEditRentals: 'Editar e Excluir Aluguéis',

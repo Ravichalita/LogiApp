@@ -64,7 +64,7 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 role = 'admin';
                 permissions = PermissionsSchema.parse({
                     canAccessTeam: true,
-                    canAccessStats: true,
+                    canAccessFinance: true,
                     canEditClients: true,
                     canEditDumpsters: true,
                     canEditRentals: true,

@@ -63,7 +63,7 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-            {(isAdmin || permissions?.canAccessStats) && (
+            {(isAdmin || permissions?.canAccessFinance) && (
                  <Button variant="ghost" size="icon" asChild>
                     <Link href="/finance">
                         <DollarSign className="h-5 w-5" />
