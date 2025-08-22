@@ -12,7 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
-import { EditRentalDialog } from './edit-rental-dialog';
+import { EditRentalAddressDialog } from './edit-rental-address-dialog';
+import { EditRentalPriceDialog } from './edit-rental-price-dialog';
+
 import type { getRentalStatus } from '../page';
 import {
   Accordion,
@@ -128,14 +130,24 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     <span className="font-medium">{rental.deliveryAddress}</span>
                 </div>
             </div>
-            {!!rental.latitude && !!rental.longitude && (
-              <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" asChild>
-                <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                    <GoogleMapsIcon className="h-4 w-4" />
-                    <span className="sr-only">Abrir no Mapa</span>
-                </Link>
-              </Button>
-            )}
+             <div className="flex items-center gap-2">
+                {!!rental.latitude && !!rental.longitude && (
+                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" asChild>
+                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                        <GoogleMapsIcon className="h-4 w-4" />
+                        <span className="sr-only">Abrir no Mapa</span>
+                    </Link>
+                </Button>
+                )}
+                 {canEdit && (
+                    <EditRentalAddressDialog rental={rental}>
+                        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar Endereço</span>
+                        </Button>
+                    </EditRentalAddressDialog>
+                )}
+            </div>
         </div>
         <div className="flex items-center justify-between">
             <div className="flex items-start gap-3">
@@ -158,12 +170,22 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         </div>
         
         {canSeeFinance && (
-            <div className="flex items-start gap-3">
-                <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
-                    <span className="font-medium">{formatCurrency(totalValue)}</span>
+            <div className="flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                    <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                    <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                        <span className="font-medium">{formatCurrency(totalValue)}</span>
+                    </div>
                 </div>
+                {canEdit && (
+                     <EditRentalPriceDialog rental={rental}>
+                        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Editar Preço</span>
+                        </Button>
+                    </EditRentalPriceDialog>
+                )}
             </div>
         )}
 
@@ -222,7 +244,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </Button>
             </form>
 
-            {canEdit && (
+            {canDelete && (
                  <AlertDialog>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -231,23 +253,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                             <EditRentalDialog rental={rental}>
-                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Editar Endereço/Preço
-                                 </DropdownMenuItem>
-                             </EditRentalDialog>
-                             {canDelete && (
-                                <>
-                                <DropdownMenuSeparator/>
-                                 <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        {status.text === 'Pendente' ? 'Cancelar Agendamento' : 'Excluir Aluguel'}
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                </>
-                             )}
+                            <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    {status.text === 'Pendente' ? 'Cancelar Agendamento' : 'Excluir Aluguel'}
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -274,3 +285,4 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
+
