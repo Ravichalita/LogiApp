@@ -141,15 +141,15 @@ export default function HomePage() {
 
   useEffect(() => {
     if (authLoading) {
-      return; // Wait until auth context is no longer loading
+      return; 
     }
     
     if (!accountId) {
-      setRentals([]); // Clear data if no accountId
+      setRentals([]);
+      setError(null);
       return;
     }
     
-    // Determine if the user is an admin or has specific permissions to view all rentals
     const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
     
@@ -157,16 +157,15 @@ export default function HomePage() {
       accountId,
       (data) => {
         setRentals(data);
-        setError(null); // Clear errors on successful data fetch
+        setError(null);
       },
       (err) => {
         console.error("Firestore permission denied:", err);
-        setError(err); // Set error state to display to the user
+        setError(err); 
       },
       userIdToFilter
     );
     
-    // Cleanup subscription on component unmount
     return () => unsubscribe();
   }, [authLoading, accountId, userAccount, user]);
 
@@ -214,7 +213,7 @@ export default function HomePage() {
     )
   }
 
-  if (!authLoading && rentals.length === 0) {
+  if (!authLoading && rentals.length === 0 && !error) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -298,5 +297,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

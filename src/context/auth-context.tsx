@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Falha ao garantir o documento do usuário: ' + res.statusText);
         }
 
-        await firebaseUser.getIdToken(true); // Force refresh token
+        await firebaseUser.getIdToken(true); // Force refresh token to get custom claims
 
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDocSnap = await getDoc(userDocRef);
@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
              setUserAccount(null);
              setAccountId(null);
              setRole(null);
+             await logout(); // Logout if doc is not found, something is wrong
         }
 
       } catch (error) {
@@ -85,13 +86,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserAccount(null);
         setAccountId(null);
         setRole(null);
+        await logout(); // Logout on critical error
       } finally {
         setLoading(false);
       }
     });
 
     return () => unsubscribeAuth();
-  }, [auth, db]);
+  }, [auth, db, logout]);
 
   useEffect(() => {
     if (loading) return;
@@ -142,5 +144,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    
