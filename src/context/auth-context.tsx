@@ -18,8 +18,6 @@ interface AuthContextType {
   role: UserRole | null;
   loading: boolean;
   logout: () => Promise<void>;
-  isInviteFlow: boolean;
-  setIsInviteFlow: (isInvite: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,7 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isInviteFlow, setIsInviteFlow] = useState(false);
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
@@ -91,11 +88,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (user) {
        if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
          router.push('/verify-email');
-       } else if (user.emailVerified && nonAuthRoutes.includes(pathname) && !isInviteFlow) {
+       } else if (user.emailVerified && nonAuthRoutes.includes(pathname)) {
          router.push('/');
       }
     }
-  }, [user, loading, pathname, router, isInviteFlow]);
+  }, [user, loading, pathname, router]);
 
   const logout = async () => {
     await signOut(auth);
@@ -129,8 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role,
     loading,
     logout,
-    isInviteFlow,
-    setIsInviteFlow,
   };
 
   return (

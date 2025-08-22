@@ -30,14 +30,7 @@ export function FloatingActionButton() {
                 return <NewItemDialog itemType="dumpster" />;
             case '/team':
                 if (userAccount?.role !== 'admin') return null;
-                return (
-                     <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                         <Link href="/signup">
-                            <UserPlus className="h-7 w-7" />
-                            <span className="sr-only">Convidar Membro</span>
-                        </Link>
-                    </Button>
-                );
+                return <NewItemDialog itemType="team" />;
             case '/':
             default:
                  return (

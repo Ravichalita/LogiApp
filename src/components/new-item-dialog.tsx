@@ -11,13 +11,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Plus, UserPlus } from 'lucide-react';
 import { ClientForm } from '@/app/clients/client-form';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
+import { InviteForm } from '@/app/team/invite-form';
 
 
 interface NewItemDialogProps {
-  itemType: 'client' | 'dumpster';
+  itemType: 'client' | 'dumpster' | 'team';
 }
 
 export function NewItemDialog({ itemType }: NewItemDialogProps) {
@@ -26,23 +27,32 @@ export function NewItemDialog({ itemType }: NewItemDialogProps) {
   const titles = {
     client: 'Novo Cliente',
     dumpster: 'Nova Caçamba',
+    team: 'Convidar Membro',
   };
 
   const descriptions = {
     client: 'Adicione um novo cliente à sua lista.',
     dumpster: 'Cadastre uma nova caçamba no seu inventário.',
+    team: 'Preencha os dados do novo membro da equipe.',
   };
 
   const formComponent = {
     client: <ClientForm onSave={() => setIsOpen(false)} />,
     dumpster: <DumpsterForm onSave={() => setIsOpen(false)} />,
+    team: <InviteForm onSave={() => setIsOpen(false)} />,
   };
+  
+   const iconComponent = {
+    client: <Plus className="h-8 w-8" />,
+    dumpster: <Plus className="h-8 w-8" />,
+    team: <UserPlus className="h-7 w-7" />,
+   }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button className="h-16 w-16 rounded-full shadow-lg">
-            <Plus className="h-8 w-8" />
+            {iconComponent[itemType]}
             <span className="sr-only">{titles[itemType]}</span>
         </Button>
       </DialogTrigger>
