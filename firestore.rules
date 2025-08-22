@@ -1,40 +1,43 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    function isAdmin() {
-      return request.auth.token.role == 'admin';
-    }
 
     function isAccountMember(accountId) {
-      return request.auth.token.accountId == accountId;
+      // Check if the user is authenticated and if their token's accountId matches the document's accountId.
+      return request.auth != null && request.auth.token.accountId == accountId;
     }
 
     match /accounts/{accountId} {
-      allow read, update, delete: if isAccountMember(accountId) && isAdmin();
-      // Allow a user to create an account for themselves, where their UID becomes the accountId.
-      allow create: if request.auth.uid == accountId;
-
-      // Sub-collections
-      match /{collection}/{docId} {
-        allow read, list, update, delete: if isAccountMember(accountId) && isAdmin();
-        allow create: if isAccountMember(accountId) && isAdmin();
-      }
+      // Only admins of the account can manage account-level details.
+      // Creation is handled by the user signup logic.
+      allow read, update, delete: if isAccountMember(accountId) && request.auth.token.role == 'admin';
+      allow create: if request.auth.uid == accountId; // A user can create their own account document.
     }
 
     match /users/{userId} {
-      // Allow a user to create their own user document.
+      // A user can always get their own document.
+      // An admin can get any user document within their account.
+      allow get: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin');
+
+      // A user can create their own user document during signup.
       allow create: if request.auth.uid == userId;
-      // Allow a user to read their own document.
-      allow get: if request.auth.uid == userId;
-      // Allow an admin to read any user document within their own account.
-      allow get: if isAdmin() && isAccountMember(resource.data.accountId);
-      // Allow admins to update users in their account.
-      allow update: if isAdmin() && isAccountMember(request.auth.token.accountId);
-      // Allow admins to list users in their account.
-      allow list: if isAdmin() && request.query.filters.size() == 1 && request.query.filters.accountId == request.auth.token.accountId;
+
+      // A user can update their own profile, or an admin can update any user in their account.
+      allow update: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin');
+
+      // Only an admin can remove a user from an account. A user can't delete themselves this way.
+      allow delete: if isAccountMember(resource.data.accountId) && request.auth.token.role == 'admin';
+    }
+
+    // Rules for all subcollections within an account (clients, dumpsters, rentals, etc.)
+    match /accounts/{accountId}/{collection}/{documentId} {
+      // Any member of the account can read the data.
+      allow read: if isAccountMember(accountId);
+      
+      // Only admins can write (create, update, delete) data.
+      // This will be expanded later to use granular permissions.
+      allow write: if isAccountMember(accountId) && request.auth.token.role == 'admin';
     }
   }
 }
