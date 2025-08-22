@@ -99,10 +99,16 @@ export default function HomePage() {
   const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    // Only fetch data if auth is fully resolved and we have necessary data
-    if (!authLoading && accountId && userAccount) {
+    if (authLoading) {
+      setDataLoading(true);
+      return;
+    }
+
+    if (accountId && userAccount) {
+      setDataLoading(true);
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : user?.uid;
 
@@ -110,16 +116,18 @@ export default function HomePage() {
         accountId,
         (data) => {
           setRentals(data);
+          setDataLoading(false);
         },
         userIdToFilter
       );
       
       return () => unsubscribe();
     } else {
-      // If not authenticated or still loading, clear existing rentals
+      // If not authenticated or still loading, clear existing rentals and stop loading
       setRentals([]);
+      setDataLoading(false);
     }
-  }, [authLoading, accountId, userAccount, user]);
+  }, [authLoading, accountId, user, userAccount]);
 
   const filteredAndSortedRentals = useMemo(() => {
     return rentals
@@ -138,7 +146,7 @@ export default function HomePage() {
     });
   }, [rentals, statusFilter]);
 
-  if (authLoading) {
+  if (authLoading || dataLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
@@ -150,7 +158,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0 && !authLoading) {
+  if (rentals.length === 0) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
