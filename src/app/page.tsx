@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { Truck, Calendar, ChevronDown } from 'lucide-react';
+import { Truck, Calendar, ChevronDown, User } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,7 @@ import { Separator } from '@/components/ui/separator';
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado';
 type RentalStatusFilter = RentalStatus | 'Todas';
 
-export function getRentalStatus(rental: Rental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success', order: number } {
+export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success', order: number } {
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
@@ -60,6 +60,7 @@ function RentalCardSkeleton() {
                     <Skeleton className="h-5 w-20" />
                 </div>
                 <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-1/3 mt-1" />
             </CardHeader>
             <CardContent className="flex-grow flex flex-col justify-between">
                 <div className="space-y-4">
@@ -198,6 +199,10 @@ export default function HomePage() {
                         <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
                         <CardDescription>
                             Para <span className="font-semibold">{rental.client?.name}</span>
+                        </CardDescription>
+                         <CardDescription className="flex items-center gap-1.5 pt-1">
+                            <User className="h-3.5 w-3.5" /> 
+                            {rental.assignedToUser?.name}
                         </CardDescription>
                         </div>
                         <Badge variant={status.variant}>{status.text}</Badge>

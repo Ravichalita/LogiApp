@@ -115,21 +115,23 @@ export function getPopulatedRentals(
 
             const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
             const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
+            const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
 
-            const [dumpsterSnap, clientSnap] = await Promise.all([dumpsterPromise, clientPromise]);
+            const [dumpsterSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, clientPromise, assignedToPromise]);
 
             return {
                 id: rentalDoc.id,
                 ...rentalData,
-                 rentalDate: rentalData.rentalDate?.toDate ? rentalData.rentalDate.toDate().toISOString() : rentalData.rentalDate,
+                rentalDate: rentalData.rentalDate?.toDate ? rentalData.rentalDate.toDate().toISOString() : rentalData.rentalDate,
                 returnDate: rentalData.returnDate?.toDate ? rentalData.returnDate.toDate().toISOString() : rentalData.returnDate,
                 dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
                 client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
+                assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
             };
         });
 
         const populatedRentals = await Promise.all(rentalPromises);
-        callback(populatedRentals.filter(r => r.client && r.dumpster));
+        callback(populatedRentals.filter(r => r.client && r.dumpster && r.assignedToUser));
     }, (error) => {
         console.error("Error fetching populated rentals:", error);
         callback([]);

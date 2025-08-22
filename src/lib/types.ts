@@ -117,10 +117,11 @@ export type Location = { lat: number; lng: number; address: string; };
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada';
 export type EnhancedDumpster = Dumpster & { derivedStatus: string };
-export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId'> & {
+export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
     id: string;
     dumpster: Dumpster | null;
     client: Client | null;
+    assignedToUser: UserAccount | null;
 };
 export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'clientId'> & {
     id: string;
