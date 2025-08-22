@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { onIdTokenChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount } from '@/lib/types';
@@ -31,26 +31,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+    // Use onIdTokenChanged to listen for auth changes AND token refreshes
+    const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-             // Force refresh the token to get the latest custom claims.
-             // This is crucial after signup to ensure the `accountId` claim is present.
-            await firebaseUser.getIdToken(true);
             setUser(firebaseUser);
+            // The rest of the logic (fetching user doc) will be triggered by the `user` state change
         } else {
             setUser(null);
             setUserAccount(null);
             setAccountId(null);
-            setLoading(false);
+            setLoading(false); // No user, stop loading
         }
     });
 
     return () => unsubscribeAuth();
   }, [auth]);
 
-
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      // If user is null (logged out), no need to fetch profile
+      return;
+    }
     
     // User is authenticated, listen to their document in Firestore for profile info
     const userDocRef = doc(db, 'users', user.uid);
@@ -61,12 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUserAccount(userAccountData);
           setAccountId(userAccountData.accountId);
         } else {
-          // This can happen in a race condition during signup/cleanup.
-          // Logging out prevents being stuck in a bad state.
           console.error("User document not found for authenticated user. Logging out.");
           signOut(auth);
         }
-        setLoading(false); // Finish loading once we have the user doc (or confirmed it's missing)
+        // Finish loading only after we have the user and their profile (or lack thereof)
+        setLoading(false); 
       }, 
       (error) => {
         console.error("Error fetching user document:", error);
@@ -80,12 +80,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Don't redirect until we are sure of the auth state
 
     const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
     const isVerifyRoute = pathname.startsWith('/verify-email');
     
-    // Allow an already logged-in user (admin) to access the signup page to invite others
+    // Special case: an existing user can access signup page to invite others
     const isInviteFlow = pathname.startsWith('/signup') && !!user;
 
     if (user) {
@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/');
       }
     } else {
+      // No user, but not on an auth-allowed page, so redirect to login
       if (!isNonAuthRoute) {
         router.push('/login');
       }
@@ -103,6 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await signOut(auth);
+    // Clear state immediately on logout
+    setUser(null);
+    setUserAccount(null);
+    setAccountId(null);
+    setLoading(true); // Set to loading while we redirect
     router.push('/login');
   };
   
