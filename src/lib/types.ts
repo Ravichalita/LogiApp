@@ -31,7 +31,7 @@ export const PermissionsSchema = z.object({
     canEditClients: z.boolean().default(false),
     canEditDumpsters: z.boolean().default(false),
     canEditRentals: z.boolean().default(false),
-    canDeleteItems: z.boolean().default(true),
+    canDeleteItems: z.boolean().default(false),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;

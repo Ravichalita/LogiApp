@@ -8,12 +8,13 @@ import { getCompletedRentals, getAccount } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RentalPricesForm } from './rental-prices-form';
 import { RevenueByClientChart } from './revenue-by-client-chart';
 import { ResetButton } from './reset-button';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -45,13 +46,16 @@ function StatCard({ title, value, icon: Icon, loading }: { title: string, value:
 }
 
 export default function FinancePage() {
-    const { accountId, loading: authLoading } = useAuth();
+    const { accountId, userAccount, loading: authLoading } = useAuth();
     const [completedRentals, setCompletedRentals] = useState<CompletedRental[]>([]);
     const [account, setAccount] = useState<Account | null>(null);
     const [loadingData, setLoadingData] = useState(true);
 
+    const isAdmin = userAccount?.role === 'admin';
+    const canAccess = isAdmin || userAccount?.permissions?.canAccessFinance;
+
     useEffect(() => {
-        if (authLoading || !accountId) {
+        if (authLoading || !accountId || !canAccess) {
             if (!authLoading) setLoadingData(false);
             return;
         };
@@ -69,7 +73,7 @@ export default function FinancePage() {
         
         fetchData();
 
-    }, [accountId, authLoading]);
+    }, [accountId, authLoading, canAccess]);
 
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -114,7 +118,21 @@ export default function FinancePage() {
     })).sort((a,b) => b.value - a.value);
 
 
-    const isLoading = authLoading || loadingData;
+    const isLoading = authLoading || (loadingData && canAccess);
+
+    if (!isLoading && !canAccess) {
+         return (
+            <div className="container mx-auto py-8 px-4 md:px-6">
+                 <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Acesso Negado</AlertTitle>
+                    <AlertDescription>
+                       Você não tem permissão para visualizar esta página.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        )
+    }
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
