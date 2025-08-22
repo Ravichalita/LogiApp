@@ -51,7 +51,7 @@ export async function fetchClients(accountId: string): Promise<Client[]> {
 // #region Dumpster Data
 export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]) => void): Unsubscribe {
     const dumpstersCollection = collection(db, `accounts/${accountId}/dumpsters`);
-    const q = query(dumpstersCollection, where("accountId", "==", accountId), orderBy('name', 'asc'));
+    const q = query(dumpstersCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const dumpsters = querySnapshot.docs.map(doc => ({
@@ -71,7 +71,7 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('rentalDate', 'asc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
