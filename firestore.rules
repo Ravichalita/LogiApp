@@ -2,40 +2,31 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
     function isAdmin() {
       return request.auth.token.role == 'admin';
     }
 
-    // Accounts can only be read by their members. Creation is handled server-side.
-    match /accounts/{accountId} {
-      allow read: if request.auth.token.accountId == accountId;
-      allow write: if false; // All writes are managed by server-side actions
+    function isMemberOfAccount(accountId) {
+      return request.auth.token.accountId == accountId;
     }
-
-    // Subcollections can only be accessed by members of the parent account.
-    // Writes are restricted to admins.
-    match /accounts/{accountId}/{collection}/{docId} {
-      allow get: if request.auth.token.accountId == accountId;
-      allow list: if request.auth.token.accountId == accountId && request.query.where.accountId == accountId;
-      allow write: if isAdmin() && request.auth.token.accountId == accountId;
-    }
-
-    // Rules for the root 'users' collection
+    
+    // User profile can be read by the user themselves or by an admin of the same account
     match /users/{userId} {
-      // Allow admins to list all users within their own account
-      allow list: if isAdmin() && request.query.filters.size() == 1 && request.query.filters.accountId == request.auth.token.accountId;
-
-      // Allow a user to read their own document,
-      // OR an admin to read any user's document in the same account
-      allow get: if request.auth.uid == userId || (isAdmin() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountId == resource.data.accountId);
-      
-      // Allow admins to update users in their account (e.g., change role)
-      // Only admins of the target user's account can update them.
-      allow update: if isAdmin() && request.auth.token.accountId == resource.data.accountId;
-
-      // Disallow direct creation/deletion from client. This is handled by secure backend actions.
+      allow read: if request.auth.uid == userId || (isAdmin() && isMemberOfAccount(resource.data.accountId));
+      allow update: if request.auth.uid == userId; // Users can update their own profile
+      // Create and delete are handled by server-side actions
       allow create, delete: if false; 
+      allow list: if false; // List operations on root users collection are disallowed for clients
+    }
+
+    // Rules for all subcollections under a specific account
+    match /accounts/{accountId}/{document=**} {
+      // Any authenticated member of the account can read or list documents
+      allow read, list: if isMemberOfAccount(accountId);
+      
+      // Only admins of the account can write documents
+      allow write: if isAdmin() && isMemberOfAccount(accountId);
     }
   }
 }

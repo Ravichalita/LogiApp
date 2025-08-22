@@ -131,7 +131,7 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 // #region Completed Rental Data
 export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId));
+    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('completedDate', 'desc'));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
@@ -185,18 +185,39 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     callback([]);
     return () => {};
   }
-  const usersCollection = collection(db, 'users');
-  const q = query(usersCollection, where('accountId', '==', accountId));
-  
-  const unsubscribe = onSnapshot(q, (querySnapshot) => {
-    const users = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as UserAccount));
-    const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
-    callback(sortedUsers);
+  // Listen for changes on the account document to get the list of member IDs
+  const accountRef = doc(db, 'accounts', accountId);
+  const unsubscribe = onSnapshot(accountRef, async (accountSnap) => {
+    if (!accountSnap.exists()) {
+      callback([]);
+      return;
+    }
+    const memberIds = accountSnap.data()?.members as string[] || [];
+    if (memberIds.length === 0) {
+      callback([]);
+      return;
+    }
+
+    // Fetch the user document for each member ID
+    try {
+      const memberPromises = memberIds.map(id => getDoc(doc(db, 'users', id)));
+      const memberDocs = await Promise.all(memberPromises);
+      
+      const users = memberDocs
+        .filter(docSnap => docSnap.exists())
+        .map(docSnap => ({
+          id: docSnap.id,
+          ...docSnap.data()
+        } as UserAccount));
+        
+      const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
+      callback(sortedUsers);
+    } catch (error) {
+        console.error("Error fetching team members' documents:", error);
+        callback([]);
+    }
   }, (error) => {
-      console.error("Error fetching team members:", error);
+      console.error("Error fetching account document:", error);
       callback([]);
   });
 
