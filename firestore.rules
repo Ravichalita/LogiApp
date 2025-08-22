@@ -3,45 +3,58 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper Functions
-    function isSignedIn() {
+    function isUserAuthenticated() {
       return request.auth != null;
     }
-    
-    function isAccountMember(accountId) {
-      return isSignedIn() && request.auth.token.accountId == accountId;
+
+    function isUserAccountMember(accountId) {
+      return isUserAuthenticated() && request.auth.token.accountId == accountId;
     }
 
-    function isAdmin() {
-        return request.auth.token.role == 'admin';
+    function isUserAdmin(accountId) {
+      return isUserAccountMember(accountId) && request.auth.token.role == 'admin';
     }
 
-    // Rules for Accounts
     match /accounts/{accountId} {
-      allow read: if isAccountMember(accountId);
-      allow write: if isAccountMember(accountId) && isAdmin();
+      allow read: if isUserAccountMember(accountId);
+      allow write: if isUserAdmin(accountId);
+
+      // Clients
+      match /clients/{clientId} {
+        allow read, write: if isUserAccountMember(accountId);
+        allow list: if isUserAccountMember(accountId) && request.query.filters.size() == 1 && request.query.filters[0].field.pathString == "accountId" && request.query.filters[0].value == accountId;
+      }
+
+      // Dumpsters
+      match /dumpsters/{dumpsterId} {
+        allow read, write: if isUserAccountMember(accountId);
+        allow list: if isUserAccountMember(accountId) && request.query.filters.size() == 1 && request.query.filters[0].field.pathString == "accountId" && request.query.filters[0].value == accountId;
+      }
+      
+      // Rentals
+      match /rentals/{rentalId} {
+        allow read, write: if isUserAccountMember(accountId);
+        allow list: if isUserAccountMember(accountId) && request.query.filters.size() == 1 && request.query.filters[0].field.pathString == "accountId" && request.query.filters[0].value == accountId;
+      }
+
+      // Completed Rentals
+      match /completed_rentals/{rentalId} {
+        allow read, write: if isUserAccountMember(accountId);
+        allow list: if isUserAccountMember(accountId) && request.query.filters.size() == 1 && request.query.filters[0].field.pathString == "accountId" && request.query.filters[0].value == accountId;
+      }
     }
 
-    // Rules for Users
+    // User documents can be read by the user themselves
     match /users/{userId} {
-      allow get: if isAccountMember(resource.data.accountId);
-      allow list: if request.query.where.get("accountId")[2] == request.auth.token.accountId && isAdmin();
-      allow create: if isSignedIn(); // Allow creation during signup
-      allow update: if request.auth.uid == userId || (isAccountMember(resource.data.accountId) && isAdmin());
-      allow delete: if isAccountMember(resource.data.accountId) && isAdmin();
-    }
-
-    // Rules for App Data (Clients, Dumpsters, Rentals)
-    match /accounts/{accountId}/{collection}/{docId} {
-      allow read, get: if isAccountMember(accountId);
-      allow list: if request.query.where.get("accountId")[2] == accountId && isAccountMember(accountId);
-      allow write: if isAccountMember(accountId) && isAdmin();
-    }
-    
-     match /accounts/{accountId}/completed_rentals/{rentalId} {
-        allow read, get: if isAccountMember(accountId);
-        allow list: if request.query.where.get("accountId")[2] == accountId && isAccountMember(accountId);
-        allow create, update, delete: if isAccountMember(accountId) && isAdmin();
+      allow get: if isUserAuthenticated() && request.auth.uid == userId;
+      allow create: if isUserAuthenticated();
+      allow update, delete: if isUserAuthenticated() && request.auth.uid == userId;
+      // Admins can list all users within their account
+      allow list: if isUserAuthenticated() 
+                  && request.auth.token.role == 'admin'
+                  && request.query.filters.size() == 1 
+                  && request.query.filters[0].field.pathString == "accountId" 
+                  && request.query.filters[0].value == request.auth.token.accountId;
     }
   }
 }
