@@ -81,13 +81,31 @@ export const RentalSchema = z.object({
   assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
 });
 
-export const UpdateRentalSchema = z.object({
+const UpdateRentalPeriodSchema = z.object({
   id: z.string(),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
 }).refine(data => new Date(data.returnDate) > new Date(data.rentalDate), {
   message: "A data de retirada deve ser posterior à data de entrega.",
   path: ["returnDate"],
+});
+
+export const UpdateRentalSchema = z.object({
+    id: z.string(),
+    rentalDate: z.string().optional(),
+    returnDate: z.string().optional(),
+    deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }).optional(),
+    latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
+    longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+    value: z.coerce.number().positive({ message: "O valor deve ser positivo." }).optional(),
+}).refine(data => {
+    if (data.rentalDate && data.returnDate) {
+        return new Date(data.returnDate) > new Date(data.rentalDate);
+    }
+    return true;
+}, {
+    message: "A data de retirada deve ser posterior à data de entrega.",
+    path: ["returnDate"],
 });
 
 

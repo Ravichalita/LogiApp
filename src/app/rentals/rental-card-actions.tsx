@@ -2,16 +2,17 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { finishRentalAction, cancelRentalAction } from '@/lib/actions';
+import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText, MoreVertical } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
+import { EditRentalDialog } from './edit-rental-dialog';
 import type { getRentalStatus } from '../page';
 import {
   Accordion,
@@ -19,6 +20,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,7 +81,7 @@ function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { accountId, userAccount } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
-  const [isCanceling, startCancelTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
   
   const finishFormRef = useRef<HTMLFormElement>(null);
@@ -97,14 +105,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     })
   }
 
-  const handleCancelAction = () => {
-     startCancelTransition(async () => {
+  const handleDeleteAction = () => {
+     startDeleteTransition(async () => {
         if (!accountId) return;
-        const result = await cancelRentalAction(accountId, rental.id);
+        const result = await deleteRentalAction(accountId, rental.id);
         if (result.message === 'error') {
             toast({ title: "Erro", description: result.error, variant: "destructive"});
         } else {
-            toast({ title: "Sucesso!", description: "Agendamento cancelado." });
+            toast({ title: "Sucesso!", description: "Aluguel excluído." });
         }
      });
   }
@@ -139,13 +147,13 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </p>
                 </div>
             </div>
-            {canEdit && (
-              <EditRentalPeriodDialog rental={rental}>
-                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Editar Período</span>
-                  </Button>
-              </EditRentalPeriodDialog>
+             {canEdit && (
+                <EditRentalPeriodDialog rental={rental}>
+                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Editar Período</span>
+                    </Button>
+                </EditRentalPeriodDialog>
             )}
         </div>
         
@@ -205,25 +213,44 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         </Accordion>
 
       </div>
-       <div className="flex flex-col md:flex-row w-full gap-2 mt-auto md:ml-auto md:w-auto">
-            {status.text !== 'Pendente' && (
-                <form ref={finishFormRef} action={handleFinishAction} className="w-full md:w-auto">
-                    <input type="hidden" name="rentalId" value={rental.id} />
-                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                    {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                    Finalizar Aluguel
-                    </Button>
-                </form>
-            )}
+       <div className="flex flex-col md:flex-row w-full gap-2 mt-auto">
+            <form ref={finishFormRef} action={handleFinishAction} className="w-full md:w-auto flex-grow">
+                <input type="hidden" name="rentalId" value={rental.id} />
+                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                Finalizar Aluguel
+                </Button>
+            </form>
 
-            {status.text === 'Pendente' && canDelete && (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" className="w-full">
-                            <Trash2 />
-                            Cancelar Agendamento
-                        </Button>
-                    </AlertDialogTrigger>
+            {canEdit && (
+                 <AlertDialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" className="shrink-0">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                             <EditRentalDialog rental={rental}>
+                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Editar Endereço/Preço
+                                 </DropdownMenuItem>
+                             </EditRentalDialog>
+                             {canDelete && (
+                                <>
+                                <DropdownMenuSeparator/>
+                                 <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        {status.text === 'Pendente' ? 'Cancelar Agendamento' : 'Excluir Aluguel'}
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                </>
+                             )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
@@ -231,13 +258,13 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             Você tem certeza?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso irá cancelar permanentemente o agendamento deste aluguel e a caçamba voltará a ficar disponível.
+                            Esta ação não pode ser desfeita. Isso irá {status.text === 'Pendente' ? 'cancelar permanentemente o agendamento' : 'excluir permanentemente o registro'} deste aluguel.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isCanceling}>Voltar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleCancelAction} disabled={isCanceling} className="bg-destructive hover:bg-destructive/90">
-                            {isCanceling ? <Spinner size="small" /> : 'Sim, Cancelar'}
+                        <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                            {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                     </AlertDialogContent>

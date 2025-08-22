@@ -408,7 +408,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
     redirect('/');
 }
 
-export async function cancelRentalAction(accountId: string, rentalId: string) {
+export async function deleteRentalAction(accountId: string, rentalId: string) {
     if (!rentalId) {
         return { message: 'error', error: 'Rental ID is missing.' };
     }
@@ -422,7 +422,20 @@ export async function cancelRentalAction(accountId: string, rentalId: string) {
 }
 
 export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
-    const validatedFields = UpdateRentalSchema.safeParse(Object.fromEntries(formData.entries()));
+    const rawData = Object.fromEntries(formData.entries());
+
+    let numericValue: number | undefined = undefined;
+    if (rawData.value) {
+        const rawValue = rawData.value as string;
+        numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+    }
+    
+    const dataToValidate = {
+        ...rawData,
+        value: numericValue,
+    };
+
+    const validatedFields = UpdateRentalSchema.safeParse(dataToValidate);
 
     if (!validatedFields.success) {
         return {
