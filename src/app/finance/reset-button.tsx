@@ -47,7 +47,7 @@ export function ResetButton({ accountId }: { accountId: string }) {
   };
 
   return (
-    <div className="flex justify-center items-center mt-8">
+    <div className="flex justify-start items-center mt-8">
        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <div className="flex items-center space-x-2">
                 <Button 
