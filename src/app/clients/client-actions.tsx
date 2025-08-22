@@ -42,7 +42,7 @@ export function ClientActions({ client }: { client: Client }) {
 
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditClients;
-  const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
+  const canDelete = isAdmin || userAccount?.permissions?.canEditClients;
 
 
   const handleDelete = () => {

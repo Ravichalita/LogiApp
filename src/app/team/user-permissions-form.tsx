@@ -12,13 +12,12 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 
-const permissionLabels: Record<keyof Permissions, string> = {
+const permissionLabels: Record<keyof Omit<Permissions, 'canDeleteItems'>, string> = {
   canAccessTeam: 'Acessar tela de Equipe',
   canAccessStats: 'Acessar tela de Estatísticas',
-  canEditClients: 'Editar Clientes',
-  canEditDumpsters: 'Editar Caçambas',
-  canEditRentals: 'Editar Aluguéis',
-  canDeleteItems: 'Excluir itens (Clientes, Caçambas, etc.)',
+  canEditClients: 'Editar e Excluir Clientes',
+  canEditDumpsters: 'Editar e Excluir Caçambas',
+  canEditRentals: 'Editar e Excluir Aluguéis',
 };
 
 interface UserPermissionsFormProps {
@@ -83,13 +82,13 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     <form onSubmit={handleSubmit} className="px-4 pb-4">
        <Separator />
       <div className="grid gap-4 py-4">
-        {Object.keys(permissionLabels).map((key) => (
+        {(Object.keys(permissionLabels) as Array<keyof typeof permissionLabels>).map((key) => (
           <div key={key} className="flex items-center space-x-2">
             <Checkbox
               id={`${member.id}-${key}`}
-              checked={permissions[key as keyof Permissions] || false}
+              checked={permissions[key] || false}
               onCheckedChange={(checked) =>
-                handlePermissionChange(key as keyof Permissions, !!checked)
+                handlePermissionChange(key, !!checked)
               }
               disabled={isPending || isCurrentUser}
             />
@@ -97,7 +96,7 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
               htmlFor={`${member.id}-${key}`}
               className="text-sm font-normal"
             >
-              {permissionLabels[key as keyof Permissions]}
+              {permissionLabels[key]}
             </Label>
           </div>
         ))}

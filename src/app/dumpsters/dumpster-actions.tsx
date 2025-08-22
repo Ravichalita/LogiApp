@@ -84,7 +84,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
 
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditDumpsters;
-  const canDelete = isAdmin || userAccount?.permissions?.canDeleteItems;
+  const canDelete = isAdmin || userAccount?.permissions?.canEditDumpsters;
   
   const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' => {
     if (status.startsWith('Reservada')) return 'secondary';
