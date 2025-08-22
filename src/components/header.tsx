@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Truck, LogOut, User as UserIcon, BarChart3, Users } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, BarChart3, Users, Settings } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,

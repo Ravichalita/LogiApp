@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account } from '@/lib/types';
-import { isAfter, isWithinInterval, startOfToday, format } from 'date-fns';
+import { isAfter, isWithinInterval, startOfToday, format, parseISO } from 'date-fns';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
@@ -67,14 +67,14 @@ export default function NewRentalPage() {
 
         const activeOrOverdueRental = allRentals.find(r => 
           r.dumpsterId === d.id && 
-          (isWithinInterval(today, { start: new Date(r.rentalDate), end: new Date(r.returnDate) }) || isAfter(today, new Date(r.returnDate)))
+          (isWithinInterval(today, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) }) || isAfter(today, parseISO(r.returnDate)))
         );
 
         return !activeOrOverdueRental;
       })
       .map(d => {
         const futureRental = allRentals
-          .filter(r => r.dumpsterId === d.id && isAfter(new Date(r.rentalDate), today))
+          .filter(r => r.dumpsterId === d.id && isAfter(parseISO(r.rentalDate), today))
           .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0];
         
         if (futureRental) {
