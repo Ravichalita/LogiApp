@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -46,6 +47,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
   }
 
   const { name, email, password } = validatedFields.data;
+  const isInviteFlow = !!inviterAccountId;
 
   try {
       const existingUser = await adminAuth.getUserByEmail(email).catch(() => null);
@@ -53,24 +55,25 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      // If it's not an invite flow from an existing admin, block the registration.
-      if (!inviterAccountId) {
-          return { ...prevState, message: "Novos cadastros devem ser convidados por um administrador de conta existente." };
+      // If it's a public sign-up (not an invite), block it.
+      if (!isInviteFlow) {
+          return { ...prevState, message: "Novos cadastros devem ser convidados por um administrador." };
       }
 
       const newUserRecord = await adminAuth.createUser({
           email,
           password,
           displayName: name,
-          emailVerified: true, // Set to true for dev purposes
+          emailVerified: true, // Auto-verify for simplicity in an invite-only system
       });
 
+      // The ensureUserDocument function requires the inviter's accountId to associate the new user.
       await ensureUserDocument(newUserRecord, inviterAccountId);
       
       return {
         ...prevState,
         message: 'success',
-        isInvite: !!inviterAccountId,
+        isInvite: isInviteFlow,
       };
 
   } catch (e) {

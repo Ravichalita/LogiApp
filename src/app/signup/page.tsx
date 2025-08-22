@@ -129,6 +129,12 @@ export default function SignupPage() {
                 required
               />
             </div>
+             {state.message && state.message !== 'success' && (
+              <div className="flex items-center gap-2 text-sm text-destructive pt-2">
+                <AlertCircle className="h-4 w-4" />
+                <p>{state.message}</p>
+              </div>
+            )}
             <div className="flex flex-col gap-2 pt-2">
                  <SubmitButton />
                  {isInviteFlow && (
@@ -137,12 +143,7 @@ export default function SignupPage() {
                     </Button>
                  )}
             </div>
-             {state.message && state.message !== 'success' && (
-              <div className="flex items-center gap-2 text-sm text-destructive pt-2">
-                <AlertCircle className="h-4 w-4" />
-                <p>{state.message}</p>
-              </div>
-            )}
+            
           </form>
         </CardContent>
         {!isInviteFlow && (
