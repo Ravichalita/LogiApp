@@ -22,6 +22,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const nonAuthRoutes = ['/login', '/signup'];
+const publicRoutes = [...nonAuthRoutes, '/verify-email'];
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -73,21 +75,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    if (loading) return;
+    if (loading) return; // Don't do anything until loading is false
 
-    const isNonAuthRoute = nonAuthRoutes.some(route => pathname.startsWith(route));
-    const isVerifyRoute = pathname.startsWith('/verify-email');
-    const isInviteFlow = pathname.startsWith('/signup') && !!user;
+    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
-    if (user) {
-      if (!user.emailVerified && !isVerifyRoute) {
+    if (!user && !isPublicRoute) {
+      // If no user and not on a public route, redirect to login
+      router.push('/login');
+    } else if (user) {
+      // If there is a user...
+      if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
+        // and email is not verified and we are not on the verification page, redirect there
         router.push('/verify-email');
-      } else if (user.emailVerified && (isVerifyRoute || (isNonAuthRoute && !isInviteFlow))) {
+      } else if (user.emailVerified && isPublicRoute) {
+        // and email is verified and we are on a public route, redirect to home
         router.push('/');
-      }
-    } else {
-      if (!isNonAuthRoute) {
-        router.push('/login');
       }
     }
   }, [user, loading, pathname, router]);
