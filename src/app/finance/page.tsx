@@ -174,8 +174,7 @@ export default function FinancePage() {
              
              <Card>
                 <CardHeader>
-                    <CardTitle>Configurações</CardTitle>
-                    <CardDescription>Ajustes de preços e custos para o sistema.</CardDescription>
+                    <CardTitle>Tabela de Preços da Diária</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}

@@ -14,24 +14,15 @@ import type { Account, RentalPrice } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
-const formatBRL = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-};
 
 const formatCurrencyForInput = (valueInCents: string): string => {
-    if (!valueInCents) return '';
+    if (!valueInCents) return '0,00';
     const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
-    
-    if (numericValue === 0) return '0,00';
-
     const reais = Math.floor(numericValue / 100);
     const centavos = (numericValue % 100).toString().padStart(2, '0');
-    
-    return `${reais},${centavos}`;
+    return `${reais.toLocaleString('pt-BR')},${centavos}`;
 };
+
 
 function SubmitButton() {
     const { pending } = useFormStatus();
@@ -121,7 +112,6 @@ export function RentalPricesForm({ account }: { account: Account }) {
     return (
          <form action={customFormAction} className="space-y-4">
             <div className="space-y-3">
-                <Label>Tabela de Preços da Diária</Label>
                 {prices.length > 0 ? (
                     prices.map((price) => (
                         <div key={price.id} className="flex items-center gap-2 p-2 border rounded-md">
