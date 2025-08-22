@@ -1,4 +1,3 @@
-
 'use server';
 
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -64,7 +63,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
           email,
           password,
           displayName: name,
-          emailVerified: false, // Set to true for dev purposes if needed
+          emailVerified: true, // Set to true for dev purposes if needed
       });
 
       await ensureUserDocument(newUserRecord, accountIdToJoin);
@@ -88,7 +87,7 @@ export async function updateUserRoleAction(accountId: string, userId: string, ne
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
-        await adminAuth.setCustomUserClaims(userId, { accountId, role: newRole });
+        await adminAuth.setCustomUserClaims(userId, { role: newRole });
         await userRef.update({ role: newRole });
         revalidatePath('/team');
         return { message: 'success' };
@@ -105,8 +104,15 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
+        // Remove from the account's team list if you have one.
+        const accountRef = db.doc(`accounts/${accountId}`);
+        await accountRef.update({
+            members: FieldValue.arrayRemove(userId)
+        });
+
         await userRef.delete();
         await adminAuth.deleteUser(userId);
+
         revalidatePath('/team');
         return { message: 'success' };
     } catch (e) {
@@ -338,7 +344,8 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             originalRentalId: rentalId,
             completedDate: FieldValue.serverTimestamp(),
             rentalDays,
-            totalValue
+            totalValue,
+            accountId, // Ensure accountId is part of the completed rental doc
         };
 
         const validatedFields = CompletedRentalSchema.safeParse(completedRentalData);

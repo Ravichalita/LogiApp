@@ -1,4 +1,3 @@
-
 'use server';
 
 import type { UserRecord } from "firebase-admin/auth";
@@ -15,6 +14,8 @@ const firestore = getFirestore();
  */
 export async function findAccountByEmailDomain(domain: string): Promise<string | null> {
     if (!domain) return null;
+    // This logic can be expanded. For now, it's a placeholder.
+    // Example: Check a 'domains' collection or similar.
     return null;
 }
 
@@ -31,52 +32,60 @@ export async function ensureUserDocument(userRecord: UserRecord, existingAccount
     const userDocRef = firestore.doc(`users/${userRecord.uid}`);
 
     try {
-        const userDoc = await userDocRef.get();
-        if (userDoc.exists) {
-            console.warn(`Documento de usuário para ${userRecord.uid} já existe.`);
-            const accountId = userDoc.data()?.accountId;
-            if (accountId) {
-                 const role = userDoc.data()?.role || 'viewer';
-                 if (userRecord.customClaims?.accountId !== accountId || userRecord.customClaims?.role !== role) {
-                    await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
-                 }
-                return accountId;
+        return await firestore.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userDocRef);
+            if (userDoc.exists) {
+                console.warn(`Documento de usuário para ${userRecord.uid} já existe.`);
+                const accountId = userDoc.data()?.accountId;
+                if (accountId) {
+                    // Ensure claims are set even if doc exists but claims are missing
+                    if (!userRecord.customClaims?.accountId || !userRecord.customClaims?.role) {
+                         const role = userDoc.data()?.role || 'viewer';
+                         await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
+                    }
+                    return accountId;
+                }
             }
-        }
 
-        let accountId: string;
-        let role: 'admin' | 'viewer';
+            let accountId: string;
+            let role: 'admin' | 'viewer';
 
-        if (existingAccountId) {
-            accountId = existingAccountId;
-            role = 'viewer';
-        } else {
-            const accountRef = firestore.collection("accounts").doc();
-            accountId = accountRef.id;
-            role = 'admin'; 
-            await accountRef.set({
-                ownerId: userRecord.uid,
-                name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
+            if (existingAccountId) {
+                // Joining an existing account via invite
+                accountId = existingAccountId;
+                role = 'viewer';
+            } else {
+                // Creating a new account
+                const accountRef = firestore.collection("accounts").doc();
+                accountId = accountRef.id;
+                role = 'admin'; 
+                transaction.set(accountRef, {
+                    ownerId: userRecord.uid,
+                    name: `${userRecord.displayName || userRecord.email?.split('@')[0]}'s Account`,
+                    createdAt: FieldValue.serverTimestamp(),
+                    members: [userRecord.uid],
+                });
+            }
+
+            const userAccountData = {
+                email: userRecord.email!,
+                name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário',
+                accountId: accountId,
+                role: role,
+                status: 'ativo',
                 createdAt: FieldValue.serverTimestamp(),
-            });
-        }
+            };
 
-        const userAccountData = {
-            email: userRecord.email!,
-            name: userRecord.displayName || userRecord.email?.split('@')[0] || 'Usuário',
-            accountId: accountId,
-            role: role,
-            status: 'ativo',
-            createdAt: FieldValue.serverTimestamp(),
-        };
+            transaction.set(userDocRef, userAccountData);
+            
+            // Set custom claims AFTER the transaction is successful
+            await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
 
-        await userDocRef.set(userAccountData);
-        
-        await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
-
-        return accountId;
+            return accountId;
+        });
     } catch (error) {
         console.error("Erro em ensureUserDocument, tentando limpar usuário Auth:", error);
+        // If the transaction fails, the user created in Auth should be deleted.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRÍTICO: Falha ao limpar usuário auth ${userRecord.uid} após falha na criação do documento. Por favor, delete manualmente.`, delErr)
         });

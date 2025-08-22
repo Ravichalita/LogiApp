@@ -1,13 +1,13 @@
-
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onIdTokenChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
+import { onIdTokenChanged, User, signOut, getIdTokenResult, getIdToken } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
 
 interface AuthContextType {
   user: User | null;
@@ -34,56 +34,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser); // Set user immediately
-         const tokenResult = await getIdTokenResult(firebaseUser);
-         const claims = tokenResult.claims as { role?: UserRole };
-         setRole(claims.role || null);
-      } else {
-        setUser(null);
-        setUserAccount(null);
-        setAccountId(null);
-        setRole(null);
-        setLoading(false);
-      }
+        setLoading(true);
+        if (firebaseUser) {
+             // Force refresh the token to get latest claims after signup/login
+            await getIdToken(firebaseUser, true);
+            const tokenResult = await getIdTokenResult(firebaseUser);
+            const claims = tokenResult.claims as { role?: UserRole; accountId?: string };
+
+            setUser(firebaseUser);
+            setRole(claims.role || null);
+            
+            // The accountId from the claim is used for security rules.
+            // The accountId from the user document is used for data fetching on the client.
+            // We wait for the user document to be loaded before setting loading to false.
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const unsubscribeDoc = onSnapshot(userDocRef, (userDocSnap) => {
+                if (userDocSnap.exists()) {
+                    const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                    setUserAccount(userAccountData);
+                    setAccountId(userAccountData.accountId);
+                } else {
+                    console.warn("Documento do usuário ainda não existe, aguardando...");
+                }
+                setLoading(false); // Done loading once we have the document snapshot (or know it doesn't exist)
+            }, (error) => {
+                console.error("Erro ao buscar documento do usuário:", error);
+                signOut(auth);
+                setLoading(false);
+            });
+            return () => unsubscribeDoc();
+
+        } else {
+            setUser(null);
+            setUserAccount(null);
+            setAccountId(null);
+            setRole(null);
+            setLoading(false);
+        }
     });
 
     return () => unsubscribeAuth();
-  }, [auth]);
+  }, [auth, db]);
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
-    // User is authenticated, now get their profile from Firestore
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsubscribeDoc = onSnapshot(userDocRef, 
-      (userDocSnap) => {
-        if (userDocSnap.exists()) {
-          const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-          setUserAccount(userAccountData);
-          setAccountId(userAccountData.accountId); // Get accountId from Firestore doc
-          setRole(userAccountData.role); // Also update role from Firestore
-        } else {
-          // This might happen if the user doc is not created yet
-          console.warn("Documento do usuário ainda não existe, aguardando...");
-        }
-        // Defer setting loading to false until we have account data or timeout
-        if (userDocSnap.exists() || !user) {
-            setLoading(false);
-        }
-      }, 
-      (error) => {
-        console.error("Erro ao buscar documento do usuário:", error);
-        signOut(auth); // Log out on error
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribeDoc();
-  }, [user, auth, db]);
 
   useEffect(() => {
     if (loading) return;
@@ -111,7 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   
   const isAuthPage = nonAuthRoutes.includes(pathname) || pathname === '/verify-email';
-
+  
+  // While loading, and not on an auth page, show a full-screen spinner.
   if (loading && !isAuthPage) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -120,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // If user is authenticated but doesn't have an accountId, show a waiting screen.
+  // If authenticated but accountId is still missing after loading, something is wrong.
   if (user && !accountId && !loading && !isAuthPage) {
       return (
           <div className="flex h-screen flex-col items-center justify-center gap-4 text-center p-4">
@@ -131,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       )
   }
 
+  // If not loading, render children.
   return (
     <AuthContext.Provider value={{ user, userAccount, accountId, role, loading, logout }}>
       {children}

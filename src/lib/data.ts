@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -21,7 +20,7 @@ const { db } = getFirebase();
 // #region Client Data
 export function getClients(accountId: string, callback: (clients: Client[]) => void): Unsubscribe {
   const clientsCollection = collection(db, `accounts/${accountId}/clients`);
-  const q = query(clientsCollection, orderBy('name', 'asc'));
+  const q = query(clientsCollection, where("accountId", "==", accountId), orderBy('name', 'asc'));
   
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
     const clients = querySnapshot.docs.map(doc => ({
@@ -40,7 +39,7 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
 
 export async function fetchClients(accountId: string): Promise<Client[]> {
     const clientsCollection = collection(db, `accounts/${accountId}/clients`);
-    const q = query(clientsCollection, orderBy('name', 'asc'));
+    const q = query(clientsCollection, where("accountId", "==", accountId), orderBy('name', 'asc'));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
 }
@@ -51,7 +50,7 @@ export async function fetchClients(accountId: string): Promise<Client[]> {
 // #region Dumpster Data
 export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]) => void): Unsubscribe {
     const dumpstersCollection = collection(db, `accounts/${accountId}/dumpsters`);
-    const q = query(dumpstersCollection, orderBy('name', 'asc'));
+    const q = query(dumpstersCollection, where("accountId", "==", accountId), orderBy('name', 'asc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const dumpsters = querySnapshot.docs.map(doc => ({
@@ -71,7 +70,7 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, orderBy('rentalDate', 'asc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('rentalDate', 'asc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
@@ -95,7 +94,7 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
 
 export function getPopulatedRentals(accountId: string, callback: (rentals: PopulatedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, orderBy('rentalDate', 'asc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('rentalDate', 'asc'));
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
@@ -130,7 +129,7 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 // #region Completed Rental Data
 export function getCompletedRentals(accountId: string, callback: (rentals: CompletedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, orderBy('completedDate', 'desc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('completedDate', 'desc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
@@ -153,7 +152,7 @@ export function getCompletedRentals(accountId: string, callback: (rentals: Compl
 
 export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, orderBy('completedDate', 'desc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('completedDate', 'desc'));
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
