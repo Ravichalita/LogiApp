@@ -236,14 +236,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
       </div>
        <div className="flex w-full items-center gap-2 mt-auto">
-            <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
-                <input type="hidden" name="rentalId" value={rental.id} />
-                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                Finalizar Aluguel
-                </Button>
-            </form>
-
             {canDelete && (
                  <AlertDialog>
                     <DropdownMenu>
@@ -281,8 +273,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AlertDialogContent>
                 </AlertDialog>
             )}
+            <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                <input type="hidden" name="rentalId" value={rental.id} />
+                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                Finalizar Aluguel
+                </Button>
+            </form>
         </div>
     </div>
   );
 }
-
