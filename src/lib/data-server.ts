@@ -68,7 +68,6 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                     canEditClients: true,
                     canEditDumpsters: true,
                     canEditRentals: true,
-                    canDeleteItems: true,
                 });
                 const newAccountRef = firestore.doc(`accounts/${accountId}`);
                 transaction.set(newAccountRef, {

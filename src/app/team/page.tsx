@@ -34,26 +34,31 @@ function TeamListSkeleton() {
 }
 
 export default function TeamPage() {
-    const { accountId, userAccount } = useAuth();
+    const { accountId, userAccount, loading: authLoading } = useAuth();
     const [team, setTeam] = useState<UserAccount[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loadingData, setLoadingData] = useState(true);
 
     const isAdmin = userAccount?.role === 'admin';
+    const canAccess = isAdmin || userAccount?.permissions?.canAccessTeam;
 
     useEffect(() => {
-        if (accountId && isAdmin) {
-            setLoading(true);
-            const unsubscribe = getTeamMembers(accountId, (data) => {
-                setTeam(data);
-                setLoading(false);
-            });
-            return () => unsubscribe();
-        } else {
-            setLoading(false);
-        }
-    }, [accountId, isAdmin]);
+        if (authLoading || !accountId || !canAccess) {
+            if (!authLoading) setLoadingData(false);
+            return;
+        };
 
-    if (!isAdmin && !loading) {
+        setLoadingData(true);
+        const unsubscribe = getTeamMembers(accountId, (data) => {
+            setTeam(data);
+            setLoadingData(false);
+        });
+        return () => unsubscribe();
+        
+    }, [accountId, canAccess, authLoading]);
+
+    const isLoading = authLoading || loadingData;
+
+    if (!isLoading && !canAccess) {
          return (
             <div className="container mx-auto py-8 px-4 md:px-6">
                  <Alert variant="destructive">
@@ -81,7 +86,7 @@ export default function TeamPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {loading ? <TeamListSkeleton /> : (
+                    {isLoading ? <TeamListSkeleton /> : (
                         team.length > 0 ? (
                             <Accordion type="multiple" className="space-y-4">
                                 {team.map(member => (
