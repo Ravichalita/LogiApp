@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useContext, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals } from '@/lib/data';
 import type { PopulatedRental } from '@/lib/types';
@@ -132,41 +132,84 @@ function RentalCardSkeleton() {
     )
 }
 
-
 export default function HomePage() {
   const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
+  const unsubRef = useRef<() => void | null>(null);
+  const mountedRef = useRef(true);
+  const retryRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (unsubRef.current) {
+        try { unsubRef.current(); } catch (_) {}
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (authLoading) {
       return; 
     }
+
+    if (unsubRef.current) {
+      try { unsubRef.current(); } catch (_) {}
+      unsubRef.current = null;
+    }
+    setRentals([]);
+    setError(null);
+    retryRef.current = 0;
     
     if (!accountId) {
-      setRentals([]);
-      setError(null);
       return;
     }
-    
+
     const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
+
+    const subscribe = () => {
+      unsubRef.current = getPopulatedRentals(
+        accountId,
+        (data) => {
+          if (mountedRef.current) {
+            setRentals(data);
+            setError(null);
+          }
+        },
+        async (err) => { // Erro callback
+            console.error('Rental snapshot error', err);
+            if (err?.code === 'permission-denied' && retryRef.current < 2) {
+              retryRef.current += 1;
+              try {
+                const { getAuth } = (await import('firebase/auth'));
+                const currentUser = getAuth().currentUser;
+                if (currentUser) {
+                  await currentUser.getIdToken(true);
+                  setTimeout(() => { if (mountedRef.current) subscribe(); }, 300);
+                  return;
+                }
+              } catch (e) {
+                console.error('Retry token refresh failed', e);
+              }
+            }
+            if (mountedRef.current) setError(err);
+        },
+        userIdToFilter
+      );
+    };
     
-    const unsubscribe = getPopulatedRentals(
-      accountId,
-      (data) => {
-        setRentals(data);
-        setError(null);
-      },
-      (err) => {
-        console.error("Firestore permission denied:", err);
-        setError(err); 
-      },
-      userIdToFilter
-    );
+    subscribe();
     
-    return () => unsubscribe();
+    return () => {
+      if (unsubRef.current) {
+        try { unsubRef.current(); } catch (_) {}
+      }
+    };
   }, [authLoading, accountId, userAccount, user]);
 
 
@@ -213,7 +256,15 @@ export default function HomePage() {
     )
   }
 
-  if (!authLoading && rentals.length === 0 && !error) {
+  if (!accountId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
+        <h2 className="text-2xl font-bold font-headline mb-2">Sem conta vinculada.</h2>
+      </div>
+    )
+  }
+
+  if (rentals.length === 0) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -297,3 +348,4 @@ export default function HomePage() {
     </div>
   );
 }
+

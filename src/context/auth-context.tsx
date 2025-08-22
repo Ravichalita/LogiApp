@@ -1,46 +1,67 @@
 
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
+import { getAuth, onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase-client';
-import { onIdTokenChanged, User, signOut } from 'firebase/auth';
+import type { UserAccount, UserRole } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
-import type { UserAccount, UserRole } from '@/lib/types';
-import { doc, getDoc } from 'firebase/firestore';
+
 
 interface AuthContextType {
   user: User | null;
   userAccount: UserAccount | null;
   accountId: string | null;
-  role: UserRole | null;
   loading: boolean;
   logout: () => Promise<void>;
+  role: UserRole | null;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  userAccount: null,
+  accountId: null,
+  loading: true,
+  logout: async () => {},
+  role: null,
+});
 
 const nonAuthRoutes = ['/login', '/signup'];
 const publicRoutes = [...nonAuthRoutes, '/verify-email'];
 
-
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<UserRole | null>(null);
+
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
 
+  const processingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const logout = useCallback(async () => {
-    await signOut(auth);
+    try { 
+        await signOut(auth); 
+    }
+    catch (e) { console.error('logout failed', e); }
   }, [auth]);
 
   useEffect(() => {
-    const unsubscribeAuth = onIdTokenChanged(auth, async (firebaseUser) => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!mountedRef.current) return;
       setLoading(true);
+
       if (!firebaseUser) {
         setUser(null);
         setUserAccount(null);
@@ -49,51 +70,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      
+
       setUser(firebaseUser);
-      
-      try {
-        const token = await firebaseUser.getIdToken();
-        const res = await fetch('/api/ensure-user', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
 
-        if (!res.ok) {
-          throw new Error('Falha ao garantir o documento do usuário: ' + res.statusText);
-        }
-
-        await firebaseUser.getIdToken(true); // Force refresh token to get custom claims
-
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-        
-        if (userDocSnap.exists()) {
-            const userAccountData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-            setUserAccount(userAccountData);
-            setAccountId(userAccountData.accountId);
-            setRole(userAccountData.role);
-        } else {
-             console.error("User document not found in Firestore after server-side check.");
-             setUserAccount(null);
-             setAccountId(null);
-             setRole(null);
-             await logout(); // Logout if doc is not found, something is wrong
-        }
-
-      } catch (error) {
-        console.error("[AuthContext] Error:", error);
-        setUserAccount(null);
-        setAccountId(null);
-        setRole(null);
-        await logout(); // Logout on critical error
-      } finally {
+      if (processingRef.current) {
         setLoading(false);
+        return;
+      }
+      processingRef.current = true;
+
+      try {
+        const tokenResult = await firebaseUser.getIdTokenResult();
+        const hasAccountClaim = Boolean(tokenResult.claims?.accountId);
+
+        if (!hasAccountClaim) {
+          try {
+            const res = await fetch('/api/ensure-user', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${tokenResult.token}` },
+            });
+            if (!res.ok) {
+              console.warn('ensure-user returned not-ok', res.status);
+            } else {
+              await firebaseUser.getIdToken(true);
+            }
+          } catch (e) {
+            console.error('ensure-user error', e);
+          }
+        }
+
+        try {
+          const userDocSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          const data = userDocSnap.exists() ? { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount : null;
+          if (mountedRef.current) {
+            setUserAccount(data);
+            setAccountId(data?.accountId ?? null);
+            setRole(data?.role ?? null);
+          }
+        } catch (err) {
+          console.error('failed to load user doc', err);
+          if (mountedRef.current) {
+            setUserAccount(null);
+            setAccountId(null);
+            setRole(null);
+          }
+        }
+      } catch (err) {
+        console.error('auth init top-level error', err);
+        if (mountedRef.current) {
+          setUserAccount(null);
+          setAccountId(null);
+          setRole(null);
+        }
+      } finally {
+        processingRef.current = false;
+        if (mountedRef.current) setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
-  }, [auth, db, logout]);
+    return () => {
+      try { unsub(); } catch (e) { /* ignore */ }
+    };
+  }, [logout, auth, db]);
 
   useEffect(() => {
     if (loading) return;
@@ -121,13 +159,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+
   const contextValue = {
     user,
     userAccount,
     accountId,
-    role,
     loading,
     logout,
+    role,
   };
 
   return (
