@@ -131,12 +131,11 @@ export function getPopulatedRentals(accountId: string, callback: (rentals: Popul
 // #region Completed Rental Data
 export function getPopulatedCompletedRentals(accountId: string, callback: (rentals: PopulatedCompletedRental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId), orderBy('completedDate', 'desc'));
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
             const data = doc.data();
-            // Firestore timestamps need to be converted to JS dates
             const completedDate = data.completedDate?.toDate ? data.completedDate.toDate() : new Date();
             return {
                 id: doc.id,
@@ -145,7 +144,9 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
             } as CompletedRental;
         });
 
-        const populatePromises = rentals.map(async (rental) => {
+        const sortedRentals = rentals.sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
+
+        const populatePromises = sortedRentals.map(async (rental) => {
             try {
                 const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rental.dumpsterId));
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rental.clientId));
@@ -158,7 +159,7 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
                 };
             } catch (error) {
                 console.error(`Error populating rental ${rental.id}:`, error);
-                return null; // Return null for failed population
+                return null;
             }
         });
 
@@ -169,7 +170,7 @@ export function getPopulatedCompletedRentals(accountId: string, callback: (renta
             callback(validPopulatedRentals);
         }).catch(error => {
             console.error("Error in Promise.all for populating rentals:", error);
-            callback([]); // On error, return empty array
+            callback([]);
         });
 
     }, (error) => {
@@ -188,7 +189,6 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     return () => {};
   }
   
-  // This function listens for changes to the account document itself.
   const accountRef = doc(db, 'accounts', accountId);
   
   const unsubscribe = onSnapshot(accountRef, async (accountSnap) => {
@@ -198,7 +198,6 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
       return;
     }
     
-    // Get the list of member IDs from the account document.
     const memberIds = accountSnap.data()?.members as string[] || [];
     if (memberIds.length === 0) {
       callback([]);
@@ -206,17 +205,18 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     }
 
     try {
-      // Create a promise to fetch each user's document based on their ID.
       const memberPromises = memberIds.map(id => getDoc(doc(db, 'users', id)));
       const memberDocSnaps = await Promise.all(memberPromises);
       
-      // Filter out any documents that don't exist and map the data.
       const users = memberDocSnaps
         .filter(docSnap => docSnap.exists())
-        .map(docSnap => ({
-          id: docSnap.id,
-          ...docSnap.data()
-        } as UserAccount));
+        .map(docSnap => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            ...data
+          } as UserAccount
+        });
         
       const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
       callback(sortedUsers);
