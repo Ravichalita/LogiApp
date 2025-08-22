@@ -102,8 +102,12 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   useEffect(() => {
-    // Only proceed if auth is no longer loading and all required data is present.
-    if (!authLoading && accountId && user && userAccount) {
+    if (authLoading) {
+      // Still waiting for auth context to resolve, do nothing yet.
+      return;
+    }
+
+    if (accountId && user && userAccount) {
       setLoadingData(true);
       
       const canViewAll = userAccount.role === 'admin' || userAccount.permissions?.canEditRentals;
@@ -115,11 +119,10 @@ export default function HomePage() {
       }, userIdToFilter);
       
       return () => unsubscribe();
-    }
-    
-    // If auth is done loading but we don't have the required data, stop the data loading.
-    if (!authLoading && (!accountId || !user || !userAccount)) {
-        setLoadingData(false);
+    } else {
+      // Auth is resolved, but we don't have the necessary data (e.g., user logged out)
+      setLoadingData(false);
+      setRentals([]);
     }
   }, [accountId, user, userAccount, authLoading]);
   
@@ -153,7 +156,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0) {
+  if (rentals.length === 0 && !loadingData) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
