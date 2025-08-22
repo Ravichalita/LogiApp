@@ -1,32 +1,49 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Functions
+
+    // A user is signed in and has a valid token with claims.
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.accountId != null;
     }
 
-    function isAccountMember(accountId) {
-      return isSignedIn() && request.auth.token.accountId == accountId;
+    // The user's role is 'admin'.
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
     }
 
-    function isAdmin(accountId) {
-      return isAccountMember(accountId) && request.auth.token.role == 'admin';
-    }
-
-    // A user can read their own document to get their profile information.
-    match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId;
-
-      // Only admins of the same account can list or read other user documents.
-      allow list: if isAdmin(request.query.resource.data.accountId);
+    // The resource being accessed belongs to the user's account.
+    function isSameAccount(res) {
+      return isSignedIn() && res.data.accountId == request.auth.token.accountId;
     }
     
-    // Account collections can only be accessed by members of that account.
-    // Write operations are restricted to admins.
-    match /accounts/{accountId}/{collection}/{docId} {
-      allow read: if isAccountMember(accountId);
-      allow write: if isAdmin(accountId);
+    // The query to list documents is filtered by the user's account.
+    function isQueryingOwnAccount() {
+      return isSignedIn() && request.query.resource.data.accountId == request.auth.token.accountId;
+    }
+
+    // User Profile Rules
+    match /users/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      // Admins can list users in their own account.
+      allow list: if isAdmin() && isQueryingOwnAccount();
+      // Only server-side actions can create or delete users.
+      allow create, delete: if false;
+    }
+    
+    // Account Rules (e.g., /accounts/{accountId})
+    // Only allow server-side access or highly restricted admin access.
+     match /accounts/{accountId} {
+       allow read, write: if false; // Adjust if specific client-side account management is needed.
+     }
+
+    // Tenant Data Rules
+    match /{collection}/{docId} {
+      allow read, list: if isSignedIn() && isQueryingOwnAccount();
+      allow create, update, delete: if isAdmin() && isSameAccount(resource);
     }
   }
 }

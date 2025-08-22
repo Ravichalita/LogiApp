@@ -1,8 +1,9 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getFirebase } from '@/lib/firebase-client';
-import { onIdTokenChanged, User, signOut, getIdTokenResult, getIdToken } from 'firebase/auth';
+import { onIdTokenChanged, User, signOut } from 'firebase/auth';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import type { UserAccount, UserRole } from '@/lib/types';
