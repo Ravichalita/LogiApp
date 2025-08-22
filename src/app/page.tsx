@@ -139,78 +139,46 @@ export default function HomePage() {
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
   const unsubRef = useRef<() => void | null>(null);
-  const mountedRef = useRef(true);
-  const retryRef = useRef(0);
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (unsubRef.current) {
-        try { unsubRef.current(); } catch (_) {}
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (authLoading) {
-      return; 
-    }
-
-    if (unsubRef.current) {
-      try { unsubRef.current(); } catch (_) {}
-      unsubRef.current = null;
-    }
-    setRentals([]);
-    setError(null);
-    retryRef.current = 0;
-    
-    if (!accountId) {
-      return;
+    // Only subscribe if auth is done and we have an account ID.
+    if (authLoading || !accountId) {
+        // If auth is not ready, or there is no account, we clear previous rentals and stop.
+        setRentals([]);
+        setError(null);
+        return;
     }
 
     const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
 
-    const subscribe = () => {
-      unsubRef.current = getPopulatedRentals(
-        accountId,
-        (data) => {
-          if (mountedRef.current) {
-            setRentals(data);
-            setError(null);
-          }
-        },
-        async (err) => { // Erro callback
-            console.error('Rental snapshot error', err);
-            if (err?.code === 'permission-denied' && retryRef.current < 2) {
-              retryRef.current += 1;
-              try {
-                const { getAuth } = (await import('firebase/auth'));
-                const currentUser = getAuth().currentUser;
-                if (currentUser) {
-                  await currentUser.getIdToken(true);
-                  setTimeout(() => { if (mountedRef.current) subscribe(); }, 300);
-                  return;
-                }
-              } catch (e) {
-                console.error('Retry token refresh failed', e);
-              }
-            }
-            if (mountedRef.current) setError(err);
-        },
-        userIdToFilter
-      );
-    };
-    
-    subscribe();
-    
+    const unsubscribe = getPopulatedRentals(
+      accountId,
+      (data) => {
+        setRentals(data);
+        setError(null); // Clear previous errors on new data
+      },
+      (err) => {
+        console.error("Rental subscription error:", err);
+        setError(err);
+      },
+      userIdToFilter
+    );
+
+    // Store the unsubscribe function to be called on cleanup.
+    unsubRef.current = unsubscribe;
+
+    // Cleanup function to unsubscribe when component unmounts or dependencies change.
     return () => {
       if (unsubRef.current) {
-        try { unsubRef.current(); } catch (_) {}
+        try {
+          unsubRef.current();
+        } catch (e) {
+          console.error("Error unsubscribing from rentals:", e);
+        }
       }
     };
-  }, [authLoading, accountId, userAccount, user]);
+  }, [authLoading, accountId, user, userAccount]); // Effect re-runs if any of these change.
 
 
   const filteredAndSortedRentals = useMemo(() => {
@@ -264,7 +232,7 @@ export default function HomePage() {
     )
   }
 
-  if (rentals.length === 0) {
+  if (!authLoading && rentals.length === 0) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -348,4 +316,3 @@ export default function HomePage() {
     </div>
   );
 }
-

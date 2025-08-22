@@ -102,9 +102,9 @@ export function getPopulatedRentals(
     onError: (error: Error) => void,
     assignedToId?: string
 ): Unsubscribe {
-    const rentalsCollectionGroup = collectionGroup(db, 'rentals');
+    const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     
-    let q: Query<DocumentData> = query(rentalsCollectionGroup, where("accountId", "==", accountId));
+    let q: Query<DocumentData> = query(rentalsCollection, where("accountId", "==", accountId));
     
     if (assignedToId) {
         q = query(q, where("assignedTo", "==", assignedToId));
@@ -276,5 +276,3 @@ export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]
   }
 }
 // #endregion
-
-    

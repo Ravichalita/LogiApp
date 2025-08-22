@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await signOut(auth); 
     }
     catch (e) { console.error('logout failed', e); }
+    // No state clearing here, onAuthStateChanged will handle it.
   }, [auth]);
 
   useEffect(() => {
