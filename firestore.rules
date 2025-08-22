@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -6,31 +7,34 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth.token.role == 'admin';
     }
-    
+
     function isAccountMember(accountId) {
       return request.auth.token.accountId == accountId;
     }
 
     match /accounts/{accountId} {
-      allow read: if isAccountMember(accountId);
-      allow write: if isAdmin() && isAccountMember(accountId);
+      allow read, update, delete: if isAccountMember(accountId) && isAdmin();
+      // Allow a user to create an account for themselves, where their UID becomes the accountId.
+      allow create: if request.auth.uid == accountId;
 
-      // Sub-collections that belong to an account
+      // Sub-collections
       match /{collection}/{docId} {
-        allow read, write: if isAccountMember(accountId);
-      }
-      
-      // Specifically for completed_rentals list
-      match /completed_rentals/{rentalId} {
-         allow list: if isAccountMember(accountId);
+        allow read, list, update, delete: if isAccountMember(accountId) && isAdmin();
+        allow create: if isAccountMember(accountId) && isAdmin();
       }
     }
 
     match /users/{userId} {
-      allow get: if request.auth.token.accountId == resource.data.accountId;
-      allow create;
-      allow update: if request.auth.uid == userId || isAdmin();
-      allow delete: if isAdmin();
+      // Allow a user to create their own user document.
+      allow create: if request.auth.uid == userId;
+      // Allow a user to read their own document.
+      allow get: if request.auth.uid == userId;
+      // Allow an admin to read any user document within their own account.
+      allow get: if isAdmin() && isAccountMember(resource.data.accountId);
+      // Allow admins to update users in their account.
+      allow update: if isAdmin() && isAccountMember(request.auth.token.accountId);
+      // Allow admins to list users in their account.
+      allow list: if isAdmin() && request.query.filters.size() == 1 && request.query.filters.accountId == request.auth.token.accountId;
     }
   }
 }
