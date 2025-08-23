@@ -24,6 +24,12 @@ export async function ensureUserDocument(
     inviterAccountId?: string | null
 ): Promise<string> {
     
+    // Check if user already exists before creating a new auth record
+    const existingUser = await adminAuth.getUserByEmail(userPayload.email).catch(() => null);
+    if (existingUser) {
+        throw new Error("Este e-mail já está cadastrado.");
+    }
+    
     let newUserRecord: UserRecord | null = null;
     try {
         // Step 1: Create the user in Firebase Auth

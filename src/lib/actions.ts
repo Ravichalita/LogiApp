@@ -51,11 +51,6 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
   const isInviteFlow = !!inviterAccountId;
 
   try {
-      const existingUser = await adminAuth.getUserByEmail(email).catch(() => null);
-      if (existingUser) {
-        return { ...prevState, message: "Este e-mail já está cadastrado." };
-      }
-
       // This is the CRITICAL step. This server-side function creates the Auth user,
       // the DB entries, AND sets the custom claims in one go.
       // If it fails, it cleans up after itself.
@@ -64,7 +59,6 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
       const successState = {
         ...prevState,
         message: 'success',
-        isInvite: isInviteFlow,
         newUser: {
           name,
           email,
