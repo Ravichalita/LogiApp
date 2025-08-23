@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -136,7 +135,7 @@ export default function FinancePage() {
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <div className="mb-6">
+            <div className="mb-8">
                  <h1 className="text-3xl font-headline font-bold">Controle Financeiro</h1>
                  <p className="text-muted-foreground mt-1">Visualize o desempenho financeiro do seu negócio.</p>
             </div>
@@ -150,7 +149,7 @@ export default function FinancePage() {
              <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 mb-6">
                 <Card className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Faturamento por Cliente</CardTitle>
+                        <CardTitle className="font-headline">Faturamento por Cliente</CardTitle>
                         <CardDescription>Receita gerada por cada cliente no período total.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -159,7 +158,7 @@ export default function FinancePage() {
                 </Card>
                 <Card className="lg:col-span-3">
                     <CardHeader>
-                        <CardTitle>Histórico de Faturamento</CardTitle>
+                        <CardTitle className="font-headline">Histórico de Faturamento</CardTitle>
                         <CardDescription>Lista de todos os aluguéis finalizados.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -197,7 +196,7 @@ export default function FinancePage() {
              
              <Card>
                 <CardHeader>
-                    <CardTitle>Tabela de Preços da Diária</CardTitle>
+                    <CardTitle className="font-headline">Tabela de Preços da Diária</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}

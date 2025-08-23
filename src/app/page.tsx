@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
@@ -201,7 +200,7 @@ export default function HomePage() {
   if (authLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-6">Aluguéis Ativos</h1>
+            <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis Ativos</h1>
             <RentalCardSkeleton />
         </div>
     )
@@ -254,7 +253,7 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-4">Aluguéis Ativos</h1>
+      <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis Ativos</h1>
       <div className="flex flex-wrap gap-2 mb-6">
             {filterOptions.map(option => (
                 <Button
@@ -278,8 +277,8 @@ export default function HomePage() {
                 <Card className="h-full flex flex-col border-none shadow-none rounded-b-none">
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                        <div className="flex flex-row items-baseline gap-4 flex-wrap">
-                           <CardTitle className="text-xl">{rental.dumpster?.name}</CardTitle>
+                        <div className="flex items-baseline gap-4 flex-wrap">
+                           <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
                            <p className="text-muted-foreground">
                                 Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
                             </p>
@@ -289,11 +288,11 @@ export default function HomePage() {
                         </div>
                     </div>
                     <div className="flex items-center justify-between text-base text-muted-foreground mt-2">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2 text-lg">
                             <User className="h-5 w-5" /> 
                             <span>{rental.assignedToUser?.name}</span>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-2 text-lg">
                             <Calendar className="h-5 w-5" />
                             <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
                         </div>
@@ -320,5 +319,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

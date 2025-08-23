@@ -1,6 +1,5 @@
-
 import type { Metadata } from "next";
-import { Inter, Roboto_Mono } from "next/font/google";
+import { Inter, PT_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-context";
@@ -9,8 +8,9 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const roboto_mono = Roboto_Mono({
+const pt_sans = PT_Sans({
   subsets: ["latin"],
+  weight: ['400', '700'],
   variable: "--font-headline",
 });
 
@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${inter.variable} ${roboto_mono.variable} font-sans bg-muted`}
+        className={`${inter.variable} ${pt_sans.variable} font-sans bg-background`}
       >
         <AuthProvider>
             <div className="flex flex-col min-h-screen">

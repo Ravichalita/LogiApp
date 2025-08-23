@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -87,10 +86,10 @@ export default function ClientsPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-6">Gerenciar Clientes</h1>
+      <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Clientes</h1>
         <Card>
             <CardHeader>
-            <CardTitle>Meus Clientes</CardTitle>
+            <CardTitle className="font-headline">Meus Clientes</CardTitle>
             <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

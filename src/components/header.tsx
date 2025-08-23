@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -55,7 +54,7 @@ export function Header() {
         <div className="mr-4 flex items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Truck className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline sm:inline-block">
+            <span className="font-bold font-headline text-lg sm:inline-block">
               CaçambaControl
             </span>
           </Link>

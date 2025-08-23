@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
@@ -171,10 +170,10 @@ export default function DumpstersPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-6">Gerenciar Caçambas</h1>
+      <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Caçambas</h1>
         <Card>
             <CardHeader>
-            <CardTitle>Minhas Caçambas</CardTitle>
+            <CardTitle className="font-headline">Minhas Caçambas</CardTitle>
                 <div className="relative mt-2">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
