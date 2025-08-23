@@ -42,25 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const processingRef = useRef(false);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
-
   const logout = useCallback(async () => {
-    try { 
-        await signOut(auth); 
-    }
-    catch (e) { console.error('logout failed', e); }
-    // No state clearing here, onAuthStateChanged will handle it.
+    await signOut(auth);
+    // onAuthStateChanged will handle state clearing
   }, [auth]);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!mountedRef.current) return;
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
 
       if (!firebaseUser) {
@@ -72,67 +60,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // User is logged in, begin the auth flow
       setUser(firebaseUser);
 
-      if (processingRef.current) {
-        setLoading(false);
-        return;
-      }
-      processingRef.current = true;
-
       try {
-        const tokenResult = await firebaseUser.getIdTokenResult();
-        const hasAccountClaim = Boolean(tokenResult.claims?.accountId);
+        let tokenResult = await firebaseUser.getIdTokenResult();
+        
+        // Step 1: Check for custom claims. If missing, call API to create them.
+        if (!tokenResult.claims.accountId) {
+          const res = await fetch('/api/ensure-user', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
+          });
 
-        if (!hasAccountClaim) {
-          try {
-            const res = await fetch('/api/ensure-user', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${tokenResult.token}` },
-            });
-            if (!res.ok) {
-              console.warn('ensure-user returned not-ok', res.status);
-            } else {
-              await firebaseUser.getIdToken(true);
-            }
-          } catch (e) {
-            console.error('ensure-user error', e);
+          if (!res.ok) {
+            throw new Error(`Failed to ensure user document: ${await res.text()}`);
           }
+          
+          // Step 2: Force refresh the token to get the new claims.
+          tokenResult = await firebaseUser.getIdTokenResult(true);
         }
 
-        try {
-          const userDocSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-          const data = userDocSnap.exists() ? { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount : null;
-          if (mountedRef.current) {
-            setUserAccount(data);
-            setAccountId(data?.accountId ?? null);
-            setRole(data?.role ?? null);
-          }
-        } catch (err) {
-          console.error('failed to load user doc', err);
-          if (mountedRef.current) {
-            setUserAccount(null);
-            setAccountId(null);
-            setRole(null);
-          }
+        const userAccountId = tokenResult.claims.accountId as string;
+        
+        // Step 3: Fetch the user document from Firestore using the now-guaranteed accountId.
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+          setUserAccount(userData);
+          setAccountId(userData.accountId);
+          setRole(userData.role);
+        } else {
+            // This case should ideally not happen if ensure-user works correctly.
+            // It's a fallback / error state.
+            throw new Error("User document not found after ensure-user call.");
         }
-      } catch (err) {
-        console.error('auth init top-level error', err);
-        if (mountedRef.current) {
-          setUserAccount(null);
-          setAccountId(null);
-          setRole(null);
-        }
+      } catch (error) {
+        console.error("Critical error during authentication flow:", error);
+        // In case of error, log out the user to avoid being in a broken state.
+        await logout();
       } finally {
-        processingRef.current = false;
-        if (mountedRef.current) setLoading(false);
+        // Step 4: All steps are complete, set loading to false.
+        setLoading(false);
       }
     });
 
-    return () => {
-      try { unsub(); } catch (e) { /* ignore */ }
-    };
-  }, [logout, auth, db]);
+    return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth, db]);
 
   useEffect(() => {
     if (loading) return;
