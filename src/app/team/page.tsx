@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -77,7 +78,7 @@ export default function TeamPage() {
                  <h1 className="text-3xl font-headline font-bold">Equipe</h1>
                  <p className="text-muted-foreground mt-1">Gerencie os membros e as permissões da sua conta.</p>
             </div>
-             <Card>
+             <Card className="bg-muted/50">
                 <CardHeader>
                     <CardTitle className="font-headline">Membros da Equipe</CardTitle>
                     <CardDescription>
@@ -89,7 +90,7 @@ export default function TeamPage() {
                         team.length > 0 ? (
                             <Accordion type="multiple" className="space-y-4">
                                 {team.map(member => (
-                                    <AccordionItem value={member.id} key={member.id} className="border rounded-lg shadow-sm">
+                                    <AccordionItem value={member.id} key={member.id} className="border rounded-lg shadow-sm bg-card">
                                         <div className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div>

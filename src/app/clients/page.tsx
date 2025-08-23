@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -87,7 +88,7 @@ export default function ClientsPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Clientes</h1>
-        <Card>
+        <Card className="bg-muted/50">
             <CardHeader>
             <CardTitle className="font-headline">Meus Clientes</CardTitle>
             <div className="relative mt-2">
@@ -104,7 +105,7 @@ export default function ClientsPage() {
             {loading ? <ClientListSkeleton /> : (
                 <Accordion type="multiple" className="space-y-4">
                     {filteredClients.length > 0 ? filteredClients.map(client => (
-                    <AccordionItem value={client.id} key={client.id} className="border rounded-lg shadow-sm">
+                    <AccordionItem value={client.id} key={client.id} className="border rounded-lg shadow-sm bg-card">
                         <div className="p-4">
                         <div className="flex items-center justify-between">
                             <div className="font-medium">{client.name}</div>
