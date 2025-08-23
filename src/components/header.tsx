@@ -55,7 +55,7 @@ export function Header() {
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <Truck className="h-6 w-6 text-primary" />
             <span className="font-bold font-headline text-lg sm:inline-block">
-              CaçambaControl
+              Econtrol
             </span>
           </Link>
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>

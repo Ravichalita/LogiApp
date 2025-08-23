@@ -15,7 +15,7 @@ const pt_sans = PT_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CaçambaControl",
+  title: "Econtrol",
   description: "Gerencie seus aluguéis de caçamba com facilidade.",
 };
 
