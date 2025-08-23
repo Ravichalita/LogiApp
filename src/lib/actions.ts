@@ -51,6 +51,10 @@ export async function ensureUserDocumentOnClient() {
         // Call the main server-side function to create documents if needed
         const accountId = await ensureUserDocument(user);
         
+        // After ensuring the document and claims, it's crucial for the client to get a new token
+        // But we cannot force the client refresh from here. The client MUST do it.
+        // We just return the success state.
+        
         return NextResponse.json({ message: 'success', accountId });
 
     } catch (error) {
@@ -86,9 +90,13 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
           email,
           password,
           displayName: name,
+          // Start with emailVerified as true for simplicity in this app
+          // In a real-world scenario, you'd send a verification email.
           emailVerified: true, 
       });
 
+      // This is the CRITICAL step. This server-side function creates the DB entries
+      // AND sets the custom claims in one go.
       await ensureUserDocument(newUserRecord, inviterAccountId);
       
       const successState = {
@@ -159,6 +167,7 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
             members: FieldValue.arrayRemove(userId)
         });
 
+        // We should delete the user document first before deleting the auth user
         await userRef.delete();
         await adminAuth.deleteUser(userId);
 

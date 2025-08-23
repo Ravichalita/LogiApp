@@ -3,7 +3,7 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase-client';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
@@ -41,15 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
+  
+  const userDocUnsubscribe = useRef<() => void | null>(null);
 
   const logout = useCallback(async () => {
+    if (userDocUnsubscribe.current) {
+        userDocUnsubscribe.current();
+        userDocUnsubscribe.current = null;
+    }
     await signOut(auth);
-    // onAuthStateChanged will handle state clearing
+    // onAuthStateChanged will handle clearing local state
   }, [auth]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+      if (userDocUnsubscribe.current) {
+          userDocUnsubscribe.current(); // Unsubscribe from previous user doc listener
+      }
 
       if (!firebaseUser) {
         setUser(null);
@@ -59,50 +68,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
+      
+      // If user is not verified, we set the user and stop loading.
+      // The routing effect will handle redirection.
+      if (!firebaseUser.emailVerified) {
+          setUser(firebaseUser);
+          setLoading(false);
+          return;
+      }
 
-      // User is logged in, begin the auth flow
+      // User is logged in and verified.
       setUser(firebaseUser);
 
+      // We need to get the accountId from claims to fetch the user document.
+      // Let's try getting it, forcing a refresh to ensure we have the latest claims.
       try {
-        let tokenResult = await firebaseUser.getIdTokenResult();
-        
-        // Step 1: Check for custom claims. If missing, call API to create them.
-        if (!tokenResult.claims.accountId) {
-          const res = await fetch('/api/ensure-user', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
-          });
+        const tokenResult = await firebaseUser.getIdTokenResult(true);
+        const claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
-          if (!res.ok) {
-            throw new Error(`Failed to ensure user document: ${await res.text()}`);
-          }
-          
-          // Step 2: Force refresh the token to get the new claims.
-          tokenResult = await firebaseUser.getIdTokenResult(true);
-        }
-
-        const userAccountId = tokenResult.claims.accountId as string;
-        
-        // Step 3: Fetch the user document from Firestore using the now-guaranteed accountId.
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists()) {
-          const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-          setUserAccount(userData);
-          setAccountId(userData.accountId);
-          setRole(userData.role);
+        if (!claimsAccountId) {
+            // This can happen for a brand new user whose claims are not yet propagated.
+            // Or if something went wrong during signup. Let's call ensure-user as a fallback.
+            await fetch('/api/ensure-user', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
+            });
+            // Force refresh again after ensuring user
+            const refreshedTokenResult = await firebaseUser.getIdTokenResult(true);
+            const newClaimsAccountId = refreshedTokenResult.claims.accountId as string | undefined;
+            if (!newClaimsAccountId) {
+                throw new Error("accountId claim is still missing after ensure-user call.");
+            }
+            setAccountId(newClaimsAccountId);
         } else {
-            // This case should ideally not happen if ensure-user works correctly.
-            // It's a fallback / error state.
-            throw new Error("User document not found after ensure-user call.");
+            setAccountId(claimsAccountId);
         }
+        
+        // Now that we have accountId, listen to the user document
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
+            if (userDocSnap.exists()) {
+                 const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                 setUserAccount(userData);
+                 setRole(userData.role);
+                 // We already have the accountId from claims, but this confirms it.
+                 setAccountId(userData.accountId);
+            } else {
+                // This state can happen if the user was deleted from firestore but not auth.
+                // Log them out to prevent a broken state.
+                console.error("User document not found. Logging out.");
+                logout();
+            }
+            setLoading(false); // We have our user data, stop loading.
+        }, (error) => {
+            console.error("Error listening to user document:", error);
+            setLoading(false);
+            // Don't logout on permission errors, as it might be a temporary state.
+            // The UI should handle showing an error state.
+        });
+
+
       } catch (error) {
-        console.error("Critical error during authentication flow:", error);
-        // In case of error, log out the user to avoid being in a broken state.
+        console.error("Critical error during auth state change:", error);
         await logout();
-      } finally {
-        // Step 4: All steps are complete, set loading to false.
         setLoading(false);
       }
     });
@@ -136,7 +164,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
 
   const contextValue = {
     user,
