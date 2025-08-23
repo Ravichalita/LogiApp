@@ -464,31 +464,68 @@ export async function updateRentalPricesAction(accountId: string, prevState: any
     }
 }
 
-export async function resetFinancialDataAction(accountId: string) {
+async function deleteCollection(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number) {
+    const collectionRef = db.collection(collectionPath);
+    const query = collectionRef.orderBy('__name__').limit(batchSize);
+
+    return new Promise((resolve, reject) => {
+        deleteQueryBatch(db, query, resolve).catch(reject);
+    });
+}
+
+async function deleteQueryBatch(db: FirebaseFirestore.Firestore, query: FirebaseFirestore.Query, resolve: (value: unknown) => void) {
+    const snapshot = await query.get();
+
+    const batchSize = snapshot.size;
+    if (batchSize === 0) {
+        // When there are no documents left, we are done
+        resolve(true);
+        return;
+    }
+
+    // Delete documents in a batch
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+    });
+    await batch.commit();
+
+    // Recurse on the next process tick, to avoid
+    // exploding the stack.
+    process.nextTick(() => {
+        deleteQueryBatch(db, query, resolve);
+    });
+}
+
+export async function resetAllDataAction(accountId: string) {
     if (!accountId) {
         return { message: 'error', error: 'Conta não identificada.' };
     }
 
     try {
         const db = getFirestore();
-        const rentalsCollection = db.collection(`accounts/${accountId}/completed_rentals`);
-        const snapshot = await rentalsCollection.get();
-
-        if (snapshot.empty) {
-            return { message: 'success', info: 'Nenhum dado financeiro para zerar.' };
+        
+        // Delete all subcollections
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
+        for (const collection of collectionsToDelete) {
+            await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
         }
-
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
+        
+        // Clear rental prices from account document
+        await db.doc(`accounts/${accountId}`).update({
+            rentalPrices: []
         });
 
-        await batch.commit();
 
+        revalidatePath('/');
+        revalidatePath('/clients');
+        revalidatePath('/dumpsters');
         revalidatePath('/finance');
+        
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
+
 // #endregion

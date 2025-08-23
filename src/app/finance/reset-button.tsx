@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { resetFinancialDataAction } from '@/lib/actions';
+import { resetAllDataAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +28,7 @@ export function ResetButton({ accountId }: { accountId: string }) {
 
   const handleReset = () => {
     startTransition(async () => {
-      const result = await resetFinancialDataAction(accountId);
+      const result = await resetAllDataAction(accountId);
       if (result.message === 'error') {
         toast({
           title: 'Erro ao zerar dados',
@@ -38,7 +38,7 @@ export function ResetButton({ accountId }: { accountId: string }) {
       } else {
         toast({
           title: 'Sucesso!',
-          description: 'Todos os dados financeiros foram zerados.',
+          description: 'Todos os dados da conta foram zerados.',
         });
         setIsDialogOpen(false);
         setIsExpanded(false);
@@ -73,7 +73,7 @@ export function ResetButton({ accountId }: { accountId: string }) {
                             onClick={() => setIsDialogOpen(true)}
                         >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            Zerar todos os dados financeiros
+                            Zerar todos os dados da conta
                         </Button>
                     </AlertDialogTrigger>
                 </div>
@@ -83,7 +83,7 @@ export function ResetButton({ accountId }: { accountId: string }) {
                 <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Essa ação não pode ser desfeita. Isso excluirá permanentemente todo o histórico de faturamento e os registros de aluguéis finalizados.
+                    Essa ação não pode ser desfeita. Isso excluirá permanentemente todos os aluguéis (ativos e finalizados), clientes e caçambas. Os dados de usuário e equipe não serão afetados.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
