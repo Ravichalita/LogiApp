@@ -1,10 +1,9 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useActionState } from 'react';
 import { signupAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
-import { useActionState } from 'react-dom';
 import { useFormStatus } from 'react-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -107,7 +106,7 @@ function SuccessDialog({
 
 export function InviteForm({ onSave }: { onSave?: () => void }) {
   const { accountId } = useAuth();
-  const [state, formAction, isPending] = useActionState(signupAction.bind(null, accountId), initialState);
+  const [state, formAction] = useActionState(signupAction.bind(null, accountId), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -159,9 +158,7 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
             <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>
             </DialogClose>
-            <Button type="submit" disabled={isPending}>
-                {isPending ? 'Convidando...' : 'Convidar Usuário'}
-            </Button>
+            <SubmitButton />
         </DialogFooter>
     </form>
     <SuccessDialog
@@ -173,5 +170,3 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
     </>
   );
 }
-
-    

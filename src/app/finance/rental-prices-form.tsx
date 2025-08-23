@@ -1,7 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
-import { useActionState } from 'react';
+import { useState, useEffect, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { updateRentalPricesAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
