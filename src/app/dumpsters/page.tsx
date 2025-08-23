@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
@@ -171,7 +172,7 @@ export default function DumpstersPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Caçambas</h1>
-        <Card>
+        <Card className="bg-muted/50">
             <CardHeader>
             <CardTitle className="font-headline">Minhas Caçambas</CardTitle>
                 <div className="relative mt-2">
@@ -201,7 +202,7 @@ export default function DumpstersPage() {
                 {loading ? <DumpsterTableSkeleton /> : (
                     <>
                         {/* Table for larger screens */}
-                        <div className="hidden md:block border rounded-md">
+                        <div className="hidden md:block border rounded-md bg-card">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -238,7 +239,7 @@ export default function DumpstersPage() {
                            const isRented = dumpster.derivedStatus === 'Alugada';
                            const isReserved = dumpster.derivedStatus.startsWith('Reservada');
                            return (
-                            <div key={dumpster.id} className="border rounded-lg p-4 space-y-3">
+                            <div key={dumpster.id} className="border rounded-lg p-4 space-y-3 bg-card">
                                 <div className="flex justify-between items-start">
                                     <h3 className="font-bold text-lg">{dumpster.name}</h3>
                                     <DumpsterActions dumpster={dumpster} />
