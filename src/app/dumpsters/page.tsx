@@ -172,7 +172,7 @@ export default function DumpstersPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-bold mb-8">Gerenciar Caçambas</h1>
-        <Card className="bg-muted/50">
+        <Card className="bg-muted">
             <CardHeader>
             <CardTitle className="font-headline">Minhas Caçambas</CardTitle>
                 <div className="relative mt-2">
@@ -249,7 +249,7 @@ export default function DumpstersPage() {
                                     <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
                                 </div>
                                 <Separator />
-                                <div className="pt-1 flex items-center justify-between">
+                                <div className="pt-1 flex items-center gap-2">
                                     <MaintenanceCheckbox 
                                         dumpster={dumpster}
                                         isPending={isPending}
