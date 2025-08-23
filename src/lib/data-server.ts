@@ -87,12 +87,12 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 permissions: permissions,
                 createdAt: FieldValue.serverTimestamp(),
             };
-
-            // Set the user document and the custom claims within the same transaction scope.
-            transaction.set(userDocRef, userAccountData);
             
             // This is the critical part: set claims for both new admins and invited users.
             await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
+
+            // Set the user document and the custom claims within the same transaction scope.
+            transaction.set(userDocRef, userAccountData);
             
             if (accountRef) { // If it was an invite, add user to members list
                  transaction.update(accountRef, {
