@@ -106,32 +106,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccountId(claimsAccountId);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
+        userDocUnsubscribe.current = onSnapshot(userDocRef, async (userDocSnap) => {
             if (userDocSnap.exists()) {
                  const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
-                 
+                 setUserAccount(userData);
+                 setRole(userData.role);
+
                  // Invariant check: The user document's accountId MUST match the token claim.
-                 if (!userData.accountId || userData.accountId !== claimsAccountId) {
+                 const docAccountId = userData.accountId;
+                 if (!docAccountId || docAccountId !== claimsAccountId) {
                     console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
-                    logout();
+                    await logout();
                     return; // Do NOT proceed to a success state (setLoading(false))
                  }
 
-                 setUserAccount(userData);
-                 setRole(userData.role);
                  setLoading(false); // Only now is the auth state considered complete and valid.
             } else {
                 console.error("User document not found, which should not happen after ensure-user. Logging out.");
-                logout();
+                await logout();
             }
         }, async (error) => {
             console.error("Error listening to user document:", error);
             // If we can't read the user doc due to permissions, it's a critical state error.
-            // Attempt a repair or logout.
+            // Attempt a repair and logout.
             if ((error as any)?.code === 'permission-denied') {
                 console.error("Permission denied reading user doc. Attempting self-repair and logout.");
-                // This might indicate claims are not propagated yet, or a serious rule mismatch.
-                // A safe exit is to log out to force a clean re-authentication.
+                try {
+                    await fetch('/api/ensure-user', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
+                    });
+                    await getIdTokenResult(firebaseUser, true);
+                } catch(e) {
+                    console.error("Failed to repair user state:", e)
+                }
             }
             await logout();
         });
