@@ -71,34 +71,19 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
     )
 }
 
-
-export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
+export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }) {
   const { accountId, userAccount } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  
+
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
   const isRented = dumpster.derivedStatus === 'Alugada';
-
+  
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditDumpsters;
   const canDelete = isAdmin || userAccount?.permissions?.canEditDumpsters;
-  
-  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' => {
-    if (status.startsWith('Reservada')) return 'secondary';
-    switch (status) {
-      case 'Disponível':
-        return 'success';
-      case 'Alugada':
-        return 'destructive';
-      case 'Em Manutenção':
-        return 'secondary';
-      default:
-        return 'secondary';
-    }
-  };
 
   const handleDelete = () => {
     if (!accountId) return;
@@ -118,6 +103,93 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
         setIsDeleteDialogOpen(false);
       }
     });
+  };
+
+  return (
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
+                <span className="sr-only">Abrir menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canEdit && (
+                  <DialogTrigger asChild>
+                      <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Editar
+                      </DropdownMenuItem>
+                  </DialogTrigger>
+              )}
+              
+              {canDelete && (
+                  <>
+                  <DropdownMenuSeparator />
+                  <AlertDialogTrigger asChild disabled={isRented || isReserved}>
+                  <DropdownMenuItem 
+                      className="text-destructive" 
+                      onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                      disabled={isRented || isReserved}
+                  >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir
+                  </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Caçamba</DialogTitle>
+            </DialogHeader>
+            <EditDumpsterForm dumpster={dumpster} onSave={() => setIsEditDialogOpen(false)} />
+          </DialogContent>
+
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Essa ação não pode ser desfeita. Isso excluirá permanentemente a caçamba.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                {isPending ? 'Excluindo...' : 'Excluir'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Dialog>
+  );
+}
+
+
+export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
+  const { accountId } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
+  
+  const isReserved = dumpster.derivedStatus.startsWith('Reservada');
+  const isRented = dumpster.derivedStatus === 'Alugada';
+  
+  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' => {
+    if (status.startsWith('Reservada')) return 'secondary';
+    switch (status) {
+      case 'Disponível':
+        return 'success';
+      case 'Alugada':
+        return 'destructive';
+      case 'Em Manutenção':
+        return 'secondary';
+      default:
+        return 'secondary';
+    }
   };
 
   const handleToggleStatus = () => {
@@ -142,9 +214,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   };
 
   return (
-    <>
       <div className="flex items-center justify-end gap-2 md:gap-4">
-        {/* Status Badge */}
         <Badge
           variant={getStatusVariant(dumpster.derivedStatus)}
           className={cn('text-xs text-center', isPending && 'opacity-50')}
@@ -152,7 +222,6 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
           {dumpster.derivedStatus}
         </Badge>
         
-        {/* Checkbox for desktop view */}
         <div className="hidden md:flex">
              <MaintenanceCheckbox 
                 dumpster={dumpster} 
@@ -161,69 +230,9 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
                 isReservedOrRented={isRented || isReserved}
             />
         </div>
-
-        {/* Actions Kebab Menu */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
-                  <span className="sr-only">Abrir menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {canEdit && (
-                    <DialogTrigger asChild>
-                        <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                        </DropdownMenuItem>
-                    </DialogTrigger>
-                )}
-                
-                {canDelete && (
-                    <>
-                    <DropdownMenuSeparator />
-                    <AlertDialogTrigger asChild disabled={isRented || isReserved}>
-                    <DropdownMenuItem 
-                        className="text-destructive" 
-                        onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                        disabled={isRented || isReserved}
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                    </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                    </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Editar Caçamba</DialogTitle>
-              </DialogHeader>
-              <EditDumpsterForm dumpster={dumpster} onSave={() => setIsEditDialogOpen(false)} />
-            </DialogContent>
-
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Essa ação não pode ser desfeita. Isso excluirá permanentemente a caçamba.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                  {isPending ? 'Excluindo...' : 'Excluir'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </Dialog>
+        <div className="hidden md:block">
+            <DumpsterOptionsMenu dumpster={dumpster} />
+        </div>
       </div>
-    </>
   );
 }
