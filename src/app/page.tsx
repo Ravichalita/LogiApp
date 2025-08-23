@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
@@ -14,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { Truck, Calendar, ChevronDown, User } from 'lucide-react';
+import { Truck, Calendar, ChevronDown, User, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -151,6 +152,11 @@ export default function HomePage() {
     const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
 
+    // Unsubscribe from previous listener if it exists
+    if (unsubRef.current) {
+        unsubRef.current();
+    }
+
     const unsubscribe = getPopulatedRentals(
       accountId,
       (data) => {
@@ -164,7 +170,7 @@ export default function HomePage() {
       userIdToFilter
     );
 
-    // Store the unsubscribe function to be called on cleanup.
+    // Store the new unsubscribe function to be called on cleanup.
     unsubRef.current = unsubscribe;
 
     // Cleanup function to unsubscribe when component unmounts or dependencies change.
@@ -210,11 +216,11 @@ export default function HomePage() {
        return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-destructive/10 rounded-full mb-4">
-                <Truck className="h-10 w-10 text-destructive" />
+                <ShieldAlert className="h-10 w-10 text-destructive" />
             </div>
             <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
-                Não foi possível carregar os aluguéis. Verifique suas permissões e recarregue a página. Se o problema persistir, contate o suporte.
+                Não foi possível carregar os aluguéis. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
             </p>
              <Button onClick={() => window.location.reload()}>
                 Recarregar Página

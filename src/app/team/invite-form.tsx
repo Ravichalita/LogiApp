@@ -32,10 +32,12 @@ function SuccessDialog({
     isOpen,
     onOpenChange,
     newUser,
+    onClose,
 }: {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     newUser: { name: string; email: string; password?: string } | null;
+    onClose: () => void;
 }) {
     const { toast } = useToast();
     const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : '';
@@ -56,8 +58,15 @@ function SuccessDialog({
         });
     }
 
+    const handleDialogClose = (open: boolean) => {
+        onOpenChange(open);
+        if (!open) {
+            onClose();
+        }
+    }
+
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={isOpen} onOpenChange={handleDialogClose}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Usuário Convidado com Sucesso!</DialogTitle>
@@ -81,12 +90,12 @@ function SuccessDialog({
                 </div>
                 <DialogFooter className="gap-2 sm:justify-between">
                      <Button variant="outline" onClick={() => copyToClipboard(message)}>
-                        <Copy />
+                        <Copy className="mr-2" />
                         Copiar Tudo
                     </Button>
                     <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
                         <Button className="w-full">
-                            <Share2 />
+                            <Share2 className="mr-2"/>
                            Compartilhar no WhatsApp
                         </Button>
                     </a>
@@ -98,7 +107,7 @@ function SuccessDialog({
 
 export function InviteForm({ onSave }: { onSave?: () => void }) {
   const { accountId } = useAuth();
-  const [state, formAction] = useActionState(signupAction.bind(null, accountId), initialState);
+  const [state, formAction, isPending] = useActionState(signupAction.bind(null, accountId), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -110,8 +119,8 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
           description: `O usuário ${state.newUser.name} foi adicionado.`,
         });
         formRef.current?.reset();
-        onSave?.(); // This closes the invite form dialog
-        setIsSuccessDialogOpen(true); // This opens the success dialog
+        // Do not call onSave here, wait for the success dialog to be closed.
+        setIsSuccessDialogOpen(true);
     } else if (state.message && state.message !== 'success') {
       toast({
         title: 'Erro no Convite',
@@ -119,7 +128,7 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
         variant: 'destructive',
       });
     }
-  }, [state, toast, onSave]);
+  }, [state, toast]);
 
   return (
     <>
@@ -150,13 +159,16 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
             <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>
             </DialogClose>
-            <SubmitButton />
+            <Button type="submit" disabled={isPending}>
+                {isPending ? 'Convidando...' : 'Convidar Usuário'}
+            </Button>
         </DialogFooter>
     </form>
     <SuccessDialog
         isOpen={isSuccessDialogOpen}
         onOpenChange={setIsSuccessDialogOpen}
         newUser={state.newUser}
+        onClose={onSave!} // Call onSave only when the success dialog is closed.
     />
     </>
   );
