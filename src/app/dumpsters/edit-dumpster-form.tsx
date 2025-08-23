@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import type { Dumpster } from '@/lib/types';
+import type { Dumpster, DumpsterColor } from '@/lib/types';
+import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { DialogClose } from '@/components/ui/dialog';
@@ -31,6 +34,7 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
   const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState(initialState);
+  const [color, setColor] = useState<DumpsterColor>(dumpster.color as DumpsterColor);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -66,17 +70,34 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
         <Input id="name" name="name" defaultValue={dumpster.name} required />
         {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
       </div>
-       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="color">Cor</Label>
-          <Input id="color" name="color" defaultValue={dumpster.color} required />
-          {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
-        </div>
-        <div className="space-y-2">
+      <div className="space-y-2">
+        <Label htmlFor="color">Cor</Label>
+        <TooltipProvider>
+            <RadioGroup name="color" value={color} onValueChange={(value: DumpsterColor) => setColor(value)} className="flex flex-wrap gap-2">
+            {(Object.keys(DUMPSTER_COLORS) as DumpsterColor[]).map((colorName) => (
+                <Tooltip key={colorName}>
+                <TooltipTrigger asChild>
+                    <RadioGroupItem
+                    value={colorName}
+                    id={`edit-color-${colorName}`}
+                    className="h-8 w-8 rounded-md border-2 border-transparent focus:border-ring"
+                    style={{ backgroundColor: DUMPSTER_COLORS[colorName].value }}
+                    aria-label={colorName}
+                    />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{colorName}: {DUMPSTER_COLORS[colorName].description}</p>
+                </TooltipContent>
+                </Tooltip>
+            ))}
+            </RadioGroup>
+        </TooltipProvider>
+        {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
+      </div>
+      <div className="space-y-2">
           <Label htmlFor="size">Tamanho (m³)</Label>
           <Input id="size" name="size" type="number" defaultValue={dumpster.size} required />
           {state?.errors?.size && <p className="text-sm font-medium text-destructive">{state.errors.size[0]}</p>}
-        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="status">Status</Label>

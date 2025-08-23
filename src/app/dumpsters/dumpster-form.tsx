@@ -7,11 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import type { DumpsterStatus } from '@/lib/types';
+import type { DumpsterStatus, DumpsterColor } from '@/lib/types';
+import { DUMPSTER_COLORS } from '@/lib/types';
 import { DialogClose } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 const initialState = {
   errors: {},
@@ -31,6 +35,7 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const [status, setStatus] = useState<DumpsterStatus>('Disponível');
+  const [color, setColor] = useState<DumpsterColor | undefined>();
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
 
@@ -39,6 +44,7 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
       toast({ title: 'Sucesso', description: 'Caçamba cadastrada.' });
       formRef.current?.reset();
       setStatus('Disponível');
+      setColor(undefined);
       setState(initialState);
       onSave?.();
     } else if (state?.message === 'error' && state.error) {
@@ -70,17 +76,34 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
         <Input id="name" name="name" placeholder="Ex: Caçamba 01" required />
         {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="color">Cor</Label>
-          <Input id="color" name="color" placeholder="Ex: Vermelha" required />
-          {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
-        </div>
-        <div className="space-y-2">
+      <div className="space-y-2">
+        <Label htmlFor="color">Cor</Label>
+        <TooltipProvider>
+            <RadioGroup name="color" value={color} onValueChange={(value: DumpsterColor) => setColor(value)} className="flex flex-wrap gap-2">
+            {(Object.keys(DUMPSTER_COLORS) as DumpsterColor[]).map((colorName) => (
+                <Tooltip key={colorName}>
+                <TooltipTrigger asChild>
+                    <RadioGroupItem
+                    value={colorName}
+                    id={`color-${colorName}`}
+                    className="h-8 w-8 rounded-md border-2 border-transparent focus:border-ring"
+                    style={{ backgroundColor: DUMPSTER_COLORS[colorName].value }}
+                    aria-label={colorName}
+                    />
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{colorName}: {DUMPSTER_COLORS[colorName].description}</p>
+                </TooltipContent>
+                </Tooltip>
+            ))}
+            </RadioGroup>
+        </TooltipProvider>
+        {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
+      </div>
+      <div className="space-y-2">
           <Label htmlFor="size">Tamanho (m³)</Label>
           <Input id="size" name="size" type="number" placeholder="Ex: 5" required />
           {state?.errors?.size && <p className="text-sm font-medium text-destructive">{state.errors.size[0]}</p>}
-        </div>
       </div>
       <div className="space-y-2">
         <Label>Status Inicial</Label>

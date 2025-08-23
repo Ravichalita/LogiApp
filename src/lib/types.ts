@@ -4,6 +4,21 @@ import { FieldValue } from 'firebase-admin/firestore';
 
 const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
 
+export const DUMPSTER_COLORS = {
+  'Amarelo': { value: '#FFC700', description: 'Metal em geral' },
+  'Azul': { value: '#007BFF', description: 'Papel; papelão' },
+  'Branco': { value: '#FFFFFF', description: 'Resíduos ambulatoriais e de serviços de saúde' },
+  'Cinza': { value: '#6c757d', description: 'Resíduo geral não reciclável ou misto' },
+  'Laranja': { value: '#FD7E14', description: 'Resíduos perigosos' },
+  'Marrom': { value: '#A52A2A', description: 'Resíduos orgânicos' },
+  'Preto': { value: '#000000', description: 'Madeira' },
+  'Roxo': { value: '#6F42C1', description: 'Resíduos radioativos' },
+  'Verde': { value: '#28A745', description: 'Vidro' },
+  'Vermelho': { value: '#DC3545', description: 'Plástico' },
+} as const;
+
+export type DumpsterColor = keyof typeof DUMPSTER_COLORS;
+
 // #region Account
 
 export const RentalPriceSchema = z.object({
@@ -54,7 +69,9 @@ export const UpdateClientSchema = ClientSchema.extend({
 
 export const DumpsterSchema = z.object({
     name: z.string().min(1, { message: "O nome é obrigatório."}),
-    color: z.string().min(1, { message: "A cor é obrigatória."}),
+    color: z.enum(Object.keys(DUMPSTER_COLORS) as [DumpsterColor, ...DumpsterColor[]], {
+        required_error: "A cor é obrigatória.",
+    }),
     size: z.coerce.number().positive({ message: "O tamanho deve ser um número positivo."}),
     status: z.enum(['Disponível', 'Em Manutenção'], {
         errorMap: () => ({ message: "Status inválido." }),

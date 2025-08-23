@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox, DumpsterOptionsMenu } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor } from '@/lib/types';
+import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,20 @@ import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+
+function ColorDisplay({ color }: { color: DumpsterColor }) {
+    const colorHex = DUMPSTER_COLORS[color]?.value || '#ccc';
+    return (
+        <div className="flex items-center gap-2">
+            <div 
+                className="h-4 w-4 rounded-sm border border-border"
+                style={{ backgroundColor: colorHex }}
+            />
+            <span>{color}</span>
+        </div>
+    );
+}
 
 
 function DumpsterTableSkeleton() {
@@ -216,7 +231,7 @@ export default function DumpstersPage() {
                             {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
                                 <TableRow key={dumpster.id}>
                                 <TableCell className="font-medium">{dumpster.name}</TableCell>
-                                <TableCell>{dumpster.color}</TableCell>
+                                <TableCell><ColorDisplay color={dumpster.color as DumpsterColor} /></TableCell>
                                 <TableCell>{dumpster.size}</TableCell>
                                 <TableCell>
                                     <DumpsterActions dumpster={dumpster} />
@@ -245,7 +260,7 @@ export default function DumpstersPage() {
                                     <DumpsterActions dumpster={dumpster} />
                                 </div>
                                 <div className="flex justify-between text-sm text-muted-foreground">
-                                    <span>Cor: <span className="font-medium text-foreground">{dumpster.color}</span></span>
+                                    <ColorDisplay color={dumpster.color as DumpsterColor} />
                                     <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
                                 </div>
                                 <Separator />
