@@ -39,6 +39,7 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 if (!accountId) {
                     throw new Error(`Usuário ${userRecord.uid} existe mas não tem accountId.`);
                 }
+                 // If the user doc exists but claims are missing, set them. This is a safety net.
                  if (!userRecord.customClaims?.accountId || !userRecord.customClaims?.role) {
                      const role = userDoc.data()?.role || 'viewer';
                      await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
@@ -87,8 +88,10 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 createdAt: FieldValue.serverTimestamp(),
             };
 
+            // Set the user document and the custom claims within the same transaction scope.
             transaction.set(userDocRef, userAccountData);
             
+            // This is the critical part: set claims for both new admins and invited users.
             await adminAuth.setCustomUserClaims(userRecord.uid, { accountId, role });
             
             if (accountRef) { // If it was an invite, add user to members list
@@ -101,11 +104,10 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
         });
     } catch (error) {
         console.error("Erro em ensureUserDocument, tentando limpar usuário Auth:", error);
+        // If the transaction fails, we should delete the auth user to allow them to try again.
         await adminAuth.deleteUser(userRecord.uid).catch(delErr => {
             console.error(`CRÍTICO: Falha ao limpar usuário auth ${userRecord.uid} após falha na criação do documento. Por favor, delete manualmente.`, delErr)
         });
         throw new Error(`Falha ao criar usuário e conta: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
-
-    
