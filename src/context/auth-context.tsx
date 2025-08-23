@@ -4,7 +4,7 @@
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getFirebase, getFirebaseIdToken } from '@/lib/firebase-client';
+import { getFirebase } from '@/lib/firebase-client';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
