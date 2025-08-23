@@ -49,8 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userDocUnsubscribe.current();
         userDocUnsubscribe.current = null;
     }
+    setLoading(true);
+    setUser(null);
+    setUserAccount(null);
+    setAccountId(null);
+    setRole(null);
     await signOut(auth);
-  }, [auth]);
+    setLoading(false);
+    router.push('/login');
+  }, [auth, router]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -74,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
       }
 
-      // User is logged in and verified.
       setUser(firebaseUser);
 
       try {
@@ -82,45 +88,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
         if (!claimsAccountId) {
-            // Claims are missing. This can happen for a new user.
-            // Call server to ensure documents and claims are created.
             await fetch('/api/ensure-user', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
             });
-            // Force refresh the token to get the new claims.
             tokenResult = await getIdTokenResult(firebaseUser, true);
             claimsAccountId = tokenResult.claims.accountId as string | undefined;
             
             if (!claimsAccountId) {
-                throw new Error("accountId claim is still missing after server-side check.");
+                console.error("Critical: accountId claim is missing after server-side check. Logging out.");
+                await logout();
+                return;
             }
         }
         
+        // The token claim is the single source of truth for security rules.
         setAccountId(claimsAccountId);
         
-        // Now that we have a guaranteed accountId, listen to the user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
             if (userDocSnap.exists()) {
                  const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                 
+                 // Invariant check: The user document's accountId MUST match the token claim.
+                 if (!userData.accountId || userData.accountId !== claimsAccountId) {
+                    console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
+                    logout();
+                    return; // Do NOT proceed to a success state (setLoading(false))
+                 }
+
                  setUserAccount(userData);
                  setRole(userData.role);
-                 setAccountId(userData.accountId); // Can be redundant but ensures consistency
+                 setLoading(false); // Only now is the auth state considered complete and valid.
             } else {
-                console.error("User document not found. Logging out.");
+                console.error("User document not found, which should not happen after ensure-user. Logging out.");
                 logout();
             }
-            setLoading(false);
-        }, (error) => {
+        }, async (error) => {
             console.error("Error listening to user document:", error);
-            setLoading(false);
+            // If we can't read the user doc due to permissions, it's a critical state error.
+            // Attempt a repair or logout.
+            if ((error as any)?.code === 'permission-denied') {
+                console.error("Permission denied reading user doc. Attempting self-repair and logout.");
+                // This might indicate claims are not propagated yet, or a serious rule mismatch.
+                // A safe exit is to log out to force a clean re-authentication.
+            }
+            await logout();
         });
 
       } catch (error) {
         console.error("Critical error during auth state processing:", error);
         await logout();
-        setLoading(false);
       }
     });
 
