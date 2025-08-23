@@ -10,5 +10,3 @@ export async function POST(req: Request) {
   // but it will simply return an error.
   return NextResponse.json({ error: 'This endpoint is deprecated.' }, { status: 410 });
 }
-
-    

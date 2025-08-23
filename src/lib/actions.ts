@@ -40,10 +40,10 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
 
   if (!validatedFields.success) {
       const fieldErrors = validatedFields.error.flatten().fieldErrors;
-      const firstError = Object.values(fieldErrors).flat()[0] || 'Por favor, verifique os campos.';
       if (fieldErrors._errors && fieldErrors._errors.length > 0) {
         return { ...prevState, message: fieldErrors._errors[0] };
       }
+      const firstError = Object.values(fieldErrors).flat()[0] || 'Por favor, verifique os campos.';
       return { ...prevState, message: firstError };
   }
 
@@ -498,5 +498,3 @@ export async function resetFinancialDataAction(accountId: string) {
     }
 }
 // #endregion
-
-    

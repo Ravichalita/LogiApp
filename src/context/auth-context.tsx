@@ -55,8 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccountId(null);
     setRole(null);
     await signOut(auth);
-    // No need to set loading false here, onAuthStateChanged will handle it
-  }, [auth]);
+    router.push('/login');
+  }, [auth, router]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -80,22 +80,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
       }
 
-      setUser(firebaseUser);
-
       try {
-        // Force refresh to ensure we have the latest claims after login/signup
         const tokenResult = await getIdTokenResult(firebaseUser, true);
         const claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
         if (!claimsAccountId) {
-            // This should ideally not happen if the backend logic is correct.
-            // It indicates a severe problem (e.g., failed signup transaction).
-            console.error("Critical: accountId claim is missing after token refresh. Logging out.");
+            console.error("Critical: accountId claim is missing. Logging out.");
             await logout();
             return;
         }
         
         // The token claim is the single source of truth for security rules.
+        setUser(firebaseUser);
         setAccountId(claimsAccountId);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -106,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  // Invariant check: The user document's accountId MUST match the token claim.
                  if (!userData.accountId || userData.accountId !== claimsAccountId) {
                     console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
-                    logout(); // Do not proceed.
+                    logout();
                     return; 
                  }
                  
@@ -119,7 +115,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }, async (error) => {
             console.error("Error listening to user document:", error);
-            // If we can't read the user doc due to permissions, it's a critical state error.
             await logout();
         });
 
@@ -181,5 +176,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    
