@@ -14,7 +14,7 @@ import type { Dumpster, DumpsterColor } from '@/lib/types';
 import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import { DialogClose } from '@/components/ui/dialog';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 
 
 const initialState = {
@@ -112,12 +112,12 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
         </Select>
          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
       </div>
-       <div className="flex justify-end gap-2 pt-4">
+      <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancelar</Button>
           </DialogClose>
           <SubmitButton isPending={isPending} />
-        </div>
+        </DialogFooter>
     </form>
   );
 }

@@ -12,7 +12,7 @@ import { MapDialog } from '@/components/map-dialog';
 import type { Location } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import { DialogClose } from '@/components/ui/dialog';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 
 const initialState = {
   errors: {},
@@ -21,7 +21,7 @@ const initialState = {
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={isPending} className="w-full">
+    <Button type="submit" disabled={isPending}>
       {isPending ? <Spinner size="small" /> : 'Salvar Cliente'}
     </Button>
   );
@@ -119,12 +119,12 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
         <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
-       <div className="flex justify-end gap-2 pt-4">
+       <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancelar</Button>
           </DialogClose>
           <SubmitButton isPending={isPending} />
-        </div>
+        </DialogFooter>
     </form>
   );
 }

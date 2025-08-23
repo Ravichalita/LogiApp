@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle } from 'lucide-react';
-import { DialogClose } from '@/components/ui/dialog';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 
 const initialState = {
   message: '',
@@ -74,12 +74,12 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
                 <p>{state.message}</p>
             </div>
         )}
-        <div className="flex justify-end gap-2 pt-4">
+        <DialogFooter>
             <DialogClose asChild>
                 <Button type="button" variant="outline">Cancelar</Button>
             </DialogClose>
             <SubmitButton />
-        </div>
+        </DialogFooter>
     </form>
   );
 }
