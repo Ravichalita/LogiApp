@@ -107,3 +107,5 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
         throw new Error(`Falha ao criar usuário e conta: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
+
+    
