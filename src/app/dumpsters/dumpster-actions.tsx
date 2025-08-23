@@ -2,7 +2,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { deleteDumpsterAction, updateDumpsterStatusAction } from '@/lib/actions';
-import { MoreHorizontal, Trash2, Edit } from 'lucide-react';
+import { MoreVertical, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -112,7 +112,7 @@ export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0 flex-shrink-0">
                 <span className="sr-only">Abrir menu</span>
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
