@@ -4,19 +4,11 @@ import { adminAuth } from '@/lib/firebase-admin';
 import { ensureUserDocument } from '@/lib/data-server';
 
 export async function POST(req: Request) {
-  try {
-    const auth = req.headers.get('authorization') || '';
-    if (!auth.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'missing token' }, { status: 401 });
-    }
-    const token = auth.slice(7);
-    const decoded = await adminAuth.verifyIdToken(token, true);
-    const user = await adminAuth.getUser(decoded.uid);
-    const accountId = await ensureUserDocument(user);
-    return NextResponse.json({ ok: true, accountId });
-  } catch (error) {
-    console.error('[ensure-user API] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: 'Failed to ensure user document', details: message }, { status: 500 });
-  }
+  // This endpoint is deprecated and should not be used.
+  // The logic is now handled by the server-side signupAction.
+  // We keep it to avoid breaking older client versions if they exist,
+  // but it will simply return an error.
+  return NextResponse.json({ error: 'This endpoint is deprecated.' }, { status: 410 });
 }
+
+    

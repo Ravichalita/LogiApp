@@ -9,8 +9,6 @@ import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
-import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -37,34 +35,6 @@ function handleFirebaseError(error: unknown): string {
 
 // #region Auth Actions
 
-export async function ensureUserDocumentOnClient() {
-    'use server';
-    try {
-        const authorization = headers().get('Authorization');
-        if (!authorization?.startsWith('Bearer ')) {
-            return NextResponse.json({ error: 'No Firebase ID token was passed.' }, { status: 401 });
-        }
-        const idToken = authorization.split('Bearer ')[1];
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
-        const user = await adminAuth.getUser(decodedToken.uid);
-
-        // Call the main server-side function to create documents if needed
-        const accountId = await ensureUserDocument(user);
-        
-        // After ensuring the document and claims, it's crucial for the client to get a new token
-        // But we cannot force the client refresh from here. The client MUST do it.
-        // We just return the success state.
-        
-        return NextResponse.json({ message: 'success', accountId });
-
-    } catch (error) {
-        console.error("[ensureUserDocumentOnClient] Error:", error);
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: 'Failed to ensure user document', details: message }, { status: 500 });
-    }
-}
-
-
 export async function signupAction(inviterAccountId: string | null, prevState: any, formData: FormData) {
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
 
@@ -86,16 +56,10 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return { ...prevState, message: "Este e-mail já está cadastrado." };
       }
 
-      const newUserRecord = await adminAuth.createUser({
-          email,
-          password,
-          displayName: name,
-          emailVerified: true, 
-      });
-
-      // This is the CRITICAL step. This server-side function creates the DB entries
-      // AND sets the custom claims in one go.
-      await ensureUserDocument(newUserRecord, inviterAccountId);
+      // This is the CRITICAL step. This server-side function creates the Auth user,
+      // the DB entries, AND sets the custom claims in one go.
+      // If it fails, it cleans up after itself.
+      await ensureUserDocument({ name, email, password }, inviterAccountId);
       
       const successState = {
         ...prevState,
@@ -534,3 +498,5 @@ export async function resetFinancialDataAction(accountId: string) {
     }
 }
 // #endregion
+
+    

@@ -135,55 +135,37 @@ function RentalCardSkeleton() {
 export default function HomePage() {
   const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
+  const [localLoading, setLocalLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
 
-  const unsubRef = useRef<() => void | null>(null);
-
   useEffect(() => {
-    // Only subscribe if auth is done and we have an account ID.
+    // Wait for the auth context to be ready and have an accountId
     if (authLoading || !accountId) {
-        // If auth is not ready, or there is no account, we clear previous rentals and stop.
-        setRentals([]);
-        setError(null);
-        return;
+      return;
     }
 
+    setLocalLoading(true);
     const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
-
-    // Unsubscribe from previous listener if it exists
-    if (unsubRef.current) {
-        unsubRef.current();
-    }
 
     const unsubscribe = getPopulatedRentals(
       accountId,
       (data) => {
         setRentals(data);
-        setError(null); // Clear previous errors on new data
+        setError(null);
+        setLocalLoading(false);
       },
       (err) => {
         console.error("Rental subscription error:", err);
         setError(err);
+        setLocalLoading(false);
       },
       userIdToFilter
     );
 
-    // Store the new unsubscribe function to be called on cleanup.
-    unsubRef.current = unsubscribe;
-
-    // Cleanup function to unsubscribe when component unmounts or dependencies change.
-    return () => {
-      if (unsubRef.current) {
-        try {
-          unsubRef.current();
-        } catch (e) {
-          console.error("Error unsubscribing from rentals:", e);
-        }
-      }
-    };
-  }, [authLoading, accountId, user, userAccount]); // Effect re-runs if any of these change.
+    return () => unsubscribe();
+  }, [authLoading, accountId, user, userAccount]);
 
 
   const filteredAndSortedRentals = useMemo(() => {
@@ -203,7 +185,7 @@ export default function HomePage() {
     });
   }, [rentals, statusFilter]);
 
-  if (authLoading) {
+  if (authLoading || localLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis Ativos</h1>
@@ -237,7 +219,7 @@ export default function HomePage() {
     )
   }
 
-  if (!authLoading && rentals.length === 0) {
+  if (rentals.length === 0) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -325,3 +307,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

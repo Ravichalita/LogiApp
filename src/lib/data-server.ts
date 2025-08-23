@@ -4,7 +4,8 @@
 import type { UserRecord } from "firebase-admin/auth";
 import { adminAuth } from "./firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { Permissions, PermissionsSchema } from "./types";
+import { Permissions, PermissionsSchema, SignupSchema } from "./types";
+import { z } from "zod";
 
 const firestore = getFirestore();
 
@@ -13,35 +14,31 @@ const firestore = getFirestore();
  * Also ensures the user has the correct custom claims in Firebase Auth.
  * This is a critical function for security and multi-tenancy.
  *
- * @param userRecord The user record from Firebase Admin Auth.
+ * @param userPayload The user data from the signup form.
  * @param inviterAccountId Optional ID of an existing account to join (for invites).
  * @returns The ID of the account the user is associated with.
- * @throws An error if the transaction fails.
+ * @throws An error if the transaction fails or if the auth user can't be cleaned up on failure.
  */
-export async function ensureUserDocument(userRecord: UserRecord, inviterAccountId?: string | null): Promise<string> {
-    const userDocRef = firestore.doc(`users/${userRecord.uid}`);
-
+export async function ensureUserDocument(
+    userPayload: z.infer<typeof SignupSchema>, 
+    inviterAccountId?: string | null
+): Promise<string> {
+    
+    let newUserRecord: UserRecord | null = null;
     try {
+        // Step 1: Create the user in Firebase Auth
+        newUserRecord = await adminAuth.createUser({
+            email: userPayload.email,
+            password: userPayload.password,
+            displayName: userPayload.name,
+            emailVerified: true, // Auto-verify email for simplicity in this app
+        });
+
+        const uid = newUserRecord.uid;
+        const userDocRef = firestore.doc(`users/${uid}`);
+
+        // Step 2: Run a Firestore transaction to create database documents and set claims
         const accountId = await firestore.runTransaction(async (transaction) => {
-            const userDoc = await transaction.get(userDocRef);
-
-            // 1. User document already exists, ensure claims and return.
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                const existingAccountId = userData?.accountId;
-                if (!existingAccountId) {
-                    throw new Error(`Usuário ${userRecord.uid} existe mas não tem accountId.`);
-                }
-                
-                // Safety net: If claims are missing from Auth, set them.
-                if (!userRecord.customClaims?.accountId || userRecord.customClaims.accountId !== existingAccountId) {
-                    const role = userData?.role || 'viewer';
-                    await adminAuth.setCustomUserClaims(userRecord.uid, { accountId: existingAccountId, role });
-                }
-                return existingAccountId;
-            }
-
-            // 2. User document does NOT exist, create it along with account or membership.
             let determinedAccountId: string;
             let role: 'admin' | 'viewer';
             let permissions: Permissions;
@@ -56,15 +53,14 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                 role = 'viewer';
                 permissions = PermissionsSchema.parse({}); // Start with default (false) permissions
                 
-                // Add user to the account's members list
                 transaction.update(accountRef, {
-                    members: FieldValue.arrayUnion(userRecord.uid)
+                    members: FieldValue.arrayUnion(uid)
                 });
 
             } else { // --- New Account/Admin Flow ---
-                determinedAccountId = userRecord.uid; // The first user's UID becomes the account ID
+                determinedAccountId = uid; // The first user's UID becomes the account ID
                 role = 'admin';
-                permissions = PermissionsSchema.parse({
+                permissions = PermissionsSchema.parse({ // Admins get all permissions by default
                     canAccessTeam: true,
                     canAccessFinance: true,
                     canEditClients: true,
@@ -72,23 +68,21 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
                     canEditRentals: true,
                 });
                 
-                // Create the new account document
                 const newAccountRef = firestore.doc(`accounts/${determinedAccountId}`);
                 transaction.set(newAccountRef, {
-                    ownerId: userRecord.uid,
+                    ownerId: uid,
                     createdAt: FieldValue.serverTimestamp(),
-                    members: [userRecord.uid],
+                    members: [uid],
                 });
             }
 
-            // CRITICAL: Set custom claims in Firebase Auth FIRST, before committing DB changes.
-            // If this step fails, the transaction will be rolled back, and no DB changes will be made.
-            await adminAuth.setCustomUserClaims(userRecord.uid, { accountId: determinedAccountId, role });
+            // Step 3: Set custom claims in Firebase Auth. This is critical for security rules.
+            await adminAuth.setCustomUserClaims(uid, { accountId: determinedAccountId, role });
 
-            // Now define and create the user document in Firestore within the same transaction.
+            // Step 4: Create the user document in Firestore.
             const userAccountData = {
-                email: userRecord.email!,
-                name: userRecord.displayName || userRecord.email!.split('@')[0],
+                email: userPayload.email,
+                name: userPayload.name,
                 accountId: determinedAccountId,
                 role: role,
                 status: 'ativo',
@@ -103,18 +97,22 @@ export async function ensureUserDocument(userRecord: UserRecord, inviterAccountI
         return accountId;
 
     } catch (error) {
-        console.error("Erro na transação de ensureUserDocument. Tentando limpar usuário Auth se necessário:", error);
+        console.error("Erro na transação de ensureUserDocument. Revertendo...", error);
         
-        // If the transaction failed, the user might have been created in Auth but not in Firestore.
-        // We must delete the Auth user to prevent an inconsistent state.
-        try {
-            await adminAuth.deleteUser(userRecord.uid);
-            console.log(`Usuário Auth ${userRecord.uid} limpo com sucesso após falha na transação.`);
-        } catch (deleteError) {
-             console.error(`CRÍTICO: Falha ao limpar o usuário Auth ${userRecord.uid} após falha na transação. Por favor, delete manualmente. Erro: ${deleteError}`);
+        // If any step failed, and we managed to create an auth user, we MUST delete them
+        // to prevent an inconsistent state (e.g., auth user exists without a user document).
+        if (newUserRecord) {
+            try {
+                await adminAuth.deleteUser(newUserRecord.uid);
+                console.log(`Usuário Auth ${newUserRecord.uid} limpo com sucesso após falha na transação.`);
+            } catch (deleteError) {
+                 console.error(`CRÍTICO: Falha ao limpar o usuário Auth ${newUserRecord.uid} após falha na transação. Por favor, delete manualmente. Erro: ${deleteError}`);
+            }
         }
 
         // Rethrow the original error to be handled by the caller (e.g., signupAction)
         throw new Error(`Falha ao criar usuário e conta: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
+
+    

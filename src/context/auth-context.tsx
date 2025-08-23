@@ -55,9 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccountId(null);
     setRole(null);
     await signOut(auth);
-    setLoading(false);
-    router.push('/login');
-  }, [auth, router]);
+    // No need to set loading false here, onAuthStateChanged will handle it
+  }, [auth]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -84,63 +83,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
 
       try {
-        let tokenResult = await getIdTokenResult(firebaseUser);
-        let claimsAccountId = tokenResult.claims.accountId as string | undefined;
+        // Force refresh to ensure we have the latest claims after login/signup
+        const tokenResult = await getIdTokenResult(firebaseUser, true);
+        const claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
         if (!claimsAccountId) {
-            await fetch('/api/ensure-user', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
-            });
-            tokenResult = await getIdTokenResult(firebaseUser, true);
-            claimsAccountId = tokenResult.claims.accountId as string | undefined;
-            
-            if (!claimsAccountId) {
-                console.error("Critical: accountId claim is missing after server-side check. Logging out.");
-                await logout();
-                return;
-            }
+            // This should ideally not happen if the backend logic is correct.
+            // It indicates a severe problem (e.g., failed signup transaction).
+            console.error("Critical: accountId claim is missing after token refresh. Logging out.");
+            await logout();
+            return;
         }
         
         // The token claim is the single source of truth for security rules.
         setAccountId(claimsAccountId);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        userDocUnsubscribe.current = onSnapshot(userDocRef, async (userDocSnap) => {
+        userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
             if (userDocSnap.exists()) {
                  const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                 
+                 // Invariant check: The user document's accountId MUST match the token claim.
+                 if (!userData.accountId || userData.accountId !== claimsAccountId) {
+                    console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
+                    logout(); // Do not proceed.
+                    return; 
+                 }
+                 
                  setUserAccount(userData);
                  setRole(userData.role);
-
-                 // Invariant check: The user document's accountId MUST match the token claim.
-                 const docAccountId = userData.accountId;
-                 if (!docAccountId || docAccountId !== claimsAccountId) {
-                    console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
-                    await logout();
-                    return; // Do NOT proceed to a success state (setLoading(false))
-                 }
-
                  setLoading(false); // Only now is the auth state considered complete and valid.
             } else {
-                console.error("User document not found, which should not happen after ensure-user. Logging out.");
-                await logout();
+                console.error("User document not found, which should not happen after signup. Logging out.");
+                logout();
             }
         }, async (error) => {
             console.error("Error listening to user document:", error);
             // If we can't read the user doc due to permissions, it's a critical state error.
-            // Attempt a repair and logout.
-            if ((error as any)?.code === 'permission-denied') {
-                console.error("Permission denied reading user doc. Attempting self-repair and logout.");
-                try {
-                    await fetch('/api/ensure-user', {
-                      method: 'POST',
-                      headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
-                    });
-                    await getIdTokenResult(firebaseUser, true);
-                } catch(e) {
-                    console.error("Failed to repair user state:", e)
-                }
-            }
             await logout();
         });
 
@@ -202,3 +181,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    
