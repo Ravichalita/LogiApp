@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useTransition } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signupAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
 import { useActionState } from 'react';
@@ -10,12 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle } from 'lucide-react';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { AlertCircle, Copy, Share2 } from 'lucide-react';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const initialState = {
   message: '',
-  isInvite: true, // This form is always for invites
+  isInvite: true,
+  newUser: null as { name: string; email: string; password?: string } | null,
 };
 
 function SubmitButton() {
@@ -27,21 +28,91 @@ function SubmitButton() {
     )
 }
 
+function SuccessDialog({
+    isOpen,
+    onOpenChange,
+    newUser,
+}: {
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+    newUser: { name: string; email: string; password?: string } | null;
+}) {
+    const { toast } = useToast();
+    const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : '';
+
+    if (!newUser) return null;
+    
+    const message = `Olá, ${newUser.name}! Bem-vindo(a) ao Econtrol.\n\nAqui estão seus dados de acesso:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha Temporária:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text).then(() => {
+            toast({ title: 'Copiado!', description: 'Dados de acesso copiados para a área de transferência.' });
+        }).catch(err => {
+            console.error('Falha ao copiar:', err);
+            toast({ title: 'Erro', description: 'Não foi possível copiar os dados.', variant: 'destructive' });
+        });
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Usuário Convidado com Sucesso!</DialogTitle>
+                    <DialogDescription>
+                        Compartilhe os detalhes de login com {newUser.name}.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div>
+                        <Label>Link de Acesso</Label>
+                        <p className="text-sm font-mono p-2 bg-muted rounded-md break-all">{loginUrl}</p>
+                    </div>
+                     <div>
+                        <Label>E-mail</Label>
+                        <p className="text-sm font-mono p-2 bg-muted rounded-md">{newUser.email}</p>
+                    </div>
+                     <div>
+                        <Label>Senha Temporária</Label>
+                        <p className="text-sm font-mono p-2 bg-muted rounded-md">{newUser.password}</p>
+                    </div>
+                </div>
+                <DialogFooter className="gap-2 sm:justify-between">
+                     <Button variant="outline" onClick={() => copyToClipboard(message)}>
+                        <Copy />
+                        Copiar Tudo
+                    </Button>
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
+                        <Button className="w-full">
+                            <Share2 />
+                           Compartilhar no WhatsApp
+                        </Button>
+                    </a>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export function InviteForm({ onSave }: { onSave?: () => void }) {
   const { accountId } = useAuth();
   const [state, formAction] = useActionState(signupAction.bind(null, accountId), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   
   useEffect(() => {
-    if (state.message === 'success') {
+    if (state.message === 'success' && state.newUser) {
         toast({
           title: 'Convite Enviado!',
-          description: 'O novo usuário foi adicionado e pode agora fazer login.',
+          description: `O usuário ${state.newUser.name} foi adicionado.`,
         });
         formRef.current?.reset();
-        onSave?.();
-    } else if (state.message) {
+        onSave?.(); // This closes the invite form dialog
+        setIsSuccessDialogOpen(true); // This opens the success dialog
+    } else if (state.message && state.message !== 'success') {
       toast({
         title: 'Erro no Convite',
         description: state.message,
@@ -51,6 +122,7 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
   }, [state, toast, onSave]);
 
   return (
+    <>
     <form ref={formRef} action={formAction} className="space-y-4">
         <div className="space-y-2">
             <Label htmlFor="name">Nome Completo</Label>
@@ -81,5 +153,11 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
             <SubmitButton />
         </DialogFooter>
     </form>
+    <SuccessDialog
+        isOpen={isSuccessDialogOpen}
+        onOpenChange={setIsSuccessDialogOpen}
+        newUser={state.newUser}
+    />
+    </>
   );
 }

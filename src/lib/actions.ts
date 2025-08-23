@@ -91,11 +91,18 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
 
       await ensureUserDocument(newUserRecord, inviterAccountId);
       
-      return {
+      const successState = {
         ...prevState,
         message: 'success',
         isInvite: isInviteFlow,
+        newUser: {
+          name,
+          email,
+          password: isInviteFlow ? password : undefined, // Only return password on invite flow
+        },
       };
+      
+      return successState;
 
   } catch (e) {
       return { ...prevState, message: handleFirebaseError(e) };
