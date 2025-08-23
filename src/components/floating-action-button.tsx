@@ -44,17 +44,14 @@ export function FloatingActionButton() {
                 return null;
             case '/':
             default:
-                 if (isAdmin || permissions?.canEditRentals) {
-                    return (
-                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                            <Link href="/rentals/new">
-                                <Plus className="h-8 w-8" />
-                                <span className="sr-only">Novo Aluguel</span>
-                            </Link>
-                        </Button>
-                    );
-                 }
-                 return null;
+                return (
+                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                        <Link href="/rentals/new">
+                            <Plus className="h-8 w-8" />
+                            <span className="sr-only">Novo Aluguel</span>
+                        </Link>
+                    </Button>
+                );
         }
     }
 
