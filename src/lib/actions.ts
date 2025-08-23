@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema } from './types';
-import type { Rental, UserAccount, UserRole, UserStatus } from './types';
+import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -90,8 +90,6 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
           email,
           password,
           displayName: name,
-          // Start with emailVerified as true for simplicity in this app
-          // In a real-world scenario, you'd send a verification email.
           emailVerified: true, 
       });
 
@@ -134,7 +132,7 @@ export async function updateUserRoleAction(accountId: string, userId: string, ne
     }
 }
 
-export async function updateUserPermissionsAction(accountId: string, userId: string, permissions: z.infer<typeof PermissionsSchema>) {
+export async function updateUserPermissionsAction(accountId: string, userId: string, permissions: Permissions) {
     try {
         const db = getFirestore();
         const userRef = db.doc(`users/${userId}`);
@@ -536,5 +534,3 @@ export async function resetFinancialDataAction(accountId: string) {
     }
 }
 // #endregion
-
-    

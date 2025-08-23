@@ -2,9 +2,9 @@
 'use client';
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
-import { getAuth, onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase-client';
+import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { getFirebase, getFirebaseIdToken } from '@/lib/firebase-client';
 import type { UserAccount, UserRole } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
@@ -50,14 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userDocUnsubscribe.current = null;
     }
     await signOut(auth);
-    // onAuthStateChanged will handle clearing local state
   }, [auth]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       if (userDocUnsubscribe.current) {
-          userDocUnsubscribe.current(); // Unsubscribe from previous user doc listener
+          userDocUnsubscribe.current();
       }
 
       if (!firebaseUser) {
@@ -69,8 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // If user is not verified, we set the user and stop loading.
-      // The routing effect will handle redirection.
       if (!firebaseUser.emailVerified) {
           setUser(firebaseUser);
           setLoading(false);
@@ -80,64 +77,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // User is logged in and verified.
       setUser(firebaseUser);
 
-      // We need to get the accountId from claims to fetch the user document.
-      // Let's try getting it, forcing a refresh to ensure we have the latest claims.
       try {
-        const tokenResult = await firebaseUser.getIdTokenResult(true);
-        const claimsAccountId = tokenResult.claims.accountId as string | undefined;
+        let tokenResult = await getIdTokenResult(firebaseUser);
+        let claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
         if (!claimsAccountId) {
-            // This can happen for a brand new user whose claims are not yet propagated.
-            // Or if something went wrong during signup. Let's call ensure-user as a fallback.
+            // Claims are missing. This can happen for a new user.
+            // Call server to ensure documents and claims are created.
             await fetch('/api/ensure-user', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${await firebaseUser.getIdToken()}` },
             });
-            // Force refresh again after ensuring user
-            const refreshedTokenResult = await firebaseUser.getIdTokenResult(true);
-            const newClaimsAccountId = refreshedTokenResult.claims.accountId as string | undefined;
-            if (!newClaimsAccountId) {
-                throw new Error("accountId claim is still missing after ensure-user call.");
+            // Force refresh the token to get the new claims.
+            tokenResult = await getIdTokenResult(firebaseUser, true);
+            claimsAccountId = tokenResult.claims.accountId as string | undefined;
+            
+            if (!claimsAccountId) {
+                throw new Error("accountId claim is still missing after server-side check.");
             }
-            setAccountId(newClaimsAccountId);
-        } else {
-            setAccountId(claimsAccountId);
         }
         
-        // Now that we have accountId, listen to the user document
+        setAccountId(claimsAccountId);
+        
+        // Now that we have a guaranteed accountId, listen to the user document
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
             if (userDocSnap.exists()) {
                  const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                  setUserAccount(userData);
                  setRole(userData.role);
-                 // We already have the accountId from claims, but this confirms it.
-                 setAccountId(userData.accountId);
+                 setAccountId(userData.accountId); // Can be redundant but ensures consistency
             } else {
-                // This state can happen if the user was deleted from firestore but not auth.
-                // Log them out to prevent a broken state.
                 console.error("User document not found. Logging out.");
                 logout();
             }
-            setLoading(false); // We have our user data, stop loading.
+            setLoading(false);
         }, (error) => {
             console.error("Error listening to user document:", error);
             setLoading(false);
-            // Don't logout on permission errors, as it might be a temporary state.
-            // The UI should handle showing an error state.
         });
 
-
       } catch (error) {
-        console.error("Critical error during auth state change:", error);
+        console.error("Critical error during auth state processing:", error);
         await logout();
         setLoading(false);
       }
     });
 
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth, db]);
+  }, [auth, db, logout]);
 
   useEffect(() => {
     if (loading) return;
