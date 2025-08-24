@@ -37,21 +37,20 @@ export const backupAccountData = onRequest(
   { region: "us-central1" },
   async (req, res) => {
     corsHandler(req, res, async () => {
-        // Check for authentication via Authorization header
-        if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
-            logger.error('No authorization token provided.');
-            res.status(403).send('Unauthorized');
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            logger.error('Unauthorized: No authorization token was provided.');
+            res.status(403).send({ error: { message: 'Unauthorized' }});
             return;
         }
         
-        let idToken;
+        const idToken = authHeader.split('Bearer ')[1];
+        let decodedToken;
         try {
-            idToken = req.headers.authorization.split('Bearer ')[1];
-            const decodedToken = await auth.verifyIdToken(idToken);
-            req.user = decodedToken;
+            decodedToken = await auth.verifyIdToken(idToken);
         } catch (error) {
-            logger.error('Error verifying token:', error);
-            res.status(403).send('Unauthorized');
+            logger.error('Unauthorized: Error verifying token:', error);
+            res.status(403).send({ error: { message: 'Unauthorized: Invalid token' }});
             return;
         }
 
@@ -61,57 +60,57 @@ export const backupAccountData = onRequest(
             return;
         }
         
-        // IMPORTANT: Verify that the authenticated user has rights to this account.
-        const userAccountId = req.user.accountId;
+        // IMPORTANT: Verify that the authenticated user has rights to this account via custom claims.
+        const userAccountId = decodedToken.accountId;
         if (userAccountId !== accountId) {
-            logger.warn(`Permission denied: User ${req.user.uid} tried to backup account ${accountId} but belongs to ${userAccountId}`);
+            logger.warn(`Permission denied: User ${decodedToken.uid} tried to backup account ${accountId} but belongs to ${userAccountId}`);
             res.status(403).send({ error: { message: 'You do not have permission to backup this account.' }});
             return;
         }
 
-        logger.info(`Starting backup for account: ${accountId} by user ${req.user.uid}`);
+        logger.info(`Starting backup for account: ${accountId} by user ${decodedToken.uid}`);
 
         try {
-        const collectionsToBackup = [
-            "clients",
-            "dumpsters",
-            "rentals",
-            "completed_rentals",
-        ];
-        const backupData: { [key: string]: any } = {
-            exportedAt: new Date().toISOString(),
-        };
+            const collectionsToBackup = [
+                "clients",
+                "dumpsters",
+                "rentals",
+                "completed_rentals",
+            ];
+            const backupData: { [key: string]: any } = {
+                exportedAt: new Date().toISOString(),
+            };
 
-        for (const collectionName of collectionsToBackup) {
-            const collectionPath = `accounts/${accountId}/${collectionName}`;
-            backupData[collectionName] = await getCollectionData(collectionPath);
-            logger.info(
-            `Backed up ${backupData[collectionName].length} documents from ${collectionName}.`
-            );
-        }
-        
-        const accountSnap = await db.doc(`accounts/${accountId}`).get();
-        if(accountSnap.exists) {
-            backupData.account = { id: accountSnap.id, ...accountSnap.data() };
-        }
+            for (const collectionName of collectionsToBackup) {
+                const collectionPath = `accounts/${accountId}/${collectionName}`;
+                backupData[collectionName] = await getCollectionData(collectionPath);
+                logger.info(
+                `Backed up ${backupData[collectionName].length} documents from ${collectionName}.`
+                );
+            }
+            
+            const accountSnap = await db.doc(`accounts/${accountId}`).get();
+            if(accountSnap.exists) {
+                backupData.account = { id: accountSnap.id, ...accountSnap.data() };
+            }
 
 
-        const timestamp = new Date().toISOString().replace(/:/g, "-");
-        const fileName = `backup-${timestamp}.json`;
-        const filePath = `backups/${accountId}/${fileName}`;
-        const file = storage.bucket().file(filePath);
+            const timestamp = new Date().toISOString().replace(/:/g, "-");
+            const fileName = `backup-${timestamp}.json`;
+            const filePath = `backups/${accountId}/${fileName}`;
+            const file = storage.bucket().file(filePath);
 
-        await file.save(JSON.stringify(backupData, null, 2), {
-            contentType: "application/json",
-        });
+            await file.save(JSON.stringify(backupData, null, 2), {
+                contentType: "application/json",
+            });
 
-        logger.info(`Backup for account ${accountId} completed successfully. Saved to ${filePath}`);
+            logger.info(`Backup for account ${accountId} completed successfully. Saved to ${filePath}`);
 
-        res.status(200).send({
-            message: "Backup concluído com sucesso!",
-            filePath: filePath,
-            fileName: fileName,
-        });
+            res.status(200).send({
+                message: "Backup concluído com sucesso!",
+                filePath: filePath,
+                fileName: fileName,
+            });
 
         } catch (error) {
             logger.error(`Backup failed for account ${accountId}:`, error);
@@ -120,3 +119,5 @@ export const backupAccountData = onRequest(
     });
   }
 );
+
+    

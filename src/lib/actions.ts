@@ -561,32 +561,32 @@ export async function triggerBackupAction(accountId: string) {
   }
   
   try {
-    // This verifies the session cookie and gets the user's details.
     const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-    // This creates a standard Firebase Auth ID token which can be used to authorize requests.
     const idToken = await adminAuth.createCustomToken(decodedToken.uid, decodedToken.claims);
 
     const region = process.env.NEXT_PUBLIC_FIREBASE_REGION || 'us-central1';
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (!projectId) {
+      throw new Error("Project ID não está configurado nas variáveis de ambiente.");
+    }
     const url = `https://${region}-${projectId}.cloudfunctions.net/backupAccountData`;
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Pass the standard ID token in the Authorization header.
         'Authorization': `Bearer ${idToken}`
       },
-      body: JSON.stringify({ accountId: accountId }), // Send data directly in the body
+      body: JSON.stringify({ accountId }),
     });
 
+    const responseData = await response.json();
+
     if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Error from backup function:', errorData);
-        throw new Error(errorData.error?.message || `A função de backup falhou com status ${response.status}`);
+        console.error('Error from backup function:', responseData);
+        throw new Error(responseData.error?.message || `A função de backup falhou com status ${response.status}`);
     }
     
-    const responseData = await response.json();
     const { fileName } = responseData as { fileName: string };
 
     revalidatePath('/settings');
@@ -598,3 +598,5 @@ export async function triggerBackupAction(accountId: string) {
   }
 }
 // #endregion
+
+    
