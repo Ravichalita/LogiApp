@@ -22,9 +22,9 @@ const initialState = {
   message: '',
 };
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
+function SubmitButton({ isPending, formId }: { isPending: boolean, formId: string }) {
   return (
-    <Button type="submit" disabled={isPending}>
+    <Button type="submit" form={formId} disabled={isPending}>
       {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
     </Button>
   );
@@ -36,6 +36,7 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
   const [state, setState] = useState(initialState);
   const [color, setColor] = useState<DumpsterColor>(dumpster.color as DumpsterColor);
   const { toast } = useToast();
+  const formId = `edit-dumpster-form-${dumpster.id}`;
 
   useEffect(() => {
     if (state?.message === 'success') {
@@ -64,7 +65,7 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
 
   return (
     <>
-      <form action={handleFormAction} className="space-y-4 overflow-y-auto px-6 py-4 flex-grow">
+      <form id={formId} action={handleFormAction} className="space-y-4 overflow-y-auto px-6 py-4 flex-grow">
         <input type="hidden" name="id" value={dumpster.id} />
         <div className="space-y-2">
           <Label htmlFor="name">Nome/Identificador</Label>
@@ -118,7 +119,7 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancelar</Button>
           </DialogClose>
-          <SubmitButton isPending={isPending} />
+          <SubmitButton isPending={isPending} formId={formId} />
         </DialogFooter>
     </>
   );
