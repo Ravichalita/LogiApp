@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -14,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 
 const permissionLabels: Record<keyof Omit<Permissions, 'canDeleteItems'>, string> = {
   canAccessTeam: 'Acessar tela de Equipe',
-  canAccessFinance: 'Acessar controle financeiro',
+  canAccessFinance: 'Acessar estatísticas',
   canEditClients: 'Editar e Excluir Clientes',
   canEditDumpsters: 'Editar e Excluir Caçambas',
   canEditRentals: 'Editar e Excluir Aluguéis',
