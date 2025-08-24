@@ -37,6 +37,13 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   
   const [address, setAddress] = useState('');
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
+
+  const resetFormState = () => {
+      formRef.current?.reset();
+      setAddress('');
+      setLocation(null);
+      setState(initialState);
+  };
   
   useEffect(() => {
     if (state?.message === 'success') {
@@ -44,10 +51,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
         title: "Sucesso!",
         description: "Novo cliente cadastrado.",
       });
-      formRef.current?.reset();
-      setAddress('');
-      setLocation(null);
-      setState(initialState);
+      resetFormState();
       onSave?.();
     } else if (state?.message === 'error' && state.error) {
       toast({
@@ -129,7 +133,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
       </form>
        <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancelar</Button>
+              <Button type="button" variant="outline" onClick={resetFormState}>Cancelar</Button>
             </DialogClose>
             <SubmitButton isPending={isPending} formId={formId} />
         </DialogFooter>
