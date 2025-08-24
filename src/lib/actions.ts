@@ -555,9 +555,6 @@ export async function triggerBackupAction(accountId: string) {
     return { message: 'error', error: 'Conta não identificada.' };
   }
   
-  // This is a temporary workaround until a proper solution for server-side
-  // function calling with auth context is implemented in the Next.js SDK.
-  // We get the auth token from the cookie to pass to the function.
   const sessionCookie = cookies().get('__session')?.value;
   if (!sessionCookie) {
       return { message: 'error', error: 'Usuário não autenticado.' };
@@ -566,7 +563,7 @@ export async function triggerBackupAction(accountId: string) {
   const user = await adminAuth.verifySessionCookie(sessionCookie, true);
   const token = await adminAuth.createCustomToken(user.uid, user.claims);
 
-  const region = 'us-central1'; // Or your function's region
+  const region = 'us-central1';
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const url = `https://${region}-${projectId}.cloudfunctions.net/backupAccountData`;
   
