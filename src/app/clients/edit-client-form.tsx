@@ -86,6 +86,11 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
           {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
         </div>
         <div className="space-y-2">
+          <Label htmlFor="cpfCnpj">CPF/CNPJ (Opcional)</Label>
+          <Input id="cpfCnpj" name="cpfCnpj" defaultValue={client.cpfCnpj ?? ''} />
+          {state?.errors?.cpfCnpj && <p className="text-sm font-medium text-destructive">{state.errors.cpfCnpj[0]}</p>}
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
           <Input id="email" name="email" type="email" defaultValue={client.email ?? ''} />
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}

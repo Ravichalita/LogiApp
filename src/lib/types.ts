@@ -56,6 +56,7 @@ export type Permissions = z.infer<typeof PermissionsSchema>;
 export const ClientSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   phone: z.string().min(10, { message: "O telefone deve ter pelo menos 10 caracteres." }),
+  cpfCnpj: z.string().optional(),
   email: z.string().email({ message: "Formato de e-mail inválido." }).optional().or(z.literal('')),
   address: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
   latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),

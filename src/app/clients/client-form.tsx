@@ -98,6 +98,11 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
           {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
         </div>
          <div className="space-y-2">
+          <Label htmlFor="cpfCnpj">CPF/CNPJ (Opcional)</Label>
+          <Input id="cpfCnpj" name="cpfCnpj" placeholder="00.000.000/0000-00" />
+          {state?.errors?.cpfCnpj && <p className="text-sm font-medium text-destructive">{state.errors.cpfCnpj[0]}</p>}
+        </div>
+         <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
           <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}

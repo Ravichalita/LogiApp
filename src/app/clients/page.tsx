@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Mail, FileText, MapPin, Phone, Search } from 'lucide-react';
+import { Mail, FileText, MapPin, Phone, Search, Fingerprint } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import type { Client } from '@/lib/types';
@@ -65,7 +65,8 @@ export default function ClientsPage() {
     return clients.filter(client =>
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.address.toLowerCase().includes(searchTerm.toLowerCase())
+      client.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (client.cpfCnpj && client.cpfCnpj.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [clients, searchTerm]);
 
@@ -93,7 +94,7 @@ export default function ClientsPage() {
             <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Buscar por nome, telefone, endereço..."
+                    placeholder="Buscar por nome, telefone, CPF/CNPJ..."
                     className="pl-9"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -120,6 +121,15 @@ export default function ClientsPage() {
                         <AccordionContent>
                         <Separator />
                         <div className="space-y-4 p-4 bg-muted/50">
+                            {client.cpfCnpj && (
+                            <div className="flex items-start gap-3">
+                                <Fingerprint className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                                <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">CPF/CNPJ</span>
+                                <span className="font-medium">{client.cpfCnpj}</span>
+                                </div>
+                            </div>
+                            )}
                             <div className="flex items-start gap-3">
                             <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                             <div className="flex flex-col">
@@ -150,7 +160,7 @@ export default function ClientsPage() {
                                 </div>
                             </div>
                             )}
-                            {!client.email && !client.observations && (
+                            {!client.email && !client.observations && !client.cpfCnpj &&(
                                 <p className="text-sm text-muted-foreground text-center py-2">Nenhuma informação adicional cadastrada.</p>
                             )}
                         </div>
