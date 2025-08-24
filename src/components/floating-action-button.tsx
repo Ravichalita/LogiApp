@@ -28,10 +28,9 @@ export function FloatingActionButton() {
 
         switch (pathname) {
             case '/clients':
-                if (isAdmin || permissions?.canEditClients) {
-                    return <NewItemDialog itemType="client" />;
-                }
-                return null;
+                 // Any user who can see the clients page can add a new one.
+                 // Edit/delete permissions are handled within the client actions component.
+                return <NewItemDialog itemType="client" />;
             case '/dumpsters':
                 if (isAdmin || permissions?.canEditDumpsters) {
                     return <NewItemDialog itemType="dumpster" />;
