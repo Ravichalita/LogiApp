@@ -75,6 +75,7 @@ export default function SettingsPage() {
                         <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
                             <div className="flex items-center gap-2">
                                  <TriangleAlert className="h-5 w-5" />
+                                 <span className="font-semibold">Reset</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
