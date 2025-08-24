@@ -19,9 +19,10 @@ import { InviteForm } from '@/app/team/invite-form';
 
 interface NewItemDialogProps {
   itemType: 'client' | 'dumpster' | 'team';
+  onSuccess?: () => void;
 }
 
-export function NewItemDialog({ itemType }: NewItemDialogProps) {
+export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   // Add a key to force re-mounting of the form component on open/close
   const [formKey, setFormKey] = useState(Date.now());
@@ -38,6 +39,11 @@ export function NewItemDialog({ itemType }: NewItemDialogProps) {
     team: 'Preencha os dados do novo membro da equipe.',
   };
 
+  const handleSave = () => {
+    handleOpenChange(false);
+    onSuccess?.();
+  }
+
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
@@ -47,9 +53,9 @@ export function NewItemDialog({ itemType }: NewItemDialogProps) {
   };
 
   const formComponent = {
-    client: <ClientForm key={formKey} onSave={() => handleOpenChange(false)} />,
-    dumpster: <DumpsterForm key={formKey} onSave={() => handleOpenChange(false)} />,
-    team: <InviteForm key={formKey} onSave={() => handleOpenChange(false)} />,
+    client: <ClientForm key={formKey} onSave={handleSave} />,
+    dumpster: <DumpsterForm key={formKey} onSave={handleSave} />,
+    team: <InviteForm key={formKey} onSave={handleSave} />,
   };
   
    const iconComponent = {

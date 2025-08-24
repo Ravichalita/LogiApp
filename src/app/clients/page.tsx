@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { NewItemDialog } from '@/components/new-item-dialog';
 
 function ClientListSkeleton() {
     return (
@@ -86,8 +87,16 @@ export default function ClientsPage() {
     });
   };
 
+  const handleClientAdded = () => {
+    setSearchTerm('');
+  };
+
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
+       <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50">
+           <NewItemDialog itemType="client" onSuccess={handleClientAdded} />
+        </div>
       <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Clientes</h1>
         <Card className="bg-muted/50">
             <CardHeader>

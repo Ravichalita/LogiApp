@@ -18,7 +18,7 @@ export function FloatingActionButton() {
     }
 
     // Don't show FAB on these pages
-    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings')) {
+    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/clients')) {
         return null;
     }
 
@@ -27,10 +27,6 @@ export function FloatingActionButton() {
         const permissions = userAccount?.permissions;
 
         switch (pathname) {
-            case '/clients':
-                 // Any user who can see the clients page can add a new one.
-                 // Edit/delete permissions are handled within the client actions component.
-                return <NewItemDialog itemType="client" />;
             case '/dumpsters':
                 if (isAdmin || permissions?.canEditDumpsters) {
                     return <NewItemDialog itemType="dumpster" />;
