@@ -6,13 +6,12 @@ import { useAuth } from '@/context/auth-context';
 import type { Permissions, UserAccount } from '@/lib/types';
 import { updateUserPermissionsAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
 
-const permissionLabels: Record<keyof Omit<Permissions, 'canDeleteItems'>, string> = {
+const permissionLabels: Record<keyof Permissions, string> = {
   canAccessTeam: 'Acessar Equipe',
   canAccessFinance: 'Acessar Estatísticas',
   canAccessSettings: 'Acessar Configurações',
@@ -40,29 +39,29 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     permissionKey: keyof Permissions,
     checked: boolean
   ) => {
-    setPermissions((prev) => ({ ...prev, [permissionKey]: checked }));
-  };
+    if (!accountId || isCurrentUser || isTargetAdmin || isPending) return;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accountId || isCurrentUser || isTargetAdmin) return;
+    const newPermissions = { ...permissions, [permissionKey]: checked };
+    setPermissions(newPermissions); // Optimistic update
 
     startTransition(async () => {
       const result = await updateUserPermissionsAction(
         accountId,
         member.id,
-        permissions
+        newPermissions
       );
       if (result.message === 'error') {
+        // Revert optimistic update on error
+        setPermissions(permissions);
         toast({
-          title: 'Erro ao atualizar permissões',
+          title: 'Erro ao atualizar permissão',
           description: result.error,
           variant: 'destructive',
         });
       } else {
         toast({
           title: 'Sucesso',
-          description: `Permissões de ${member.name} atualizadas.`,
+          description: `Permissão '${permissionLabels[permissionKey]}' atualizada para ${member.name}.`,
         });
       }
     });
@@ -80,9 +79,9 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="px-4 pb-4">
+    <div className="px-4 pb-4">
        <Separator />
-      <div className="grid gap-4 py-4">
+      <div className="grid gap-4 py-4 relative">
         {(Object.keys(permissionLabels) as Array<keyof typeof permissionLabels>).map((key) => (
           <div key={key} className="flex items-center space-x-2">
             <Checkbox
@@ -101,12 +100,12 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
             </Label>
           </div>
         ))}
+         {isPending && (
+            <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                <Spinner />
+            </div>
+        )}
       </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isPending || isCurrentUser}>
-          {isPending ? <Spinner size="small" /> : 'Salvar Permissões'}
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }
