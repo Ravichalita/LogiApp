@@ -82,49 +82,51 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   }
 
   return (
-    <form ref={formRef} action={action} className="space-y-4">
-      {location && <input type="hidden" name="latitude" value={location.lat} />}
-      {location && <input type="hidden" name="longitude" value={location.lng} />}
-      
-      <div className="space-y-2">
-        <Label htmlFor="name">Nome do Cliente</Label>
-        <Input id="name" name="name" placeholder="João da Silva Construções" required />
-        {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="phone">Telefone</Label>
-        <Input id="phone" name="phone" placeholder="(11) 98765-4321" required />
-        {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
-      </div>
-       <div className="space-y-2">
-        <Label htmlFor="email">E-mail</Label>
-        <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
-        {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="address">Endereço Principal</Label>
-        <div className="flex gap-2">
-            <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua das Flores, 123, São Paulo, SP" required />
-            <MapDialog onLocationSelect={handleLocationSelect} />
+    <div className="flex flex-col h-full">
+      <form ref={formRef} action={action} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
+        {location && <input type="hidden" name="latitude" value={location.lat} />}
+        {location && <input type="hidden" name="longitude" value={location.lng} />}
+        
+        <div className="space-y-2">
+          <Label htmlFor="name">Nome do Cliente</Label>
+          <Input id="name" name="name" placeholder="João da Silva Construções" required />
+          {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
         </div>
-         {location && (
-          <p className="text-sm text-muted-foreground">
-            Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-          </p>
-        )}
-        {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
-        {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Telefone</Label>
+          <Input id="phone" name="phone" placeholder="(11) 98765-4321" required />
+          {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
+        </div>
+         <div className="space-y-2">
+          <Label htmlFor="email">E-mail</Label>
+          <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
+          {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="address">Endereço Principal</Label>
+          <div className="flex gap-2">
+              <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua das Flores, 123, São Paulo, SP" required />
+              <MapDialog onLocationSelect={handleLocationSelect} />
+          </div>
+           {location && (
+            <p className="text-sm text-muted-foreground">
+              Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+            </p>
+          )}
+          {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="observations">Observações</Label>
+          <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+          {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
+        </div>
+      </form>
        <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
-          <SubmitButton isPending={isPending} />
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <SubmitButton isPending={isPending} />
         </DialogFooter>
-    </form>
+      </div>
   );
 }

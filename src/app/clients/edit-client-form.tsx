@@ -69,50 +69,52 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   };
 
   return (
-    <form action={handleFormAction} className="space-y-4">
-      <input type="hidden" name="id" value={client.id} />
-      {location && <input type="hidden" name="latitude" value={location.lat} />}
-      {location && <input type="hidden" name="longitude" value={location.lng} />}
+    <div className="flex flex-col h-full">
+      <form action={handleFormAction} className="space-y-4 overflow-y-auto p-6 pt-2 pb-4 flex-grow">
+        <input type="hidden" name="id" value={client.id} />
+        {location && <input type="hidden" name="latitude" value={location.lat} />}
+        {location && <input type="hidden" name="longitude" value={location.lng} />}
 
-      <div className="space-y-2">
-        <Label htmlFor="name">Nome do Cliente</Label>
-        <Input id="name" name="name" defaultValue={client.name} required />
-        {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="phone">Telefone</Label>
-        <Input id="phone" name="phone" defaultValue={client.phone} required />
-        {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="email">E-mail</Label>
-        <Input id="email" name="email" type="email" defaultValue={client.email ?? ''} />
-        {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="address">Endereço Principal</Label>
-         <div className="flex gap-2">
-            <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
-            <MapDialog onLocationSelect={handleLocationSelect} />
+        <div className="space-y-2">
+          <Label htmlFor="name">Nome do Cliente</Label>
+          <Input id="name" name="name" defaultValue={client.name} required />
+          {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
         </div>
-        {location && (
-          <p className="text-sm text-muted-foreground">
-            Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-          </p>
-        )}
-        {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" defaultValue={client.observations ?? ''} />
-        {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Telefone</Label>
+          <Input id="phone" name="phone" defaultValue={client.phone} required />
+          {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">E-mail</Label>
+          <Input id="email" name="email" type="email" defaultValue={client.email ?? ''} />
+          {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="address">Endereço Principal</Label>
+           <div className="flex gap-2">
+              <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
+              <MapDialog onLocationSelect={handleLocationSelect} />
+          </div>
+          {location && (
+            <p className="text-sm text-muted-foreground">
+              Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+            </p>
+          )}
+          {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="observations">Observações</Label>
+          <Textarea id="observations" name="observations" defaultValue={client.observations ?? ''} />
+          {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
+        </div>
+      </form>
       <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
-          <SubmitButton isPending={isPending} />
-        </DialogFooter>
-    </form>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <SubmitButton isPending={isPending} />
+          </DialogFooter>
+    </div>
   );
 }

@@ -100,7 +100,7 @@ export function ClientActions({ client }: { client: Client }) {
           </DropdownMenu>
 
           {/* Edit Dialog */}
-          <DialogContent>
+          <DialogContent className="p-0">
             <DialogHeader>
               <DialogTitle>Editar Cliente</DialogTitle>
             </DialogHeader>
