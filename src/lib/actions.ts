@@ -6,7 +6,7 @@ import { adminAuth, adminDb } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
 import { cookies } from 'next/headers';
@@ -443,13 +443,15 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 // #endregion
 
 // #region Finance Actions
-export async function updateRentalPricesAction(accountId: string, prevState: any, formData: FormData) {
-    const data = JSON.parse(formData.get('rentalPrices') as string);
-    const validatedFields = RentalPricesSchema.safeParse({ rentalPrices: data });
+export async function updateRentalPricesAction(accountId: string, prices: RentalPrice[]) {
+    const validatedFields = RentalPricesSchema.safeParse({ rentalPrices: prices });
     
     if (!validatedFields.success) {
+        const error = validatedFields.error.flatten().fieldErrors;
+        console.error("Price validation error:", error);
         return {
-            error: validatedFields.error.flatten().fieldErrors,
+            message: 'error',
+            error: JSON.stringify(error),
         };
     }
 
@@ -458,11 +460,11 @@ export async function updateRentalPricesAction(accountId: string, prevState: any
         await accountRef.update({
             rentalPrices: validatedFields.data.rentalPrices ?? []
         });
-        revalidatePath('/finance');
         revalidatePath('/settings');
+        revalidatePath('/rentals/new');
         return { message: 'success' };
     } catch (e) {
-        return { error: handleFirebaseError(e) };
+        return { message: 'error', error: handleFirebaseError(e) };
     }
 }
 

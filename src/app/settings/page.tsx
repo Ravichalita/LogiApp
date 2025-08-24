@@ -65,6 +65,7 @@ export default function SettingsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="font-headline">Tabela de Preços da Diária</CardTitle>
+                        <CardDescription>Adicione, remova ou edite os preços que serão usados no lançamento de aluguéis. As alterações são salvas automaticamente.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}

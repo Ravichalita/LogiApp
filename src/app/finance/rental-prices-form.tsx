@@ -1,7 +1,6 @@
 
 'use client';
-import { useState, useEffect, useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { updateRentalPricesAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +11,7 @@ import { Spinner } from '@/components/ui/spinner';
 import type { Account, RentalPrice } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { nanoid } from 'nanoid';
+import { useDebouncedCallback } from 'use-debounce';
 
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -23,25 +23,13 @@ const formatCurrencyForInput = (valueInCents: string): string => {
 };
 
 
-function SubmitButton() {
-    const { pending } = useFormStatus();
-    return (
-        <Button type="submit" disabled={pending} className="w-full">
-            {pending ? <Spinner size="small" /> : 'Salvar Preços'}
-        </Button>
-    )
-}
-
 export function RentalPricesForm({ account }: { account: Account }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
-    // We pass accountId! because the form is only rendered when accountId exists
-    const [state, formAction] = useActionState(updateRentalPricesAction.bind(null, accountId!), { error: null });
+    const [isPending, startTransition] = useTransition();
 
-    // This local state holds the prices for editing
     const [prices, setPrices] = useState<RentalPrice[]>(account.rentalPrices || []);
     
-    // This state will hold the raw string value from the input for each price item, but as cents
     const [displayValues, setDisplayValues] = useState<Record<string, string>>(() => {
         const initialDisplayValues: Record<string, string> = {};
         (account.rentalPrices || []).forEach(p => {
@@ -50,20 +38,32 @@ export function RentalPricesForm({ account }: { account: Account }) {
         return initialDisplayValues;
     });
 
+    const debouncedUpdate = useDebouncedCallback((newPrices: RentalPrice[]) => {
+        if (!accountId) return;
+        startTransition(async () => {
+            const result = await updateRentalPricesAction(accountId, newPrices);
+            if (result.message === 'error') {
+                 toast({
+                    title: 'Erro de Sincronização',
+                    description: 'Não foi possível salvar as alterações. Verifique sua conexão e tente novamente.',
+                    variant: 'destructive',
+                });
+                // TODO: Consider reverting state on error
+            } else {
+                 toast({
+                    title: 'Salvo!',
+                    description: 'Tabela de preços atualizada.',
+                });
+            }
+        })
+    }, 1000); // Debounce time of 1 second
+
     useEffect(() => {
-        if (state.message === 'success') {
-            toast({
-                title: 'Sucesso!',
-                description: 'Tabela de preços atualizada.',
-            });
-        } else if (state.error) {
-             toast({
-                title: 'Erro',
-                description: 'Não foi possível salvar os preços.',
-                variant: 'destructive',
-            });
+        // Prevent initial trigger on component mount
+        if(JSON.stringify(prices) !== JSON.stringify(account.rentalPrices)) {
+            debouncedUpdate(prices);
         }
-    }, [state, toast]);
+    }, [prices, debouncedUpdate, account.rentalPrices]);
     
     const handlePriceValueChange = (id: string, value: string) => {
         const cents = value.replace(/\D/g, '');
@@ -98,18 +98,17 @@ export function RentalPricesForm({ account }: { account: Account }) {
             return newDisplayValues;
         });
     }
-    
-    const customFormAction = (formData: FormData) => {
-        // Clear previous formData and set the new one from our state
-        for(let key of formData.keys()){
-            formData.delete(key);
-        }
-        formData.set('rentalPrices', JSON.stringify(prices));
-        formAction(formData);
-    }
 
     return (
-         <form action={customFormAction} className="space-y-4">
+        <div className="relative space-y-4">
+           {isPending && (
+             <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background p-2 rounded-lg border shadow-sm">
+                    <Spinner size="small" />
+                    <span>Salvando...</span>
+                </div>
+            </div>
+           )}
             <div className="space-y-3">
                 {prices.length > 0 ? (
                     prices.map((price) => (
@@ -120,6 +119,7 @@ export function RentalPricesForm({ account }: { account: Account }) {
                                     value={price.name}
                                     onChange={e => handleNameChange(price.id, e.target.value)}
                                     required
+                                    disabled={isPending}
                                 />
                                 <div className="relative">
                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
@@ -129,10 +129,11 @@ export function RentalPricesForm({ account }: { account: Account }) {
                                         onChange={e => handlePriceValueChange(price.id, e.target.value)}
                                         className="pl-8 text-right"
                                         required
+                                        disabled={isPending}
                                     />
                                 </div>
                         </div>
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removePrice(price.id)} aria-label="Remover Preço">
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removePrice(price.id)} aria-label="Remover Preço" disabled={isPending}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </div>
@@ -140,12 +141,11 @@ export function RentalPricesForm({ account }: { account: Account }) {
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Nenhum preço cadastrado.</p>
                 )}
-                 <Button type="button" variant="outline" size="sm" className="w-full" onClick={addPrice}>
+                 <Button type="button" variant="outline" size="sm" className="w-full" onClick={addPrice} disabled={isPending}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Adicionar Novo Preço
                 </Button>
             </div>
-            <SubmitButton />
-        </form>
+        </div>
     )
 }
