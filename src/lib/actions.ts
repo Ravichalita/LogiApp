@@ -2,7 +2,6 @@
 'use server';
 
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { getFunctions } from 'firebase-admin/functions';
 import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
@@ -10,6 +9,7 @@ import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
+import { cookies } from 'next/headers';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -554,10 +554,41 @@ export async function triggerBackupAction(accountId: string) {
   if (!accountId) {
     return { message: 'error', error: 'Conta não identificada.' };
   }
+  
+  // This is a temporary workaround until a proper solution for server-side
+  // function calling with auth context is implemented in the Next.js SDK.
+  // We get the auth token from the cookie to pass to the function.
+  const sessionCookie = cookies().get('__session')?.value;
+  if (!sessionCookie) {
+      return { message: 'error', error: 'Usuário não autenticado.' };
+  }
+  
+  const user = await adminAuth.verifySessionCookie(sessionCookie, true);
+  const token = await adminAuth.createCustomToken(user.uid, user.claims);
+
+  const region = 'us-central1'; // Or your function's region
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const url = `https://${region}-${projectId}.cloudfunctions.net/backupAccountData`;
+  
   try {
-    const backupFunction = getFunctions().httpsCallable('backupAccountData');
-    const response = await backupFunction({ accountId });
-    const { fileName } = response.data as { fileName: string };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ data: { accountId: accountId } }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error from backup function:', errorData);
+        throw new Error(errorData.error?.message || `A função de backup falhou com status ${response.status}`);
+    }
+    
+    const responseData = await response.json();
+    const { fileName } = responseData.result as { fileName: string };
+
     revalidatePath('/settings');
     return { message: 'success', fileName };
   } catch (error: any) {

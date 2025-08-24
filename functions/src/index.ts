@@ -7,7 +7,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import { onCall } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -27,16 +27,29 @@ async function getCollectionData(collectionPath: string) {
 }
 
 export const backupAccountData = onCall(
-  { region: "us-central1" },
+  { region: "us-central1", cors: true }, // Enable CORS
   async (request) => {
+    // Check for authentication
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
+    }
+    
     const { accountId } = request.data;
     if (!accountId) {
-      throw new https.HttpsError(
+      throw new HttpsError(
         "invalid-argument",
         "The function must be called with an 'accountId' argument."
       );
     }
-    logger.info(`Starting backup for account: ${accountId}`);
+    
+    // IMPORTANT: Verify that the authenticated user has rights to this account.
+    // This is a critical security check.
+    const userAccountId = request.auth.token.accountId;
+    if (userAccountId !== accountId) {
+        throw new HttpsError('permission-denied', 'You do not have permission to backup this account.');
+    }
+
+    logger.info(`Starting backup for account: ${accountId} by user ${request.auth.uid}`);
 
     try {
       const collectionsToBackup = [
@@ -81,10 +94,10 @@ export const backupAccountData = onCall(
       };
     } catch (error) {
       logger.error(`Backup failed for account ${accountId}:`, error);
-      if (error instanceof https.HttpsError) {
+      if (error instanceof HttpsError) {
         throw error;
       }
-      throw new https.HttpsError(
+      throw new HttpsError(
         "internal",
         "Ocorreu um erro interno ao criar o backup."
       );

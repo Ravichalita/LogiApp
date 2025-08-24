@@ -3,7 +3,6 @@ import 'server-only';
 import { getApps, getApp, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getFunctions } from 'firebase-admin/functions';
 import { getStorage } from 'firebase-admin/storage';
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -23,5 +22,4 @@ const adminApp = getApps().length
 
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
-export const adminFunctions = getFunctions(adminApp);
 export const adminStorage = getStorage(adminApp);
