@@ -16,6 +16,7 @@ import type { DumpsterStatus, DumpsterColor } from '@/lib/types';
 import { DUMPSTER_COLORS } from '@/lib/types';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const initialState = {
   errors: {},
@@ -38,6 +39,8 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
   const [color, setColor] = useState<DumpsterColor | undefined>();
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const [openTooltip, setOpenTooltip] = useState<string | null>(null);
 
   useEffect(() => {
     if (state?.message === 'success') {
@@ -64,6 +67,25 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
       setState(result);
     });
   };
+  
+  const handleTooltipOpenChange = (colorName: string, open: boolean) => {
+    if (isMobile) return;
+    setOpenTooltip(open ? colorName : null);
+  }
+
+  const handleColorClick = (colorName: DumpsterColor) => {
+    if (!isMobile) return;
+    setOpenTooltip(prev => (prev === colorName ? null : colorName));
+  }
+
+  useEffect(() => {
+    if (openTooltip && isMobile) {
+      const timer = setTimeout(() => {
+        setOpenTooltip(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [openTooltip, isMobile]);
 
   if (!accountId) {
     return <div className="flex justify-center items-center"><Spinner /></div>;
@@ -81,8 +103,8 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
         <TooltipProvider>
             <RadioGroup name="color" value={color} onValueChange={(value: DumpsterColor) => setColor(value)} className="flex flex-wrap gap-2">
             {(Object.keys(DUMPSTER_COLORS) as DumpsterColor[]).map((colorName) => (
-                <Tooltip key={colorName}>
-                <TooltipTrigger asChild>
+                <Tooltip key={colorName} open={openTooltip === colorName} onOpenChange={(open) => handleTooltipOpenChange(colorName, open)}>
+                <TooltipTrigger asChild onClick={() => handleColorClick(colorName)}>
                     <RadioGroupItem
                     value={colorName}
                     id={`color-${colorName}`}
@@ -92,7 +114,7 @@ export function DumpsterForm({ onSave }: { onSave?: () => void }) {
                     />
                 </TooltipTrigger>
                 <TooltipContent>
-                    <p>{colorName}: {DUMPSTER_COLORS[colorName].description}</p>
+                    <p>{DUMPSTER_COLORS[colorName].description}</p>
                 </TooltipContent>
                 </Tooltip>
             ))}
