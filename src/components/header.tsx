@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Truck, LogOut, User as UserIcon, Users, DollarSign } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, Users, DollarSign, Settings } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -64,6 +64,14 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
+            {isAdmin && (
+                 <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
+                    <Link href="/settings">
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Ajustes</span>
+                    </Link>
+                </Button>
+            )}
             {(isAdmin || permissions?.canAccessFinance) && (
                  <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/finance">
