@@ -560,25 +560,24 @@ export async function triggerBackupAction(accountId: string) {
       return { message: 'error', error: 'Usuário não autenticado.' };
   }
   
-  // This verifies the session cookie and gets the user's details.
-  const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-  // This creates a standard Firebase Auth ID token which the onCall function expects.
-  const idToken = await adminAuth.createCustomToken(decodedToken.uid, decodedToken.claims);
-
-  const region = 'us-central1';
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const url = `https://${region}-${projectId}.cloudfunctions.net/backupAccountData`;
-  
   try {
+    // This verifies the session cookie and gets the user's details.
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    // This creates a standard Firebase Auth ID token which can be used to authorize requests.
+    const idToken = await adminAuth.createCustomToken(decodedToken.uid, decodedToken.claims);
+
+    const region = process.env.NEXT_PUBLIC_FIREBASE_REGION || 'us-central1';
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const url = `https://${region}-${projectId}.cloudfunctions.net/backupAccountData`;
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // The onCall function expects the token in the Authorization header.
+        // Pass the standard ID token in the Authorization header.
         'Authorization': `Bearer ${idToken}`
       },
-      // The onCall function expects data to be wrapped in a 'data' object.
-      body: JSON.stringify({ data: { accountId: accountId } }),
+      body: JSON.stringify({ accountId: accountId }), // Send data directly in the body
     });
 
     if (!response.ok) {
@@ -588,11 +587,11 @@ export async function triggerBackupAction(accountId: string) {
     }
     
     const responseData = await response.json();
-    // The result from an onCall function is wrapped in a 'result' object.
-    const { fileName } = responseData.result as { fileName: string };
+    const { fileName } = responseData as { fileName: string };
 
     revalidatePath('/settings');
     return { message: 'success', fileName };
+
   } catch (error: any) {
     console.error("Error triggering backup function:", error);
     return { message: 'error', error: error.message || 'Falha ao iniciar o backup.' };

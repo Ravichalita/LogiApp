@@ -8,11 +8,15 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
+import { getAuth } from "firebase-admin/auth";
+import * as cors from 'cors';
+
+const corsHandler = cors({origin: true});
 
 // Ensure app is initialized
 if (!getApps().length) {
@@ -21,87 +25,98 @@ if (!getApps().length) {
 
 const db = getFirestore();
 const storage = getStorage();
+const auth = getAuth();
+
 
 async function getCollectionData(collectionPath: string) {
   const snapshot = await db.collection(collectionPath).get();
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-export const backupAccountData = onCall(
-  { region: "us-central1", cors: true }, // Enable CORS
-  async (request) => {
-    // Check for authentication
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'The function must be called while authenticated.');
-    }
-    
-    const { accountId } = request.data;
-    if (!accountId) {
-      throw new HttpsError(
-        "invalid-argument",
-        "The function must be called with an 'accountId' argument."
-      );
-    }
-    
-    // IMPORTANT: Verify that the authenticated user has rights to this account.
-    // This is a critical security check.
-    const userAccountId = request.auth.token.accountId;
-    if (userAccountId !== accountId) {
-        throw new HttpsError('permission-denied', 'You do not have permission to backup this account.');
-    }
+export const backupAccountData = onRequest(
+  { region: "us-central1" },
+  async (req, res) => {
+    corsHandler(req, res, async () => {
+        // Check for authentication via Authorization header
+        if (!req.headers.authorization || !req.headers.authorization.startsWith('Bearer ')) {
+            logger.error('No authorization token provided.');
+            res.status(403).send('Unauthorized');
+            return;
+        }
+        
+        let idToken;
+        try {
+            idToken = req.headers.authorization.split('Bearer ')[1];
+            const decodedToken = await auth.verifyIdToken(idToken);
+            req.user = decodedToken;
+        } catch (error) {
+            logger.error('Error verifying token:', error);
+            res.status(403).send('Unauthorized');
+            return;
+        }
 
-    logger.info(`Starting backup for account: ${accountId} by user ${request.auth.uid}`);
+        const { accountId } = req.body;
+        if (!accountId) {
+            res.status(400).send({ error: { message: "The function must be called with an 'accountId' argument." }});
+            return;
+        }
+        
+        // IMPORTANT: Verify that the authenticated user has rights to this account.
+        const userAccountId = req.user.accountId;
+        if (userAccountId !== accountId) {
+            logger.warn(`Permission denied: User ${req.user.uid} tried to backup account ${accountId} but belongs to ${userAccountId}`);
+            res.status(403).send({ error: { message: 'You do not have permission to backup this account.' }});
+            return;
+        }
 
-    try {
-      const collectionsToBackup = [
-        "clients",
-        "dumpsters",
-        "rentals",
-        "completed_rentals",
-      ];
-      const backupData: { [key: string]: any } = {
-        exportedAt: new Date().toISOString(),
-      };
+        logger.info(`Starting backup for account: ${accountId} by user ${req.user.uid}`);
 
-      for (const collectionName of collectionsToBackup) {
-        const collectionPath = `accounts/${accountId}/${collectionName}`;
-        backupData[collectionName] = await getCollectionData(collectionPath);
-        logger.info(
-          `Backed up ${backupData[collectionName].length} documents from ${collectionName}.`
-        );
-      }
-      
-      const accountSnap = await db.doc(`accounts/${accountId}`).get();
-      if(accountSnap.exists) {
-        backupData.account = { id: accountSnap.id, ...accountSnap.data() };
-      }
+        try {
+        const collectionsToBackup = [
+            "clients",
+            "dumpsters",
+            "rentals",
+            "completed_rentals",
+        ];
+        const backupData: { [key: string]: any } = {
+            exportedAt: new Date().toISOString(),
+        };
+
+        for (const collectionName of collectionsToBackup) {
+            const collectionPath = `accounts/${accountId}/${collectionName}`;
+            backupData[collectionName] = await getCollectionData(collectionPath);
+            logger.info(
+            `Backed up ${backupData[collectionName].length} documents from ${collectionName}.`
+            );
+        }
+        
+        const accountSnap = await db.doc(`accounts/${accountId}`).get();
+        if(accountSnap.exists) {
+            backupData.account = { id: accountSnap.id, ...accountSnap.data() };
+        }
 
 
-      const timestamp = new Date().toISOString().replace(/:/g, "-");
-      const fileName = `backup-${timestamp}.json`;
-      const filePath = `backups/${accountId}/${fileName}`;
-      const file = storage.bucket().file(filePath);
+        const timestamp = new Date().toISOString().replace(/:/g, "-");
+        const fileName = `backup-${timestamp}.json`;
+        const filePath = `backups/${accountId}/${fileName}`;
+        const file = storage.bucket().file(filePath);
 
-      await file.save(JSON.stringify(backupData, null, 2), {
-        contentType: "application/json",
-      });
+        await file.save(JSON.stringify(backupData, null, 2), {
+            contentType: "application/json",
+        });
 
-      logger.info(`Backup for account ${accountId} completed successfully. Saved to ${filePath}`);
+        logger.info(`Backup for account ${accountId} completed successfully. Saved to ${filePath}`);
 
-      return {
-        message: "Backup concluído com sucesso!",
-        filePath: filePath,
-        fileName: fileName,
-      };
-    } catch (error) {
-      logger.error(`Backup failed for account ${accountId}:`, error);
-      if (error instanceof HttpsError) {
-        throw error;
-      }
-      throw new HttpsError(
-        "internal",
-        "Ocorreu um erro interno ao criar o backup."
-      );
-    }
+        res.status(200).send({
+            message: "Backup concluído com sucesso!",
+            filePath: filePath,
+            fileName: fileName,
+        });
+
+        } catch (error) {
+            logger.error(`Backup failed for account ${accountId}:`, error);
+            res.status(500).send({ error: { message: 'Ocorreu um erro interno ao criar o backup.' }});
+        }
+    });
   }
 );
