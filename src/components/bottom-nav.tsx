@@ -15,7 +15,6 @@ const baseNavLinks = [
 ];
 
 const financeLink = { href: '/finance', label: 'Estatísticas', icon: DollarSign };
-const settingsLink = { href: '/settings', label: 'Ajustes', icon: Settings };
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -32,11 +31,6 @@ export function BottomNav() {
   if(isAdmin || permissions?.canAccessFinance) {
       navLinks.push(financeLink);
   }
-  
-  if(isAdmin || permissions?.canAccessSettings) {
-      navLinks.push(settingsLink);
-  }
-
 
   const getGridColsClass = () => {
     switch (navLinks.length) {

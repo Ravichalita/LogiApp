@@ -64,20 +64,20 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
+            {(isAdmin || permissions?.canAccessSettings) && (
+                 <Button variant="ghost" size="icon" asChild className="inline-flex">
+                    <Link href="/settings">
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Ajustes</span>
+                    </Link>
+                </Button>
+            )}
+
             {(isAdmin || permissions?.canAccessFinance) && (
                  <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/finance">
                         <DollarSign className="h-5 w-5" />
                         <span className="sr-only">Estatísticas</span>
-                    </Link>
-                </Button>
-            )}
-            
-            {(isAdmin || permissions?.canAccessSettings) && (
-                 <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
-                    <Link href="/settings">
-                        <Settings className="h-5 w-5" />
-                        <span className="sr-only">Ajustes</span>
                     </Link>
                 </Button>
             )}
