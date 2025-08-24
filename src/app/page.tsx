@@ -181,9 +181,11 @@ export default function HomePage() {
     }
 
     if (searchTerm) {
+        const lowercasedTerm = searchTerm.toLowerCase();
         filtered = filtered.filter(rental => 
-            rental.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            rental.dumpster?.name.toLowerCase().includes(searchTerm.toLowerCase())
+            rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
+            rental.dumpster?.name.toLowerCase().includes(lowercasedTerm) ||
+            rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm)
         );
     }
 
@@ -259,7 +261,7 @@ export default function HomePage() {
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-                placeholder="Buscar por cliente ou caçamba..."
+                placeholder="Buscar por cliente, caçamba ou usuário..."
                 className="pl-9"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
