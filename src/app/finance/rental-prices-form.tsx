@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import type { Account, RentalPrice } from '@/lib/types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PlusCircle, Trash2, Save } from 'lucide-react';
 import { nanoid } from 'nanoid';
-
 
 const formatCurrencyForInput = (valueInCents: string): string => {
     if (!valueInCents) return '0,00';
@@ -20,7 +20,6 @@ const formatCurrencyForInput = (valueInCents: string): string => {
     const centavos = (numericValue % 100).toString().padStart(2, '0');
     return `${reais.toLocaleString('pt-BR')},${centavos}`;
 };
-
 
 export function RentalPricesForm({ account }: { account: Account }) {
     const { accountId } = useAuth();
@@ -37,9 +36,9 @@ export function RentalPricesForm({ account }: { account: Account }) {
         return initialDisplayValues;
     });
 
-    const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!accountId) return;
+    const handleFormSubmit = (event?: React.FormEvent<HTMLFormElement>) => {
+        event?.preventDefault();
+        if (!accountId || isPending) return;
 
         startTransition(async () => {
             const result = await updateRentalPricesAction(accountId, prices);
@@ -54,6 +53,9 @@ export function RentalPricesForm({ account }: { account: Account }) {
                     title: 'Salvo!',
                     description: 'Tabela de preços atualizada com sucesso.',
                 });
+                 if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                }
             }
         });
     };
@@ -67,7 +69,6 @@ export function RentalPricesForm({ account }: { account: Account }) {
             currentPrices.map(p => (p.id === id ? { ...p, value: numericValue / 100 } : p))
         );
     };
-
 
     const handleNameChange = (id: string, name: string) => {
         setPrices(currentPrices =>
@@ -84,16 +85,30 @@ export function RentalPricesForm({ account }: { account: Account }) {
     }
     
     const removePrice = (id: string) => {
-        setPrices(currentPrices => currentPrices.filter(p => p.id !== id));
+        const updatedPrices = prices.filter(p => p.id !== id);
+        setPrices(updatedPrices);
         setDisplayValues(prev => {
             const newDisplayValues = {...prev};
             delete newDisplayValues[id];
             return newDisplayValues;
         });
+
+        // Trigger save immediately on removal
+        startTransition(async () => {
+            await updateRentalPricesAction(accountId!, updatedPrices);
+            toast({ title: 'Preço Removido', description: 'A tabela de preços foi atualizada.' });
+        });
     }
 
     return (
         <form onSubmit={handleFormSubmit} className="space-y-4">
+             <div className="flex justify-end">
+                {isPending ? (
+                    <span className="text-sm text-muted-foreground flex items-center gap-2"><Spinner size="small" /> Salvando...</span>
+                ) : (
+                    <span className="text-sm text-muted-foreground">Pressione Enter para salvar</span>
+                )}
+            </div>
             <div className="space-y-3">
                 {prices.length > 0 ? (
                     prices.map((price) => (
@@ -129,9 +144,7 @@ export function RentalPricesForm({ account }: { account: Account }) {
                     Adicionar Novo Preço
                 </Button>
             </div>
-             <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? <Spinner size="small" /> : 'Salvar Preços'}
-            </Button>
+             <button type="submit" className="hidden" aria-hidden="true">Salvar</button>
         </form>
     )
 }
