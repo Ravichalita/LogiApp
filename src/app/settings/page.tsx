@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { Account } from '@/lib/types';
 import { getAccount } from '@/lib/data-server-actions';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RentalPricesForm } from '@/app/finance/rental-prices-form';
 import { ResetButton } from '@/app/finance/reset-button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, TriangleAlert } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 export default function SettingsPage() {
     const { accountId, userAccount, loading: authLoading } = useAuth();
@@ -69,17 +70,24 @@ export default function SettingsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="border-destructive">
-                    <CardHeader>
-                        <CardTitle className="font-headline text-destructive">Zona de Perigo</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                         <p className="text-sm text-muted-foreground mb-4">
-                            A ação abaixo é irreversível. Tenha certeza absoluta antes de prosseguir.
-                        </p>
-                        {accountId && <ResetButton accountId={accountId} />}
-                    </CardContent>
-                </Card>
+                <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="danger-zone" className="border border-destructive rounded-lg">
+                        <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                            <div className="flex items-center gap-2">
+                                 <TriangleAlert className="h-5 w-5" />
+                                <span className="font-headline text-lg">Zona de Perigo</span>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                           <div className="px-4 pb-4">
+                             <p className="text-sm text-muted-foreground mb-4">
+                                A ação abaixo é irreversível. Tenha certeza absoluta antes de prosseguir.
+                            </p>
+                            {accountId && <ResetButton accountId={accountId} />}
+                           </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </div>
         </div>
     );
