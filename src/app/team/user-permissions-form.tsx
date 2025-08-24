@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 
 const permissionLabels: Record<keyof Omit<Permissions, 'canDeleteItems'>, string> = {
-  canAccessTeam: 'Acessar tela de Equipe',
+  canAccessTeam: 'Acessar Equipe',
   canAccessFinance: 'Acessar Estatísticas',
   canEditClients: 'Editar e Excluir Clientes',
   canEditDumpsters: 'Editar e Excluir Caçambas',
