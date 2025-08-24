@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { createClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,16 +31,25 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
-  const formRef = useRef<HTMLFormElement>(null);
   const formId = "client-form";
   const { toast } = useToast();
   
+  // Control all fields with state
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [cpfCnpj, setCpfCnpj] = useState('');
+  const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [observations, setObservations] = useState('');
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
 
   const resetFormState = () => {
-      formRef.current?.reset();
+      setName('');
+      setPhone('');
+      setCpfCnpj('');
+      setEmail('');
       setAddress('');
+      setObservations('');
       setLocation(null);
       setState(initialState);
   };
@@ -71,7 +80,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); // Prevent default form submission behavior
+    event.preventDefault();
     const formData = new FormData(event.currentTarget);
     startTransition(async () => {
       if (!accountId) {
@@ -90,28 +99,28 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <form id={formId} ref={formRef} onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
         {location && <input type="hidden" name="latitude" value={location.lat} />}
         {location && <input type="hidden" name="longitude" value={location.lng} />}
         
         <div className="space-y-2">
           <Label htmlFor="name">Nome do Cliente</Label>
-          <Input id="name" name="name" placeholder="João da Silva Construções" required />
+          <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="João da Silva Construções" required />
           {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" name="phone" placeholder="(11) 98765-4321" required />
+          <Input id="phone" name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 98765-4321" required />
           {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
         </div>
          <div className="space-y-2">
           <Label htmlFor="cpfCnpj">CPF/CNPJ (Opcional)</Label>
-          <Input id="cpfCnpj" name="cpfCnpj" placeholder="00.000.000/0000-00" />
+          <Input id="cpfCnpj" name="cpfCnpj" value={cpfCnpj} onChange={(e) => setCpfCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
           {state?.errors?.cpfCnpj && <p className="text-sm font-medium text-destructive">{state.errors.cpfCnpj[0]}</p>}
         </div>
          <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
-          <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
+          <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contato@joao.com" />
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
         </div>
         <div className="space-y-2">
@@ -129,7 +138,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="observations">Observações</Label>
-          <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+          <Textarea id="observations" name="observations" value={observations} onChange={(e) => setObservations(e.target.value)} placeholder="Ex: Deixar caçamba na calçada, portão azul." />
           {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
         </div>
       </form>
