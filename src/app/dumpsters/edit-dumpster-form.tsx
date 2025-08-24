@@ -63,61 +63,63 @@ export function EditDumpsterForm({ dumpster, onSave }: { dumpster: Dumpster, onS
   };
 
   return (
-    <form action={handleFormAction} className="space-y-4">
-      <input type="hidden" name="id" value={dumpster.id} />
-      <div className="space-y-2">
-        <Label htmlFor="name">Nome/Identificador</Label>
-        <Input id="name" name="name" defaultValue={dumpster.name} required />
-        {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="color">Cor</Label>
-        <TooltipProvider>
-            <RadioGroup name="color" value={color} onValueChange={(value: DumpsterColor) => setColor(value)} className="flex flex-wrap gap-2">
-            {(Object.keys(DUMPSTER_COLORS) as DumpsterColor[]).map((colorName) => (
-                <Tooltip key={colorName}>
-                <TooltipTrigger asChild>
-                    <RadioGroupItem
-                    value={colorName}
-                    id={`edit-color-${colorName}`}
-                    className="h-8 w-8 rounded-md border-2 border-transparent focus:border-ring"
-                    style={{ backgroundColor: DUMPSTER_COLORS[colorName].value }}
-                    aria-label={colorName}
-                    />
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>{colorName}: {DUMPSTER_COLORS[colorName].description}</p>
-                </TooltipContent>
-                </Tooltip>
-            ))}
-            </RadioGroup>
-        </TooltipProvider>
-        {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
-      </div>
-      <div className="space-y-2">
-          <Label htmlFor="size">Tamanho (m³)</Label>
-          <Input id="size" name="size" type="number" defaultValue={dumpster.size} required />
-          {state?.errors?.size && <p className="text-sm font-medium text-destructive">{state.errors.size[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="status">Status</Label>
-        <Select name="status" defaultValue={dumpster.status} required>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Disponível">Disponível</SelectItem>
-            <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
-          </SelectContent>
-        </Select>
-         {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
-      </div>
-      <DialogFooter>
+    <>
+      <form action={handleFormAction} className="space-y-4 overflow-y-auto px-6 py-4 flex-grow">
+        <input type="hidden" name="id" value={dumpster.id} />
+        <div className="space-y-2">
+          <Label htmlFor="name">Nome/Identificador</Label>
+          <Input id="name" name="name" defaultValue={dumpster.name} required />
+          {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="color">Cor</Label>
+          <TooltipProvider>
+              <RadioGroup name="color" value={color} onValueChange={(value: DumpsterColor) => setColor(value)} className="flex flex-wrap gap-2">
+              {(Object.keys(DUMPSTER_COLORS) as DumpsterColor[]).map((colorName) => (
+                  <Tooltip key={colorName}>
+                  <TooltipTrigger asChild>
+                      <RadioGroupItem
+                      value={colorName}
+                      id={`edit-color-${colorName}`}
+                      className="h-8 w-8 rounded-md border-2 border-transparent focus:border-ring"
+                      style={{ backgroundColor: DUMPSTER_COLORS[colorName].value }}
+                      aria-label={colorName}
+                      />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                      <p>{colorName}: {DUMPSTER_COLORS[colorName].description}</p>
+                  </TooltipContent>
+                  </Tooltip>
+              ))}
+              </RadioGroup>
+          </TooltipProvider>
+          {state?.errors?.color && <p className="text-sm font-medium text-destructive">{state.errors.color[0]}</p>}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="size">Tamanho (m³)</Label>
+            <Input id="size" name="size" type="number" defaultValue={dumpster.size} required />
+            {state?.errors?.size && <p className="text-sm font-medium text-destructive">{state.errors.size[0]}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select name="status" defaultValue={dumpster.status} required>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione o status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Disponível">Disponível</SelectItem>
+              <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
+            </SelectContent>
+          </Select>
+          {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
+        </div>
+      </form>
+       <DialogFooter>
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancelar</Button>
           </DialogClose>
           <SubmitButton isPending={isPending} />
         </DialogFooter>
-    </form>
+    </>
   );
 }

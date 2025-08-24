@@ -69,7 +69,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <form action={handleFormAction} className="space-y-4 overflow-y-auto p-6 pt-2 pb-4 flex-grow">
         <input type="hidden" name="id" value={client.id} />
         {location && <input type="hidden" name="latitude" value={location.lat} />}
@@ -115,6 +115,6 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
             </DialogClose>
             <SubmitButton isPending={isPending} />
           </DialogFooter>
-    </div>
+    </>
   );
 }
