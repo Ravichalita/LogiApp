@@ -70,7 +70,9 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
     setAddress(selectedLocation.address);
   };
 
-  const action = (formData: FormData) => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); // Prevent default form submission behavior
+    const formData = new FormData(event.currentTarget);
     startTransition(async () => {
       if (!accountId) {
         toast({ title: 'Erro', description: 'Conta não identificada.', variant: 'destructive' });
@@ -88,7 +90,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <form id={formId} ref={formRef} action={action} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
+      <form id={formId} ref={formRef} onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
         {location && <input type="hidden" name="latitude" value={location.lat} />}
         {location && <input type="hidden" name="longitude" value={location.lng} />}
         
