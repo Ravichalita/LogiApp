@@ -23,6 +23,8 @@ interface NewItemDialogProps {
 
 export function NewItemDialog({ itemType }: NewItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // Add a key to force re-mounting of the form component on open/close
+  const [formKey, setFormKey] = useState(Date.now());
 
   const titles = {
     client: 'Novo Cliente',
@@ -36,10 +38,18 @@ export function NewItemDialog({ itemType }: NewItemDialogProps) {
     team: 'Preencha os dados do novo membro da equipe.',
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      // When the dialog closes, change the key to ensure the form remounts next time
+      setFormKey(Date.now());
+    }
+  };
+
   const formComponent = {
-    client: <ClientForm onSave={() => setIsOpen(false)} />,
-    dumpster: <DumpsterForm onSave={() => setIsOpen(false)} />,
-    team: <InviteForm onSave={() => setIsOpen(false)} />,
+    client: <ClientForm key={formKey} onSave={() => handleOpenChange(false)} />,
+    dumpster: <DumpsterForm key={formKey} onSave={() => handleOpenChange(false)} />,
+    team: <InviteForm key={formKey} onSave={() => handleOpenChange(false)} />,
   };
   
    const iconComponent = {
@@ -49,7 +59,7 @@ export function NewItemDialog({ itemType }: NewItemDialogProps) {
    }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="h-16 w-16 rounded-full shadow-lg">
             {iconComponent[itemType]}
