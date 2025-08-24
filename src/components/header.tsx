@@ -76,7 +76,7 @@ export function Header() {
                  <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/finance">
                         <DollarSign className="h-5 w-5" />
-                        <span className="sr-only">Financeiro</span>
+                        <span className="sr-only">Estatísticas</span>
                     </Link>
                 </Button>
             )}

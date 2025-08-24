@@ -130,8 +130,8 @@ export default function FinancePage() {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <div className="mb-8">
-                 <h1 className="text-3xl font-headline font-bold">Controle Financeiro</h1>
-                 <p className="text-muted-foreground mt-1">Visualize o desempenho financeiro do seu negócio.</p>
+                 <h1 className="text-3xl font-headline font-bold">Estatísticas</h1>
+                 <p className="text-muted-foreground mt-1">Visualize as estatísticas e o desempenho do seu negócio.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">

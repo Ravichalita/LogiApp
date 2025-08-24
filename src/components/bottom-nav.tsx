@@ -14,7 +14,7 @@ const baseNavLinks = [
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
-const financeLink = { href: '/finance', label: 'Financeiro', icon: DollarSign };
+const financeLink = { href: '/finance', label: 'Estatísticas', icon: DollarSign };
 const settingsLink = { href: '/settings', label: 'Ajustes', icon: Settings };
 
 export function BottomNav() {
