@@ -18,7 +18,7 @@ export function FloatingActionButton() {
     }
 
     // Don't show FAB on these pages
-    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance')) {
+    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings')) {
         return null;
     }
 

@@ -17,13 +17,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { Trash2, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Trash2 } from 'lucide-react';
 
 export function ResetButton({ accountId }: { accountId: string }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleReset = () => {
@@ -41,44 +39,21 @@ export function ResetButton({ accountId }: { accountId: string }) {
           description: 'Todos os dados da conta foram zerados.',
         });
         setIsDialogOpen(false);
-        setIsExpanded(false);
       }
     });
   };
 
   return (
-    <div className="flex justify-start items-center mt-8">
        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <div className="flex items-center space-x-2">
-                <Button 
+            <AlertDialogTrigger asChild>
+                <Button
                     variant="destructive"
-                    size="icon"
-                    className="rounded-full h-12 w-12 z-10 flex-shrink-0"
-                    onClick={() => setIsExpanded(!isExpanded)}
-                    aria-expanded={isExpanded}
+                    onClick={() => setIsDialogOpen(true)}
                 >
-                    <X className={cn("transition-transform duration-300", isExpanded && "rotate-45")}/>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Zerar todos os dados da conta
                 </Button>
-                
-                <div 
-                    className={cn(
-                        "transition-all duration-300 ease-in-out overflow-hidden flex items-center",
-                        isExpanded ? "max-w-xs" : "max-w-0"
-                    )}
-                >
-                    <AlertDialogTrigger asChild>
-                         <Button
-                            variant="destructive"
-                            className="whitespace-nowrap -ml-4 pl-8 pr-4 h-12 rounded-r-full rounded-l-none"
-                            onClick={() => setIsDialogOpen(true)}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Zerar todos os dados da conta
-                        </Button>
-                    </AlertDialogTrigger>
-                </div>
-            </div>
-
+            </AlertDialogTrigger>
             <AlertDialogContent>
                 <AlertDialogHeader>
                 <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
@@ -94,6 +69,5 @@ export function ResetButton({ accountId }: { accountId: string }) {
                 </AlertDialogFooter>
             </AlertDialogContent>
        </AlertDialog>
-    </div>
   );
 }

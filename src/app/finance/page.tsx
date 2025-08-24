@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,9 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DollarSign, Truck, TrendingUp, ShieldAlert } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RentalPricesForm } from './rental-prices-form';
 import { RevenueByClientChart } from './revenue-by-client-chart';
-import { ResetButton } from './reset-button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
@@ -47,7 +46,6 @@ function StatCard({ title, value, icon: Icon, loading }: { title: string, value:
 export default function FinancePage() {
     const { accountId, userAccount, loading: authLoading } = useAuth();
     const [completedRentals, setCompletedRentals] = useState<CompletedRental[]>([]);
-    const [account, setAccount] = useState<Account | null>(null);
     const [loadingData, setLoadingData] = useState(true);
 
     const isAdmin = userAccount?.role === 'admin';
@@ -61,12 +59,8 @@ export default function FinancePage() {
 
         async function fetchData() {
             setLoadingData(true);
-            const [rentals, accountData] = await Promise.all([
-                getCompletedRentals(accountId!),
-                getAccount(accountId!)
-            ]);
+            const rentals = await getCompletedRentals(accountId!);
             setCompletedRentals(rentals);
-            setAccount(accountData);
             setLoadingData(false);
         }
         
@@ -193,20 +187,6 @@ export default function FinancePage() {
                     </CardContent>
                 </Card>
              </div>
-             
-             <Card>
-                <CardHeader>
-                    <CardTitle className="font-headline">Tabela de Preços da Diária</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
-                </CardContent>
-            </Card>
-
-            <div className="mt-8 text-center">
-                {accountId && <ResetButton accountId={accountId} />}
-            </div>
-
         </div>
     );
 }
