@@ -80,9 +80,9 @@ export default function TeamPage() {
             </div>
              <Card className="bg-muted/50">
                 <CardHeader>
-                    <CardTitle className="font-headline">Membros da Equipe</CardTitle>
+                    <CardTitle className="font-headline">Gerenciamento da Equipe</CardTitle>
                     <CardDescription>
-                        Usuários que têm acesso à esta conta.
+                        Adicione, remova e defina permissões para os membros da sua equipe.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
