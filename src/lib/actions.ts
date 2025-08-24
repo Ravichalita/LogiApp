@@ -2,6 +2,7 @@
 'use server';
 
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getFunctions } from 'firebase-admin/functions';
 import { adminAuth } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
@@ -545,4 +546,23 @@ export async function resetAllDataAction(accountId: string) {
     }
 }
 
+// #endregion
+
+
+// #region Backup Actions
+export async function triggerBackupAction(accountId: string) {
+  if (!accountId) {
+    return { message: 'error', error: 'Conta não identificada.' };
+  }
+  try {
+    const backupFunction = getFunctions().httpsCallable('backupAccountData');
+    const response = await backupFunction({ accountId });
+    const { fileName } = response.data as { fileName: string };
+    revalidatePath('/settings');
+    return { message: 'success', fileName };
+  } catch (error: any) {
+    console.error("Error triggering backup function:", error);
+    return { message: 'error', error: error.message || 'Falha ao iniciar o backup.' };
+  }
+}
 // #endregion

@@ -12,6 +12,7 @@ import { ResetAllDataButton, ResetFinancialDataButton } from '@/app/finance/rese
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ShieldAlert, TriangleAlert } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { BackupSection } from './backup-section';
 
 export default function SettingsPage() {
     const { accountId, userAccount, loading: authLoading } = useAuth();
@@ -69,6 +70,21 @@ export default function SettingsPage() {
                         {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
                     </CardContent>
                 </Card>
+
+                 {accountId && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="font-headline">Backup e Restauração</CardTitle>
+                             <CardDescription>
+                                Crie e gerencie os backups dos dados da sua conta.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <BackupSection accountId={accountId} />
+                        </CardContent>
+                    </Card>
+                )}
+
 
                 <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="danger-zone" className="border border-destructive rounded-lg">
