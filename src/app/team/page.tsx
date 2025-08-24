@@ -74,10 +74,6 @@ export default function TeamPage() {
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <div className="mb-8">
-                 <h1 className="text-3xl font-headline font-bold">Equipe</h1>
-                 <p className="text-muted-foreground mt-1">Gerencie os membros e as permissões da sua conta.</p>
-            </div>
              <Card className="bg-muted/50">
                 <CardHeader>
                     <CardTitle className="font-headline">Gerenciamento da Equipe</CardTitle>
