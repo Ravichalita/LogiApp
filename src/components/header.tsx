@@ -84,12 +84,14 @@ export function Header() {
 
             <ThemeToggle />
 
-            <Button variant="ghost" size="icon" asChild className="inline-flex">
-                <Link href="/team">
-                    <Users className="h-5 w-5" />
-                    <span className="sr-only">Equipe</span>
-                </Link>
-            </Button>
+            {(isAdmin || permissions?.canAccessTeam) && (
+              <Button variant="ghost" size="icon" asChild className="inline-flex">
+                  <Link href="/team">
+                      <Users className="h-5 w-5" />
+                      <span className="sr-only">Equipe</span>
+                  </Link>
+              </Button>
+            )}
             
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
