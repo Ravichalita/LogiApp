@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -71,7 +72,7 @@ export function Header() {
                 </Button>
             )}
             {(isAdmin || permissions?.canAccessTeam) && (
-               <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
+               <Button variant="ghost" size="icon" asChild className="inline-flex">
                     <Link href="/team">
                         <Users className="h-5 w-5" />
                         <span className="sr-only">Equipe</span>

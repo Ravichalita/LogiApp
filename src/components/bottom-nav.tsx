@@ -15,7 +15,7 @@ const baseNavLinks = [
 ];
 
 const financeLink = { href: '/finance', label: 'Financeiro', icon: DollarSign };
-const teamLink = { href: '/team', label: 'Equipe', icon: Settings };
+// Team link removed from here
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -33,9 +33,7 @@ export function BottomNav() {
       navLinks.push(financeLink);
   }
 
-  if(isAdmin || permissions?.canAccessTeam) {
-    navLinks.push(teamLink)
-  }
+  // The logic to add the team link has been removed.
 
   const getGridColsClass = () => {
     switch (navLinks.length) {
