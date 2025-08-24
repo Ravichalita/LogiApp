@@ -458,6 +458,7 @@ export async function updateRentalPricesAction(accountId: string, prevState: any
             rentalPrices: validatedFields.data.rentalPrices ?? []
         });
         revalidatePath('/finance');
+        revalidatePath('/settings');
         return { message: 'success' };
     } catch (e) {
         return { error: handleFirebaseError(e) };
@@ -496,6 +497,22 @@ async function deleteQueryBatch(db: FirebaseFirestore.Firestore, query: Firebase
         deleteQueryBatch(db, query, resolve);
     });
 }
+
+export async function resetFinancialDataAction(accountId: string) {
+     if (!accountId) {
+        return { message: 'error', error: 'Conta não identificada.' };
+    }
+    try {
+        const db = getFirestore();
+        await deleteCollection(db, `accounts/${accountId}/completed_rentals`, 50);
+
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+         return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
 
 export async function resetAllDataAction(accountId: string) {
     if (!accountId) {

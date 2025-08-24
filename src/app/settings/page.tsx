@@ -8,7 +8,7 @@ import { getAccount } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RentalPricesForm } from '@/app/finance/rental-prices-form';
-import { ResetButton } from '@/app/finance/reset-button';
+import { ResetAllDataButton, ResetFinancialDataButton } from '@/app/finance/reset-button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ShieldAlert, TriangleAlert } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -75,15 +75,27 @@ export default function SettingsPage() {
                         <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
                             <div className="flex items-center gap-2">
                                  <TriangleAlert className="h-5 w-5" />
-                                <span className="font-headline text-lg">Zona de Perigo</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                           <div className="px-4 pb-4">
-                             <p className="text-sm text-muted-foreground mb-4">
-                                A ação abaixo é irreversível. Tenha certeza absoluta antes de prosseguir.
+                           <div className="px-4 pb-4 space-y-4">
+                             <p className="text-sm text-muted-foreground">
+                                Ações abaixo são irreversíveis. Tenha certeza absoluta antes de prosseguir.
                             </p>
-                            {accountId && <ResetButton accountId={accountId} />}
+                            <div className="space-y-2 p-4 border border-destructive/50 rounded-md">
+                                <h4 className="font-semibold">Zerar Dados Financeiros</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Isso excluirá permanentemente todos os aluguéis finalizados e o histórico de faturamento. Clientes, caçambas e aluguéis ativos não serão afetados.
+                                </p>
+                                {accountId && <ResetFinancialDataButton accountId={accountId} />}
+                            </div>
+                             <div className="space-y-2 p-4 border border-destructive/50 rounded-md">
+                                <h4 className="font-semibold">Zerar Todos os Dados</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Isso excluirá permanentemente todos os aluguéis (ativos e finalizados), clientes e caçambas. Os dados de usuário e equipe não serão afetados.
+                                </p>
+                                {accountId && <ResetAllDataButton accountId={accountId} />}
+                            </div>
                            </div>
                         </AccordionContent>
                     </AccordionItem>
