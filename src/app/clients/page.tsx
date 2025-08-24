@@ -90,7 +90,6 @@ export default function ClientsPage() {
       <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Clientes</h1>
         <Card className="bg-muted/50">
             <CardHeader>
-            <CardTitle className="font-headline">Meus Clientes</CardTitle>
             <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
