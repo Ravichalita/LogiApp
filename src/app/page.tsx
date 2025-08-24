@@ -15,11 +15,12 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { Truck, Calendar, ChevronDown, User, ShieldAlert } from 'lucide-react';
+import { Truck, Calendar, ChevronDown, User, ShieldAlert, Search } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ptBR } from 'date-fns/locale';
+import { Input } from '@/components/ui/input';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -138,6 +139,7 @@ export default function HomePage() {
   const [localLoading, setLocalLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     // Wait for the auth context to be ready and have an accountId
@@ -169,13 +171,23 @@ export default function HomePage() {
 
 
   const filteredAndSortedRentals = useMemo(() => {
-    return rentals
-     .filter(rental => {
-        if (statusFilter === 'Todas') return true;
-        const status = getRentalStatus(rental);
-        return status.text === statusFilter;
-      })
-     .sort((a, b) => {
+    let filtered = rentals;
+
+    if (statusFilter !== 'Todas') {
+        filtered = filtered.filter(rental => {
+            const status = getRentalStatus(rental);
+            return status.text === statusFilter;
+        });
+    }
+
+    if (searchTerm) {
+        filtered = filtered.filter(rental => 
+            rental.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            rental.dumpster?.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }
+
+    return filtered.sort((a, b) => {
         const statusA = getRentalStatus(a);
         const statusB = getRentalStatus(b);
         if (statusA.order !== statusB.order) {
@@ -183,7 +195,7 @@ export default function HomePage() {
         }
         return parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime();
     });
-  }, [rentals, statusFilter]);
+  }, [rentals, statusFilter, searchTerm]);
 
   if (authLoading || localLoading) {
     return (
@@ -242,7 +254,18 @@ export default function HomePage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
       <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis Ativos</h1>
-      <div className="flex flex-wrap gap-2 mb-6">
+
+      <div className="space-y-4 mb-6">
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+                placeholder="Buscar por cliente ou caçamba..."
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+        <div className="flex flex-wrap gap-2">
             {filterOptions.map(option => (
                 <Button
                     key={option.value}
@@ -255,6 +278,7 @@ export default function HomePage() {
                 </Button>
             ))}
         </div>
+      </div>
 
       <div className="space-y-4">
         {filteredAndSortedRentals.length > 0 ? filteredAndSortedRentals.map((rental) => {
@@ -300,12 +324,10 @@ export default function HomePage() {
             );
         }) : (
              <div className="text-center py-16 bg-card rounded-lg border">
-                <p className="text-muted-foreground">Nenhum aluguel encontrado para o filtro "{statusFilter}".</p>
+                <p className="text-muted-foreground">Nenhum aluguel encontrado para a busca e filtro aplicados.</p>
             </div>
         )}
       </div>
     </div>
   );
 }
-
-    
