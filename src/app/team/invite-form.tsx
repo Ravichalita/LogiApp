@@ -39,11 +39,11 @@ function SuccessDialog({
     onClose: () => void;
 }) {
     const { toast } = useToast();
-    const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : '';
+    const loginUrl = "https://studio--caambacontrol3.us-central1.hosted.app/login";
 
     if (!newUser) return null;
     
-    const message = `Olá, ${newUser.name}! Bem-vindo(a) ao Econtrol.\n\nAqui estão seus dados de acesso:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha Temporária:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso.`;
+    const message = `Olá, ${newUser.name}! Bem-vindo(a) ao Econtrol.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
@@ -83,7 +83,7 @@ function SuccessDialog({
                         <p className="text-sm font-mono p-2 bg-muted rounded-md">{newUser.email}</p>
                     </div>
                      <div>
-                        <Label>Senha Temporária</Label>
+                        <Label>Senha</Label>
                         <p className="text-sm font-mono p-2 bg-muted rounded-md">{newUser.password}</p>
                     </div>
                 </div>
