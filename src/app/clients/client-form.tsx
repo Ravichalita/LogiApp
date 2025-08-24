@@ -19,9 +19,9 @@ const initialState = {
   message: '',
 };
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
+function SubmitButton({ isPending, formId }: { isPending: boolean, formId: string }) {
   return (
-    <Button type="submit" disabled={isPending}>
+    <Button type="submit" form={formId} disabled={isPending}>
       {isPending ? <Spinner size="small" /> : 'Salvar Cliente'}
     </Button>
   );
@@ -32,6 +32,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const formRef = useRef<HTMLFormElement>(null);
+  const formId = "client-form";
   const { toast } = useToast();
   
   const [address, setAddress] = useState('');
@@ -83,7 +84,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      <form ref={formRef} action={action} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
+      <form id={formId} ref={formRef} action={action} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
         {location && <input type="hidden" name="latitude" value={location.lat} />}
         {location && <input type="hidden" name="longitude" value={location.lng} />}
         
@@ -130,7 +131,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
             <DialogClose asChild>
               <Button type="button" variant="outline">Cancelar</Button>
             </DialogClose>
-            <SubmitButton isPending={isPending} />
+            <SubmitButton isPending={isPending} formId={formId} />
         </DialogFooter>
       </div>
   );

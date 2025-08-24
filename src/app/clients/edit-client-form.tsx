@@ -19,9 +19,9 @@ const initialState = {
   message: '',
 };
 
-function SubmitButton({ isPending }: { isPending: boolean }) {
+function SubmitButton({ isPending, formId }: { isPending: boolean, formId: string }) {
   return (
-    <Button type="submit" disabled={isPending}>
+    <Button type="submit" form={formId} disabled={isPending}>
       {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
     </Button>
   );
@@ -32,6 +32,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
+  const formId = `edit-client-form-${client.id}`;
   
   const [address, setAddress] = useState(client.address);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(
@@ -70,7 +71,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
 
   return (
     <>
-      <form action={handleFormAction} className="space-y-4 overflow-y-auto p-6 pt-2 pb-4 flex-grow">
+      <form id={formId} action={handleFormAction} className="space-y-4 overflow-y-auto p-6 pt-2 pb-4 flex-grow">
         <input type="hidden" name="id" value={client.id} />
         {location && <input type="hidden" name="latitude" value={location.lat} />}
         {location && <input type="hidden" name="longitude" value={location.lng} />}
@@ -118,7 +119,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
             <DialogClose asChild>
               <Button type="button" variant="outline">Cancelar</Button>
             </DialogClose>
-            <SubmitButton isPending={isPending} />
+            <SubmitButton isPending={isPending} formId={formId} />
           </DialogFooter>
     </>
   );
