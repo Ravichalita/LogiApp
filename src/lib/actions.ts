@@ -2,7 +2,7 @@
 'use server';
 
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { adminAuth } from './firebase-admin';
+import { adminAuth, adminDb } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -550,44 +550,60 @@ export async function resetAllDataAction(accountId: string) {
 
 
 // #region Backup Actions
+
+// Helper function to get all documents from a collection
+async function getCollectionData(collectionPath: string) {
+  const snapshot = await adminDb.collection(collectionPath).get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+
 export async function triggerBackupAction(accountId: string) {
   if (!accountId) {
     return { message: 'error', error: 'Conta não identificada.' };
   }
   
+  // Verify user is authenticated and has rights to this account via custom claims.
   const sessionCookie = cookies().get('__session')?.value;
   if (!sessionCookie) {
       return { message: 'error', error: 'Usuário não autenticado.' };
   }
-  
+
   try {
     const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-    const idToken = await adminAuth.createCustomToken(decodedToken.uid, decodedToken.claims);
-
-    const region = process.env.NEXT_PUBLIC_FIREBASE_REGION || 'us-central1';
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    if (!projectId) {
-      throw new Error("Project ID não está configurado nas variáveis de ambiente.");
+    if (decodedToken.accountId !== accountId) {
+        return { message: 'error', error: 'Permissão negada para esta conta.' };
     }
-    const url = `https://${region}-${projectId}.cloudfunctions.net/backupAccountData`;
+
+    const collectionsToBackup = [
+        "clients",
+        "dumpsters",
+        "rentals",
+        "completed_rentals",
+    ];
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}`
-      },
-      body: JSON.stringify({ accountId }),
+    const backupData: { [key: string]: any } = {};
+
+    for (const collectionName of collectionsToBackup) {
+        const collectionPath = `accounts/${accountId}/${collectionName}`;
+        backupData[collectionName] = await getCollectionData(collectionPath);
+    }
+    
+    const accountSnap = await adminDb.doc(`accounts/${accountId}`).get();
+    if(accountSnap.exists) {
+        backupData.account = { id: accountSnap.id, ...accountSnap.data() };
+    }
+
+    // Create the backup document in a top-level `backups` collection
+    const backupRef = await adminDb.collection('backups').add({
+        accountId: accountId,
+        createdAt: FieldValue.serverTimestamp(),
+        data: backupData
     });
-
-    const responseData = await response.json();
-
-    if (!response.ok) {
-        console.error('Error from backup function:', responseData);
-        throw new Error(responseData.error?.message || `A função de backup falhou com status ${response.status}`);
-    }
     
-    const { fileName } = responseData as { fileName: string };
+    const backupSnap = await backupRef.get();
+    const backupResult = backupSnap.data();
+    const fileName = `backup-${backupRef.id}.json`;
 
     revalidatePath('/settings');
     return { message: 'success', fileName };
