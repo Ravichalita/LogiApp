@@ -64,7 +64,7 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-            {isAdmin && (
+            {(isAdmin || permissions?.canAccessSettings) && (
                  <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/settings">
                         <Settings className="h-5 w-5" />

@@ -19,9 +19,10 @@ export default function SettingsPage() {
     const [loadingData, setLoadingData] = useState(true);
 
     const isAdmin = userAccount?.role === 'admin';
+    const canAccess = isAdmin || userAccount?.permissions?.canAccessSettings;
 
     useEffect(() => {
-        if (authLoading || !accountId) {
+        if (authLoading || !accountId || !canAccess) {
             if (!authLoading) setLoadingData(false);
             return;
         };
@@ -35,18 +36,18 @@ export default function SettingsPage() {
         
         fetchData();
 
-    }, [accountId, authLoading]);
+    }, [accountId, authLoading, canAccess]);
 
     const isLoading = authLoading || loadingData;
 
-    if (!isLoading && !isAdmin) {
+    if (!isLoading && !canAccess) {
          return (
             <div className="container mx-auto py-8 px-4 md:px-6">
                  <Alert variant="destructive">
                     <ShieldAlert className="h-4 w-4" />
                     <AlertTitle>Acesso Negado</AlertTitle>
                     <AlertDescription>
-                       Você não tem permissão para visualizar esta página. Apenas administradores podem acessar as configurações.
+                       Você não tem permissão para visualizar esta página.
                     </AlertDescription>
                 </Alert>
             </div>

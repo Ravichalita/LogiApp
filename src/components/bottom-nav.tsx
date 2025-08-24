@@ -33,8 +33,7 @@ export function BottomNav() {
       navLinks.push(financeLink);
   }
   
-  // Settings are admin-only for now
-  if(isAdmin) {
+  if(isAdmin || permissions?.canAccessSettings) {
       navLinks.push(settingsLink);
   }
 
