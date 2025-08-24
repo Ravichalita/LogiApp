@@ -560,8 +560,10 @@ export async function triggerBackupAction(accountId: string) {
       return { message: 'error', error: 'Usuário não autenticado.' };
   }
   
-  const user = await adminAuth.verifySessionCookie(sessionCookie, true);
-  const token = await adminAuth.createCustomToken(user.uid, user.claims);
+  // This verifies the session cookie and gets the user's details.
+  const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+  // This creates a standard Firebase Auth ID token which the onCall function expects.
+  const idToken = await adminAuth.createCustomToken(decodedToken.uid, decodedToken.claims);
 
   const region = 'us-central1';
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
@@ -572,8 +574,10 @@ export async function triggerBackupAction(accountId: string) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        // The onCall function expects the token in the Authorization header.
+        'Authorization': `Bearer ${idToken}`
       },
+      // The onCall function expects data to be wrapped in a 'data' object.
       body: JSON.stringify({ data: { accountId: accountId } }),
     });
 
@@ -584,6 +588,7 @@ export async function triggerBackupAction(accountId: string) {
     }
     
     const responseData = await response.json();
+    // The result from an onCall function is wrapped in a 'result' object.
     const { fileName } = responseData.result as { fileName: string };
 
     revalidatePath('/settings');
