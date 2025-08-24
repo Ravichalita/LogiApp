@@ -6,6 +6,7 @@ import { AuthProvider } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const pt_sans = PT_Sans({
@@ -25,20 +26,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body
         className={`${inter.variable} ${pt_sans.variable} font-sans bg-background`}
       >
-        <AuthProvider>
-            <div className="flex flex-col min-h-screen">
-                <Header />
-                <main className="flex-grow">{children}</main>
-                <div className="h-16 md:hidden" />
-                <BottomNav />
-                <FloatingActionButton />
-            </div>
-            <Toaster />
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+              <div className="flex flex-col min-h-screen">
+                  <Header />
+                  <main className="flex-grow">{children}</main>
+                  <div className="h-16 md:hidden" />
+                  <BottomNav />
+                  <FloatingActionButton />
+              </div>
+              <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

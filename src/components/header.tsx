@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 
 const navLinks = [
@@ -71,14 +72,15 @@ export function Header() {
                     </Link>
                 </Button>
             )}
-            {(isAdmin || permissions?.canAccessTeam) && (
-               <Button variant="ghost" size="icon" asChild className="inline-flex">
-                    <Link href="/team">
-                        <Users className="h-5 w-5" />
-                        <span className="sr-only">Equipe</span>
-                    </Link>
-                </Button>
-            )}
+            
+            <Button variant="ghost" size="icon" asChild className="inline-flex">
+                <Link href="/team">
+                    <Users className="h-5 w-5" />
+                    <span className="sr-only">Equipe</span>
+                </Link>
+            </Button>
+            
+            <ThemeToggle />
           
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
