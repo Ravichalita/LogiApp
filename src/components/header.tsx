@@ -73,6 +73,8 @@ export function Header() {
                 </Button>
             )}
             
+            <ThemeToggle />
+
             <Button variant="ghost" size="icon" asChild className="inline-flex">
                 <Link href="/team">
                     <Users className="h-5 w-5" />
@@ -80,8 +82,6 @@ export function Header() {
                 </Link>
             </Button>
             
-            <ThemeToggle />
-          
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
