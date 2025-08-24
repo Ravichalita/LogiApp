@@ -111,24 +111,41 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
 }
 
 export async function removeTeamMemberAction(accountId: string, userId: string) {
+    const db = getFirestore();
+    const batch = db.batch();
     try {
-        const db = getFirestore();
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
         
+        // Find and delete assigned rentals
+        const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+        const rentalsQuery = rentalsRef.where('assignedTo', '==', userId);
+        const rentalsSnap = await rentalsQuery.get();
+        
+        if (!rentalsSnap.empty) {
+            rentalsSnap.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+        }
+
         const accountRef = db.doc(`accounts/${accountId}`);
-        await accountRef.update({
+        batch.update(accountRef, {
             members: FieldValue.arrayRemove(userId)
         });
 
         // We should delete the user document first before deleting the auth user
-        await userRef.delete();
+        batch.delete(userRef);
+        
+        await batch.commit();
+        
+        // Auth user deletion is separate from the transaction
         await adminAuth.deleteUser(userId);
 
         revalidatePath('/team');
+        revalidatePath('/'); // To update rentals list if any were deleted
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };

@@ -111,6 +111,22 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
     return unsubscribe;
 }
 
+export async function getActiveRentalsForUser(accountId: string, userId: string): Promise<Rental[]> {
+    const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
+    const q = query(rentalsCollection, where("assignedTo", "==", userId));
+    const querySnapshot = await getDocs(q);
+    const rentals = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
+            returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
+        } as Rental;
+    });
+    return rentals;
+}
+
 export function getPopulatedRentals(
     accountId: string, 
     onData: (rentals: PopulatedRental[]) => void,
