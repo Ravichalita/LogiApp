@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Truck, LogOut, User as UserIcon, Users, DollarSign, Settings } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, Users, BarChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -74,9 +74,9 @@ export function Header() {
             )}
 
             {(isAdmin || permissions?.canAccessFinance) && (
-                 <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
+                 <Button variant="ghost" size="icon" asChild className="inline-flex">
                     <Link href="/finance">
-                        <DollarSign className="h-5 w-5" />
+                        <BarChart className="h-5 w-5" />
                         <span className="sr-only">Estatísticas</span>
                     </Link>
                 </Button>

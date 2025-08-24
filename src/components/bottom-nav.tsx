@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users, Settings, DollarSign } from 'lucide-react';
+import { Home, LayoutGrid, Users, Settings, BarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
@@ -14,7 +14,9 @@ const baseNavLinks = [
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
-const financeLink = { href: '/finance', label: 'Estatísticas', icon: DollarSign };
+const financeLink = { href: '/finance', label: 'Estatísticas', icon: BarChart };
+const settingsLink = { href: '/settings', label: 'Ajustes', icon: Settings };
+
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -31,6 +33,11 @@ export function BottomNav() {
   if(isAdmin || permissions?.canAccessFinance) {
       navLinks.push(financeLink);
   }
+  
+  if (isAdmin || permissions?.canAccessSettings) {
+      navLinks.push(settingsLink);
+  }
+
 
   const getGridColsClass = () => {
     switch (navLinks.length) {
