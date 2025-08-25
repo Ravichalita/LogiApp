@@ -92,7 +92,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
   const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
 
-  const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso');
+  const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso' && status.text !== 'Encerra hoje');
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
@@ -191,7 +191,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="client-details" className="border-none">
                  <Separator />
-                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start group">
+                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start group" hideChevron>
                     <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
                     <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
                     Detalhes do Cliente

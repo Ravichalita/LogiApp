@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account } from '@/lib/types';
-import { isAfter, isWithinInterval, startOfToday, format, parseISO } from 'date-fns';
+import { isAfter, isWithinInterval, startOfToday, format, parseISO, isToday } from 'date-fns';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
@@ -67,12 +67,18 @@ export default function NewRentalPage() {
           return false;
         }
 
-        const activeOrOverdueRental = allRentals.find(r => 
-          r.dumpsterId === d.id && 
-          (isWithinInterval(today, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) }) || isAfter(today, parseISO(r.returnDate)))
-        );
+        const blockingRental = allRentals.find(r => {
+          if (r.dumpsterId !== d.id) return false;
+          
+          const rentalEnd = parseISO(r.returnDate);
+          
+          // It's blocking if it's currently active (and NOT ending today) OR overdue
+          return isWithinInterval(today, { start: parseISO(r.rentalDate), end: rentalEnd }) 
+                 && !isToday(rentalEnd) 
+                 || isAfter(today, rentalEnd);
+        });
 
-        return !activeOrOverdueRental;
+        return !blockingRental;
       })
       .map(d => {
         const futureRental = allRentals

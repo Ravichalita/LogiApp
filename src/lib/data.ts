@@ -11,20 +11,40 @@ import {
   where,
   Query,
   DocumentData,
+  orderBy,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account } from './types';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup } from './types';
 
 type Unsubscribe = () => void;
 
 const { db } = getFirebase();
+
+// Helper function to safely convert a Firestore document snapshot to a serializable object
+const docToSerializable = (doc: DocumentData): any => {
+  if (!doc.exists()) {
+    return null;
+  }
+  const data = doc.data();
+  const serializableData: { [key: string]: any } = { id: doc.id };
+
+  for (const key in data) {
+    const value = data[key];
+    if (value && typeof value.toDate === 'function') {
+      serializableData[key] = value.toDate().toISOString();
+    } else {
+      serializableData[key] = value;
+    }
+  }
+  return serializableData;
+};
 
 // #region Account Data
 export function getAccount(accountId: string, callback: (account: Account | null) => void): Unsubscribe {
     const accountRef = doc(db, `accounts/${accountId}`);
     const unsubscribe = onSnapshot(accountRef, (docSnap) => {
         if (docSnap.exists()) {
-            callback({ id: docSnap.id, ...docSnap.data() } as Account);
+            callback(docToSerializable(docSnap) as Account);
         } else {
             callback(null);
         }

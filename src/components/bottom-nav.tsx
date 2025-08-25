@@ -41,7 +41,7 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t">
       <div className={cn("grid h-16", getGridColsClass())}>
         {navLinks.map(({ href, label, icon: Icon }) => (
           <Link

@@ -8,15 +8,20 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-sans",
+  display: 'swap',
+});
 const pt_sans = PT_Sans({
   subsets: ["latin"],
   weight: ['400', '700'],
   variable: "--font-headline",
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "Econtrol",
+  title: "CaçambaControl",
   description: "Gerencie seus aluguéis de caçamba com facilidade.",
 };
 
@@ -28,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${pt_sans.variable} font-sans bg-background`}
+        className={`${inter.variable} ${pt_sans.variable} bg-background`}
       >
         <ThemeProvider
           attribute="class"

@@ -2,14 +2,14 @@
 'use server';
 
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { adminAuth, adminDb } from './firebase-admin';
+import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
-import { cookies } from 'next/headers';
+import { cookies } from 'next/cookies';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -76,7 +76,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
 
 export async function updateUserRoleAction(accountId: string, userId: string, newRole: UserRole) {
     try {
-        const db = getFirestore();
+        const db = getFirestore(adminApp);
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
@@ -93,7 +93,7 @@ export async function updateUserRoleAction(accountId: string, userId: string, ne
 
 export async function updateUserPermissionsAction(accountId: string, userId: string, permissions: Permissions) {
     try {
-        const db = getFirestore();
+        const db = getFirestore(adminApp);
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
@@ -111,7 +111,7 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
 }
 
 export async function removeTeamMemberAction(accountId: string, userId: string) {
-    const db = getFirestore();
+    const db = getFirestore(adminApp);
     const batch = db.batch();
     try {
         const userRef = db.doc(`users/${userId}`);
@@ -168,7 +168,7 @@ export async function createClient(accountId: string, prevState: any, formData: 
   }
 
   try {
-    const clientsCollection = getFirestore().collection(`accounts/${accountId}/clients`);
+    const clientsCollection = getFirestore(adminApp).collection(`accounts/${accountId}/clients`);
     await clientsCollection.add({
       ...validatedFields.data,
       accountId,
@@ -194,7 +194,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
     const { id, ...clientData } = validatedFields.data;
 
     try {
-        const clientDoc = getFirestore().doc(`accounts/${accountId}/clients/${id}`);
+        const clientDoc = getFirestore(adminApp).doc(`accounts/${accountId}/clients/${id}`);
         await clientDoc.update({
           ...clientData,
           accountId,
@@ -210,7 +210,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 
 export async function deleteClientAction(accountId: string, clientId: string) {
   try {
-    await getFirestore().doc(`accounts/${accountId}/clients/${clientId}`).delete();
+    await getFirestore(adminApp).doc(`accounts/${accountId}/clients/${clientId}`).delete();
     revalidatePath('/clients');
     return { message: 'success' };
   } catch (e) {
@@ -236,7 +236,7 @@ export async function createDumpster(accountId: string, prevState: any, formData
   }
 
   try {
-    const dumpstersCollection = getFirestore().collection(`accounts/${accountId}/dumpsters`);
+    const dumpstersCollection = getFirestore(adminApp).collection(`accounts/${accountId}/dumpsters`);
     await dumpstersCollection.add({
       ...validatedFields.data,
       accountId,
@@ -265,7 +265,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
   const { id, ...dumpsterData } = validatedFields.data;
 
   try {
-    const dumpsterDoc = getFirestore().doc(`accounts/${accountId}/dumpsters/${id}`);
+    const dumpsterDoc = getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${id}`);
     await dumpsterDoc.update({
       ...dumpsterData,
       accountId,
@@ -281,7 +281,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
 
 export async function deleteDumpsterAction(accountId: string, dumpsterId: string) {
   try {
-    await getFirestore().doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
+    await getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
     revalidatePath('/dumpsters');
     revalidatePath('/');
     return { message: 'success' };
@@ -292,7 +292,7 @@ export async function deleteDumpsterAction(accountId: string, dumpsterId: string
 
 export async function updateDumpsterStatusAction(accountId: string, dumpsterId: string, newStatus: 'Disponível' | 'Em Manutenção') {
     try {
-        const dumpsterRef = getFirestore().doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
+        const dumpsterRef = getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
         await dumpsterRef.update({ status: newStatus });
         revalidatePath('/dumpsters');
         revalidatePath('/');
@@ -331,7 +331,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   try {
     const rentalData = validatedFields.data;
     
-    await getFirestore().collection(`accounts/${accountId}/rentals`).add({
+    await getFirestore(adminApp).collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
       accountId,
       createdAt: FieldValue.serverTimestamp(),
@@ -352,7 +352,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     
-    const db = getFirestore();
+    const db = getFirestore(adminApp);
     const batch = db.batch();
     
     try {
@@ -403,7 +403,7 @@ export async function deleteRentalAction(accountId: string, rentalId: string) {
         return { message: 'error', error: 'Rental ID is missing.' };
     }
     try {
-        await getFirestore().doc(`accounts/${accountId}/rentals/${rentalId}`).delete();
+        await getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${rentalId}`).delete();
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
@@ -444,7 +444,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     try {
-        const rentalDoc = getFirestore().doc(`accounts/${accountId}/rentals/${id}`);
+        const rentalDoc = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
         await rentalDoc.update({
           ...updateData,
           updatedAt: FieldValue.serverTimestamp(),
@@ -459,7 +459,8 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
 // #endregion
 
-// #region Finance Actions
+// #region Settings & Reset Actions
+
 export async function updateRentalPricesAction(accountId: string, prices: RentalPrice[]) {
     const validatedFields = RentalPricesSchema.safeParse({ rentalPrices: prices });
     
@@ -473,7 +474,7 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
     }
 
     try {
-        const accountRef = getFirestore().doc(`accounts/${accountId}`);
+        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
         await accountRef.update({
             rentalPrices: validatedFields.data.rentalPrices ?? []
         });
@@ -523,7 +524,7 @@ export async function resetFinancialDataAction(accountId: string) {
         return { message: 'error', error: 'Conta não identificada.' };
     }
     try {
-        const db = getFirestore();
+        const db = getFirestore(adminApp);
         await deleteCollection(db, `accounts/${accountId}/completed_rentals`, 50);
 
         revalidatePath('/finance');
@@ -540,7 +541,7 @@ export async function resetAllDataAction(accountId: string) {
     }
 
     try {
-        const db = getFirestore();
+        const db = getFirestore(adminApp);
         
         // Delete all subcollections
         const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
@@ -558,11 +559,231 @@ export async function resetAllDataAction(accountId: string) {
         revalidatePath('/clients');
         revalidatePath('/dumpsters');
         revalidatePath('/finance');
+        revalidatePath('/settings');
         
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
+
+// #endregion
+
+
+// #region Backup Actions
+
+export async function updateBackupSettingsAction(accountId: string, prevState: any, formData: FormData) {
+    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
+
+    const validatedFields = UpdateBackupSettingsSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { 
+            message: 'error', 
+            error: validatedFields.error.flatten().fieldErrors.backupPeriodicityDays?.[0] || validatedFields.error.flatten().fieldErrors.backupRetentionDays?.[0] || 'Dados inválidos.' 
+        };
+    }
+
+    try {
+        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        await accountRef.update({
+            backupPeriodicityDays: validatedFields.data.backupPeriodicityDays,
+            backupRetentionDays: validatedFields.data.backupRetentionDays,
+        });
+        revalidatePath('/settings');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+
+async function copyCollection(
+    db: FirebaseFirestore.Firestore,
+    sourcePath: string,
+    destPath: string
+) {
+    const sourceRef = db.collection(sourcePath);
+    const documents = await sourceRef.get();
+    
+    let batch = db.batch();
+    let i = 0;
+    for (const doc of documents.docs) {
+        const destRef = db.doc(`${destPath}/${doc.id}`);
+        batch.set(destRef, doc.data());
+        i++;
+        if (i % 500 === 0) { // Commit every 500 documents
+            await batch.commit();
+            batch = db.batch();
+        }
+    }
+    if (i % 500 !== 0) {
+        await batch.commit();
+    }
+}
+
+
+export async function createFirestoreBackupAction(accountId: string, retentionDays?: number) {
+    if (!accountId) {
+        return { message: 'error', error: 'Conta não identificada.' };
+    }
+
+    const db = adminDb;
+    const timestamp = new Date();
+    const backupId = `backup-${timestamp.toISOString()}`;
+    const backupDocRef = db.collection(`backups`).doc(backupId);
+    
+    try {
+        await db.runTransaction(async (transaction) => {
+            transaction.set(backupDocRef, {
+                accountId: accountId,
+                createdAt: timestamp,
+                status: 'in-progress'
+            });
+        });
+        
+        const subcollectionsToBackup = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
+        const accountDoc = await db.doc(`accounts/${accountId}`).get();
+        
+        if (accountDoc.exists) {
+            const accountData = accountDoc.data();
+            const backupAccountRef = db.doc(`backups/${backupId}/accounts/${accountId}`);
+            await backupAccountRef.set(accountData!);
+        }
+
+        for (const subcollection of subcollectionsToBackup) {
+             const sourcePath = `accounts/${accountId}/${subcollection}`;
+             const destPath = `backups/${backupId}/accounts/${accountId}/${subcollection}`;
+             await copyCollection(db, sourcePath, destPath);
+        }
+
+        await backupDocRef.update({ status: 'completed' });
+        
+        // Update the last backup date on the account document
+        const accountRef = db.doc(`accounts/${accountId}`);
+        await accountRef.update({ lastBackupDate: timestamp.toISOString() });
+
+        // Clean up old backups if retentionDays is provided
+        if (typeof retentionDays === 'number' && retentionDays > 0) {
+            await cleanupOldBackupsAction(accountId, retentionDays);
+        }
+        
+        revalidatePath('/settings');
+        return { message: 'success' };
+
+    } catch (e) {
+        await backupDocRef.update({ status: 'failed', error: handleFirebaseError(e) });
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function cleanupOldBackupsAction(accountId: string, retentionDays: number) {
+    const db = adminDb;
+    const now = new Date();
+    const retentionDate = new Date(now.setDate(now.getDate() - retentionDays));
+
+    const oldBackupsQuery = db.collection('backups')
+        .where('accountId', '==', accountId)
+        .where('createdAt', '<', retentionDate)
+        .where('status', '==', 'completed');
+        
+    const snapshot = await oldBackupsQuery.get();
+
+    if (snapshot.empty) {
+        console.log("No old backups to delete.");
+        return { message: 'success', info: 'No old backups found.' };
+    }
+    
+    const deletePromises: Promise<any>[] = [];
+    snapshot.forEach(doc => {
+        console.log(`Scheduling deletion for old backup: ${doc.id}`);
+        deletePromises.push(deleteFirestoreBackupAction(accountId, doc.id));
+    });
+
+    try {
+        await Promise.all(deletePromises);
+        console.log(`Successfully deleted ${deletePromises.length} old backups.`);
+        return { message: 'success', deletedCount: deletePromises.length };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+
+export async function restoreFirestoreBackupAction(accountId: string, backupId: string) {
+    if (!accountId || !backupId) {
+        return { message: 'error', error: 'IDs de conta ou backup ausentes.' };
+    }
+
+    const db = adminDb;
+    const subcollections = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
+
+    try {
+        // Step 1: Delete all current data in subcollections
+        for (const collection of subcollections) {
+            await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
+        }
+
+        // Step 2: Restore account document data
+        const backupAccountRef = db.doc(`backups/${backupId}/accounts/${accountId}`);
+        const backupAccountSnap = await backupAccountRef.get();
+
+        if (!backupAccountSnap.exists) {
+            throw new Error("Documento de conta do backup não encontrado.");
+        }
+        const accountData = backupAccountSnap.data();
+        if (accountData) {
+            // Ensure lastBackupDate is updated to prevent immediate re-backup
+            accountData.lastBackupDate = new Date().toISOString();
+        }
+        await db.doc(`accounts/${accountId}`).set(accountData!);
+
+        // Step 3: Copy data from backup subcollections to live subcollections
+        for (const collection of subcollections) {
+            const sourcePath = `backups/${backupId}/accounts/${accountId}/${collection}`;
+            const destPath = `accounts/${accountId}/${collection}`;
+            await copyCollection(db, sourcePath, destPath);
+        }
+
+        revalidatePath('/settings');
+        revalidatePath('/');
+        return { message: 'success' };
+    } catch (e) {
+        console.error("Restore Error:", e);
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteFirestoreBackupAction(accountId: string, backupId: string) {
+    if (!accountId || !backupId) {
+        return { message: 'error', error: 'IDs de conta ou backup ausentes.' };
+    }
+
+    const db = adminDb;
+    const backupDocRef = db.doc(`backups/${backupId}`);
+
+    try {
+        const backupSnap = await backupDocRef.get();
+        if (!backupSnap.exists || backupSnap.data()?.accountId !== accountId) {
+            throw new Error("Backup não encontrado ou você não tem permissão para excluí-lo.");
+        }
+        
+        // Delete all subcollections within the backup first
+        const subcollections = ['accounts']; // We store all data under 'accounts' subcollection in backup
+        for (const collection of subcollections) {
+            await deleteCollection(db, `backups/${backupId}/${collection}`, 50);
+        }
+        
+        // Finally, delete the main backup document
+        await backupDocRef.delete();
+        
+        revalidatePath('/settings');
+        return { message: 'success' };
+    } catch (e) {
+        console.error("Delete Backup Error:", e);
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
 
 // #endregion

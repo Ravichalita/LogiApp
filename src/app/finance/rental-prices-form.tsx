@@ -95,24 +95,18 @@ export function RentalPricesForm({ account }: { account: Account }) {
 
         // Trigger save immediately on removal
         startTransition(async () => {
-            await updateRentalPricesAction(accountId!, updatedPrices);
+            if (!accountId) return;
+            await updateRentalPricesAction(accountId, updatedPrices);
             toast({ title: 'Preço Removido', description: 'A tabela de preços foi atualizada.' });
         });
     }
 
     return (
         <form onSubmit={handleFormSubmit} className="space-y-4">
-             <div className="flex justify-end">
-                {isPending ? (
-                    <span className="text-sm text-muted-foreground flex items-center gap-2"><Spinner size="small" /> Salvando...</span>
-                ) : (
-                    <span className="text-sm text-muted-foreground">Pressione Enter para salvar</span>
-                )}
-            </div>
-            <div className="space-y-3">
+            <div className="max-h-[22rem] overflow-y-auto space-y-2 p-1 -m-1">
                 {prices.length > 0 ? (
                     prices.map((price) => (
-                        <div key={price.id} className="flex items-center gap-2 p-2 border rounded-md">
+                        <div key={price.id} className="flex items-center gap-2 p-2 border rounded-md bg-muted">
                         <div className="grid grid-cols-2 gap-2 flex-grow">
                                 <Input
                                     placeholder="Nome (Ex: Padrão 5m³)"
@@ -121,7 +115,7 @@ export function RentalPricesForm({ account }: { account: Account }) {
                                     required
                                 />
                                 <div className="relative">
-                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                                     <Input
                                         placeholder="0,00"
                                         value={formatCurrencyForInput(displayValues[price.id] ?? '0')}
@@ -139,11 +133,11 @@ export function RentalPricesForm({ account }: { account: Account }) {
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">Nenhum preço cadastrado.</p>
                 )}
-                 <Button type="button" variant="outline" size="sm" className="w-full" onClick={addPrice}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Adicionar Novo Preço
-                </Button>
             </div>
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={addPrice}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Adicionar Novo Preço
+            </Button>
              <button type="submit" className="hidden" aria-hidden="true">Salvar</button>
         </form>
     )

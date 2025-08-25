@@ -4,14 +4,17 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { Account } from '@/lib/types';
-import { getAccount } from '@/lib/data-server-actions';
+import { getAccount } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RentalPricesForm } from '@/app/finance/rental-prices-form';
 import { ResetAllDataButton, ResetFinancialDataButton } from '@/app/finance/reset-button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, TriangleAlert } from 'lucide-react';
+import { ShieldAlert, TriangleAlert, Cog, Tag, HardDrive } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { BackupRestore } from './backup-restore';
+import { BackupSettingsForm } from './backup-settings-form';
+import { Separator } from '@/components/ui/separator';
 
 export default function SettingsPage() {
     const { accountId, userAccount, loading: authLoading } = useAuth();
@@ -27,16 +30,14 @@ export default function SettingsPage() {
             return;
         };
 
-        async function fetchData() {
-            setLoadingData(true);
-            const accountData = await getAccount(accountId!);
+        const unsub = getAccount(accountId, (accountData) => {
             setAccount(accountData);
-            setLoadingData(false);
-        }
-        
-        fetchData();
+            if (loadingData) setLoadingData(false);
+        });
 
-    }, [accountId, authLoading, canAccess]);
+        return () => unsub();
+
+    }, [accountId, authLoading, canAccess, loadingData]);
 
     const isLoading = authLoading || loadingData;
 
@@ -55,51 +56,83 @@ export default function SettingsPage() {
     }
 
     return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <div className="mb-8">
-                 <h1 className="text-3xl font-headline font-bold">Configurações</h1>
-                 <p className="text-muted-foreground mt-1">Gerencie as configurações da sua conta.</p>
-            </div>
+        <div className="bg-background min-h-full">
+            <div className="container mx-auto py-8 px-4 md:px-6">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-headline font-bold">Configurações</h1>
+                    <p className="text-muted-foreground mt-1">Gerencie as configurações da sua conta.</p>
+                </div>
 
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline">Tabela de Preços da Diária</CardTitle>
-                        <CardDescription>Adicione ou edite os preços. As alterações são salvas ao clicar em "Salvar Preços" ou pressionar Enter.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
-                    </CardContent>
-                </Card>
-
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="danger-zone" className="border border-destructive rounded-lg">
-                        <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                            <div className="flex items-center gap-2">
-                                 <TriangleAlert className="h-5 w-5" />
-                                 <span className="font-semibold">Reset</span>
+                <Accordion type="multiple" className="space-y-4">
+                    <AccordionItem value="prices" className="border rounded-lg bg-card">
+                        <AccordionTrigger className="p-4 hover:no-underline">
+                            <div className="flex items-center gap-3">
+                                <Tag className="h-6 w-6" />
+                                <div className="text-left">
+                                    <h3 className="font-headline text-lg font-semibold">Tabela de Preços da Diária</h3>
+                                    <p className="text-sm text-muted-foreground font-normal">Edite os valores pré-definidos para os aluguéis.</p>
+                                </div>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                           <div className="px-4 pb-4 space-y-4">
-                             <p className="text-sm text-muted-foreground">
-                                Ações abaixo são irreversíveis. Tenha certeza absoluta antes de prosseguir.
+                            <Separator />
+                            <div className="p-4">
+                                {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    
+                    <AccordionItem value="backup" className="border rounded-lg bg-card">
+                        <AccordionTrigger className="p-4 hover:no-underline">
+                            <div className="flex items-center gap-3">
+                                <HardDrive className="h-6 w-6" />
+                                <div className="text-left">
+                                    <h3 className="font-headline text-lg font-semibold">Backup e Restauração</h3>
+                                    <p className="text-sm text-muted-foreground font-normal">Crie, restaure e configure cópias de segurança.</p>
+                                </div>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <Separator />
+                            <div className="p-4 space-y-6">
+                                <Accordion type="single" collapsible className="w-full">
+                                    <AccordionItem value="settings" className="border-b-0">
+                                        <AccordionTrigger className="hover:no-underline font-medium text-base">
+                                            <div className="flex items-center gap-2">
+                                                <Cog className="h-5 w-5" />
+                                                Configurar Backup Automático
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="pt-2">
+                                                {isLoading || !account ? <Skeleton className="h-24 w-full" /> : <BackupSettingsForm account={account} />}
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                                
+                                {isLoading || !accountId ? <Skeleton className="h-40 w-full" /> : <BackupRestore accountId={accountId} />}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+
+                    <AccordionItem value="danger-zone" className="border border-destructive/50 rounded-lg bg-card">
+                        <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                            <div className="flex items-center gap-2">
+                                    <TriangleAlert className="h-5 w-5" />
+                                    <span className="font-semibold">Reset</span>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <div className="px-4 pb-4 space-y-4">
+                                <p className="text-sm text-muted-foreground">
+                                As ações abaixo são irreversíveis, mas os dados podem ser recuperados a partir de um backup existente.
                             </p>
-                            <div className="space-y-2 p-4 border border-destructive/50 rounded-md">
-                                <h4 className="font-semibold">Zerar Dados Financeiros</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    Isso excluirá permanentemente todos os aluguéis finalizados e o histórico de faturamento. Clientes, caçambas e aluguéis ativos não serão afetados.
-                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {accountId && <ResetFinancialDataButton accountId={accountId} />}
-                            </div>
-                             <div className="space-y-2 p-4 border border-destructive/50 rounded-md">
-                                <h4 className="font-semibold">Zerar Todos os Dados</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    Isso excluirá permanentemente todos os aluguéis (ativos e finalizados), clientes e caçambas. Os dados de usuário e equipe não serão afetados.
-                                </p>
                                 {accountId && <ResetAllDataButton accountId={accountId} />}
+                                </div>
                             </div>
-                           </div>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>

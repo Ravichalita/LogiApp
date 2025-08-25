@@ -5,9 +5,11 @@ import React, { createContext, useCallback, useEffect, useRef, useState, useCont
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase-client';
-import type { UserAccount, UserRole } from '@/lib/types';
+import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
+import { createFirestoreBackupAction } from '@/lib/actions';
+import { differenceInDays, parseISO } from 'date-fns';
 
 
 interface AuthContextType {
@@ -31,29 +33,58 @@ export const AuthContext = createContext<AuthContextType>({
 const nonAuthRoutes = ['/login', '/signup'];
 const publicRoutes = [...nonAuthRoutes, '/verify-email'];
 
+const checkAndTriggerAutoBackup = (accountId: string, account: Account | null) => {
+    if (!accountId || !account) return;
+
+    const { lastBackupDate, backupPeriodicityDays, backupRetentionDays } = account;
+    
+    if (!lastBackupDate) {
+        console.log("No previous backup found. Triggering initial automatic backup.");
+        createFirestoreBackupAction(accountId, backupRetentionDays).catch(e => console.error("Auto-backup failed:", e));
+        return;
+    }
+
+    const lastBackup = parseISO(lastBackupDate);
+    const today = new Date();
+    const daysSinceLastBackup = differenceInDays(today, lastBackup);
+    
+    if (daysSinceLastBackup >= (backupPeriodicityDays || 7)) {
+        console.log(`Last backup was ${daysSinceLastBackup} days ago. Triggering automatic backup.`);
+        createFirestoreBackupAction(accountId, backupRetentionDays).catch(e => console.error("Auto-backup failed:", e));
+    }
+}
+
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | null>(null);
+  const backupCheckPerformed = useRef(false);
 
   const { auth, db } = getFirebase();
   const router = useRouter();
   const pathname = usePathname();
   
   const userDocUnsubscribe = useRef<() => void | null>(null);
+  const accountDocUnsubscribe = useRef<() => void | null>(null);
 
   const logout = useCallback(async () => {
-    if (userDocUnsubscribe.current) {
-        userDocUnsubscribe.current();
-        userDocUnsubscribe.current = null;
-    }
+    if (userDocUnsubscribe.current) userDocUnsubscribe.current();
+    if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
+
+    userDocUnsubscribe.current = null;
+    accountDocUnsubscribe.current = null;
+    
     setLoading(true);
     setUser(null);
     setUserAccount(null);
+    setAccount(null);
     setAccountId(null);
     setRole(null);
+    backupCheckPerformed.current = false; // Reset backup check on logout
     await signOut(auth);
     router.push('/login');
   }, [auth, router]);
@@ -61,13 +92,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
-      if (userDocUnsubscribe.current) {
-          userDocUnsubscribe.current();
-      }
+      backupCheckPerformed.current = false; // Reset on user change
+      if (userDocUnsubscribe.current) userDocUnsubscribe.current();
+      if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
 
       if (!firebaseUser) {
         setUser(null);
         setUserAccount(null);
+        setAccount(null);
         setAccountId(null);
         setRole(null);
         setLoading(false);
@@ -90,7 +122,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
         }
         
-        // The token claim is the single source of truth for security rules.
         setUser(firebaseUser);
         setAccountId(claimsAccountId);
         
@@ -99,7 +130,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (userDocSnap.exists()) {
                  const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                  
-                 // Invariant check: The user document's accountId MUST match the token claim.
                  if (!userData.accountId || userData.accountId !== claimsAccountId) {
                     console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
                     logout();
@@ -108,7 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  
                  setUserAccount(userData);
                  setRole(userData.role);
-                 setLoading(false); // Only now is the auth state considered complete and valid.
             } else {
                 console.error("User document not found, which should not happen after signup. Logging out.");
                 logout();
@@ -116,6 +145,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }, async (error) => {
             console.error("Error listening to user document:", error);
             await logout();
+        });
+
+        const accountDocRef = doc(db, 'accounts', claimsAccountId);
+        accountDocUnsubscribe.current = onSnapshot(accountDocRef, (accountSnap) => {
+            if (accountSnap.exists()) {
+                const accountData = { id: accountSnap.id, ...accountSnap.data() } as Account;
+                setAccount(accountData);
+            } else {
+                 console.error("Account document not found. Logging out.");
+                 logout();
+            }
+        }, async (error) => {
+             console.error("Error listening to account document:", error);
+             await logout();
         });
 
       } catch (error) {
@@ -126,6 +169,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsubscribe();
   }, [auth, db, logout]);
+
+
+  useEffect(() => {
+    // This effect runs when both user and account data are loaded.
+    if (user && userAccount && account && !backupCheckPerformed.current) {
+        checkAndTriggerAutoBackup(account.id, account);
+        backupCheckPerformed.current = true; // Mark as checked for this session.
+    }
+
+    // Only set loading to false when we have user and account info (or know we don't need it)
+    if (user && userAccount && account) {
+        setLoading(false);
+    }
+
+  }, [user, userAccount, account]);
+
 
   useEffect(() => {
     if (loading) return;

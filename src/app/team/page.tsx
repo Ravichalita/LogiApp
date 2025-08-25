@@ -18,7 +18,7 @@ function TeamListSkeleton() {
     return (
         <div className="space-y-4">
             {[...Array(2)].map((_, i) => (
-                <div key={i} className="border rounded-lg shadow-sm p-4 space-y-2">
+                <div key={i} className="border rounded-lg shadow-sm p-4 space-y-2 bg-card">
                     <div className="flex items-center justify-between">
                         <div className='space-y-1'>
                              <Skeleton className="h-5 w-32" />
@@ -74,46 +74,47 @@ export default function TeamPage() {
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-             <Card className="bg-muted/50">
-                <CardHeader>
-                    <CardTitle className="font-headline">Gerenciamento da Equipe</CardTitle>
-                    <CardDescription>
-                        Adicione, remova e defina permissões para os membros da sua equipe.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? <TeamListSkeleton /> : (
-                        team.length > 0 ? (
-                            <Accordion type="multiple" className="space-y-4">
-                                {team.map(member => (
-                                    <AccordionItem value={member.id} key={member.id} className="border rounded-lg shadow-sm bg-card">
-                                        <div className="p-4">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="font-medium">{member.name}</div>
-                                                    <div className="text-sm text-muted-foreground">{member.email}</div>
-                                                </div>
-                                                <TeamActions member={member} />
+             <div className="mb-8">
+                <h1 className="text-3xl font-headline font-bold">Gerenciamento da Equipe</h1>
+                <p className="text-muted-foreground mt-1">
+                    Adicione, remova e defina permissões para os membros da sua equipe.
+                </p>
+            </div>
+            
+            <div className="space-y-4">
+                {isLoading ? <TeamListSkeleton /> : (
+                    team.length > 0 ? (
+                        <Accordion type="multiple" className="space-y-4">
+                            {team.map(member => (
+                                <AccordionItem value={member.id} key={member.id} className="border rounded-lg shadow-sm bg-card">
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <div className="font-medium">{member.name}</div>
+                                                <div className="text-sm text-muted-foreground">{member.email}</div>
                                             </div>
-                                             <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="mt-2">
-                                                {member.role === 'admin' ? 'Admin' : 'Viewer'}
-                                             </Badge>
-                                            <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start [&>svg]:ml-1">
-                                                Gerenciar Permissões
-                                            </AccordionTrigger>
+                                            <TeamActions member={member} />
                                         </div>
-                                        <AccordionContent>
-                                            <UserPermissionsForm member={member} />
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                ))}
-                            </Accordion>
-                        ) : (
-                            <p className="text-center text-muted-foreground py-8">Nenhum membro na equipe ainda.</p>
-                        )
-                    )}
-                </CardContent>
-            </Card>
+                                            <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="mt-2">
+                                            {member.role === 'admin' ? 'Admin' : 'Viewer'}
+                                            </Badge>
+                                        <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start [&>svg]:ml-1">
+                                            Gerenciar Permissões
+                                        </AccordionTrigger>
+                                    </div>
+                                    <AccordionContent>
+                                        <UserPermissionsForm member={member} />
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    ) : (
+                         <div className="text-center py-16 bg-card rounded-lg border">
+                            <p className="text-muted-foreground">Nenhum membro na equipe ainda.</p>
+                        </div>
+                    )
+                )}
+            </div>
         </div>
     );
 }

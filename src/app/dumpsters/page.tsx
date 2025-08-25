@@ -36,7 +36,7 @@ function ColorDisplay({ color }: { color: DumpsterColor }) {
 
 function DumpsterTableSkeleton() {
     return (
-         <div className="border rounded-md">
+         <div className="border rounded-md bg-card">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -65,6 +65,7 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[]
     { label: "Todas", value: 'Todos' },
     { label: "Disponível", value: 'Disponível' },
     { label: "Alugada", value: 'Alugada' },
+    { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Reservada", value: 'Reservada' },
     { label: "Manutenção", value: 'Em Manutenção' },
 ];
@@ -113,11 +114,14 @@ export default function DumpstersPage() {
       const activeRental = dumpsterRentals.find(r => {
           const rentalStart = parseISO(r.rentalDate);
           const rentalEnd = parseISO(r.returnDate);
-          // A rental is active if today is the rental day, or between rental and return, or if it's overdue.
           return isToday(rentalStart) || isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
       });
 
       if(activeRental) {
+        const rentalEnd = parseISO(activeRental.returnDate);
+        if (isToday(rentalEnd)) {
+            return { ...d, derivedStatus: 'Encerra hoje' };
+        }
         return { ...d, derivedStatus: 'Alugada' };
       }
 
@@ -186,104 +190,101 @@ export default function DumpstersPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-bold mb-8 font-headline">Gerenciar Caçambas</h1>
-        <Card className="bg-muted">
-            <CardHeader>
-                <div className="relative mt-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Buscar por nome, cor, tamanho..."
-                        className="pl-9"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+        <h1 className="text-3xl font-bold mb-8 font-headline">Gerenciar Caçambas</h1>
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+                placeholder="Buscar por nome, cor, tamanho..."
+                className="pl-9 bg-card"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
+        <div className="flex flex-wrap gap-2 pt-4 mb-6">
+            {filterOptions.map(option => (
+                <Button
+                    key={option.value}
+                    variant={statusFilter === option.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(option.value as DerivedDumpsterStatus | 'Todos')}
+                    className="text-xs h-7"
+                >
+                    {option.label}
+                </Button>
+            ))}
+        </div>
+        
+        {loading ? <DumpsterTableSkeleton /> : (
+            <>
+                {/* Table for larger screens */}
+                <div className="hidden md:block border rounded-md bg-card">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Identificador</TableHead>
+                            <TableHead>Cor</TableHead>
+                            <TableHead>Tamanho (m³)</TableHead>
+                            <TableHead>Status / Ações</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
+                        <TableRow key={dumpster.id}>
+                        <TableCell className="font-medium">{dumpster.name}</TableCell>
+                        <TableCell><ColorDisplay color={dumpster.color as DumpsterColor} /></TableCell>
+                        <TableCell>{dumpster.size}</TableCell>
+                        <TableCell>
+                            <DumpsterActions dumpster={dumpster} />
+                        </TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            Nenhuma caçamba encontrada.
+                        </TableCell>
+                        </TableRow>
+                    )}
+                    </TableBody>
+                </Table>
                 </div>
-                <div className="flex flex-wrap gap-2 pt-4">
-                    {filterOptions.map(option => (
-                        <Button
-                            key={option.value}
-                            variant={statusFilter === option.value ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setStatusFilter(option.value as DerivedDumpsterStatus | 'Todos')}
-                            className="text-xs h-7"
-                        >
-                            {option.label}
-                        </Button>
-                    ))}
-                </div>
-            </CardHeader>
-            <CardContent>
-                {loading ? <DumpsterTableSkeleton /> : (
-                    <>
-                        {/* Table for larger screens */}
-                        <div className="hidden md:block border rounded-md bg-card">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Identificador</TableHead>
-                                    <TableHead>Cor</TableHead>
-                                    <TableHead>Tamanho (m³)</TableHead>
-                                    <TableHead>Status / Ações</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                            {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
-                                <TableRow key={dumpster.id}>
-                                <TableCell className="font-medium">{dumpster.name}</TableCell>
-                                <TableCell><ColorDisplay color={dumpster.color as DumpsterColor} /></TableCell>
-                                <TableCell>{dumpster.size}</TableCell>
-                                <TableCell>
-                                    <DumpsterActions dumpster={dumpster} />
-                                </TableCell>
-                                </TableRow>
-                            )) : (
-                                <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    Nenhuma caçamba encontrada.
-                                </TableCell>
-                                </TableRow>
-                            )}
-                            </TableBody>
-                        </Table>
-                        </div>
 
-                        {/* Cards for smaller screens */}
-                        <div className="md:hidden space-y-4">
-                        {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
-                           const isRented = dumpster.derivedStatus === 'Alugada';
-                           const isReserved = dumpster.derivedStatus.startsWith('Reservada');
-                           return (
-                            <div key={dumpster.id} className="border rounded-lg p-4 space-y-3 bg-card">
-                                <div className="flex justify-between items-start">
-                                    <h3 className="font-bold text-lg">{dumpster.name}</h3>
-                                    <DumpsterActions dumpster={dumpster} />
-                                </div>
-                                <div className="flex justify-between text-sm text-muted-foreground">
-                                    <ColorDisplay color={dumpster.color as DumpsterColor} />
-                                    <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
-                                </div>
-                                <Separator />
-                                <div className="pt-1 flex items-center gap-4">
-                                     <DumpsterOptionsMenu dumpster={dumpster} />
-                                    <MaintenanceCheckbox 
-                                        dumpster={dumpster}
-                                        isPending={isPending}
-                                        handleToggleStatus={() => handleToggleStatus(dumpster)}
-                                        isReservedOrRented={isRented || isReserved}
-                                    />
-                                </div>
-                            </div>
-                           )
-                        }) : (
-                            <div className="text-center py-10">
-                                <p>Nenhuma caçamba encontrada.</p>
-                            </div>
-                        )}
+                {/* Cards for smaller screens */}
+                <div className="md:hidden space-y-4">
+                {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
+                    const isRented = dumpster.derivedStatus === 'Alugada';
+                    const isReserved = dumpster.derivedStatus.startsWith('Reservada');
+                    return (
+                    <div key={dumpster.id} className="border rounded-lg p-4 space-y-3 bg-card">
+                        <div className="flex justify-between items-start">
+                            <h3 className="font-bold text-lg">{dumpster.name}</h3>
+                            <DumpsterActions dumpster={dumpster} />
                         </div>
-                    </>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                            <ColorDisplay color={dumpster.color as DumpsterColor} />
+                            <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
+                        </div>
+                        <Separator />
+                        <div className="pt-1 flex items-center gap-4">
+                                <DumpsterOptionsMenu dumpster={dumpster} />
+                            <MaintenanceCheckbox 
+                                dumpster={dumpster}
+                                isPending={isPending}
+                                handleToggleStatus={() => handleToggleStatus(dumpster)}
+                                isReservedOrRented={isRented || isReserved}
+                            />
+                        </div>
+                    </div>
+                    )
+                }) : (
+                     <div className="text-center py-16 bg-card rounded-lg border">
+                        <p className="text-muted-foreground">Nenhuma caçamba encontrada.</p>
+                    </div>
                 )}
-            </CardContent>
-        </Card>
+                </div>
+            </>
+        )}
     </div>
   );
 }
+
+    

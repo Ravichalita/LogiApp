@@ -178,13 +178,15 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
   const isRented = dumpster.derivedStatus === 'Alugada';
   
-  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' => {
+  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' | 'warning' => {
     if (status.startsWith('Reservada')) return 'secondary';
     switch (status) {
       case 'Disponível':
         return 'success';
       case 'Alugada':
         return 'destructive';
+      case 'Encerra hoje':
+        return 'warning';
       case 'Em Manutenção':
         return 'secondary';
       default:

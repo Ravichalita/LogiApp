@@ -2,12 +2,12 @@
 'use server';
 
 import { getFirestore } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount } from './types';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup } from './types';
 import { adminDb } from './firebase-admin';
 
 // Helper to convert Timestamps to serializable format
 const toSerializableObject = (obj: any): any => {
-    if (!obj) return obj;
+    if (obj == null) return obj;
     if (typeof obj !== 'object') return obj;
 
     if (obj.toDate && typeof obj.toDate === 'function') {
@@ -87,15 +87,32 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
     }
 }
 
-export async function getAccount(accountId: string): Promise<Account | null> {
+
+export async function getBackupsAction(accountId: string): Promise<Backup[]> {
+    if (!accountId) {
+        console.error("getBackupsAction called without accountId");
+        return [];
+    }
     try {
-        const accountDoc = await adminDb.doc(`accounts/${accountId}`).get();
-        if (!accountDoc.exists) {
-            return null;
+        const backupsCollection = adminDb.collection('backups');
+        const q = backupsCollection.where('accountId', '==', accountId);
+        const querySnapshot = await q.get();
+
+        if (querySnapshot.empty) {
+            return [];
         }
-        return docToSerializable(accountDoc) as Account;
-    } catch(error) {
-        console.error("Error fetching account data:", error);
-        return null;
+        
+        const backups = querySnapshot.docs.map(doc => toSerializableObject({ id: doc.id, ...doc.data() }) as Backup);
+
+        // Sort on the server before returning
+        return backups.sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+        });
+    } catch (error) {
+        console.error("Error fetching backups via server action:", error);
+        // In case of error, return an empty array to the client instead of throwing
+        return [];
     }
 }

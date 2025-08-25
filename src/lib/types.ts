@@ -33,8 +33,17 @@ export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
+    lastBackupDate: z.string().optional(),
+    backupPeriodicityDays: z.number().int().min(1).optional().default(7),
+    backupRetentionDays: z.number().int().min(1).optional().default(90),
 });
 export type Account = z.infer<typeof AccountSchema>;
+
+export const UpdateBackupSettingsSchema = z.object({
+  backupPeriodicityDays: z.coerce.number().int().min(1, "A periodicidade deve ser de no mínimo 1 dia."),
+  backupRetentionDays: z.coerce.number().int().min(1, "A retenção deve ser de no mínimo 1 dia."),
+});
+
 
 // #endregion
 
@@ -50,6 +59,16 @@ export const PermissionsSchema = z.object({
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;
+// #endregion
+
+// #region Backup
+export const BackupSchema = z.object({
+  id: z.string(),
+  accountId: z.string(),
+  createdAt: z.string(), // Serialized as ISO string
+  status: z.enum(['in-progress', 'completed', 'failed']),
+});
+export type Backup = z.infer<typeof BackupSchema>;
 // #endregion
 
 // #region Base Schemas
@@ -174,6 +193,7 @@ export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'compl
     id: string; 
     completedDate: string; // Serialized as ISO string
     accountId: string;
+    client?: Client | null;
     assignedToUser?: UserAccount | null;
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;

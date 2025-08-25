@@ -1,6 +1,7 @@
+
 // src/lib/firebase-admin.ts
 import 'server-only';
-import { getApps, getApp, initializeApp, cert } from 'firebase-admin/app';
+import { getApps, getApp, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
@@ -13,13 +14,19 @@ if (!projectId || !clientEmail || !privateKey) {
   throw new Error('Firebase Admin SDK non foi configurado. Verifique as variáveis de ambiente.');
 }
 
-const adminApp = getApps().length
-  ? getApp()
-  : initializeApp({
-      credential: cert({ projectId, clientEmail, privateKey }),
-      storageBucket: `${projectId}.appspot.com`,
-    });
+const firebaseAdminConfig = {
+  credential: cert({ projectId, clientEmail, privateKey }),
+  storageBucket: `${projectId}.appspot.com`,
+};
+
+let adminApp: App;
+if (!getApps().length) {
+  adminApp = initializeApp(firebaseAdminConfig);
+} else {
+  adminApp = getApp();
+}
 
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
-export const adminStorage = getStorage(adminApp);
+// Exportamos o app inteiro para garantir que a configuração seja usada corretamente
+export { adminApp };

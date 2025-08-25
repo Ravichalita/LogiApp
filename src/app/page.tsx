@@ -15,17 +15,17 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { Truck, Calendar, ChevronDown, User, ShieldAlert, Search } from 'lucide-react';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 
-type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado';
+type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type RentalStatusFilter = RentalStatus | 'Todas';
 
-export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success', order: number } {
+export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning', order: number } {
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
@@ -33,19 +33,23 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   if (isAfter(today, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
-  if (isToday(rentalDate) || (isAfter(today, rentalDate) && isBefore(today, returnDate)) || isToday(returnDate)) {
-     return { text: 'Ativo', variant: 'success', order: 2 };
+  if (isToday(returnDate)) {
+      return { text: 'Encerra hoje', variant: 'warning', order: 2 };
+  }
+  if (isToday(rentalDate) || isAfter(today, rentalDate)) {
+     return { text: 'Ativo', variant: 'success', order: 3 };
   }
   if (isBefore(today, rentalDate)) {
-    return { text: 'Pendente', variant: 'secondary', order: 3 };
+    return { text: 'Pendente', variant: 'secondary', order: 4 };
   }
-  return { text: 'Agendado', variant: 'secondary', order: 4 }; // Should not happen in active rentals list often
+  return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
 }
 
 const filterOptions: { label: string, value: RentalStatusFilter }[] = [
     { label: "Todas", value: 'Todas' },
     { label: "Pendente", value: 'Pendente' },
     { label: "Ativo", value: 'Ativo' },
+    { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Em Atraso", value: 'Em Atraso' },
 ];
 
@@ -262,7 +266,7 @@ export default function HomePage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
                 placeholder="Buscar por cliente, caçamba ou usuário..."
-                className="pl-9"
+                className="pl-9 bg-card"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -287,34 +291,34 @@ export default function HomePage() {
             const status = getRentalStatus(rental);
             return (
             <Accordion type="single" collapsible className="w-full" key={rental.id}>
-                <AccordionItem value={rental.id} className="border rounded-lg shadow-sm overflow-hidden">
-                <Card className="h-full flex flex-col border-none shadow-none rounded-b-none">
+                <AccordionItem value={rental.id} className="border-none">
+                <Card className="h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
                         <div className="flex items-baseline gap-4 flex-wrap">
-                           <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
-                           <p className="text-muted-foreground">
+                          <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
+                          <p className="text-muted-foreground">
                                 Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
                             </p>
                         </div>
-                         <div className="flex flex-col items-end gap-1 ml-2">
+                        <div className="flex flex-col items-end gap-1 ml-2">
                             <Badge variant={status.variant}>{status.text}</Badge>
                         </div>
                     </div>
-                    <div className="flex items-center justify-between text-base text-muted-foreground mt-2">
-                        <div className="flex items-center gap-2 text-lg">
+                    <div className="text-base text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
+                        <div className="flex items-center gap-2">
                             <User className="h-5 w-5" /> 
                             <span>{rental.assignedToUser?.name}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-lg">
+                        <div className="flex items-center gap-2 text-right">
                             <Calendar className="h-5 w-5" />
                             <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
                         </div>
                     </div>
                     </CardHeader>
                     <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
-                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 justify-center rounded-none border-t group">
-                            <ChevronDown className="h-5 w-5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                         </AccordionTrigger>
                         <AccordionContent className="p-4">
                             <RentalCardActions rental={rental} status={status} />
@@ -325,7 +329,7 @@ export default function HomePage() {
             </Accordion>
             );
         }) : (
-             <div className="text-center py-16 bg-card rounded-lg border">
+            <div className="text-center py-16 bg-card rounded-lg border">
                 <p className="text-muted-foreground">Nenhum aluguel encontrado para a busca e filtro aplicados.</p>
             </div>
         )}

@@ -52,14 +52,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
        <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="mx-auto mb-4">
                 <Truck className="h-10 w-10 text-primary" />
             </div>
           <CardTitle className="text-2xl font-bold">Login</CardTitle>
-          <CardDescription>Acesse sua conta</CardDescription>
+          <CardDescription>Acesse sua conta para gerenciar seus aluguéis.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -89,7 +89,7 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
+        <CardFooter className="hidden flex-col gap-4">
              <p className="text-sm text-center text-muted-foreground">
                 Não tem uma conta?{' '}
                 <Link href="/signup" className="font-medium text-primary hover:underline">
