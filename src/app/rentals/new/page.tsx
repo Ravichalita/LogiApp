@@ -81,6 +81,18 @@ export default function NewRentalPage() {
         return !blockingRental;
       })
       .map(d => {
+        
+        const rentalEndingToday = allRentals.find(r => 
+            r.dumpsterId === d.id && isToday(parseISO(r.returnDate))
+        );
+
+        if (rentalEndingToday) {
+            return {
+                ...d,
+                availabilityStatus: 'Encerra hoje',
+            }
+        }
+        
         const futureRental = allRentals
           .filter(r => r.dumpsterId === d.id && isAfter(parseISO(r.rentalDate), today))
           .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0];
@@ -88,11 +100,11 @@ export default function NewRentalPage() {
         if (futureRental) {
           return {
             ...d,
-            availableUntil: new Date(futureRental.rentalDate),
+            availabilityStatus: `Disponível até ${format(parseISO(futureRental.rentalDate), "dd/MM/yy")}`,
           };
         }
         
-        return { ...d, availableUntil: undefined };
+        return { ...d, availabilityStatus: undefined };
       });
   }, [dumpsters, allRentals]);
 

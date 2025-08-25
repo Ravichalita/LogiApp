@@ -185,7 +185,7 @@ export const RentalPricesSchema = z.object({
 
 // #region TypeScript Types
 export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
-export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
+export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string, availabilityStatus?: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
 // Make completedDate a string to allow for serialization from server component

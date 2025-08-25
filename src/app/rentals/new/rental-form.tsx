@@ -25,7 +25,7 @@ const initialState = {
   message: '',
 };
 
-export type DumpsterForForm = Dumpster & { availableUntil?: Date };
+export type DumpsterForForm = Dumpster & { availabilityStatus?: string };
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
@@ -162,9 +162,9 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
               <SelectItem key={d.id} value={d.id}>
                 <div className="flex justify-between w-full">
                     <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
-                    {d.availableUntil && (
+                    {d.availabilityStatus && (
                       <span className="text-xs text-muted-foreground ml-4">
-                        Disponível até {format(d.availableUntil, "dd/MM/yy")}
+                        {d.availabilityStatus}
                       </span>
                     )}
                 </div>
