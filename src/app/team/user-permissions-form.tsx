@@ -33,13 +33,13 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
   );
   
   const isCurrentUser = user?.uid === member.id;
-  const isTargetAdmin = member.role === 'admin';
+  const isTargetAdminOrOwner = member.role === 'admin' || member.role === 'owner';
 
   const handlePermissionChange = (
     permissionKey: keyof Permissions,
     checked: boolean
   ) => {
-    if (!accountId || isCurrentUser || isTargetAdmin || isPending) return;
+    if (!accountId || isCurrentUser || isTargetAdminOrOwner || isPending) return;
 
     const newPermissions = { ...permissions, [permissionKey]: checked };
     setPermissions(newPermissions); // Optimistic update
@@ -67,12 +67,12 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     });
   };
 
-  if (isTargetAdmin) {
+  if (isTargetAdminOrOwner) {
      return (
         <div className="px-4 pb-4">
              <Separator />
              <div className="pt-4 text-sm text-muted-foreground">
-                 Administradores têm acesso a todas as permissões.
+                 {member.role === 'owner' ? 'Proprietários' : 'Administradores'} têm acesso a todas as permissões.
              </div>
         </div>
     )

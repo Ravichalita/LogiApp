@@ -9,12 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Copy, Share2, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Copy, Share2 } from 'lucide-react';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const initialState = {
   message: '',
-  isInvite: true,
+  isInvite: false, // This will be a new admin account, not an invite to an existing one.
   newUser: null as { name: string; email: string; password?: string } | null,
 };
 
@@ -22,7 +22,7 @@ function SubmitButton() {
     const { pending } = useFormStatus();
     return (
         <Button type="submit" disabled={pending}>
-            {pending ? 'Convidando...' : 'Convidar Usuário'}
+            {pending ? 'Cadastrando...' : 'Cadastrar Cliente'}
         </Button>
     )
 }
@@ -42,8 +42,8 @@ function SuccessDialog({
     const loginUrl = "https://studio--caambacontrol3.us-central1.hosted.app/login";
 
     if (!newUser) return null;
-    
-    const message = `Olá, ${newUser.name}! Bem-vindo(a) ao Econtrol.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso. Para isso, acesse o menu no canto superior direito, clique em "Sua Conta" e depois em "Alterar Senha".`;
+
+     const message = `Olá, ${newUser.name}! Bem-vindo(a) ao Econtrol.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso. Para isso, acesse o menu no canto superior direito, clique em "Sua Conta" e depois em "Alterar Senha".`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
@@ -56,6 +56,7 @@ function SuccessDialog({
             toast({ title: 'Erro', description: 'Não foi possível copiar os dados.', variant: 'destructive' });
         });
     }
+
 
     const handleDialogClose = (open: boolean) => {
         onOpenChange(open);
@@ -70,13 +71,13 @@ function SuccessDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <CheckCircle className="h-6 w-6 text-green-500" />
-                        Usuário Adicionado com Sucesso!
+                        Cliente Adicionado com Sucesso!
                     </DialogTitle>
                     <DialogDescription>
-                        Compartilhe os detalhes de login com {newUser.name}.
+                        Compartilhe os detalhes de login com {newUser.name}. A senha é temporária e o cliente poderá alterá-la.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 p-4">
+                 <div className="space-y-4 p-4">
                     <div>
                         <Label>Link de Acesso</Label>
                         <p className="text-sm font-mono p-2 bg-muted rounded-md break-all">{loginUrl}</p>
@@ -107,9 +108,9 @@ function SuccessDialog({
     )
 }
 
-export function InviteForm({ onSave }: { onSave?: () => void }) {
-  const { accountId } = useAuth();
-  const [state, formAction] = useActionState(signupAction.bind(null, accountId), initialState);
+export function AdminInviteForm({ onSave }: { onSave?: () => void }) {
+  // We pass `null` for the accountId to signupAction, indicating a new account should be created.
+  const [state, formAction] = useActionState(signupAction.bind(null, null), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -120,18 +121,17 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
   useEffect(() => {
     if (state.message === 'success' && state.newUser) {
         toast({
-          title: 'Convite Enviado!',
-          description: `O usuário ${state.newUser.name} foi adicionado.`,
+          title: 'Cliente Cadastrado!',
+          description: `A conta para ${state.newUser.email} foi criada.`,
         });
         formRef.current?.reset();
         setPassword('');
         setConfirmPassword('');
         setShowPasswordHint(false);
-        // Do not call onSave here, wait for the success dialog to be closed.
         setIsSuccessDialogOpen(true);
     } else if (state.message && state.message !== 'success') {
       toast({
-        title: 'Erro no Convite',
+        title: 'Erro no Cadastro',
         description: state.message,
         variant: 'destructive',
       });
@@ -152,14 +152,14 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
     <>
     <form ref={formRef} action={formAction} className="space-y-4">
         <div className="space-y-2">
-            <Label htmlFor="name">Nome Completo</Label>
-            <Input id="name" name="name" type="text" placeholder="Nome do usuário" required />
+            <Label htmlFor="name">Nome Completo do Cliente/Empresa</Label>
+            <Input id="name" name="name" type="text" placeholder="Nome do cliente" required />
         </div>
         <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" name="email" type="email" placeholder="usuario@email.com" onBlur={handleEmailBlur} required />
+            <Label htmlFor="email">E-mail de Login</Label>
+            <Input id="email" name="email" type="email" placeholder="cliente@email.com" onBlur={handleEmailBlur} required />
         </div>
-        <div className="space-y-2">
+         <div className="space-y-2">
             <Label htmlFor="password">Senha Temporária</Label>
             <Input id="password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
@@ -170,10 +170,10 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
 
         {showPasswordHint && (
             <p className="text-xs text-muted-foreground">
-                Geramos uma sugestão de senha automaticamente para você. Mas você ainda pode mudar manualmente se quiser.
+                Geramos uma sugestão de senha automaticamente para você. Mas você ainda pode mudar manually se quiser.
             </p>
         )}
-
+        
         {state.message && state.message !== 'success' && (
             <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -191,7 +191,7 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
         isOpen={isSuccessDialogOpen}
         onOpenChange={setIsSuccessDialogOpen}
         newUser={state.newUser}
-        onClose={onSave!} // Call onSave only when the success dialog is closed.
+        onClose={onSave!}
     />
     </>
   );

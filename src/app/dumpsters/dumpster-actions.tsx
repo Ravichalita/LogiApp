@@ -79,7 +79,7 @@ export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }
   const { toast } = useToast();
 
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
-  const isRented = dumpster.derivedStatus === 'Alugada';
+  const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
   
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditDumpsters;
@@ -176,7 +176,7 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const { toast } = useToast();
   
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
-  const isRented = dumpster.derivedStatus === 'Alugada';
+  const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
   
   const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' | 'warning' => {
     if (status.startsWith('Reservada')) return 'secondary';

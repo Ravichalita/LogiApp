@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { getFirebase } from '@/lib/firebase-client';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Truck } from 'lucide-react';
+import { Spinner } from '@/components/ui/spinner';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const { auth } = getFirebase();
@@ -51,6 +53,44 @@ export default function LoginPage() {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!email) {
+        toast({
+            title: 'E-mail Necessário',
+            description: 'Por favor, digite seu e-mail no campo acima para redefinir a senha.',
+            variant: 'destructive'
+        });
+        return;
+    }
+    setIsResetting(true);
+    try {
+        await sendPasswordResetEmail(auth, email);
+        toast({
+            title: 'Link Enviado!',
+            description: (
+                <div>
+                    <p>Um link para redefinir a senha foi enviado para {email}.</p>
+                    <p className="font-bold text-base mt-2">Não se esqueça de verificar sua caixa de spam.</p>
+                </div>
+            )
+        });
+    } catch (error: any) {
+        let errorMessage = 'Não foi possível enviar o e-mail de redefinição.';
+         if (error.code === 'auth/invalid-email') {
+            errorMessage = 'O formato do e-mail é inválido.';
+        } else if (error.code === 'auth/user-not-found') {
+            errorMessage = 'Nenhuma conta encontrada com este e-mail.';
+        }
+        toast({
+            title: 'Erro',
+            description: errorMessage,
+            variant: 'destructive'
+        });
+    } finally {
+        setIsResetting(false);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
        <Card className="w-full max-w-sm">
@@ -84,18 +124,15 @@ export default function LoginPage() {
                 required
               />
             </div>
-             <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Entrando...' : 'Entrar'}
+             <Button type="submit" disabled={isSubmitting || isResetting} className="w-full">
+              {isSubmitting ? <Spinner size="small" /> : 'Entrar'}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="hidden flex-col gap-4">
-             <p className="text-sm text-center text-muted-foreground">
-                Não tem uma conta?{' '}
-                <Link href="/signup" className="font-medium text-primary hover:underline">
-                    Cadastre-se
-                </Link>
-            </p>
+        <CardFooter className="flex-col gap-4 text-center">
+            <Button variant="link" size="sm" onClick={handlePasswordReset} disabled={isResetting || isSubmitting}>
+                {isResetting ? <Spinner size="small" /> : 'Esqueci minha senha'}
+            </Button>
         </CardFooter>
       </Card>
     </div>

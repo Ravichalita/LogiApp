@@ -3,8 +3,8 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { getFirebase } from '@/lib/firebase-client';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { getFirebase, setupFcm } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
@@ -19,6 +19,7 @@ interface AuthContextType {
   loading: boolean;
   logout: () => Promise<void>;
   role: UserRole | null;
+  isSuperAdmin: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -28,10 +29,14 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   logout: async () => {},
   role: null,
+  isSuperAdmin: false,
 });
 
 const nonAuthRoutes = ['/login', '/signup'];
 const publicRoutes = [...nonAuthRoutes, '/verify-email'];
+
+// Define o email do Super Admin. Somente este usuário poderá criar novas contas de cliente.
+const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
 
 const checkAndTriggerAutoBackup = (accountId: string, account: Account | null) => {
     if (!accountId || !account) return;
@@ -62,7 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const backupCheckPerformed = useRef(false);
+  const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
 
   const { auth, db } = getFirebase();
   const router = useRouter();
@@ -84,7 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccount(null);
     setAccountId(null);
     setRole(null);
+    setIsSuperAdmin(false);
     backupCheckPerformed.current = false; // Reset backup check on logout
+    fcmSetupPerformed.current = false; // Reset FCM setup on logout
     await signOut(auth);
     router.push('/login');
   }, [auth, router]);
@@ -92,7 +101,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+      setIsSuperAdmin(false);
       backupCheckPerformed.current = false; // Reset on user change
+      fcmSetupPerformed.current = false;
       if (userDocUnsubscribe.current) userDocUnsubscribe.current();
       if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
 
@@ -125,6 +136,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(firebaseUser);
         setAccountId(claimsAccountId);
         
+        let isSuperAdminUser = false;
+        // Check for Super Admin
+        if (firebaseUser.email === SUPER_ADMIN_EMAIL) {
+            setIsSuperAdmin(true);
+            isSuperAdminUser = true;
+        }
+        
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
             if (userDocSnap.exists()) {
@@ -148,13 +166,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         const accountDocRef = doc(db, 'accounts', claimsAccountId);
-        accountDocUnsubscribe.current = onSnapshot(accountDocRef, (accountSnap) => {
+        accountDocUnsubscribe.current = onSnapshot(accountDocRef, async (accountSnap) => {
             if (accountSnap.exists()) {
                 const accountData = { id: accountSnap.id, ...accountSnap.data() } as Account;
                 setAccount(accountData);
             } else {
-                 console.error("Account document not found. Logging out.");
-                 logout();
+                // *** RECOVERY LOGIC ***
+                // If account is not found, but user is the super admin, create it for them.
+                if (isSuperAdminUser) {
+                    console.warn("Super Admin account not found. Recreating it...");
+                    try {
+                        const newAccountData = {
+                            ownerId: firebaseUser.uid,
+                            members: [firebaseUser.uid],
+                            createdAt: new Date().toISOString(),
+                            rentalPrices: [],
+                            backupPeriodicityDays: 7,
+                            backupRetentionDays: 90,
+                        };
+                        await setDoc(accountDocRef, newAccountData);
+                        setAccount({id: accountDocRef.id, ...newAccountData});
+                        console.log("Super Admin account recreated successfully.");
+                    } catch (e) {
+                         console.error("Failed to recreate Super Admin account. Logging out.", e);
+                         logout();
+                    }
+                } else {
+                    console.error("Account document not found. Logging out.");
+                    logout();
+                }
             }
         }, async (error) => {
              console.error("Error listening to account document:", error);
@@ -173,9 +213,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // This effect runs when both user and account data are loaded.
-    if (user && userAccount && account && !backupCheckPerformed.current) {
-        checkAndTriggerAutoBackup(account.id, account);
-        backupCheckPerformed.current = true; // Mark as checked for this session.
+    if (user && userAccount && account) {
+        if (!backupCheckPerformed.current) {
+            checkAndTriggerAutoBackup(account.id, account);
+            backupCheckPerformed.current = true; // Mark as checked for this session.
+        }
+        if (!fcmSetupPerformed.current) {
+            setupFcm(user.uid);
+            fcmSetupPerformed.current = true;
+        }
     }
 
     // Only set loading to false when we have user and account info (or know we don't need it)
@@ -219,6 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     logout,
     role,
+    isSuperAdmin,
   };
 
   return (

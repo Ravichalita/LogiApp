@@ -10,22 +10,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapDialog } from '@/components/map-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const initialState = {
   errors: {},
   message: '',
 };
 
-export type DumpsterForForm = Dumpster & { availabilityStatus?: string };
+export type DumpsterForForm = Dumpster & { 
+  specialStatus?: string;
+  disabled: boolean;
+  disabledRanges: { from: Date; to: Date }[];
+};
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
@@ -63,6 +68,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
+  const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [assignedToId, setAssignedToId] = useState<string | undefined>(user?.uid);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
@@ -72,6 +78,8 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState('');
   const [priceId, setPriceId] = useState<string | undefined>();
+
+  const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
@@ -127,7 +135,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                 variant: "destructive"
              })
         }
-        if (result?.message) { // For general server errors
+        if (result?.message && !result.errors) { // For general server errors
             toast({ title: "Erro", description: result.message, variant: "destructive"});
         }
     });
@@ -148,23 +156,42 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
     setValue(formatCurrencyForInput(rawValue));
   }
 
+  const isDeliveryOnReturnDay = rentalDate && selectedDumpsterInfo?.disabledRanges.some(range => isSameDay(addDays(range.to, 1), rentalDate));
+
+  const getNextBookingDate = (): Date | null => {
+      if (!rentalDate || !selectedDumpsterInfo) return null;
+
+      const nextBooking = selectedDumpsterInfo.disabledRanges
+          .map(range => range.from)
+          .find(from => from > rentalDate);
+      
+      return nextBooking || null;
+  }
+
+  const nextBookingDate = getNextBookingDate();
 
   return (
     <form action={handleFormAction} className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="dumpsterId">Caçamba</Label>
-        <Select name="dumpsterId" required>
+        <Select name="dumpsterId" onValueChange={setSelectedDumpsterId} required>
           <SelectTrigger>
             <SelectValue placeholder="Selecione uma caçamba disponível" />
           </SelectTrigger>
           <SelectContent>
             {dumpsters.map(d => (
-              <SelectItem key={d.id} value={d.id}>
+              <SelectItem key={d.id} value={d.id} disabled={d.status === 'Em Manutenção'}>
                 <div className="flex justify-between w-full">
                     <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
-                    {d.availabilityStatus && (
-                      <span className="text-xs text-muted-foreground ml-4">
-                        {d.availabilityStatus}
+                    {d.specialStatus && (
+                      <span className={cn(
+                        "text-xs ml-4 font-semibold",
+                        d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
+                        d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
+                        d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
+                        'text-red-500' // fallback for maintenance
+                      )}>
+                        {d.specialStatus}
                       </span>
                     )}
                 </div>
@@ -236,6 +263,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                 mode="single"
                 selected={rentalDate}
                 onSelect={setRentalDate}
+                disabled={selectedDumpsterInfo?.disabledRanges}
                 initialFocus
                 locale={ptBR}
               />
@@ -253,6 +281,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                   "w-full justify-start text-left font-normal",
                   !returnDate && "text-muted-foreground"
                 )}
+                disabled={!rentalDate}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
@@ -263,7 +292,15 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                 mode="single"
                 selected={returnDate}
                 onSelect={setReturnDate}
-                disabled={(date) => rentalDate ? date <= rentalDate : false}
+                disabled={(date) => {
+                    if (!rentalDate || isBeforeDate(date, rentalDate)) {
+                        return true;
+                    }
+                    if (nextBookingDate && date >= nextBookingDate) {
+                        return true;
+                    }
+                    return false;
+                }}
                 initialFocus
                 locale={ptBR}
               />
@@ -272,6 +309,28 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>
+      
+       <div className="pt-2 space-y-2">
+          {isDeliveryOnReturnDay && (
+              <Alert variant="warning">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Atenção: Giro Rápido!</AlertTitle>
+                  <AlertDescription>
+                     A entrega coincide com a data de retirada de outro aluguel para esta caçamba.
+                  </AlertDescription>
+              </Alert>
+          )}
+          {nextBookingDate && (
+             <Alert variant="info">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Disponibilidade Limitada</AlertTitle>
+                  <AlertDescription>
+                    Esta caçamba já tem um agendamento futuro a partir de {format(nextBookingDate, "dd/MM/yyyy", { locale: ptBR })}. A data de retirada deve ser anterior a isso.
+                  </AlertDescription>
+              </Alert>
+          )}
+       </div>
+
        <div className="space-y-2">
         <Label htmlFor="value">Valor da Diária (R$)</Label>
         {(rentalPrices && rentalPrices.length > 0) ? (

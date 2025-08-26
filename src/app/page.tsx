@@ -3,9 +3,9 @@
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { getPopulatedRentals } from '@/lib/data';
-import type { PopulatedRental } from '@/lib/types';
-import { isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
+import { getPopulatedRentals, fetchTeamMembers } from '@/lib/data';
+import type { PopulatedRental, UserAccount } from '@/lib/types';
+import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays } from 'date-fns';
 import {
   Accordion,
   AccordionContent,
@@ -21,6 +21,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
+import { sendNotification } from '@/lib/notifications';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -34,9 +37,9 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
   if (isToday(returnDate)) {
-      return { text: 'Encerra hoje', variant: 'warning', order: 2 };
+    return { text: 'Encerra hoje', variant: 'warning', order: 2 };
   }
-  if (isToday(rentalDate) || isAfter(today, rentalDate)) {
+  if (isToday(rentalDate) || (isAfter(today, rentalDate) && isBefore(today, returnDate))) {
      return { text: 'Ativo', variant: 'success', order: 3 };
   }
   if (isBefore(today, rentalDate)) {
@@ -140,10 +143,15 @@ function RentalCardSkeleton() {
 export default function HomePage() {
   const { user, accountId, userAccount, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
+  const [teamMembers, setTeamMembers] = useState<UserAccount[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
   const [searchTerm, setSearchTerm] = useState('');
+  const notificationsSent = useRef<Set<string>>(new Set());
+  
+  const isAdmin = userAccount?.role === 'admin';
+  const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
 
   useEffect(() => {
     // Wait for the auth context to be ready and have an accountId
@@ -154,6 +162,10 @@ export default function HomePage() {
     setLocalLoading(true);
     const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
+
+    if (canEdit) {
+        fetchTeamMembers(accountId).then(setTeamMembers);
+    }
 
     const unsubscribe = getPopulatedRentals(
       accountId,
@@ -171,7 +183,42 @@ export default function HomePage() {
     );
 
     return () => unsubscribe();
-  }, [authLoading, accountId, user, userAccount]);
+  }, [authLoading, accountId, user, userAccount, canEdit]);
+
+
+  useEffect(() => {
+    if (rentals.length > 0 && userAccount) {
+      const today = startOfToday();
+      const tomorrow = addDays(today, 1);
+
+      rentals.forEach(rental => {
+        const returnDate = parseISO(rental.returnDate);
+        const status = getRentalStatus(rental);
+        
+        // Due tomorrow notification
+        if (isToday(addDays(returnDate, -1)) && !notificationsSent.current.has(`${rental.id}-due`)) {
+          sendNotification({
+            userId: rental.assignedToUser?.id!,
+            title: 'Lembrete de Retirada',
+            body: `A caçamba ${rental.dumpster?.name} para o cliente ${rental.client?.name} vence amanhã.`,
+            link: `/?rentalId=${rental.id}`,
+          });
+          notificationsSent.current.add(`${rental.id}-due`);
+        }
+
+        // Late notification
+        if (status.text === 'Em Atraso' && !notificationsSent.current.has(`${rental.id}-late`)) {
+          sendNotification({
+            userId: rental.assignedToUser?.id!,
+            title: 'Aluguel Atrasado!',
+            body: `O aluguel da caçamba ${rental.dumpster?.name} para ${rental.client?.name} está atrasado.`,
+            link: `/?rentalId=${rental.id}`,
+          });
+          notificationsSent.current.add(`${rental.id}-late`);
+        }
+      });
+    }
+  }, [rentals, userAccount]);
 
 
   const filteredAndSortedRentals = useMemo(() => {
@@ -302,13 +349,19 @@ export default function HomePage() {
                             </p>
                         </div>
                         <div className="flex flex-col items-end gap-1 ml-2">
-                            <Badge variant={status.variant}>{status.text}</Badge>
+                            <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                         </div>
                     </div>
                     <div className="text-base text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
                         <div className="flex items-center gap-2">
                             <User className="h-5 w-5" /> 
-                            <span>{rental.assignedToUser?.name}</span>
+                            {canEdit ? (
+                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                    <span className="cursor-pointer hover:underline">{rental.assignedToUser?.name}</span>
+                                </EditAssignedUserDialog>
+                            ) : (
+                                <span>{rental.assignedToUser?.name}</span>
+                            )}
                         </div>
                         <div className="flex items-center gap-2 text-right">
                             <Calendar className="h-5 w-5" />

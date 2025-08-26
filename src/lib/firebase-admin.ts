@@ -4,7 +4,7 @@ import 'server-only';
 import { getApps, getApp, initializeApp, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
+import { getMessaging } from 'firebase-admin/messaging';
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -28,5 +28,6 @@ if (!getApps().length) {
 
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
+export const adminMessaging = getMessaging(adminApp);
 // Exportamos o app inteiro para garantir que a configuração seja usada corretamente
 export { adminApp };

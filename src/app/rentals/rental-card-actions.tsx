@@ -5,7 +5,7 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText, MoreVertical, Plus, Minus } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText, MoreVertical, Plus, Minus, XCircle } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -92,7 +92,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
   const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
 
-  const isFinalizeDisabled = (status.text !== 'Ativo' && status.text !== 'Em Atraso' && status.text !== 'Encerra hoje');
+  const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
+  const isPendingStatus = status.text === 'Pendente';
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
@@ -209,7 +210,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             >
                                 {rental.client?.phone}
                             </a>
-                            <span className="text-xs text-muted-foreground">Toque para abrir no WhatsApp</span>
+                            <span className="text-xs text-green-600">Toque para abrir no WhatsApp</span>
                         </div>
                     </div>
                     {rental.client?.email && (
@@ -236,7 +237,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
       </div>
        <div className="flex w-full items-center gap-2 mt-auto">
-            {canEdit && (
+            {canEdit && !isPendingStatus && (
                  <AlertDialog>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -248,7 +249,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    {status.text === 'Pendente' ? 'Cancelar Agendamento' : 'Excluir Aluguel'}
+                                    Excluir Aluguel
                                 </DropdownMenuItem>
                             </AlertDialogTrigger>
                         </DropdownMenuContent>
@@ -261,7 +262,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             Você tem certeza?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso irá {status.text === 'Pendente' ? 'cancelar permanentemente o agendamento' : 'excluir permanentemente o registro'} deste aluguel.
+                            Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro deste aluguel.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -273,14 +274,45 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AlertDialogContent>
                 </AlertDialog>
             )}
-            <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
-                <input type="hidden" name="rentalId" value={rental.id} />
-                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                Finalizar Aluguel
-                </Button>
-            </form>
+
+            {isPendingStatus ? (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" className="w-full" disabled={isDeleting}>
+                            {isDeleting ? <Spinner size="small" /> : <XCircle />}
+                            Cancelar Agendamento
+                        </Button>
+                    </AlertDialogTrigger>
+                     <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                                <TriangleAlert className="h-6 w-6 text-destructive" />
+                                Cancelar este Agendamento?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta ação não pode ser desfeita e irá remover permanentemente o registro deste agendamento.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                {isDeleting ? <Spinner size="small" /> : 'Sim, Cancelar'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            ) : (
+                <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                    <input type="hidden" name="rentalId" value={rental.id} />
+                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                    {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                    Finalizar Aluguel
+                    </Button>
+                </form>
+            )}
         </div>
     </div>
   );
 }
+
+    

@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account } from '@/lib/types';
-import { isAfter, isWithinInterval, startOfToday, format, parseISO, isToday } from 'date-fns';
+import { isAfter, isToday, parseISO, startOfDay, format, isWithinInterval, isBefore, endOfDay, subDays } from 'date-fns';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
@@ -59,52 +59,55 @@ export default function NewRentalPage() {
 
 
   const dumpstersForForm = useMemo((): DumpsterForForm[] => {
-    const today = startOfToday();
+    const today = startOfDay(new Date());
 
     return dumpsters
-      .filter(d => {
-        if (d.status === 'Em Manutenção') {
-          return false;
-        }
-
-        const blockingRental = allRentals.find(r => {
-          if (r.dumpsterId !== d.id) return false;
-          
-          const rentalEnd = parseISO(r.returnDate);
-          
-          // It's blocking if it's currently active (and NOT ending today) OR overdue
-          return isWithinInterval(today, { start: parseISO(r.rentalDate), end: rentalEnd }) 
-                 && !isToday(rentalEnd) 
-                 || isAfter(today, rentalEnd);
-        });
-
-        return !blockingRental;
-      })
       .map(d => {
+        if (d.status === 'Em Manutenção') {
+          return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [] };
+        }
         
-        const rentalEndingToday = allRentals.find(r => 
-            r.dumpsterId === d.id && isToday(parseISO(r.returnDate))
-        );
+        const dumpsterRentals = allRentals
+            .filter(r => r.dumpsterId === d.id)
+            .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
 
-        if (rentalEndingToday) {
+        const disabledRanges = dumpsterRentals.map(r => {
+            const rentalStart = startOfDay(parseISO(r.rentalDate));
+            const rentalEnd = endOfDay(parseISO(r.returnDate));
+            // A caçamba fica disponível no dia da retirada, então o bloqueio vai até o dia anterior.
             return {
-                ...d,
-                availabilityStatus: 'Encerra hoje',
+                from: rentalStart,
+                to: subDays(rentalEnd, 1),
+            }
+        }).filter(range => range.to >= range.from); // Ensure range is valid
+
+        // Find the current or next rental to determine the specialStatus
+        const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
+        const currentOrNextRental = sortedRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
+
+        let specialStatus: string | undefined = undefined;
+        
+        if (currentOrNextRental) {
+            const rentalStart = startOfDay(parseISO(currentOrNextRental.rentalDate));
+            const rentalEnd = endOfDay(parseISO(currentOrNextRental.returnDate));
+
+            if (isWithinInterval(today, { start: rentalStart, end: rentalEnd })) {
+                 if (isToday(rentalEnd)) {
+                    specialStatus = `Encerra hoje`;
+                 } else {
+                    specialStatus = `Alugada até ${format(rentalEnd, 'dd/MM/yy')}`;
+                 }
+            } else if (isBefore(today, rentalStart)) {
+                specialStatus = `Reservada para ${format(rentalStart, 'dd/MM/yy')}`;
             }
         }
         
-        const futureRental = allRentals
-          .filter(r => r.dumpsterId === d.id && isAfter(parseISO(r.rentalDate), today))
-          .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0];
-        
-        if (futureRental) {
-          return {
-            ...d,
-            availabilityStatus: `Disponível até ${format(parseISO(futureRental.rentalDate), "dd/MM/yy")}`,
-          };
-        }
-        
-        return { ...d, availabilityStatus: undefined };
+        return { 
+          ...d, 
+          disabled: d.status === 'Em Manutenção',
+          specialStatus,
+          disabledRanges,
+        };
       });
   }, [dumpsters, allRentals]);
 
@@ -131,7 +134,7 @@ export default function NewRentalPage() {
                  <Skeleton className="h-10 w-full" />
               </div>
             </div>
-          ) : (dumpstersForForm.length > 0 && clients.length > 0) ? (
+          ) : (dumpsters.length > 0 && clients.length > 0) ? (
              <RentalForm 
                 dumpsters={dumpstersForForm} 
                 clients={clients} 
@@ -143,7 +146,7 @@ export default function NewRentalPage() {
               <Truck className="h-4 w-4" />
               <AlertTitle>Faltam informações para criar um aluguel!</AlertTitle>
               <AlertDescription>
-                {dumpstersForForm.length === 0 && <p>Não há caçambas disponíveis. <Link href="/dumpsters" className="font-bold underline">Gerencie suas caçambas</Link>.</p>}
+                {dumpsters.length === 0 && <p>Não há caçambas cadastradas. <Link href="/dumpsters" className="font-bold underline">Gerencie suas caçambas</Link>.</p>}
                 {clients.length === 0 && <p>Não há clientes cadastrados. <Link href="/clients" className="font-bold underline">Cadastre um novo cliente</Link>.</p>}
               </AlertDescription>
             </Alert>

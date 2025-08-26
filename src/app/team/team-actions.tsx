@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { MoreHorizontal, Trash2, Edit, UserCog } from 'lucide-react';
+import { MoreHorizontal, Trash2, Edit, UserCog, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,6 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { removeTeamMemberAction, updateUserRoleAction } from '@/lib/actions';
 import { getActiveRentalsForUser } from '@/lib/data';
+import { Spinner } from '@/components/ui/spinner';
 
 export function TeamActions({ member }: { member: UserAccount }) {
   const { accountId, user } = useAuth();
@@ -41,9 +42,10 @@ export function TeamActions({ member }: { member: UserAccount }) {
   const { toast } = useToast();
 
   const isCurrentUser = user?.uid === member.id;
+  const isOwner = member.role === 'owner';
 
   const handleRoleChange = (role: string) => {
-    if (!accountId || isCurrentUser) return;
+    if (!accountId || isCurrentUser || isOwner) return;
     startTransition(async () => {
       const result = await updateUserRoleAction(accountId, member.id, role as UserRole);
       if (result?.message === 'error') {
@@ -65,7 +67,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
   }
 
   const handleRemoveMember = () => {
-    if (!accountId || isCurrentUser) return;
+    if (!accountId || isCurrentUser || isOwner) return;
     startTransition(async () => {
         const result = await removeTeamMemberAction(accountId, member.id);
          if (result?.message === 'error') {
@@ -76,12 +78,21 @@ export function TeamActions({ member }: { member: UserAccount }) {
         setIsAlertOpen(false);
     });
   };
+  
+  if (isOwner) {
+    return (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Shield className="h-4 w-4" />
+            <span>Proprietário</span>
+        </div>
+    )
+  }
 
   return (
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentUser}>
+            <Button variant="ghost" className="h-8 w-8 p-0" disabled={isCurrentUser || isOwner}>
               <span className="sr-only">Abrir menu</span>
               <MoreHorizontal className="h-4 w-4" />
             </Button>
@@ -93,7 +104,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
                     Admin
                 </DropdownMenuRadioItem>
                  <DropdownMenuRadioItem value="viewer">
-                    Viewer
+                    Visualizador
                 </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
@@ -119,7 +130,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
               Essa ação não pode ser desfeita. O usuário perderá o acesso a todos os dados desta conta.
               {assignedRentals.length > 0 && (
                 <span className="font-bold text-destructive block mt-2">
-                  Atenção: {member.name} tem {assignedRentals.length} aluguel(s) ativo(s). Ao remover o usuário, esses aluguéis também serão excluídos permanentemente.
+                  Atenção: {member.name} tem {assignedRentals.length} aluguel(s) ativo(s). Ao remover o usuário, esses aluguéis serão automaticamente transferidos para o proprietário da conta.
                 </span>
               )}
             </AlertDialogDescription>

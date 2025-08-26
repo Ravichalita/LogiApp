@@ -2,22 +2,23 @@
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
-import { getDumpsters, getRentals } from '@/lib/data';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getDumpsters, getRentals, fetchClients } from '@/lib/data';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox, DumpsterOptionsMenu } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor, Client } from '@/lib/types';
 import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Search } from 'lucide-react';
-import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO } from 'date-fns';
+import { Search, GanttChartSquare } from 'lucide-react';
+import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO, subDays, endOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { GanttSpreadsheet } from './gantt-spreadsheet';
 
 
 function ColorDisplay({ color }: { color: DumpsterColor }) {
@@ -67,13 +68,14 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[]
     { label: "Alugada", value: 'Alugada' },
     { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Reservada", value: 'Reservada' },
-    { label: "Manutenção", value: 'Em Manutenção' },
+    { label: "Em Manutenção", value: 'Em Manutenção' },
 ];
 
 export default function DumpstersPage() {
   const { accountId } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos'>('Todos');
@@ -90,6 +92,9 @@ export default function DumpstersPage() {
         setAllRentals(data);
       });
       
+      // Fetch clients for the spreadsheet tooltips
+      fetchClients(accountId).then(setClients);
+
       return () => {
         unsubscribeDumpsters();
         unsubscribeRentals();
@@ -97,6 +102,7 @@ export default function DumpstersPage() {
     } else {
         setDumpsters([]);
         setAllRentals([]);
+        setClients([]);
         setLoading(false);
     }
   }, [accountId, loading]);
@@ -118,8 +124,8 @@ export default function DumpstersPage() {
       });
 
       if(activeRental) {
-        const rentalEnd = parseISO(activeRental.returnDate);
-        if (isToday(rentalEnd)) {
+        const returnDate = parseISO(activeRental.returnDate);
+        if (isToday(returnDate)) {
             return { ...d, derivedStatus: 'Encerra hoje' };
         }
         return { ...d, derivedStatus: 'Alugada' };
@@ -163,7 +169,7 @@ export default function DumpstersPage() {
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
     if (!accountId) return;
-    const isRented = dumpster.derivedStatus === 'Alugada';
+    const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
     const isReserved = dumpster.derivedStatus.startsWith('Reservada');
 
     if (isRented || isReserved) return;
@@ -189,8 +195,26 @@ export default function DumpstersPage() {
 
 
   return (
-    <div className="container mx-auto py-8 px-4 md:px-6">
-        <h1 className="text-3xl font-bold mb-8 font-headline">Gerenciar Caçambas</h1>
+    <div className="container mx-auto py-8 px-4 md:px:6">
+        <h1 className="text-3xl font-bold mb-2 font-headline">Gerenciar Caçambas</h1>
+        <p className="text-muted-foreground mb-8">
+            Visualize e gerencie seu inventário de caçambas.
+        </p>
+
+        <Card className="mb-6">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="flex items-center gap-3">
+                    <GanttChartSquare className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-lg font-medium">Planilha de Disponibilidade</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                    {loading ? <Skeleton className="h-[200px] w-full" /> : <GanttSpreadsheet dumpsters={dumpsters} rentals={allRentals} clients={clients} />}
+                </div>
+            </CardContent>
+        </Card>
+        
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -251,7 +275,7 @@ export default function DumpstersPage() {
                 {/* Cards for smaller screens */}
                 <div className="md:hidden space-y-4">
                 {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
-                    const isRented = dumpster.derivedStatus === 'Alugada';
+                    const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
                     const isReserved = dumpster.derivedStatus.startsWith('Reservada');
                     return (
                     <div key={dumpster.id} className="border rounded-lg p-4 space-y-3 bg-card">

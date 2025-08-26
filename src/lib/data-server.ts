@@ -4,7 +4,7 @@
 import type { UserRecord } from "firebase-admin/auth";
 import { adminAuth } from "./firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { Permissions, PermissionsSchema, SignupSchema } from "./types";
+import { Permissions, PermissionsSchema, SignupSchema, UserRole } from "./types";
 import { z } from "zod";
 
 const firestore = getFirestore();
@@ -22,7 +22,7 @@ const firestore = getFirestore();
 export async function ensureUserDocument(
     userPayload: z.infer<typeof SignupSchema>, 
     inviterAccountId?: string | null
-): Promise<string> {
+): Promise<{ accountId: string; userId: string }> {
     
     // Check if user already exists before creating a new auth record
     const existingUser = await adminAuth.getUserByEmail(userPayload.email).catch(() => null);
@@ -32,6 +32,8 @@ export async function ensureUserDocument(
     
     let newUserRecord: UserRecord | null = null;
     try {
+        const isInviteFlow = !!inviterAccountId;
+
         // Step 1: Create the user in Firebase Auth
         newUserRecord = await adminAuth.createUser({
             email: userPayload.email,
@@ -46,10 +48,10 @@ export async function ensureUserDocument(
         // Step 2: Run a Firestore transaction to create database documents and set claims
         const accountId = await firestore.runTransaction(async (transaction) => {
             let determinedAccountId: string;
-            let role: 'admin' | 'viewer';
+            let role: UserRole;
             let permissions: Permissions;
 
-            if (inviterAccountId) { // --- Invite Flow ---
+            if (isInviteFlow) { // --- Invite Member Flow ---
                 const accountRef = firestore.doc(`accounts/${inviterAccountId}`);
                 const accountSnap = await transaction.get(accountRef);
                 if (!accountSnap.exists) {
@@ -63,10 +65,10 @@ export async function ensureUserDocument(
                     members: FieldValue.arrayUnion(uid)
                 });
 
-            } else { // --- New Account/Admin Flow ---
+            } else { // --- New Client/Admin Account Flow ---
                 determinedAccountId = uid; // The first user's UID becomes the account ID
-                role = 'admin';
-                permissions = PermissionsSchema.parse({ // Admins get all permissions by default
+                role = 'owner'; // The creator of the account is the owner
+                permissions = PermissionsSchema.parse({ // Owners get all permissions by default
                     canAccessTeam: true,
                     canAccessFinance: true,
                     canEditClients: true,
@@ -100,14 +102,12 @@ export async function ensureUserDocument(
 
             return determinedAccountId;
         });
-        
-        return accountId;
+
+        return { accountId, userId: uid };
 
     } catch (error) {
         console.error("Erro na transação de ensureUserDocument. Revertendo...", error);
         
-        // If any step failed, and we managed to create an auth user, we MUST delete them
-        // to prevent an inconsistent state (e.g., auth user exists without a user document).
         if (newUserRecord) {
             try {
                 await adminAuth.deleteUser(newUserRecord.uid);
@@ -117,9 +117,6 @@ export async function ensureUserDocument(
             }
         }
 
-        // Rethrow the original error to be handled by the caller (e.g., signupAction)
         throw new Error(`Falha ao criar usuário e conta: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
-
-    

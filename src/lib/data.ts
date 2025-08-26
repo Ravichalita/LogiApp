@@ -131,9 +131,10 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
     return unsubscribe;
 }
 
-export async function getActiveRentalsForUser(accountId: string, userId: string): Promise<Rental[]> {
+export async function getActiveRentalsForUser(accountId: string, id: string, field: 'assignedTo' | 'clientId' = 'assignedTo'): Promise<Rental[]> {
+    if (!accountId || !id) return [];
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, where("assignedTo", "==", userId));
+    const q = query(rentalsCollection, where(field, "==", id));
     const querySnapshot = await getDocs(q);
     const rentals = querySnapshot.docs.map(doc => {
         const data = doc.data();

@@ -18,7 +18,7 @@ export function FloatingActionButton() {
     }
 
     // Don't show FAB on these pages
-    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/clients')) {
+    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/admin/clients')) {
         return null;
     }
 
@@ -30,6 +30,11 @@ export function FloatingActionButton() {
             case '/dumpsters':
                 if (isAdmin || permissions?.canEditDumpsters) {
                     return <NewItemDialog itemType="dumpster" />;
+                }
+                return null;
+            case '/clients':
+                 if (isAdmin || permissions?.canEditClients) {
+                    return <NewItemDialog itemType="client" />;
                 }
                 return null;
             case '/team':

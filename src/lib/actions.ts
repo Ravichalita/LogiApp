@@ -6,10 +6,11 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema } from './types';
 import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
 import { cookies } from 'next/cookies';
+import { sendNotification } from './notifications';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -37,6 +38,8 @@ function handleFirebaseError(error: unknown): string {
 // #region Auth Actions
 
 export async function signupAction(inviterAccountId: string | null, prevState: any, formData: FormData) {
+  const isInvite = !!inviterAccountId;
+  
   const validatedFields = SignupSchema.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
@@ -49,12 +52,8 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
   }
 
   const { name, email, password } = validatedFields.data;
-  const isInviteFlow = !!inviterAccountId;
-
+  
   try {
-      // This is the CRITICAL step. This server-side function creates the Auth user,
-      // the DB entries, AND sets the custom claims in one go.
-      // If it fails, it cleans up after itself.
       await ensureUserDocument({ name, email, password }, inviterAccountId);
       
       const successState = {
@@ -63,7 +62,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         newUser: {
           name,
           email,
-          password: isInviteFlow ? password : undefined, // Only return password on invite flow
+          password: password,
         },
       };
       
@@ -114,38 +113,47 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
     const db = getFirestore(adminApp);
     const batch = db.batch();
     try {
+        // 1. Validate user
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
+
+        // 2. Find account owner
+        const accountRef = db.doc(`accounts/${accountId}`);
+        const accountSnap = await accountRef.get();
+        const ownerId = accountSnap.data()?.ownerId;
+        if (!ownerId) {
+            throw new Error("Não foi possível encontrar o proprietário da conta para reatribuir os aluguéis.");
+        }
         
-        // Find and delete assigned rentals
+        // 3. Find and reassign active rentals
         const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
         const rentalsQuery = rentalsRef.where('assignedTo', '==', userId);
         const rentalsSnap = await rentalsQuery.get();
         
         if (!rentalsSnap.empty) {
             rentalsSnap.forEach(doc => {
-                batch.delete(doc.ref);
+                batch.update(doc.ref, { assignedTo: ownerId });
             });
         }
 
-        const accountRef = db.doc(`accounts/${accountId}`);
+        // 4. Remove user from account members list
         batch.update(accountRef, {
             members: FieldValue.arrayRemove(userId)
         });
 
-        // We should delete the user document first before deleting the auth user
+        // 5. Delete the user document itself
         batch.delete(userRef);
         
         await batch.commit();
         
-        // Auth user deletion is separate from the transaction
+        // 6. Delete the auth user (separate from transaction)
         await adminAuth.deleteUser(userId);
 
         revalidatePath('/team');
-        revalidatePath('/'); // To update rentals list if any were deleted
+        revalidatePath('/'); // To update rentals list if any were reassigned
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -209,9 +217,29 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 
 
 export async function deleteClientAction(accountId: string, clientId: string) {
+  const db = getFirestore(adminApp);
+  const batch = db.batch();
+
   try {
-    await getFirestore(adminApp).doc(`accounts/${accountId}/clients/${clientId}`).delete();
+    // Find and delete all rentals associated with this client
+    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+    const rentalsQuery = rentalsRef.where('clientId', '==', clientId);
+    const rentalsSnap = await rentalsQuery.get();
+
+    if (!rentalsSnap.empty) {
+      rentalsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+    }
+
+    // Delete the client document
+    const clientRef = db.doc(`accounts/${accountId}/clients/${clientId}`);
+    batch.delete(clientRef);
+    
+    await batch.commit();
+
     revalidatePath('/clients');
+    revalidatePath('/'); // Also revalidate home page as rentals are deleted
     return { message: 'success' };
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) };
@@ -247,6 +275,79 @@ export async function createDumpster(accountId: string, prevState: any, formData
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) };
   }
+}
+
+export async function updateUserProfileAction(userId: string, prevState: any, formData: FormData) {
+    const validatedFields = UpdateUserProfileSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { message: 'error', error: JSON.stringify(validatedFields.error.flatten().fieldErrors) };
+    }
+
+    try {
+        const userRef = getFirestore(adminApp).doc(`users/${userId}`);
+        await userRef.update({
+            ...validatedFields.data,
+            updatedAt: FieldValue.serverTimestamp(),
+        });
+        
+        if (validatedFields.data.name) {
+            await adminAuth.updateUser(userId, { displayName: validatedFields.data.name });
+        }
+
+        revalidatePath('/account');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteSelfUserAction(accountId: string, userId: string) {
+    if (!accountId || !userId) {
+        return { message: 'error', error: "Informações do usuário ausentes." };
+    }
+    const db = getFirestore(adminApp);
+    const batch = db.batch();
+    try {
+        const userRef = db.doc(`users/${userId}`);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
+             throw new Error("Usuário não encontrado ou não pertence a esta conta.");
+        }
+        
+        // Disassociate user from rentals instead of deleting them, to preserve history
+        const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+        const assignedRentalsQuery = rentalsRef.where('assignedTo', '==', userId);
+        const assignedRentalsSnap = await assignedRentalsQuery.get();
+        if (!assignedRentalsSnap.empty) {
+            assignedRentalsSnap.forEach(doc => {
+                batch.update(doc.ref, { assignedTo: FieldValue.delete() });
+            });
+        }
+        
+        const createdRentalsQuery = rentalsRef.where('createdBy', '==', userId);
+        const createdRentalsSnap = await createdRentalsQuery.get();
+        if (!createdRentalsSnap.empty) {
+            createdRentalsSnap.forEach(doc => {
+                batch.update(doc.ref, { createdBy: FieldValue.delete() });
+            });
+        }
+
+        const accountRef = db.doc(`accounts/${accountId}`);
+        batch.update(accountRef, {
+            members: FieldValue.arrayRemove(userId)
+        });
+
+        batch.delete(userRef);
+        await batch.commit();
+        
+        await adminAuth.deleteUser(userId);
+
+        // No revalidation needed, user will be logged out.
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
 }
 
 export async function updateDumpster(accountId: string, prevState: any, formData: FormData) {
@@ -328,13 +429,45 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     };
   }
 
+  const db = getFirestore(adminApp);
+
   try {
     const rentalData = validatedFields.data;
+
+    // Check for scheduling conflicts before creating
+    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+    const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
+    const existingRentalsSnap = await q.get();
+
+    const newRentalStart = new Date(rentalData.rentalDate);
+    const newRentalEnd = new Date(rentalData.returnDate);
+
+    for (const doc of existingRentalsSnap.docs) {
+        const existingRental = doc.data() as Rental;
+        const existingStart = new Date(existingRental.rentalDate);
+        const existingEnd = new Date(existingRental.returnDate);
+
+        // Conflict condition: (StartA < EndB) and (EndA > StartB)
+        if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
+            return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
+        }
+    }
     
-    await getFirestore(adminApp).collection(`accounts/${accountId}/rentals`).add({
+    const newRentalRef = await rentalsRef.add({
       ...rentalData,
       accountId,
       createdAt: FieldValue.serverTimestamp(),
+    });
+
+    // Send notification to assigned user
+    const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
+    const dumpsterName = dumpsterSnap.data()?.name || 'Caçamba';
+    
+    await sendNotification({
+        userId: rentalData.assignedTo,
+        title: 'Novo Aluguel Designado',
+        body: `Você foi designado para um novo aluguel da ${dumpsterName}.`,
+        link: `/?rentalId=${newRentalRef.id}`
     });
 
   } catch (e) {
@@ -445,10 +578,28 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
     try {
         const rentalDoc = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
+        
+        // Get rental before update to check for changes
+        const rentalBeforeUpdate = (await rentalDoc.get()).data() as Rental;
+        
         await rentalDoc.update({
           ...updateData,
           updatedAt: FieldValue.serverTimestamp(),
         });
+
+        // If assigned user changed, send notification
+        if (updateData.assignedTo && updateData.assignedTo !== rentalBeforeUpdate.assignedTo) {
+            const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${rentalBeforeUpdate.clientId}`).get();
+            const clientName = clientSnap.data()?.name || 'Cliente';
+
+            await sendNotification({
+                userId: updateData.assignedTo,
+                title: 'Você foi designado para um Aluguel',
+                body: `Você agora é o responsável pelo aluguel para ${clientName}.`,
+                link: `/?rentalId=${id}`
+            });
+        }
+        
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
@@ -462,7 +613,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 // #region Settings & Reset Actions
 
 export async function updateRentalPricesAction(accountId: string, prices: RentalPrice[]) {
-    const validatedFields = RentalPricesSchema.safeParse({ rentalPrices: prices });
+    const validatedFields = z.array(RentalPriceSchema).safeParse(prices);
     
     if (!validatedFields.success) {
         const error = validatedFields.error.flatten().fieldErrors;
@@ -476,7 +627,7 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
     try {
         const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
         await accountRef.update({
-            rentalPrices: validatedFields.data.rentalPrices ?? []
+            rentalPrices: validatedFields.data ?? []
         });
         revalidatePath('/settings');
         revalidatePath('/rentals/new');
@@ -785,5 +936,94 @@ export async function deleteFirestoreBackupAction(accountId: string, backupId: s
     }
 }
 
+
+// #endregion
+
+// #region Super Admin Actions
+
+export async function updateUserStatusAction(userId: string, disabled: boolean) {
+    try {
+        const userRef = adminDb.doc(`users/${userId}`);
+        const userSnap = await userRef.get();
+
+        if (!userSnap.exists) {
+            throw new Error("Usuário não encontrado.");
+        }
+
+        const userData = userSnap.data() as UserAccount;
+        const newStatus: UserStatus = disabled ? 'inativo' : 'ativo';
+
+        // If the user is an owner, cascade the status change to all members of their account
+        if (userData.role === 'owner') {
+            const accountRef = adminDb.doc(`accounts/${userData.accountId}`);
+            const accountSnap = await accountRef.get();
+            if (accountSnap.exists) {
+                const memberIds: string[] = accountSnap.data()?.members || [];
+                const batch = adminDb.batch();
+
+                for (const memberId of memberIds) {
+                    await adminAuth.updateUser(memberId, { disabled });
+                    const memberRef = adminDb.doc(`users/${memberId}`);
+                    batch.update(memberRef, { status: newStatus });
+                }
+                await batch.commit();
+            }
+        } else {
+            // If it's a regular user, just update their own status
+            await adminAuth.updateUser(userId, { disabled });
+            await userRef.update({ status: newStatus });
+        }
+        
+        revalidatePath('/admin/clients');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteClientAccountAction(accountId: string, ownerId: string) {
+    if (!accountId || !ownerId) {
+        return { message: 'error', error: 'ID da conta ou do proprietário ausente.' };
+    }
+
+    try {
+        const db = adminDb;
+        const batch = db.batch();
+
+        // 1. Delete all subcollections within the account
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
+        for (const collection of collectionsToDelete) {
+            await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
+        }
+
+        // 2. Get all members of the account to delete their user docs and auth records
+        const accountRef = db.doc(`accounts/${accountId}`);
+        const accountSnap = await accountRef.get();
+        const memberIds: string[] = accountSnap.data()?.members || [];
+        
+        // 3. Delete user documents in a batch
+        memberIds.forEach(userId => {
+            const userRef = db.doc(`users/${userId}`);
+            batch.delete(userRef);
+        });
+        
+        // 4. Delete the account document itself
+        batch.delete(accountRef);
+        
+        // Commit all Firestore deletions
+        await batch.commit();
+        
+        // 5. Delete all auth users associated with the account
+        // This is done after the batch to avoid leaving orphaned Firestore data if auth deletion fails.
+        const authDeletePromises = memberIds.map(userId => adminAuth.deleteUser(userId));
+        await Promise.all(authDeletePromises);
+        
+        revalidatePath('/admin/clients');
+        return { message: 'success' };
+
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
 
 // #endregion

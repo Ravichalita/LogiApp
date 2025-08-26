@@ -52,10 +52,10 @@ export const UpdateBackupSettingsSchema = z.object({
 export const PermissionsSchema = z.object({
     canAccessTeam: z.boolean().default(false),
     canAccessFinance: z.boolean().default(false),
+    canAccessSettings: z.boolean().default(false),
     canEditClients: z.boolean().default(false),
     canEditDumpsters: z.boolean().default(false),
     canEditRentals: z.boolean().default(false),
-    canAccessSettings: z.boolean().default(false),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;
@@ -135,6 +135,7 @@ export const UpdateRentalSchema = z.object({
     latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
     longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
     value: z.coerce.number().positive({ message: "O valor deve ser positivo." }).optional(),
+    assignedTo: z.string().optional(),
 }).refine(data => {
     if (data.rentalDate && data.returnDate) {
         return new Date(data.returnDate) > new Date(data.rentalDate);
@@ -159,10 +160,21 @@ export const UserAccountSchema = z.object({
   accountId: z.string(),
   name: z.string(),
   email: z.string(),
-  role: z.enum(['admin', 'viewer']),
+  role: z.enum(['owner', 'admin', 'viewer']),
   status: z.enum(['ativo', 'inativo']),
   permissions: PermissionsSchema,
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  createdAt: z.custom<FieldValue>().optional(),
+  fcmTokens: z.array(z.string()).optional(),
 });
+
+export const UpdateUserProfileSchema = z.object({
+    name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+});
+
 
 export const SignupSchema = z
   .object({
@@ -185,7 +197,7 @@ export const RentalPricesSchema = z.object({
 
 // #region TypeScript Types
 export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
-export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string, availabilityStatus?: string };
+export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
 // Make completedDate a string to allow for serialization from server component
@@ -202,7 +214,7 @@ export type UserStatus = UserAccount['status'];
 export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
-export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada';
+export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
 export type EnhancedDumpster = Dumpster & { derivedStatus: string };
 export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
     id: string;
@@ -215,4 +227,13 @@ export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'cli
     dumpster: Dumpster | null;
     client: Client | null;
 };
+export type AdminClientView = {
+    accountId: string;
+    ownerId: string;
+    ownerName: string;
+    ownerEmail: string;
+    ownerStatus: UserStatus;
+    createdAt: string;
+    members: UserAccount[];
+}
 // #endregion

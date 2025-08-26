@@ -93,9 +93,6 @@ export default function ClientsPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-        <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50">
-            <NewItemDialog itemType="client" onSuccess={handleClientAdded} />
-        </div>
         <h1 className="text-3xl font-headline font-bold mb-8">Gerenciar Clientes</h1>
         <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -183,5 +180,3 @@ export default function ClientsPage() {
     </div>
   );
 }
-
-    

@@ -11,14 +11,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, UserPlus } from 'lucide-react';
+import { Plus, UserPlus, Building } from 'lucide-react';
 import { ClientForm } from '@/app/clients/client-form';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
 import { InviteForm } from '@/app/team/invite-form';
+import { AdminInviteForm } from '@/app/team/admin-invite-form';
 
 
 interface NewItemDialogProps {
-  itemType: 'client' | 'dumpster' | 'team';
+  itemType: 'client' | 'dumpster' | 'team' | 'clientAdmin';
   onSuccess?: () => void;
 }
 
@@ -30,13 +31,15 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   const titles = {
     client: 'Novo Cliente',
     dumpster: 'Nova Caçamba',
-    team: 'Convidar Membro',
+    team: 'Adicionar membro à equipe',
+    clientAdmin: 'Cadastrar Novo Cliente (Admin)',
   };
 
   const descriptions = {
     client: 'Adicione um novo cliente à sua lista.',
     dumpster: 'Cadastre uma nova caçamba no seu inventário.',
-    team: 'Preencha os dados do novo membro da equipe.',
+    team: 'Crie uma conta para um funcionário. Ele terá acesso aos dados da sua empresa com as permissões que você definir.',
+    clientAdmin: 'Crie uma nova conta de administrador para seu cliente. Ele terá uma conta separada e isolada para gerenciar os próprios dados.',
   };
 
   const handleSave = () => {
@@ -56,12 +59,14 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     client: <ClientForm key={formKey} onSave={handleSave} />,
     dumpster: <DumpsterForm key={formKey} onSave={handleSave} />,
     team: <InviteForm key={formKey} onSave={handleSave} />,
+    clientAdmin: <AdminInviteForm key={formKey} onSave={handleSave} />,
   };
   
    const iconComponent = {
     client: <Plus className="h-8 w-8" />,
     dumpster: <Plus className="h-8 w-8" />,
     team: <UserPlus className="h-7 w-7" />,
+    clientAdmin: <Building className="h-7 w-7" />,
    }
 
   return (
@@ -79,7 +84,7 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
             {descriptions[itemType]}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow overflow-y-auto px-1 py-4">
+        <div className="flex-grow overflow-y-auto px-6 py-4">
             {formComponent[itemType]}
         </div>
       </DialogContent>

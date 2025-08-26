@@ -33,12 +33,18 @@ function TeamListSkeleton() {
     );
 }
 
+const roleLabels: Record<UserAccount['role'], string> = {
+    owner: 'Proprietário',
+    admin: 'Admin',
+    viewer: 'Visualizador'
+};
+
 export default function TeamPage() {
     const { accountId, userAccount, loading: authLoading } = useAuth();
     const [team, setTeam] = useState<UserAccount[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
-    const isAdmin = userAccount?.role === 'admin';
+    const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
     const canAccess = isAdmin || userAccount?.permissions?.canAccessTeam;
 
     useEffect(() => {
@@ -95,16 +101,20 @@ export default function TeamPage() {
                                             </div>
                                             <TeamActions member={member} />
                                         </div>
-                                            <Badge variant={member.role === 'admin' ? 'default' : 'secondary'} className="mt-2">
-                                            {member.role === 'admin' ? 'Admin' : 'Viewer'}
-                                            </Badge>
-                                        <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start [&>svg]:ml-1">
-                                            Gerenciar Permissões
-                                        </AccordionTrigger>
+                                        <Badge variant={member.role === 'owner' ? 'default' : 'secondary'} className="mt-2">
+                                            {roleLabels[member.role]}
+                                        </Badge>
+                                        {member.role !== 'owner' && (
+                                            <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start [&>svg]:ml-1">
+                                                Gerenciar Permissões
+                                            </AccordionTrigger>
+                                        )}
                                     </div>
+                                    {member.role !== 'owner' && (
                                     <AccordionContent>
                                         <UserPermissionsForm member={member} />
                                     </AccordionContent>
+                                    )}
                                 </AccordionItem>
                             ))}
                         </Accordion>

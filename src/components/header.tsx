@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Truck, LogOut, User as UserIcon, Users, BarChart, Settings } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -27,8 +27,8 @@ const navLinks = [
 
 export function Header() {
   const pathname = usePathname();
-  const { user, userAccount, logout } = useAuth();
-  const isAdmin = userAccount?.role === 'admin';
+  const { user, userAccount, logout, isSuperAdmin } = useAuth();
+  const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
   const permissions = userAccount?.permissions;
 
   const renderNavLinks = () =>
@@ -56,7 +56,10 @@ export function Header() {
         <div className="flex items-center">
           <Link href="/" className="flex items-center space-x-2">
             <Truck className="h-6 w-6 text-primary" />
-            <span className="font-bold font-headline text-lg">
+            <span className={cn(
+              "font-bold font-headline text-lg",
+              isSuperAdmin && "hidden md:inline" // Hide title on mobile for super-admin
+            )}>
               Econtrol
             </span>
           </Link>
@@ -64,6 +67,15 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
+            {isSuperAdmin && (
+                 <Button variant="ghost" size="icon" asChild className="inline-flex">
+                    <Link href="/admin/clients">
+                        <ShieldCheck className="h-5 w-5" />
+                        <span className="sr-only">Admin Clientes</span>
+                    </Link>
+                </Button>
+            )}
+
             {(isAdmin || permissions?.canAccessSettings) && (
                  <Button variant="ghost" size="icon" asChild className="inline-flex">
                     <Link href="/settings">
@@ -106,13 +118,19 @@ export function Header() {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">Logado como</p>
+                  <p className="text-sm font-medium leading-none">{userAccount?.name || 'Usuário'}</p>
                   <p className="text-xs leading-none text-muted-foreground truncate">
                     {user.email}
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+               <DropdownMenuItem asChild>
+                 <Link href="/account">
+                    <UserIcon className="mr-2 h-4 w-4" />
+                    <span>Sua Conta</span>
+                  </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sair</span>
