@@ -109,6 +109,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
     setDeliveryAddress(selectedLocation.address);
   };
   
+  const handleAddressChange = (newAddress: string) => {
+    setDeliveryAddress(newAddress);
+  }
+
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
         if (!accountId || !user) {
@@ -233,7 +237,8 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         <Label htmlFor="address-input">Endereço de Entrega</Label>
         <AddressInput
             id="address-input"
-            initialValue={deliveryAddress}
+            value={deliveryAddress}
+            onInputChange={handleAddressChange}
             onLocationSelect={handleLocationSelect}
             initialLocation={location}
         />

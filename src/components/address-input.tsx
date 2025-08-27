@@ -10,13 +10,13 @@ import { Skeleton } from './ui/skeleton';
 
 interface AddressInputProps {
   id?: string;
-  initialValue: string;
+  value: string;
+  onInputChange: (value: string) => void;
   onLocationSelect: (location: Location) => void;
   initialLocation?: { lat: number; lng: number } | null;
 }
 
-export function AddressInput({ id, initialValue, onLocationSelect, initialLocation }: AddressInputProps) {
-  const [inputValue, setInputValue] = useState(initialValue);
+export function AddressInput({ id, value, onInputChange, onLocationSelect, initialLocation }: AddressInputProps) {
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -35,15 +35,10 @@ export function AddressInput({ id, initialValue, onLocationSelect, initialLocati
           lng: place.geometry.location.lng(),
           address: place.formatted_address,
         };
-        setInputValue(location.address);
         onLocationSelect(location);
       }
     }
   };
-
-  useEffect(() => {
-    setInputValue(initialValue);
-  }, [initialValue]);
   
   if (!isLoaded) {
     return <Skeleton className="h-10 w-full" />;
@@ -62,12 +57,12 @@ export function AddressInput({ id, initialValue, onLocationSelect, initialLocati
         >
           <Input
             id={id}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            value={value}
+            onChange={(e) => onInputChange(e.target.value)}
             placeholder="Digite o endereço..."
             required
             className="w-full"
-            autoComplete="off"
+            autoComplete="new-password"
           />
         </Autocomplete>
       </div>
