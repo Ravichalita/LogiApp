@@ -49,23 +49,26 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
   }
 
   return (
-    <div className="flex gap-2">
-      <Autocomplete
-        onLoad={(ac) => setAutocomplete(ac)}
-        onPlaceChanged={handlePlaceSelect}
-        options={{
-            componentRestrictions: { country: 'br' }, // Restrict to Brazil
-            fields: ['formatted_address', 'geometry.location'] // Optimize by fetching only needed data
-        }}
-      >
-        <Input
-          id={id}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Digite o endereço..."
-          required
-        />
-      </Autocomplete>
+    <div className="flex gap-2 w-full">
+      <div className="flex-grow">
+        <Autocomplete
+          onLoad={(ac) => setAutocomplete(ac)}
+          onPlaceChanged={handlePlaceSelect}
+          options={{
+              componentRestrictions: { country: 'br' }, // Restrict to Brazil
+              fields: ['formatted_address', 'geometry.location'] // Optimize by fetching only needed data
+          }}
+        >
+          <Input
+            id={id}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder="Digite o endereço..."
+            required
+            className="w-full"
+          />
+        </Autocomplete>
+      </div>
       <MapDialog
         onLocationSelect={onLocationSelect}
         initialLocation={
