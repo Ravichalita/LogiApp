@@ -14,12 +14,12 @@ import { CalendarIcon, User, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { MapDialog } from '@/components/map-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AddressInput } from '@/components/address-input';
 
 const initialState = {
   errors: {},
@@ -116,6 +116,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             return;
         }
         
+        formData.set('deliveryAddress', deliveryAddress); // Make sure address is in form data
         if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
         if (returnDate) formData.set('returnDate', returnDate.toISOString());
         if (location) {
@@ -229,16 +230,12 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="deliveryAddress">Endereço de Entrega</Label>
-        <div className="flex gap-2">
-          <Input id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Informe o endereço ou selecione no mapa" required />
-          <MapDialog onLocationSelect={handleLocationSelect} />
-        </div>
-         {location && (
-          <p className="text-sm text-muted-foreground">
-            Coordenadas selecionadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-          </p>
-        )}
+        <Label htmlFor="address-input">Endereço de Entrega</Label>
+        <AddressInput
+            id="address-input"
+            initialValue={deliveryAddress}
+            onLocationSelect={handleLocationSelect}
+        />
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
       

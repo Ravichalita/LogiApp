@@ -15,11 +15,10 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { MapDialog } from '@/components/map-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { AddressInput } from '@/components/address-input';
 
 interface EditRentalDialogProps {
   rental: PopulatedRental;
@@ -51,6 +50,7 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
         return;
       }
       
+      formData.set('deliveryAddress', deliveryAddress); // Make sure address is in form data
       if (location) {
         formData.set('latitude', String(location.lat));
         formData.set('longitude', String(location.lng));
@@ -98,16 +98,12 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
             <input type="hidden" name="id" value={rental.id} />
             
             <div className="space-y-2">
-                <Label htmlFor="deliveryAddress">Endereço de Entrega</Label>
-                <div className="flex gap-2">
-                <Textarea id="deliveryAddress" name="deliveryAddress" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} required />
-                <MapDialog onLocationSelect={handleLocationSelect} />
-                </div>
-                {location && (
-                <p className="text-sm text-muted-foreground">
-                    Coordenadas selecionadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                </p>
-                )}
+                <Label htmlFor="address-input">Endereço de Entrega</Label>
+                 <AddressInput
+                    id="address-input"
+                    initialValue={deliveryAddress}
+                    onLocationSelect={handleLocationSelect}
+                />
                 {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
             </div>
 

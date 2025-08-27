@@ -29,19 +29,20 @@ const defaultCenter = {
 
 interface MapDialogProps {
   onLocationSelect: (location: Location) => void;
+  initialLocation?: { lat: number; lng: number } | null;
 }
 
-export function MapDialog({ onLocationSelect }: MapDialogProps) {
+export function MapDialog({ onLocationSelect, initialLocation }: MapDialogProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [center, setCenter] = useState(defaultCenter);
-  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | undefined>();
+  const [center, setCenter] = useState(initialLocation || defaultCenter);
+  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | undefined>(initialLocation || undefined);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['geocoding'],
+    libraries: ['geocoding', 'places'], // Enable Places API for autocomplete
     preventLoad: !googleMapsApiKey,
   });
   
@@ -50,7 +51,7 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
   }, []);
 
   useEffect(() => {
-    if (isOpen && navigator.geolocation) {
+    if (isOpen && !initialLocation && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newCenter = {
@@ -67,8 +68,11 @@ export function MapDialog({ onLocationSelect }: MapDialogProps) {
           console.log("User denied Geolocation");
         }
       );
+    } else if (initialLocation) {
+        setCenter(initialLocation);
+        setSelectedPosition(initialLocation);
     }
-  }, [isOpen, map]);
+  }, [isOpen, map, initialLocation]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (event.latLng) {

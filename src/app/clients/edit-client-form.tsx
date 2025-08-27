@@ -9,10 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { Client, Location } from '@/lib/types';
-import { MapDialog } from '@/components/map-dialog';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { AddressInput } from '@/components/address-input';
 
 const initialState = {
   errors: {},
@@ -63,6 +63,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
       if (!accountId) return;
+      formData.set('address', address); // Make sure the address from state is in formData
       const boundAction = updateClient.bind(null, accountId);
       const result = await boundAction(state, formData);
       setState(result);
@@ -97,17 +98,13 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="address">Endereço Principal</Label>
-           <div className="flex gap-2">
-              <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} required />
-              <MapDialog onLocationSelect={handleLocationSelect} />
-          </div>
-          {location && (
-            <p className="text-sm text-muted-foreground">
-              Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-            </p>
-          )}
-          {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+            <Label htmlFor="address-input">Endereço Principal</Label>
+            <AddressInput
+                id="address-input"
+                initialValue={address}
+                onLocationSelect={handleLocationSelect}
+            />
+            {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="observations">Observações</Label>

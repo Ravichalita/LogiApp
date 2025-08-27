@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { MapDialog } from '@/components/map-dialog';
 import type { Location } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { AddressInput } from '@/components/address-input';
 
 const initialState = {
   errors: {},
@@ -100,6 +100,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <form id={formId} onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
+        <input type="hidden" name="address" value={address} />
         {location && <input type="hidden" name="latitude" value={location.lat} />}
         {location && <input type="hidden" name="longitude" value={location.lng} />}
         
@@ -124,17 +125,13 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="address">Endereço Principal</Label>
-          <div className="flex gap-2">
-              <Textarea id="address" name="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua das Flores, 123, São Paulo, SP" required />
-              <MapDialog onLocationSelect={handleLocationSelect} />
-          </div>
-           {location && (
-            <p className="text-sm text-muted-foreground">
-              Coordenadas: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-            </p>
-          )}
-          {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+            <Label htmlFor="address-input">Endereço Principal</Label>
+            <AddressInput
+                id="address-input"
+                initialValue={address}
+                onLocationSelect={handleLocationSelect}
+            />
+            {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="observations">Observações</Label>
