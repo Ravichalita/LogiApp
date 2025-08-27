@@ -1,7 +1,7 @@
-
 // src/lib/firebase-client.ts
 'use client';
 import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
@@ -14,6 +14,7 @@ const firebaseConfig: FirebaseOptions = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 
@@ -24,19 +25,21 @@ export function getFirebase() {
   if (typeof window === 'undefined') {
     // This is a dummy return for the server. The actual initialization
     // will happen in a useEffect on the client.
-    return { app: null, auth: null, db: null };
+    return { app: null, auth: null, db: null, analytics: null };
   }
 
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(app);
   const db = getFirestore(app);
-  return { app, auth, db };
+  const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
+
+  return { app, auth, db, analytics };
 }
 
 // Add this function to be callable from the AuthProvider
 export async function getFirebaseIdToken() {
     const { auth } = getFirebase();
-    if (!auth.currentUser) {
+    if (!auth?.currentUser) {
         return null;
     }
     return await auth.currentUser.getIdToken(true); // Force refresh
@@ -51,6 +54,7 @@ export const setupFcm = async (userId: string) => {
 
     try {
         const { app, db } = getFirebase();
+        if (!app || !db) return;
         const messaging = getMessaging(app);
 
         // Register the service worker
