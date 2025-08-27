@@ -22,14 +22,20 @@ interface AddressInputProps {
 
 export function AddressInput({ id, initialValue = '', onInputChange, onLocationSelect, initialLocation, className, value }: AddressInputProps) {
   const [inputValue, setInputValue] = useState(value ?? initialValue);
+  // Start in editing mode if there's no initial value, otherwise start in display mode.
+  const [isEditing, setIsEditing] = useState(!initialValue && !value);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const [currentLocation, setCurrentLocation] = useState(initialLocation);
-  const portalRef = useRef<HTMLDivElement>(null);
-
+  
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (value !== undefined) {
       setInputValue(value);
+      // If a new value is passed (e.g., from selecting a client), switch to display mode.
+      if (value) {
+        setIsEditing(false);
+      }
     }
   }, [value]);
   
@@ -38,6 +44,14 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
       setCurrentLocation(initialLocation);
     }
   }, [initialLocation]);
+
+  useEffect(() => {
+    // When switching to editing mode, focus the input field to allow immediate typing.
+    if (isEditing) {
+      // Use a timeout to ensure the input is rendered before trying to focus it.
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [isEditing]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -65,38 +79,59 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
         onLocationSelect(locationData);
         setCurrentLocation({ lat: locationData.lat, lng: locationData.lng });
         onInputChange?.(place.formatted_address);
+        setIsEditing(false); // Switch to display mode (Textarea)
       }
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-    onInputChange?.(e.target.value);
+  // Handles text change for both Input and Textarea
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    onInputChange?.(newValue);
+  };
+  
+  const switchToEditing = () => {
+    setIsEditing(true);
   }
 
-
   if (!isLoaded) {
-    return <Skeleton className="h-10 w-full" />;
+    return <Skeleton className="h-20 w-full" />;
   }
 
   return (
     <div className={cn("relative w-full", className)}>
       <div className="flex gap-2 items-start">
         <div className="flex-grow relative">
+          {isEditing ? (
             <StandaloneSearchBox
-                onLoad={onLoad}
-                onPlacesChanged={onPlacesChanged}
+              onLoad={onLoad}
+              onPlacesChanged={onPlacesChanged}
             >
-            <Input
+              <Input
+                ref={inputRef}
                 id={id}
                 value={inputValue}
-                onChange={handleInputChange}
-                placeholder="Digite o endereço..."
+                onChange={handleTextChange}
+                placeholder="Digite para buscar o endereço..."
                 required
                 className="w-full"
                 autoComplete="off"
-            />
+              />
             </StandaloneSearchBox>
+          ) : (
+            <Textarea
+              id={id}
+              value={inputValue}
+              onChange={handleTextChange}
+              onFocus={switchToEditing}
+              onClick={switchToEditing}
+              placeholder="Endereço selecionado"
+              rows={3}
+              className="w-full cursor-text"
+              required
+            />
+          )}
         </div>
         <MapDialog
           onLocationSelect={onLocationSelect}
