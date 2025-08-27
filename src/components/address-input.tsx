@@ -25,7 +25,8 @@ export function AddressInput({
   initialValue = '', 
   onInputChange, 
   onLocationSelect, 
-  value: controlledValue 
+  value: controlledValue,
+  initialLocation,
 }: AddressInputProps) {
   
   const [searchValue, setSearchValue] = useState(initialValue);
@@ -95,33 +96,33 @@ export function AddressInput({
 
   return (
     <div className="space-y-2">
-       <div className="flex gap-2 items-start">
-        <StandaloneSearchBox
-            onLoad={onLoad}
-            onPlacesChanged={onPlacesChanged}
-        >
-            <div className="relative w-full">
-            <Input
-                id={id}
-                ref={inputRef}
-                placeholder="Digite para buscar um endereço..."
-                value={searchValue}
-                onChange={handleInputChange}
-                className="pr-8"
-            />
-            {searchValue && (
-                <button
-                type="button"
-                onClick={handleClear}
-                className="absolute inset-y-0 right-0 flex items-center pr-2"
-                aria-label="Limpar endereço"
-                >
-                <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                </button>
-            )}
-            </div>
-        </StandaloneSearchBox>
-        <MapDialog onLocationSelect={onLocationSelect} />
+       <div className="flex gap-2 items-center w-full">
+            <StandaloneSearchBox
+                onLoad={onLoad}
+                onPlacesChanged={onPlacesChanged}
+            >
+                <div className="relative w-full">
+                <Input
+                    id={id}
+                    ref={inputRef}
+                    placeholder="Digite para buscar um endereço..."
+                    value={searchValue}
+                    onChange={handleInputChange}
+                    className="pr-8"
+                />
+                {searchValue && (
+                    <button
+                    type="button"
+                    onClick={handleClear}
+                    className="absolute inset-y-0 right-0 flex items-center pr-2"
+                    aria-label="Limpar endereço"
+                    >
+                    <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </button>
+                )}
+                </div>
+            </StandaloneSearchBox>
+            <MapDialog onLocationSelect={onLocationSelect} initialLocation={initialLocation} />
       </div>
       {selectedAddress && (
         <div className="p-3 min-h-[60px] text-sm rounded-md border bg-muted">
