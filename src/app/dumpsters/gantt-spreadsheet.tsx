@@ -28,9 +28,9 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     const today = startOfToday();
     const dates = Array.from({ length: NUMBER_OF_DAYS }, (_, i) => addDays(today, i));
     const dateHeaders = dates.map(date => ({
-      dayOfWeek: format(date, 'E', { locale: ptBR }),
+      dayOfWeek: format(date, 'EEE', { locale: ptBR }),
       dayOfMonth: format(date, 'd'),
-      isWeekend: format(date, 'E', { locale: ptBR }) === 'Sáb' || format(date, 'E', { locale: ptBR }) === 'Dom',
+      isWeekend: format(date, 'EEE', { locale: ptBR }) === 'Sáb' || format(date, 'EEE', { locale: ptBR }) === 'Dom',
       isToday: isSameDay(date, today),
     }));
 
