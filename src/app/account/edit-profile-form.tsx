@@ -53,6 +53,10 @@ export function EditProfileForm({ user }: { user: UserAccount }) {
                     <Label htmlFor="phone">Telefone</Label>
                     <Input id="phone" name="phone" defaultValue={user.phone ?? ''} />
                 </div>
+                <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF (Opcional)</Label>
+                    <Input id="cpf" name="cpf" defaultValue={user.cpf ?? ''} />
+                </div>
             </div>
             <div className="space-y-2">
                 <Label htmlFor="address">Endereço</Label>

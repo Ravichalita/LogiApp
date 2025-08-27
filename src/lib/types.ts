@@ -165,6 +165,7 @@ export const UserAccountSchema = z.object({
   permissions: PermissionsSchema,
   phone: z.string().optional(),
   address: z.string().optional(),
+  cpf: z.string().optional(),
   createdAt: z.custom<FieldValue>().optional(),
   fcmTokens: z.array(z.string()).optional(),
 });
@@ -172,6 +173,7 @@ export const UserAccountSchema = z.object({
 export const UpdateUserProfileSchema = z.object({
     name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
     phone: z.string().optional(),
+    cpf: z.string().optional(),
     address: z.string().optional(),
 });
 
