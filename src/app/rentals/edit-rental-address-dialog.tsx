@@ -42,6 +42,10 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setDeliveryAddress(selectedLocation.address);
   };
+  
+  const handleAddressInputChange = (address: string) => {
+    setDeliveryAddress(address);
+  };
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -103,6 +107,8 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
                     id="address-input"
                     initialValue={deliveryAddress}
                     onLocationSelect={handleLocationSelect}
+                    onInputChange={handleAddressInputChange}
+                    initialLocation={location}
                 />
                 {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
             </div>
