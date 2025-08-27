@@ -1,25 +1,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { MapDialog } from '@/components/map-dialog';
-import type { Location } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
+import type { Location } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Edit } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface AddressInputProps {
   id?: string;
@@ -36,32 +24,25 @@ export function AddressInput({
   initialValue = '', 
   onInputChange, 
   onLocationSelect, 
-  initialLocation, 
-  className,
   value: controlledValue 
 }: AddressInputProps) {
-  const [internalValue, setInternalValue] = useState(controlledValue ?? initialValue);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const [searchValue, setSearchValue] = useState(initialValue);
+  const [selectedAddress, setSelectedAddress] = useState(initialValue);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
-  const [currentLocation, setCurrentLocation] = useState(initialLocation);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (controlledValue !== undefined) {
-      setInternalValue(controlledValue);
-    }
-  }, [controlledValue]);
-
-  useEffect(() => {
-    if (initialLocation) {
-      setCurrentLocation(initialLocation);
-    }
-  }, [initialLocation]);
+    const value = controlledValue ?? initialValue;
+    setSearchValue(value);
+    setSelectedAddress(value);
+  }, [controlledValue, initialValue]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['places', 'geocoding'],
+    libraries: ['places'],
     preventLoad: !googleMapsApiKey,
   });
 
@@ -74,83 +55,75 @@ export function AddressInput({
     if (places && places.length > 0) {
       const place = places[0];
       if (place.geometry?.location && place.formatted_address) {
-        const locationData = {
+        const locationData: Location = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
           address: place.formatted_address,
         };
-        setInternalValue(place.formatted_address);
-        setCurrentLocation({ lat: locationData.lat, lng: locationData.lng });
+        
         onLocationSelect(locationData);
-        onInputChange?.(place.formatted_address);
-        setIsDialogOpen(false); 
+        onInputChange?.(locationData.address);
+
+        setSearchValue(locationData.address);
+        setSelectedAddress(locationData.address);
       }
     }
   };
-  
-  const handleMapLocationSelect = (location: Location) => {
-    setInternalValue(location.address);
-    setCurrentLocation({ lat: location.lat, lng: location.lng });
-    onLocationSelect(location);
-    onInputChange?.(location.address);
-    setIsDialogOpen(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setSearchValue(newValue);
+    if(newValue === '') {
+        setSelectedAddress('');
+        onInputChange?.('');
+    }
+  }
+
+  const handleClear = () => {
+      setSearchValue('');
+      setSelectedAddress('');
+      onInputChange?.('');
+      if(inputRef.current) {
+          inputRef.current.focus();
+      }
   }
 
   if (!isLoaded) {
     return <Skeleton className="h-10 w-full" />;
   }
-  
-  return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <div className={cn("relative w-full", className)}>
-            <Textarea
-                id={id}
-                value={internalValue}
-                onClick={() => setIsDialogOpen(true)}
-                readOnly
-                placeholder="Clique para adicionar um endereço..."
-                rows={3}
-                className="w-full cursor-pointer pr-10"
-                required
-            />
-             <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
-                    <Edit className="h-4 w-4" />
-                    <span className="sr-only">Editar Endereço</span>
-                </Button>
-            </DialogTrigger>
-        </div>
 
-        <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-                <DialogTitle>Buscar Endereço</DialogTitle>
-            </DialogHeader>
-            <div className="flex gap-2 items-center py-4">
-                <div className="flex-grow">
-                     <StandaloneSearchBox
-                        onLoad={onLoad}
-                        onPlacesChanged={onPlacesChanged}
-                        >
-                        <Input
-                            placeholder="Digite o endereço..."
-                            className="w-full"
-                            autoFocus
-                        />
-                    </StandaloneSearchBox>
-                </div>
-                <MapDialog 
-                  onLocationSelect={handleMapLocationSelect} 
-                  initialLocation={currentLocation}
-                />
-            </div>
-             <DialogFooter>
-                <DialogClose asChild>
-                    <Button type="button" variant="secondary">
-                    Fechar
-                    </Button>
-                </DialogClose>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+  return (
+    <div className="space-y-2">
+      <StandaloneSearchBox
+        onLoad={onLoad}
+        onPlacesChanged={onPlacesChanged}
+      >
+        <div className="relative">
+          <Input
+            id={id}
+            ref={inputRef}
+            placeholder="Digite para buscar um endereço..."
+            value={searchValue}
+            onChange={handleInputChange}
+            className="pr-8"
+          />
+          {searchValue && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute inset-y-0 right-0 flex items-center pr-2"
+              aria-label="Limpar endereço"
+            >
+              <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </button>
+          )}
+        </div>
+      </StandaloneSearchBox>
+      {selectedAddress && (
+        <div className="p-3 min-h-[60px] text-sm rounded-md border bg-muted">
+          {selectedAddress}
+        </div>
+      )}
+    </div>
   );
 }
