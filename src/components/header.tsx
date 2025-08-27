@@ -20,7 +20,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 
 const navLinks = [
-  { href: "/", label: "Aluguéis Ativos" },
+  { href: "/", label: "Ordens de Serviço" },
   { href: "/dumpsters", label: "Caçambas" },
   { href: "/clients", label: "Clientes" },
 ];

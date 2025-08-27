@@ -35,7 +35,7 @@ export type DumpsterForForm = Dumpster & {
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
     <Button type="submit" disabled={isPending} size="lg">
-      {isPending ? <Spinner size="small" /> : 'Salvar Aluguel'}
+      {isPending ? <Spinner size="small" /> : 'Salvar OS'}
     </Button>
   );
 }

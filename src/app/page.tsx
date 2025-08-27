@@ -253,7 +253,7 @@ export default function HomePage() {
   if (authLoading || localLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis Ativos</h1>
+            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
             <RentalCardSkeleton />
         </div>
     )
@@ -267,7 +267,7 @@ export default function HomePage() {
             </div>
             <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
-                Não foi possível carregar os aluguéis. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
+                Não foi possível carregar as ordens de serviço. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
             </p>
              <Button onClick={() => window.location.reload()}>
                 Recarregar Página
@@ -290,13 +290,13 @@ export default function HomePage() {
              <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Truck className="h-10 w-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Nenhum aluguel encontrado</h2>
+            <h2 className="text-2xl font-bold font-headline mb-2">Nenhuma ordem de serviço encontrada</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
-                Você ainda não tem nenhum aluguel agendado ou em andamento. Comece cadastrando um novo aluguel.
+                Você ainda não tem nenhuma OS agendada ou em andamento. Comece cadastrando uma nova.
             </p>
             <Button asChild>
                 <Link href="/rentals/new">
-                    Lançar Novo Aluguel
+                    Gerar OS
                 </Link>
             </Button>
         </div>
@@ -306,7 +306,7 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis Ativos</h1>
+      <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
 
       <div className="space-y-4 mb-6">
         <div className="relative">
@@ -383,7 +383,7 @@ export default function HomePage() {
             );
         }) : (
             <div className="text-center py-16 bg-card rounded-lg border">
-                <p className="text-muted-foreground">Nenhum aluguel encontrado para a busca e filtro aplicados.</p>
+                <p className="text-muted-foreground">Nenhuma OS encontrada para a busca e filtro aplicados.</p>
             </div>
         )}
       </div>

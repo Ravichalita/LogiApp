@@ -115,7 +115,7 @@ export default function NewRentalPage() {
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Lançar Novo Aluguel</CardTitle>
+          <CardTitle className="font-headline text-2xl">Gerar Ordem de Serviço</CardTitle>
           <CardDescription>Selecione a caçamba, o cliente e as datas para registrar um novo aluguel.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -144,7 +144,7 @@ export default function NewRentalPage() {
           ) : (
             <Alert>
               <Truck className="h-4 w-4" />
-              <AlertTitle>Faltam informações para criar um aluguel!</AlertTitle>
+              <AlertTitle>Faltam informações para criar uma OS!</AlertTitle>
               <AlertDescription>
                 {dumpsters.length === 0 && <p>Não há caçambas cadastradas. <Link href="/dumpsters" className="font-bold underline">Gerencie suas caçambas</Link>.</p>}
                 {clients.length === 0 && <p>Não há clientes cadastrados. <Link href="/clients" className="font-bold underline">Cadastre um novo cliente</Link>.</p>}
