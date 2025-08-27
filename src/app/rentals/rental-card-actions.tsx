@@ -68,14 +68,14 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
     return digits;
 }
 
-
-function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
+function WhatsAppIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 18" fill="none" {...props}>
-            <path d="M6.5 0C2.91 0 0 2.822 0 6.3C0 9.249 2.583 13.338 6.5 18C10.417 13.338 13 9.249 13 6.3C13 2.822 10.09 0 6.5 0ZM6.5 8.55C5.332 8.55 4.383 7.623 4.383 6.475C4.383 5.327 5.332 4.4 6.5 4.4C7.668 4.4 8.617 5.327 8.617 6.475C8.617 7.623 7.668 8.55 6.5 8.55Z" fill="currentColor"/>
+        <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 12c0 1.74.45 3.38 1.25 4.85L2 22l5.25-1.38c1.41.75 3 1.18 4.75 1.18h.01c5.46 0 9.9-4.45 9.9-9.9S17.5 2 12.04 2M9.46 7.03c.27-.27.64-.45.92-.45.3 0 .58.07.78.22.2.15.33.35.48.57.15.22.3.48.4.7.13.22.18.46.18.7s-.06.48-.17.72c-.12.24-.28.48-.48.7-.2.2-.42.4-.68.6-.25.2-.5.38-.78.53-.28.15-.56.28-.84.38-.28.1-.53.15-.75.15-.3 0-.6-.06-.86-.17-.27-.12-.52-.28-.75-.48s-.42-.42-.6-.68c-.18-.25-.33-.52-.45-.8-.12-.28-.18-.58-.18-.9s.06-.6.18-.88c.12-.28.28-.53.48-.75.2-.22.42-.42.68-.58.25-.17.52-.3.8-.4.28-.1.55-.13.8-.13m5.05 6.4c-.18.3-.42.56-.72.75-.3.2-.63.33-.98.42-.35.08-.7.13-1.04.13-.58 0-1.13-.1-1.65-.3-.52-.2-1-.48-1.4- pleasurable.83s-.75-.8-1.04-1.3c-.3-.5-.45-1.03-.45-1.6 0-.55.12-1.08.36-1.56.24-.48.56-.9.92-1.26.38-.36.8-.66 1.28-.88.48-.22 1-.33 1.56-.33.4 0 .78.06 1.12.18.34.12.65.28.9.5.25.2.45.45.6.72.15.28.22.56.22.85 0 .3-.07.6-.2.88-.13.28-.3.53-.5.75-.2.22-.43.42-.7.58-.25.17-.48.3-.68.38-.2.08-.36.14-.48.17-.12.03-.22.05-.3.05-.15 0-.28-.02-.4-.06-.12-.04-.23-.1-.32-.15-.1-.06-.18-.12-.25-.2-.07-.08-.13-.16-.17-.25-.04-.08-.07-.17-.08-.25s-.02-.17-.02-.25c0-.08.01-.16.03-.23.02-.07.05-.14.08-.2.03-.06.08-.12.13-.17.05-.05.1-.1.15-.13.05-.03.1-.06.15-.08s.1-.03.15-.03c.06 0 .1.01.14.02.04.01.07.02.1.04.03.02.06.04.08.06.02.02.05.05.07.08.02.03.04.06.05.1.01.03.02.06.02.1s-.01.08-.02.1c-.01.03-.03.06-.05.08-.02.02-.05.05-.08.07-.03.02-.06.04-.1.06-.04.02-.08.04-.13.05-.05.01-.1.02-.15.02-.12 0-.23-.02-.34-.07-.1-.05-.2-.12-.28-.22-.08-.1-.15-.2-.2-.3s-.08-.2-.1-.3c-.02-.1-.03-.2-.03-.3 0-.3.1-.58.28-.83.18-.25.42-.45.7-.6.28-.15.6-.23.95-.23.35 0 .68.07.98.22.3.15.56.33.78.55.22.22.4.48.53.78.13.3.2.62.2.97.02.35-.05.7-.22 1.04Z" />
         </svg>
     )
 }
+
 
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { accountId, userAccount } = useAuth();
@@ -159,61 +159,28 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </div>
             </div>
         )}
+        
+        <Separator />
+        
+        <div className="flex items-center justify-between">
+            <a 
+                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-green-600 dark:text-green-500 hover:underline"
+            >
+                <WhatsAppIcon className="h-5 w-5"/>
+                <span className="font-medium">{rental.client?.phone}</span>
+            </a>
+             {canEdit && (
+                 <Button asChild variant="link" className="p-0 h-auto text-sm">
+                    <Link href={`/rentals/${rental.id}/edit`}>
+                        Editar OS
+                    </Link>
+                 </Button>
+             )}
+        </div>
 
-        <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="client-details" className="border-none">
-                 <Separator />
-                 <div className="flex justify-between items-center pt-3">
-                    <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start group" hideChevron>
-                        <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
-                        <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
-                        Detalhes do Cliente
-                    </AccordionTrigger>
-                    {canEdit && (
-                         <Button asChild variant="link" className="p-0 h-auto text-sm">
-                            <Link href={`/rentals/${rental.id}/edit`}>
-                                Editar OS
-                            </Link>
-                         </Button>
-                     )}
-                 </div>
-                <AccordionContent className="pt-3 space-y-3">
-                     <div className="flex items-start gap-3">
-                        <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Telefone</span>
-                             <a 
-                                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="font-medium text-primary hover:underline"
-                            >
-                                {rental.client?.phone}
-                            </a>
-                            <span className="text-xs text-green-600">Toque para abrir no WhatsApp</span>
-                        </div>
-                    </div>
-                    {rental.client?.email && (
-                        <div className="flex items-start gap-3">
-                            <Mail className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                            <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Email</span>
-                            <span className="font-medium">{rental.client.email}</span>
-                            </div>
-                        </div>
-                    )}
-                    {rental.client?.observations && (
-                        <div className="flex items-start gap-3">
-                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                            <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Observações</span>
-                            <p className="font-medium whitespace-pre-wrap">{rental.client.observations}</p>
-                            </div>
-                        </div>
-                    )}
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
 
       </div>
        <div className="flex w-full items-center gap-2 mt-auto">
