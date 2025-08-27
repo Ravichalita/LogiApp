@@ -22,12 +22,19 @@ interface AddressInputProps {
 export function AddressInput({ id, initialValue = '', onInputChange, onLocationSelect, initialLocation, className, value }: AddressInputProps) {
   const [inputValue, setInputValue] = useState(value ?? initialValue);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
-  
+  const [currentLocation, setCurrentLocation] = useState(initialLocation);
+
   useEffect(() => {
     if (value !== undefined) {
       setInputValue(value);
     }
   }, [value]);
+  
+  useEffect(() => {
+    if (initialLocation) {
+      setCurrentLocation(initialLocation);
+    }
+  }, [initialLocation]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -46,13 +53,14 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
     if (places && places.length > 0) {
       const place = places[0];
       if (place.geometry?.location && place.formatted_address) {
-        const location = {
+        const locationData = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
           address: place.formatted_address,
         };
-        onLocationSelect(location);
-        setInputValue(place.formatted_address); // Update input value on selection
+        onLocationSelect(locationData);
+        setInputValue(place.formatted_address);
+        setCurrentLocation({ lat: locationData.lat, lng: locationData.lng });
         onInputChange?.(place.formatted_address);
       }
     }
@@ -89,7 +97,7 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
         </div>
         <MapDialog
           onLocationSelect={onLocationSelect}
-          initialLocation={initialLocation}
+          initialLocation={currentLocation}
         />
       </div>
     </div>
