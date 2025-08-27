@@ -1,8 +1,8 @@
 
 'use server';
 
-import { getFirestore } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView } from './types';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental } from './types';
 import { adminDb } from './firebase-admin';
 
 // Helper to convert Timestamps to serializable format
@@ -171,5 +171,35 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
     } catch (error) {
         console.error("Error fetching all client accounts:", error);
         return [];
+    }
+}
+
+export async function getPopulatedRentalById(accountId: string, rentalId: string): Promise<PopulatedRental | null> {
+    try {
+        const rentalRef = adminDb.doc(`accounts/${accountId}/rentals/${rentalId}`);
+        const rentalDoc = await rentalRef.get();
+
+        if (!rentalDoc.exists) {
+            return null;
+        }
+
+        const rentalData = docToSerializable(rentalDoc) as Rental;
+
+        // Fetch related documents
+        const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
+        const dumpsterPromise = adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
+        const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
+
+        const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise]);
+
+        return {
+            ...rentalData,
+            client: docToSerializable(clientSnap) as Client | null,
+            dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+            assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
+        };
+    } catch (error) {
+        console.error(`Error fetching populated rental by ID ${rentalId}:`, error);
+        return null;
     }
 }

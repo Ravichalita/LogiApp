@@ -11,9 +11,6 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-import { EditRentalPeriodDialog } from './edit-rental-period-dialog';
-import { EditRentalAddressDialog } from './edit-rental-address-dialog';
-import { EditRentalPriceDialog } from './edit-rental-price-dialog';
 
 import type { getRentalStatus } from '../page';
 import {
@@ -139,14 +136,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </Link>
                 </Button>
                 )}
-                 {canEdit && (
-                    <EditRentalAddressDialog rental={rental}>
-                        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Editar Endereço</span>
-                        </Button>
-                    </EditRentalAddressDialog>
-                )}
             </div>
         </div>
         <div className="flex items-center justify-between">
@@ -159,14 +148,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </p>
                 </div>
             </div>
-             {canEdit && (
-                <EditRentalPeriodDialog rental={rental}>
-                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                        <Edit className="h-4 w-4" />
-                        <span className="sr-only">Editar Período</span>
-                    </Button>
-                </EditRentalPeriodDialog>
-            )}
         </div>
         
         {canSeeFinance && (
@@ -178,25 +159,27 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         <span className="font-medium">{formatCurrency(totalValue)}</span>
                     </div>
                 </div>
-                {canEdit && (
-                     <EditRentalPriceDialog rental={rental}>
-                        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Editar Preço</span>
-                        </Button>
-                    </EditRentalPriceDialog>
-                )}
             </div>
         )}
 
         <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="client-details" className="border-none">
                  <Separator />
-                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start group" hideChevron>
-                    <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
-                    <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
-                    Detalhes do Cliente
-                </AccordionTrigger>
+                 <div className="flex justify-between items-center pt-3">
+                    <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start group" hideChevron>
+                        <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
+                        <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
+                        Detalhes do Cliente
+                    </AccordionTrigger>
+                    {canEdit && (
+                         <Button asChild variant="outline" size="sm">
+                            <Link href={`/rentals/${rental.id}/edit`}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar OS
+                            </Link>
+                         </Button>
+                     )}
+                 </div>
                 <AccordionContent className="pt-3 space-y-3">
                      <div className="flex items-start gap-3">
                         <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />

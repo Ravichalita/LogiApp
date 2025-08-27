@@ -602,10 +602,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         }
         
         revalidatePath('/');
-        return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) as string };
     }
+    redirect('/');
 }
 
 
