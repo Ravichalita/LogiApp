@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogPortal,
 } from '@/components/ui/dialog';
 import { Plus, UserPlus, Building } from 'lucide-react';
 import { ClientForm } from '@/app/clients/client-form';
@@ -76,6 +77,8 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     team: "sm:max-w-lg",
     clientAdmin: "sm:max-w-lg",
    }
+   
+  const usePortal = itemType !== 'client';
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -85,17 +88,33 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
             <span className="sr-only">{titles[itemType]}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className={cn("p-0", dialogContentClasses[itemType])}>
-        <DialogHeader>
-          <DialogTitle>{titles[itemType]}</DialogTitle>
-          <DialogDescription>
-            {descriptions[itemType]}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-grow overflow-y-auto px-6 py-4">
-            {formComponent[itemType]}
-        </div>
-      </DialogContent>
+      {usePortal ? (
+          <DialogPortal>
+             <DialogContent className={cn("p-0", dialogContentClasses[itemType])}>
+                <DialogHeader>
+                  <DialogTitle>{titles[itemType]}</DialogTitle>
+                  <DialogDescription>
+                    {descriptions[itemType]}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex-grow overflow-y-auto px-6 py-4">
+                    {formComponent[itemType]}
+                </div>
+              </DialogContent>
+          </DialogPortal>
+      ) : (
+          <DialogContent className={cn("p-0", dialogContentClasses[itemType])}>
+            <DialogHeader>
+              <DialogTitle>{titles[itemType]}</DialogTitle>
+              <DialogDescription>
+                {descriptions[itemType]}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-grow overflow-y-auto px-6 py-4">
+                {formComponent[itemType]}
+            </div>
+          </DialogContent>
+      )}
     </Dialog>
   );
 }
