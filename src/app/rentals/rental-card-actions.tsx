@@ -212,6 +212,13 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </AlertDialog>
             ) : (
                 <>
+                    {canEdit && (
+                        <Button asChild variant="outline" size="icon" className="shrink-0">
+                            <Link href={`/rentals/${rental.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                    )}
                     <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
                         <input type="hidden" name="rentalId" value={rental.id} />
                         <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
@@ -228,13 +235,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                        <Link href={`/rentals/${rental.id}/edit`}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Editar OS
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
                                     <AlertDialogTrigger asChild>
                                         <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                                             <Trash2 className="mr-2 h-4 w-4" />
@@ -269,4 +269,3 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
-
