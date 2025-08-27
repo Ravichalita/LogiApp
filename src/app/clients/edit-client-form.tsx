@@ -59,6 +59,10 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setAddress(selectedLocation.address);
   };
+  
+  const handleAddressChange = (newAddress: string) => {
+    setAddress(newAddress);
+  }
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -101,8 +105,10 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
             <Label htmlFor="address-input">Endereço Principal</Label>
             <AddressInput
                 id="address-input"
-                initialValue={address}
+                value={address}
                 onLocationSelect={handleLocationSelect}
+                onInputChange={handleAddressChange}
+                initialLocation={location}
             />
             {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
         </div>

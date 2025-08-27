@@ -72,7 +72,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
         return;
       }
       const boundAction = createClient.bind(null, accountId);
-      const result = await boundAction(initialState, formData); // Pass initial state
+      const result = await boundAction(initialState, formData);
       
       if (result.errors) {
          toast({
