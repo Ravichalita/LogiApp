@@ -5,6 +5,7 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { toast } from '@/hooks/use-toast';
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -86,9 +87,9 @@ export const setupFcm = async (userId: string) => {
         onMessage(messaging, (payload) => {
             console.log('Foreground message received. ', payload);
             // Show a custom toast notification here instead of a system notification
-            new Notification(payload.notification?.title ?? 'Nova Notificação', {
-                body: payload.notification?.body,
-                icon: payload.notification?.icon,
+            toast({
+                title: payload.data?.title,
+                description: payload.data?.body,
             });
         });
     } catch (error) {

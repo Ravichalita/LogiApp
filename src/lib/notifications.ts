@@ -30,18 +30,13 @@ export async function sendNotification({ userId, title, body, link }: Notificati
             return;
         }
 
+        // Send data payload for full control on the client
         const message = {
-            notification: {
+            data: {
                 title,
                 body,
-            },
-            webpush: {
-                notification: {
-                    icon: '/favicon.ico', // Optional: if you have a favicon
-                },
-                fcm_options: {
-                    link: link || '/', // Default link if none provided
-                },
+                icon: '/favicon.ico', // Optional: if you have a favicon
+                link: link || '/', // Default link if none provided
             },
             tokens,
         };
