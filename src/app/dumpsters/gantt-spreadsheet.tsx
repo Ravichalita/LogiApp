@@ -27,12 +27,15 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
   const { dateHeaders, dumpsterData } = useMemo(() => {
     const today = startOfToday();
     const dates = Array.from({ length: NUMBER_OF_DAYS }, (_, i) => addDays(today, i));
-    const dateHeaders = dates.map(date => ({
-      dayOfWeek: format(date, 'EEE', { locale: ptBR }),
-      dayOfMonth: format(date, 'd'),
-      isWeekend: format(date, 'EEE', { locale: ptBR }) === 'Sáb' || format(date, 'EEE', { locale: ptBR }) === 'Dom',
-      isToday: isSameDay(date, today),
-    }));
+    const dateHeaders = dates.map(date => {
+      const dayOfWeekShort = format(date, 'EEE', { locale: ptBR });
+      return {
+        dayOfWeek: dayOfWeekShort.charAt(0).toUpperCase() + dayOfWeekShort.slice(1),
+        dayOfMonth: format(date, 'd'),
+        isWeekend: dayOfWeekShort === 'sáb' || dayOfWeekShort === 'dom',
+        isToday: isSameDay(date, today),
+      }
+    });
 
     const clientMap = new Map(clients.map(c => [c.id, c.name]));
 
