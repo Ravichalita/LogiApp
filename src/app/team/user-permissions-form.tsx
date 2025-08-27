@@ -17,7 +17,7 @@ const permissionLabels: Record<keyof Permissions, string> = {
   canAccessSettings: 'Acessar Configurações',
   canEditClients: 'Editar e Excluir Clientes',
   canEditDumpsters: 'Editar e Excluir Caçambas',
-  canEditRentals: 'Editar e Excluir Aluguéis',
+  canEditRentals: 'Editar e Excluir OS',
 };
 
 interface UserPermissionsFormProps {
