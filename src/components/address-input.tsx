@@ -66,6 +66,7 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
             placeholder="Digite o endereço..."
             required
             className="w-full"
+            autoComplete="off"
           />
         </Autocomplete>
       </div>
