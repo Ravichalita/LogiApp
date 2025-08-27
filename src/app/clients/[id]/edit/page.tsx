@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import type { Client } from '@/lib/types';
 import { getDoc, doc } from 'firebase/firestore';
-import { getFirebase } from '@/lib/data';
+import { getFirebase } from '@/lib/firebase-client';
 import { EditClientForm } from './edit-client-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
