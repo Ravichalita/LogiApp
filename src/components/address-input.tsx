@@ -61,15 +61,15 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
           lng: place.geometry.location.lng(),
           address: place.formatted_address,
         };
-        onLocationSelect(locationData);
         setInputValue(place.formatted_address);
+        onLocationSelect(locationData);
         setCurrentLocation({ lat: locationData.lat, lng: locationData.lng });
         onInputChange?.(place.formatted_address);
       }
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
     onInputChange?.(e.target.value);
   }
@@ -86,9 +86,8 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
             <StandaloneSearchBox
                 onLoad={onLoad}
                 onPlacesChanged={onPlacesChanged}
-                mountNode={portalRef.current ?? undefined}
             >
-            <Textarea
+            <Input
                 id={id}
                 value={inputValue}
                 onChange={handleInputChange}
@@ -98,7 +97,6 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
                 autoComplete="off"
             />
             </StandaloneSearchBox>
-            <div ref={portalRef} className="pac-container-local"></div>
         </div>
         <MapDialog
           onLocationSelect={onLocationSelect}
