@@ -211,9 +211,9 @@ export default function DumpstersPage() {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="flex items-center gap-3">
                     <GanttChartSquare className="h-5 w-5 text-muted-foreground" />
-                    <div className="flex flex-col md:flex-row md:items-baseline md:gap-2">
-                         <CardTitle className="text-lg font-medium">Planilha de Disponibilidade</CardTitle>
-                         <span className="text-sm text-muted-foreground">{spreadsheetDateRange}</span>
+                     <div className="flex flex-row items-baseline gap-2 flex-wrap">
+                        <CardTitle className="text-base md:text-lg font-medium whitespace-nowrap">Planilha de Disponibilidade</CardTitle>
+                        <span className="text-xs md:text-sm text-muted-foreground whitespace-nowrap">{spreadsheetDateRange}</span>
                     </div>
                 </div>
             </CardHeader>
@@ -319,7 +319,3 @@ export default function DumpstersPage() {
     </div>
   );
 }
-
-    
-
-    
