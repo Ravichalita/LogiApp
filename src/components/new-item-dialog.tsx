@@ -16,6 +16,7 @@ import { ClientForm } from '@/app/clients/client-form';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
 import { InviteForm } from '@/app/team/invite-form';
 import { AdminInviteForm } from '@/app/team/admin-invite-form';
+import { cn } from '@/lib/utils';
 
 
 interface NewItemDialogProps {
@@ -68,6 +69,13 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     team: <UserPlus className="h-7 w-7" />,
     clientAdmin: <Building className="h-7 w-7" />,
    }
+   
+   const dialogContentClasses = {
+    client: "sm:max-w-2xl",
+    dumpster: "sm:max-w-lg",
+    team: "sm:max-w-lg",
+    clientAdmin: "sm:max-w-lg",
+   }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -77,7 +85,7 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
             <span className="sr-only">{titles[itemType]}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="p-0">
+      <DialogContent className={cn("p-0", dialogContentClasses[itemType])}>
         <DialogHeader>
           <DialogTitle>{titles[itemType]}</DialogTitle>
           <DialogDescription>

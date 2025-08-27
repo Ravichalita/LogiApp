@@ -126,7 +126,7 @@ export function ClientActions({ client }: { client: Client }) {
           </DropdownMenu>
 
           {/* Edit Dialog */}
-          <DialogContent className="p-0">
+          <DialogContent className="p-0 sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Editar Cliente</DialogTitle>
             </DialogHeader>

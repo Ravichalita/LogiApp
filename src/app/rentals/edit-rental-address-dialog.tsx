@@ -90,7 +90,7 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Editar Endereço da OS</DialogTitle>
         </DialogHeader>
