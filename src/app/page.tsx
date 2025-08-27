@@ -23,7 +23,6 @@ import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
-import { sendNotification } from '@/lib/notifications';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -148,7 +147,6 @@ export default function HomePage() {
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
   const [searchTerm, setSearchTerm] = useState('');
-  const notificationsSent = useRef<Set<string>>(new Set());
   
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
@@ -184,41 +182,6 @@ export default function HomePage() {
 
     return () => unsubscribe();
   }, [authLoading, accountId, user, userAccount, canEdit]);
-
-
-  useEffect(() => {
-    if (rentals.length > 0 && userAccount) {
-      const today = startOfToday();
-      const tomorrow = addDays(today, 1);
-
-      rentals.forEach(rental => {
-        const returnDate = parseISO(rental.returnDate);
-        const status = getRentalStatus(rental);
-        
-        // Due tomorrow notification
-        if (isToday(addDays(returnDate, -1)) && !notificationsSent.current.has(`${rental.id}-due`)) {
-          sendNotification({
-            userId: rental.assignedToUser?.id!,
-            title: 'Lembrete de Retirada',
-            body: `A OS da caçamba ${rental.dumpster?.name} para ${rental.client?.name} vence amanhã.`,
-            link: `/?rentalId=${rental.id}`,
-          });
-          notificationsSent.current.add(`${rental.id}-due`);
-        }
-
-        // Late notification
-        if (status.text === 'Em Atraso' && !notificationsSent.current.has(`${rental.id}-late`)) {
-          sendNotification({
-            userId: rental.assignedToUser?.id!,
-            title: 'OS Atrasada!',
-            body: `A OS da caçamba ${rental.dumpster?.name} para ${rental.client?.name} está atrasada.`,
-            link: `/?rentalId=${rental.id}`,
-          });
-          notificationsSent.current.add(`${rental.id}-late`);
-        }
-      });
-    }
-  }, [rentals, userAccount]);
 
 
   const filteredAndSortedRentals = useMemo(() => {

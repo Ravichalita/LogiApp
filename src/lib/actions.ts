@@ -6,11 +6,12 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema } from './types';
-import type { Rental, UserAccount, UserRole, UserStatus, Permissions } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
 import { cookies } from 'next/cookies';
 import { sendNotification } from './notifications';
+import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -420,6 +421,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     value: numericValue,
     status: 'Pendente',
     createdBy: createdBy,
+    notificationsSent: { due: false, late: false } // Initialize notifications field
   });
 
   if (!validatedFields.success) {
@@ -938,6 +940,62 @@ export async function deleteFirestoreBackupAction(accountId: string, backupId: s
 }
 
 
+// #endregion
+
+// #region Notification Actions
+export async function checkAndSendDueNotificationsAction(accountId: string) {
+    if (!accountId) {
+        console.error("checkAndSendDueNotificationsAction called without accountId");
+        return;
+    }
+
+    const db = adminDb;
+    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+    const rentalsSnap = await rentalsRef.get();
+
+    if (rentalsSnap.empty) {
+        return;
+    }
+    
+    const today = startOfToday();
+    const tomorrow = addDays(today, 1);
+    const batch = db.batch();
+    let notificationsSentCount = 0;
+
+    for (const doc of rentalsSnap.docs) {
+        const rental = { id: doc.id, ...doc.data() } as Rental;
+        const returnDate = parseISO(rental.returnDate);
+
+        // Due tomorrow notification
+        if (isToday(addDays(returnDate, -1)) && !rental.notificationsSent?.due) {
+            await sendNotification({
+                userId: rental.assignedTo,
+                title: 'Lembrete de Retirada',
+                body: `A OS para ${rental.deliveryAddress} vence amanhã.`,
+                link: `/?rentalId=${rental.id}`,
+            });
+            batch.update(doc.ref, { 'notificationsSent.due': true });
+            notificationsSentCount++;
+        }
+
+        // Late notification
+        if (isAfter(today, returnDate) && !rental.notificationsSent?.late) {
+             await sendNotification({
+                userId: rental.assignedTo,
+                title: 'OS Atrasada!',
+                body: `A OS para ${rental.deliveryAddress} está atrasada.`,
+                link: `/?rentalId=${rental.id}`,
+            });
+            batch.update(doc.ref, { 'notificationsSent.late': true });
+            notificationsSentCount++;
+        }
+    }
+    
+    if (notificationsSentCount > 0) {
+        await batch.commit();
+        console.log(`Committed ${notificationsSentCount} notification status updates.`);
+    }
+}
 // #endregion
 
 // #region Super Admin Actions

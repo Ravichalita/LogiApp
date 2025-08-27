@@ -8,7 +8,7 @@ import { getFirebase, setupFcm } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
-import { createFirestoreBackupAction } from '@/lib/actions';
+import { createFirestoreBackupAction, checkAndSendDueNotificationsAction } from '@/lib/actions';
 import { differenceInDays, parseISO } from 'date-fns';
 
 
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const backupCheckPerformed = useRef(false);
+  const sessionWorkPerformed = useRef(false); // Used for all once-per-session tasks
   const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
 
   const { auth, db } = getFirebase();
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccountId(null);
     setRole(null);
     setIsSuperAdmin(false);
-    backupCheckPerformed.current = false; // Reset backup check on logout
+    sessionWorkPerformed.current = false; // Reset session work on logout
     fcmSetupPerformed.current = false; // Reset FCM setup on logout
     await signOut(auth);
     router.push('/login');
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       setIsSuperAdmin(false);
-      backupCheckPerformed.current = false; // Reset on user change
+      sessionWorkPerformed.current = false; // Reset on user change
       fcmSetupPerformed.current = false;
       if (userDocUnsubscribe.current) userDocUnsubscribe.current();
       if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
@@ -212,23 +212,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   useEffect(() => {
-    // This effect runs when both user and account data are loaded.
-    if (user && userAccount && account) {
-        if (!backupCheckPerformed.current) {
-            checkAndTriggerAutoBackup(account.id, account);
-            backupCheckPerformed.current = true; // Mark as checked for this session.
-        }
+    // This effect runs when all user and account data are loaded.
+    // It's the ideal place for "once-per-session" tasks.
+    if (user && userAccount && account && !sessionWorkPerformed.current) {
+        
+        // --- Perform all session tasks here ---
+        checkAndTriggerAutoBackup(account.id, account);
+        checkAndSendDueNotificationsAction(account.id);
+
         if (!fcmSetupPerformed.current) {
             setupFcm(user.uid);
             fcmSetupPerformed.current = true;
         }
-    }
 
-    // Only set loading to false when we have user and account info (or know we don't need it)
-    if (user && userAccount && account) {
-        setLoading(false);
+        sessionWorkPerformed.current = true; // Mark as done for this session.
+        setLoading(false); // Now we are truly done loading.
     }
-
   }, [user, userAccount, account]);
 
 

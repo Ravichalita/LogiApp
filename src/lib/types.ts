@@ -116,6 +116,10 @@ export const RentalSchema = z.object({
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
   assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
+  notificationsSent: z.object({
+    due: z.boolean().default(false),
+    late: z.boolean().default(false),
+  }).optional(),
 });
 
 const UpdateRentalPeriodSchema = z.object({
