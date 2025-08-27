@@ -28,7 +28,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     const today = startOfToday();
     const dates = Array.from({ length: NUMBER_OF_DAYS }, (_, i) => addDays(today, i));
     const dateHeaders = dates.map(date => {
-      const dayOfWeekShort = format(date, 'EEE', { locale: ptBR }).replace('.', ''); // Remove the dot
+      const dayOfWeekShort = format(date, 'EEE', { locale: ptBR }).replace('.', '');
       return {
         dayOfWeek: dayOfWeekShort.charAt(0).toUpperCase() + dayOfWeekShort.slice(1),
         dayOfMonth: format(date, 'd'),
@@ -88,8 +88,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
         >
           <div className="p-1 border-b border-r text-muted-foreground font-semibold">Caçamba</div>
           {dateHeaders.map((header, index) => (
-            <div key={index} className={cn("flex flex-col items-center border-b border-r p-1 text-center font-semibold", header.isWeekend && 'text-muted-foreground', header.isToday && 'bg-primary/10')}>
-              <span className="text-muted-foreground">{header.dayOfWeek}</span>
+            <div key={index} className={cn("flex flex-col items-center justify-center border-b border-r p-1 text-center font-semibold", header.isWeekend && 'text-muted-foreground', header.isToday && 'bg-primary/10')}>
               <span>{header.dayOfMonth}</span>
             </div>
           ))}
