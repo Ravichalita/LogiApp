@@ -4,13 +4,13 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Plus, UserPlus, Building } from 'lucide-react';
 import { ClientForm } from '@/app/clients/client-form';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
@@ -26,9 +26,7 @@ interface NewItemDialogProps {
 
 export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  // Add a key to force re-mounting of the form component on open/close
   const [formKey, setFormKey] = useState(Date.now());
-  const dialogTriggerRef = useRef<HTMLButtonElement>(null);
 
 
   const titles = {
@@ -53,7 +51,6 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      // When the dialog closes, change the key to ensure the form remounts next time
       setFormKey(Date.now());
     }
   };
@@ -72,7 +69,7 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     clientAdmin: <Building className="h-7 w-7" />,
    }
    
-   const dialogContentClasses = {
+   const sheetContentClasses = {
     client: "sm:max-w-2xl",
     dumpster: "sm:max-w-lg",
     team: "sm:max-w-lg",
@@ -80,27 +77,26 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
    }
    
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button ref={dialogTriggerRef} className="h-16 w-16 rounded-full shadow-lg">
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
+      <SheetTrigger asChild>
+        <Button className="h-16 w-16 rounded-full shadow-lg">
             {iconComponent[itemType]}
             <span className="sr-only">{titles[itemType]}</span>
         </Button>
-      </DialogTrigger>
-      <DialogContent 
-        className={cn("p-0", dialogContentClasses[itemType])}
-        container={dialogTriggerRef.current?.ownerDocument.body}
+      </SheetTrigger>
+      <SheetContent 
+        className={cn("p-0 flex flex-col", sheetContentClasses[itemType])}
       >
-        <DialogHeader>
-          <DialogTitle>{titles[itemType]}</DialogTitle>
-          <DialogDescription>
+        <SheetHeader className="p-6 pb-4">
+          <SheetTitle>{titles[itemType]}</SheetTitle>
+          <SheetDescription>
             {descriptions[itemType]}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-grow overflow-y-auto px-6 py-4">
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-grow overflow-y-auto px-1 py-4">
             {formComponent[itemType]}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
