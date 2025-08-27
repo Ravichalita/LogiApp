@@ -65,7 +65,7 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
 function WhatsAppIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
         <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 12c0 1.74.45 3.38 1.25 4.85L2 22l5.25-1.38c1.41.75 3 1.18 4.75 1.18h.01c5.46 0 9.9-4.45 9.9-9.9S17.5 2 12.04 2M9.46 7.03c.27-.27.64-.45.92-.45.3 0 .58.07.78.22.2.15.33.35.48.57.15.22.3.48.4.7.13.22.18.46.18.7s-.06.48-.17.72c-.12.24-.28.48-.48.7-.2.2-.42.4-.68.6-.25.2-.5.38-.78.53-.28.15-.56.28-.84.38-.28.1-.53.15-.75.15-.3 0-.6-.06-.86-.17-.27-.12-.52-.28-.75-.48s-.42-.42-.6-.68c-.18-.25-.33-.52-.45-.8-.12-.28-.18-.58-.18-.9s.06-.6.18-.88c.12-.28.28-.53.48-.75.2-.22.42-.42.68-.58.25-.17.52-.3.8-.4.28-.1.55-.13.8-.13m5.05 6.4c-.18.3-.42.56-.72.75-.3.2-.63.33-.98.42-.35.08-.7.13-1.04.13-.58 0-1.13-.1-1.65-.3-.52-.2-1-.48-1.4- pleasurable.83s-.75-.8-1.04-1.3c-.3-.5-.45-1.03-.45-1.6 0-.55.12-1.08.36-1.56.24-.48.56-.9.92-1.26.38-.36.8-.66 1.28-.88.48-.22 1-.33 1.56-.33.4 0 .78.06 1.12.18.34.12.65.28.9.5.25.2.45.45.6.72.15.28.22.56.22.85 0 .3-.07.6-.2.88-.13.28-.3.53-.5.75-.2.22-.43.42-.7.58-.25.17-.48.3-.68.38-.2.08-.36.14-.48.17-.12.03-.22.05-.3.05-.15 0-.28-.02-.4-.06-.12-.04-.23-.1-.32-.15-.1-.06-.18-.12-.25-.2-.07-.08-.13-.16-.17-.25-.04-.08-.07-.17-.08-.25s-.02-.17-.02-.25c0-.08.01-.16.03-.23.02-.07.05-.14.08-.2.03-.06.08-.12.13-.17.05-.05.1-.1.15-.13.05-.03.1-.06.15-.08s.1-.03.15-.03c.06 0 .1.01.14.02.04.01.07.02.1.04.03.02.06.04.08.06.02.02.05.05.07.08.02.03.04.06.05.1.01.03.02.06.02.1s-.01.08-.02.1c-.01.03-.03.06-.05.08-.02.02-.05.05-.08.07-.03.02-.06.04-.1.06-.04.02-.08.04-.13.05-.05.01-.1.02-.15.02-.12 0-.23-.02-.34-.07-.1-.05-.2-.12-.28-.22-.08-.1-.15-.2-.2-.3s-.08-.2-.1-.3c-.02-.1-.03-.2-.03-.3 0-.3.1-.58.28-.83.18-.25.42-.45.7-.6.28-.15.6-.23.95-.23.35 0 .68.07.98.22.3.15.56.33.78.55.22.22.4.48.53.78.13.3.2.62.2.97.02.35-.05.7-.22 1.04Z" />
+            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 12c0 1.74.45 3.38 1.25 4.85L2 22l5.25-1.38c1.41.75 3 1.18 4.75 1.18h.01c5.46 0 9.9-4.45 9.9-9.9S17.5 2 12.04 2M9.46 7.03c.27-.27.64-.45.92-.45.3 0 .58.07.78.22.2.15.33.35.48.57.15.22.3.48.4.7.13.22.18.46.18.7s-.06.48-.17.72c-.12.24-.28.48-.48.7-.2.2-.42.4-.68.6-.25.2-.5.38-.78.53-.28.15-.56.28-.84.38-.28.1-.53.15-.75.15-.3 0-.6-.06-.86-.17-.27-.12-.52-.28-.75-.48s-.42-.42-.6-.68c-.18-.25-.33-.52-.45-.8-.12-.28-.18-.58-.18-.9s.06-.6.18-.88c.12-.28.28-.53.48-.75.2-.22.42-.42.68-.58.25-.17.52-.3.8-.4.28-.1.55-.13.8-.13m5.05 6.4c-.18.3-.42.56-.72.75-.3.2-.63.33-.98.42-.35.08-.7.13-1.04.13-.58 0-1.13-.1-1.65-.3-.52-.2-1-.48-1.4- pleasurable.83s-.75-.8-1.04-1.3c-.3-.5-.45-1.03-.45-1.6 0-.55.12-1.08.36-1.56.24-.48.56-.9.92-1.26.38-.36.8-.66 1.28-.88.48-.22 1-.33 1.56-.33.4 0 .78.06 1.12.18.34.12.65.28.9.5.25.2.45.45.6.72.15.28.22.56.22.85 0 .3-.07.6-.2.88-.13.28-.3.53-.5.75-.2.22-.43.42-.7.58-.25.17-.48.3-.68.38-.2.08-.36.14-.48.17-.12.03-.22.05-.3.05-.15 0-.28-.02-.4-.06-.12-.04-.23-.1-.32-.15-.1-.06-.18-.12-.25-.2-.07-.08-.13-.16-.17-.25-.04-.08-.07-.17-.08-.25s-.02-.17-.02-.25c0-.08.01-.16.03-.23.02-.07.05-.14.08-.2.03-.06.08-.12.13-.17.05-.05.1-.1.15-.13.05-.03.1-.06.15-.08s.1-.03.15-.03c.06 0 .1.01.14.02.04.01.07.02.1.04.03.02.06.04.08.06.02.02.05.05.07.08.02.03.04.06.05.1.01.03.02.06.02.1s-.01.08-.02.1c-.01.03-.03.06-.05.08-.02.02-.05.05-.08.07-.03.02-.06.04-.1.06-.04.2-.08.04-.13.05-.05.01-.1.02-.15.02-.12 0-.23-.02-.34-.07-.1-.05-.2-.12-.28-.22-.08-.1-.15-.2-.2-.3s-.08-.2-.1-.3c-.02-.1-.03-.2-.03-.3 0-.3.1-.58.28-.83.18-.25.42-.45.7-.6.28-.15.6-.23.95-.23.35 0 .68.07.98.22.3.15.56.33.78.55.22.22.4.48.53.78.13.3.2.62.2.97.02.35-.05.7-.22 1.04Z" />
         </svg>
     )
 }
@@ -199,7 +199,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                              <AlertDialogTrigger asChild>
                                 <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                                      <Trash2 className="mr-2 h-4 w-4" />
-                                     Excluir OS
+                                     {isPendingStatus ? 'Cancelar Agendamento' : 'Excluir OS'}
                                 </DropdownMenuItem>
                             </AlertDialogTrigger>
                         </DropdownMenuContent>
@@ -224,13 +224,41 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AlertDialogContent>
                 </AlertDialog>
             </div>
-            <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
-                <input type="hidden" name="rentalId" value={rental.id} />
-                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                    {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                    Finalizar OS
-                </Button>
-            </form>
+            {isPendingStatus ? (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button className="w-full" variant="destructive" disabled={isDeleting}>
+                            <XCircle />
+                            Cancelar Agendamento
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                                <TriangleAlert className="h-6 w-6 text-destructive" />
+                                Cancelar Agendamento?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                {isDeleting ? <Spinner size="small" /> : 'Sim, Cancelar'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            ) : (
+                <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                    <input type="hidden" name="rentalId" value={rental.id} />
+                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                        {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                        Finalizar OS
+                    </Button>
+                </form>
+            )}
         </div>
     </div>
   );
