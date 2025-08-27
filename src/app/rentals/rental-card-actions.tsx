@@ -119,7 +119,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-stretch justify-between gap-4">
             <div className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
@@ -129,7 +129,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             </div>
              <div className="flex items-center gap-2 shrink-0">
                 {!!rental.latitude && !!rental.longitude && (
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="h-auto">
                     <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
                         <GoogleMapsIcon className="h-4 w-4" />
                         <span>Abrir no Mapa</span>
