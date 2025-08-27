@@ -170,9 +170,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         Detalhes do Cliente
                     </AccordionTrigger>
                     {canEdit && (
-                         <Button asChild variant="outline" size="sm">
+                         <Button asChild variant="link" className="p-0 h-auto text-sm">
                             <Link href={`/rentals/${rental.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" />
                                 Editar OS
                             </Link>
                          </Button>
