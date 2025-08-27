@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogPortal,
 } from '@/components/ui/dialog';
 import { Plus, UserPlus, Building } from 'lucide-react';
 import { ClientForm } from '@/app/clients/client-form';
@@ -29,6 +28,8 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   // Add a key to force re-mounting of the form component on open/close
   const [formKey, setFormKey] = useState(Date.now());
+  const dialogTriggerRef = useRef<HTMLButtonElement>(null);
+
 
   const titles = {
     client: 'Novo Cliente',
@@ -78,43 +79,28 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     clientAdmin: "sm:max-w-lg",
    }
    
-  const usePortal = itemType !== 'client';
-
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="h-16 w-16 rounded-full shadow-lg">
+        <Button ref={dialogTriggerRef} className="h-16 w-16 rounded-full shadow-lg">
             {iconComponent[itemType]}
             <span className="sr-only">{titles[itemType]}</span>
         </Button>
       </DialogTrigger>
-      {usePortal ? (
-          <DialogPortal>
-             <DialogContent className={cn("p-0", dialogContentClasses[itemType])}>
-                <DialogHeader>
-                  <DialogTitle>{titles[itemType]}</DialogTitle>
-                  <DialogDescription>
-                    {descriptions[itemType]}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex-grow overflow-y-auto px-6 py-4">
-                    {formComponent[itemType]}
-                </div>
-              </DialogContent>
-          </DialogPortal>
-      ) : (
-          <DialogContent className={cn("p-0", dialogContentClasses[itemType])}>
-            <DialogHeader>
-              <DialogTitle>{titles[itemType]}</DialogTitle>
-              <DialogDescription>
-                {descriptions[itemType]}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex-grow overflow-y-auto px-6 py-4">
-                {formComponent[itemType]}
-            </div>
-          </DialogContent>
-      )}
+      <DialogContent 
+        className={cn("p-0", dialogContentClasses[itemType])}
+        container={dialogTriggerRef.current?.ownerDocument.body}
+      >
+        <DialogHeader>
+          <DialogTitle>{titles[itemType]}</DialogTitle>
+          <DialogDescription>
+            {descriptions[itemType]}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex-grow overflow-y-auto px-6 py-4">
+            {formComponent[itemType]}
+        </div>
+      </DialogContent>
     </Dialog>
   );
 }
