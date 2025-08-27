@@ -42,7 +42,7 @@ export function MapDialog({ onLocationSelect, initialLocation }: MapDialogProps)
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['geocoding', 'places'], // Enable Places API for autocomplete
+    libraries: ['places', 'geocoding'],
     preventLoad: !googleMapsApiKey,
   });
   

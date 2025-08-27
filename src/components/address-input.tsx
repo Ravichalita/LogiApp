@@ -18,8 +18,6 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
   const [inputValue, setInputValue] = useState(initialValue);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  // State to control the readOnly attribute to trick browser autocomplete
-  const [isReadOnly, setIsReadOnly] = useState(true);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
@@ -46,15 +44,6 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
     setInputValue(initialValue);
   }, [initialValue]);
   
-  // Set the input to not be read-only on first load to allow password managers,
-  // but then make it read-only to prevent browser autocomplete on subsequent interactions.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReadOnly(true);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
   if (!isLoaded) {
     return <Skeleton className="h-10 w-full" />;
   }
@@ -78,9 +67,6 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
             required
             className="w-full"
             autoComplete="off"
-            readOnly={isReadOnly}
-            onFocus={() => setIsReadOnly(false)}
-            onBlur={() => setIsReadOnly(true)}
           />
         </Autocomplete>
       </div>
