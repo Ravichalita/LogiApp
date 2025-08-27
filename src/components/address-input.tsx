@@ -134,7 +134,12 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
           )}
         </div>
         <MapDialog
-          onLocationSelect={onLocationSelect}
+          onLocationSelect={(location) => {
+            onLocationSelect(location);
+            setInputValue(location.address);
+            setCurrentLocation(location);
+            setIsEditing(false);
+          }}
           initialLocation={currentLocation}
         />
       </div>
