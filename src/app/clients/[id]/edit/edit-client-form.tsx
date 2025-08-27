@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { updateClient } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,28 +11,27 @@ import { useToast } from '@/hooks/use-toast';
 import type { Client, Location } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { AddressInput } from '@/components/address-input';
+import Link from 'next/link';
 
 const initialState = {
   errors: {},
   message: '',
 };
 
-function SubmitButton({ isPending, formId }: { isPending: boolean, formId: string }) {
+function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" form={formId} disabled={isPending}>
+    <Button type="submit" disabled={isPending} size="lg">
       {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
     </Button>
   );
 }
 
-export function EditClientForm({ client, onSave }: { client: Client, onSave: () => void }) {
+export function EditClientForm({ client }: { client: Client }) {
   const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
-  const formId = `edit-client-form-${client.id}`;
   
   const [address, setAddress] = useState(client.address);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(
@@ -80,14 +79,13 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
             title: "Sucesso!",
             description: "Cliente atualizado.",
         });
-        onSave();
       }
     });
   };
 
   return (
     <>
-      <form id={formId} action={handleFormAction} className="space-y-4 overflow-y-auto p-6 pt-2 pb-4 flex-grow">
+      <form action={handleFormAction} className="space-y-4">
         <input type="hidden" name="id" value={client.id} />
         
         <div className="space-y-2">
@@ -126,13 +124,13 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
           <Textarea id="observations" name="observations" defaultValue={client.observations ?? ''} />
           {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
         </div>
+        <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
+            <SubmitButton isPending={isPending} />
+            <Button asChild variant="outline" size="lg">
+                <Link href="/clients">Cancelar</Link>
+            </Button>
+        </div>
       </form>
-      <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">Cancelar</Button>
-            </DialogClose>
-            <SubmitButton isPending={isPending} formId={formId} />
-          </DialogFooter>
     </>
   );
 }

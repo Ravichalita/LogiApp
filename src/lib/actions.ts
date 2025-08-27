@@ -206,14 +206,14 @@ export async function updateClient(accountId: string, prevState: any, formData: 
         const clientDoc = getFirestore(adminApp).doc(`accounts/${accountId}/clients/${id}`);
         await clientDoc.update({
           ...clientData,
-          accountId,
           updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/clients');
-        return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
+
+    redirect('/clients');
 }
 
 

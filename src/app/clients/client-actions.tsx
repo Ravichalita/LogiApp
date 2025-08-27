@@ -12,13 +12,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -29,15 +22,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { EditClientForm } from './edit-client-form';
 import type { Client, Rental } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import Link from 'next/link';
 
 export function ClientActions({ client }: { client: Client }) {
   const { accountId, userAccount } = useAuth();
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCheckingRentals, setIsCheckingRentals] = useState(false);
   const [activeRentalsCount, setActiveRentalsCount] = useState(0);
@@ -92,7 +84,6 @@ export function ClientActions({ client }: { client: Client }) {
 
   return (
     <>
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -103,12 +94,12 @@ export function ClientActions({ client }: { client: Client }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               {canEdit && (
-                <DialogTrigger asChild>
-                  <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Editar
-                    </DropdownMenuItem>
-                </DialogTrigger>
+                <DropdownMenuItem asChild>
+                    <Link href={`/clients/${client.id}/edit`}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Editar
+                    </Link>
+                </DropdownMenuItem>
               )}
               {canDelete && (
                 <AlertDialogTrigger asChild>
@@ -124,14 +115,6 @@ export function ClientActions({ client }: { client: Client }) {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Edit Dialog */}
-          <DialogContent className="p-0 sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Editar Cliente</DialogTitle>
-            </DialogHeader>
-            <EditClientForm client={client} onSave={() => setIsEditDialogOpen(false)} />
-          </DialogContent>
 
           {/* Delete Alert Dialog */}
           <AlertDialogContent>
@@ -154,7 +137,6 @@ export function ClientActions({ client }: { client: Client }) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </Dialog>
     </>
   );
 }
