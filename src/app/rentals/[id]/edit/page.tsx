@@ -15,7 +15,7 @@ import { AlertCircle } from 'lucide-react';
 import { getPopulatedRentalById } from '@/lib/data-server-actions';
 
 
-export default function EditRentalPage({ params }: { params: { id: string } }) {
+export default function EditRentalPage({ params: { id } }: { params: { id: string } }) {
   const { accountId } = useAuth();
   const [rental, setRental] = useState<PopulatedRental | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -23,7 +23,7 @@ export default function EditRentalPage({ params }: { params: { id: string } }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { id: rentalId } = params;
+  const rentalId = id;
 
   useEffect(() => {
     if (!accountId || !rentalId) {
