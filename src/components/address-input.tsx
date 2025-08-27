@@ -43,7 +43,7 @@ export function AddressInput({
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['places'],
+    libraries: ['places', 'geocoding'],
     preventLoad: !googleMapsApiKey,
   });
 
@@ -131,4 +131,3 @@ export function AddressInput({
     </div>
   );
 }
-
