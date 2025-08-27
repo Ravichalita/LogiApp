@@ -1,13 +1,14 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
 import { MapDialog } from '@/components/map-dialog';
 import type { Location } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Textarea } from './ui/textarea';
 
 interface AddressInputProps {
   id?: string;
@@ -23,6 +24,8 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
   const [inputValue, setInputValue] = useState(value ?? initialValue);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const [currentLocation, setCurrentLocation] = useState(initialLocation);
+  const portalRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     if (value !== undefined) {
@@ -66,7 +69,7 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     onInputChange?.(e.target.value);
   }
@@ -79,12 +82,13 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
   return (
     <div className={cn("relative w-full", className)}>
       <div className="flex gap-2 items-start">
-        <div className="flex-grow">
+        <div className="flex-grow relative">
             <StandaloneSearchBox
                 onLoad={onLoad}
                 onPlacesChanged={onPlacesChanged}
+                mountNode={portalRef.current ?? undefined}
             >
-            <Input
+            <Textarea
                 id={id}
                 value={inputValue}
                 onChange={handleInputChange}
@@ -94,6 +98,7 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
                 autoComplete="off"
             />
             </StandaloneSearchBox>
+            <div ref={portalRef} className="pac-container-local"></div>
         </div>
         <MapDialog
           onLocationSelect={onLocationSelect}
