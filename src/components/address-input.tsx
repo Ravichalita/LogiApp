@@ -21,7 +21,7 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['places'],
+    libraries: ['places', 'geocoding'], // FIX: Request both libraries here
     preventLoad: !googleMapsApiKey,
   });
 
