@@ -213,20 +213,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             ) : (
                 <>
                     {canEdit && (
-                        <Button asChild variant="outline" size="icon" className="shrink-0">
-                            <Link href={`/rentals/${rental.id}/edit`}>
-                                <Edit className="h-4 w-4" />
-                            </Link>
-                        </Button>
-                    )}
-                    <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
-                        <input type="hidden" name="rentalId" value={rental.id} />
-                        <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                        {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                        Finalizar OS
-                        </Button>
-                    </form>
-                    {canEdit && (
                          <AlertDialog>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -235,6 +221,13 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                     <DropdownMenuItem asChild>
+                                        <Link href={`/rentals/${rental.id}/edit`}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Editar OS
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
                                     <AlertDialogTrigger asChild>
                                         <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                                             <Trash2 className="mr-2 h-4 w-4" />
@@ -245,24 +238,31 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             </DropdownMenu>
 
                             <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle className="flex items-center gap-2">
-                                    <TriangleAlert className="h-6 w-6 text-destructive" />
-                                    Você tem certeza?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                    {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="flex items-center gap-2">
+                                        <TriangleAlert className="h-6 w-6 text-destructive" />
+                                        Você tem certeza?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                        {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
                     )}
+                    <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                        <input type="hidden" name="rentalId" value={rental.id} />
+                        <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                            {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                            Finalizar OS
+                        </Button>
+                    </form>
                 </>
             )}
         </div>
