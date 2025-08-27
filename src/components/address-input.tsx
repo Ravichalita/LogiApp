@@ -1,14 +1,25 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { MapDialog } from '@/components/map-dialog';
 import type { Location } from '@/lib/types';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Textarea } from './ui/textarea';
+import { Edit } from 'lucide-react';
 
 interface AddressInputProps {
   id?: string;
@@ -17,41 +28,34 @@ interface AddressInputProps {
   onLocationSelect: (location: Location) => void;
   initialLocation?: { lat: number; lng: number } | null;
   className?: string;
-  value?: string;
+  value?: string; // Controlled value from parent
 }
 
-export function AddressInput({ id, initialValue = '', onInputChange, onLocationSelect, initialLocation, className, value }: AddressInputProps) {
-  const [inputValue, setInputValue] = useState(value ?? initialValue);
-  // Start in editing mode if there's no initial value, otherwise start in display mode.
-  const [isEditing, setIsEditing] = useState(!initialValue && !value);
+export function AddressInput({ 
+  id, 
+  initialValue = '', 
+  onInputChange, 
+  onLocationSelect, 
+  initialLocation, 
+  className,
+  value: controlledValue 
+}: AddressInputProps) {
+  const [internalValue, setInternalValue] = useState(controlledValue ?? initialValue);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const [currentLocation, setCurrentLocation] = useState(initialLocation);
-  
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (value !== undefined) {
-      setInputValue(value);
-      // If a new value is passed (e.g., from selecting a client), switch to display mode.
-      if (value) {
-        setIsEditing(false);
-      }
+    if (controlledValue !== undefined) {
+      setInternalValue(controlledValue);
     }
-  }, [value]);
-  
+  }, [controlledValue]);
+
   useEffect(() => {
     if (initialLocation) {
       setCurrentLocation(initialLocation);
     }
   }, [initialLocation]);
-
-  useEffect(() => {
-    // When switching to editing mode, focus the input field to allow immediate typing.
-    if (isEditing) {
-      // Use a timeout to ensure the input is rendered before trying to focus it.
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [isEditing]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -75,74 +79,78 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
           lng: place.geometry.location.lng(),
           address: place.formatted_address,
         };
-        setInputValue(place.formatted_address);
-        onLocationSelect(locationData);
+        setInternalValue(place.formatted_address);
         setCurrentLocation({ lat: locationData.lat, lng: locationData.lng });
+        onLocationSelect(locationData);
         onInputChange?.(place.formatted_address);
-        setIsEditing(false); // Switch to display mode (Textarea)
+        setIsDialogOpen(false); 
       }
     }
   };
-
-  // Handles text change for both Input and Textarea
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    onInputChange?.(newValue);
-  };
   
-  const switchToEditing = () => {
-    setIsEditing(true);
+  const handleMapLocationSelect = (location: Location) => {
+    setInternalValue(location.address);
+    setCurrentLocation({ lat: location.lat, lng: location.lng });
+    onLocationSelect(location);
+    onInputChange?.(location.address);
+    setIsDialogOpen(false);
   }
 
   if (!isLoaded) {
-    return <Skeleton className="h-20 w-full" />;
+    return <Skeleton className="h-10 w-full" />;
   }
-
+  
   return (
-    <div className={cn("relative w-full", className)}>
-      <div className="flex gap-2 items-start">
-        <div className="flex-grow relative">
-          {isEditing ? (
-            <StandaloneSearchBox
-              onLoad={onLoad}
-              onPlacesChanged={onPlacesChanged}
-            >
-              <Input
-                ref={inputRef}
-                id={id}
-                value={inputValue}
-                onChange={handleTextChange}
-                placeholder="Digite para buscar o endereço..."
-                required
-                className="w-full"
-                autoComplete="off"
-              />
-            </StandaloneSearchBox>
-          ) : (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className={cn("relative w-full", className)}>
             <Textarea
-              id={id}
-              value={inputValue}
-              onChange={handleTextChange}
-              onFocus={switchToEditing}
-              onClick={switchToEditing}
-              placeholder="Endereço selecionado"
-              rows={3}
-              className="w-full cursor-text"
-              required
+                id={id}
+                value={internalValue}
+                onClick={() => setIsDialogOpen(true)}
+                readOnly
+                placeholder="Clique para adicionar um endereço..."
+                rows={3}
+                className="w-full cursor-pointer pr-10"
+                required
             />
-          )}
+             <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7">
+                    <Edit className="h-4 w-4" />
+                    <span className="sr-only">Editar Endereço</span>
+                </Button>
+            </DialogTrigger>
         </div>
-        <MapDialog
-          onLocationSelect={(location) => {
-            onLocationSelect(location);
-            setInputValue(location.address);
-            setCurrentLocation(location);
-            setIsEditing(false);
-          }}
-          initialLocation={currentLocation}
-        />
-      </div>
-    </div>
+
+        <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+                <DialogTitle>Buscar Endereço</DialogTitle>
+            </DialogHeader>
+            <div className="flex gap-2 items-center py-4">
+                <div className="flex-grow">
+                     <StandaloneSearchBox
+                        onLoad={onLoad}
+                        onPlacesChanged={onPlacesChanged}
+                        >
+                        <Input
+                            placeholder="Digite o endereço..."
+                            className="w-full"
+                            autoFocus
+                        />
+                    </StandaloneSearchBox>
+                </div>
+                <MapDialog 
+                  onLocationSelect={handleMapLocationSelect} 
+                  initialLocation={currentLocation}
+                />
+            </div>
+             <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="secondary">
+                    Fechar
+                    </Button>
+                </DialogClose>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
   );
 }
