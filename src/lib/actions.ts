@@ -182,11 +182,12 @@ export async function createClient(accountId: string, prevState: any, formData: 
       accountId,
       createdAt: FieldValue.serverTimestamp(),
     });
-    revalidatePath('/clients');
-    return { message: 'success' };
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) };
   }
+
+  revalidatePath('/clients');
+  redirect('/clients');
 }
 
 export async function updateClient(accountId: string, prevState: any, formData: FormData) {

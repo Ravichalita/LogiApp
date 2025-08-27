@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api';
 import { Input } from '@/components/ui/input';
 import { MapDialog } from '@/components/map-dialog';
@@ -16,17 +16,18 @@ interface AddressInputProps {
   onLocationSelect: (location: Location) => void;
   initialLocation?: { lat: number; lng: number } | null;
   className?: string;
+  value?: string;
 }
 
-export function AddressInput({ id, initialValue = '', onInputChange, onLocationSelect, initialLocation, className }: AddressInputProps) {
-  const [inputValue, setInputValue] = useState(initialValue);
+export function AddressInput({ id, initialValue = '', onInputChange, onLocationSelect, initialLocation, className, value }: AddressInputProps) {
+  const [inputValue, setInputValue] = useState(value ?? initialValue);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
-  const portalRef = useRef<HTMLDivElement>(null);
-  const isMounted = useRef(false);
-
+  
   useEffect(() => {
-    setInputValue(initialValue);
-  }, [initialValue]);
+    if (value !== undefined) {
+      setInputValue(value);
+    }
+  }, [value]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -37,14 +38,6 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
   });
 
   const onLoad = useCallback((ref: google.maps.places.SearchBox) => {
-    if (portalRef.current) {
-      // This is the key: we find the .pac-container and move it into our portal div
-      const pacContainer = document.querySelector('.pac-container');
-      if (pacContainer) {
-        portalRef.current.appendChild(pacContainer);
-        pacContainer.classList.add('relative'); // Ensure it's positioned correctly within the portal
-      }
-    }
     setSearchBox(ref);
   }, []);
 
@@ -64,20 +57,6 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
       }
     }
   };
-
-  useEffect(() => {
-    // This effect ensures that when the component unmounts (e.g., dialog is closed),
-    // we move the .pac-container back to the body to avoid memory leaks.
-    isMounted.current = true;
-    return () => {
-      if (isMounted.current) {
-        const pacContainer = portalRef.current?.querySelector('.pac-container');
-        if (pacContainer) {
-          document.body.appendChild(pacContainer);
-        }
-      }
-    };
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -111,8 +90,6 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
           initialLocation={initialLocation}
         />
       </div>
-      {/* This div is the portal where suggestions will be rendered */}
-      <div ref={portalRef} className="absolute z-[9999] w-full" />
     </div>
   );
 }

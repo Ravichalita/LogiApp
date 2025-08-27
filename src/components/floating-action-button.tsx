@@ -18,7 +18,7 @@ export function FloatingActionButton() {
     }
 
     // Don't show FAB on these pages
-    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/admin/clients')) {
+    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/clients/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/admin/clients')) {
         return null;
     }
 
@@ -34,7 +34,14 @@ export function FloatingActionButton() {
                 return null;
             case '/clients':
                  if (isAdmin || permissions?.canEditClients) {
-                    return <NewItemDialog itemType="client" />;
+                    return (
+                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                            <Link href="/clients/new">
+                                <Plus className="h-8 w-8" />
+                                <span className="sr-only">Novo Cliente</span>
+                            </Link>
+                        </Button>
+                    );
                 }
                 return null;
             case '/team':
