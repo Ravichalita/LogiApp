@@ -78,3 +78,8 @@
     font-family: var(--font-headline);
   }
 }
+
+/* Fix for Google Places Autocomplete suggestions appearing behind dialogs */
+.pac-container {
+    @apply z-[9999];
+}
