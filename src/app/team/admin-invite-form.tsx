@@ -43,7 +43,7 @@ function SuccessDialog({
 
     if (!newUser) return null;
 
-     const message = `Olá, ${newUser.name}! Bem-vindo(a) ao Econtrol.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso. Para isso, acesse o menu no canto superior direito, clique em "Sua Conta" e depois em "Alterar Senha".`;
+     const message = `Olá, ${newUser.name}! Bem-vindo(a) ao LogiApp.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso. Para isso, acesse o menu no canto superior direito, clique em "Sua Conta" e depois em "Alterar Senha".`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;

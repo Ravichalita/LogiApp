@@ -60,7 +60,7 @@ export function Header() {
               "font-bold font-headline text-lg",
               isSuperAdmin && "hidden md:inline" // Hide title on mobile for super-admin
             )}>
-              Econtrol
+              LogiApp
             </span>
           </Link>
           <nav className="hidden md:flex items-center space-x-6 ml-6">{renderNavLinks()}</nav>
