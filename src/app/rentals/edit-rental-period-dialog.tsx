@@ -63,7 +63,7 @@ export function EditRentalPeriodDialog({ rental, children }: EditRentalPeriodDia
       } else if (result.message === 'error') {
          toast({ title: 'Erro', description: result.error, variant: 'destructive' });
       } else {
-        toast({ title: 'Sucesso', description: 'Período do aluguel atualizado.' });
+        toast({ title: 'Sucesso', description: 'Período da OS atualizado.' });
         setIsOpen(false);
       }
     });
@@ -85,7 +85,7 @@ export function EditRentalPeriodDialog({ rental, children }: EditRentalPeriodDia
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar Período do Aluguel</DialogTitle>
+          <DialogTitle>Editar Período da OS</DialogTitle>
         </DialogHeader>
         <form action={handleFormAction} className="space-y-4 pt-4">
             <input type="hidden" name="id" value={rental.id} />

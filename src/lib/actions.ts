@@ -465,8 +465,8 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     
     await sendNotification({
         userId: rentalData.assignedTo,
-        title: 'Novo Aluguel Designado',
-        body: `Você foi designado para um novo aluguel da ${dumpsterName}.`,
+        title: 'Nova OS Designada',
+        body: `Você foi designado para a OS da ${dumpsterName}.`,
         link: `/?rentalId=${newRentalRef.id}`
     });
 
@@ -493,7 +493,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         const rentalSnap = await rentalRef.get();
         
         if (!rentalSnap.exists) {
-            throw new Error('Aluguel não encontrado.');
+            throw new Error('OS não encontrada.');
         }
         
         const rentalData = rentalSnap.data() as Rental;
@@ -594,8 +594,8 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
             await sendNotification({
                 userId: updateData.assignedTo,
-                title: 'Você foi designado para um Aluguel',
-                body: `Você agora é o responsável pelo aluguel para ${clientName}.`,
+                title: 'Você foi designado para uma OS',
+                body: `Você agora é o responsável pela OS para ${clientName}.`,
                 link: `/?rentalId=${id}`
             });
         }

@@ -200,7 +200,7 @@ export default function HomePage() {
           sendNotification({
             userId: rental.assignedToUser?.id!,
             title: 'Lembrete de Retirada',
-            body: `A caçamba ${rental.dumpster?.name} para o cliente ${rental.client?.name} vence amanhã.`,
+            body: `A OS da caçamba ${rental.dumpster?.name} para ${rental.client?.name} vence amanhã.`,
             link: `/?rentalId=${rental.id}`,
           });
           notificationsSent.current.add(`${rental.id}-due`);
@@ -210,8 +210,8 @@ export default function HomePage() {
         if (status.text === 'Em Atraso' && !notificationsSent.current.has(`${rental.id}-late`)) {
           sendNotification({
             userId: rental.assignedToUser?.id!,
-            title: 'Aluguel Atrasado!',
-            body: `O aluguel da caçamba ${rental.dumpster?.name} para ${rental.client?.name} está atrasado.`,
+            title: 'OS Atrasada!',
+            body: `A OS da caçamba ${rental.dumpster?.name} para ${rental.client?.name} está atrasada.`,
             link: `/?rentalId=${rental.id}`,
           });
           notificationsSent.current.add(`${rental.id}-late`);

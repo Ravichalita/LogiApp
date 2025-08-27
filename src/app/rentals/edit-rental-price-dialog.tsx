@@ -71,7 +71,7 @@ export function EditRentalPriceDialog({ rental, children }: EditRentalDialogProp
       } else if (result.message === 'error') {
          toast({ title: 'Erro', description: result.error, variant: 'destructive' });
       } else {
-        toast({ title: 'Sucesso', description: 'Preço do aluguel atualizado.' });
+        toast({ title: 'Sucesso', description: 'Preço da OS atualizado.' });
         setIsOpen(false);
       }
     });

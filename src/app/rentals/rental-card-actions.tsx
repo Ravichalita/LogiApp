@@ -103,7 +103,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         if (!accountId) return;
         const boundAction = finishRentalAction.bind(null, accountId);
         await boundAction(formData);
-        toast({ title: "Sucesso!", description: "Aluguel finalizado." });
+        toast({ title: "Sucesso!", description: "Ordem de Serviço finalizada." });
     })
   }
 
@@ -114,7 +114,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         if (result.message === 'error') {
             toast({ title: "Erro", description: result.error, variant: "destructive"});
         } else {
-            toast({ title: "Sucesso!", description: "Aluguel excluído." });
+            toast({ title: "Sucesso!", description: "Ordem de Serviço excluída." });
         }
      });
   }
@@ -249,7 +249,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             <AlertDialogTrigger asChild>
                                 <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir Aluguel
+                                    Excluir OS
                                 </DropdownMenuItem>
                             </AlertDialogTrigger>
                         </DropdownMenuContent>
@@ -262,7 +262,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             Você tem certeza?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro deste aluguel.
+                            Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -306,7 +306,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     <input type="hidden" name="rentalId" value={rental.id} />
                     <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                     {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                    Finalizar Aluguel
+                    Finalizar OS
                     </Button>
                 </form>
             )}
@@ -314,5 +314,3 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </div>
   );
 }
-
-    

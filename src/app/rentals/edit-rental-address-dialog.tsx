@@ -70,7 +70,7 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
       } else if (result.message === 'error') {
          toast({ title: 'Erro', description: result.error, variant: 'destructive' });
       } else {
-        toast({ title: 'Sucesso', description: 'Endereço do aluguel atualizado.' });
+        toast({ title: 'Sucesso', description: 'Endereço da OS atualizado.' });
         setIsOpen(false);
       }
     });
@@ -92,7 +92,7 @@ export function EditRentalAddressDialog({ rental, children }: EditRentalDialogPr
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Editar Endereço do Aluguel</DialogTitle>
+          <DialogTitle>Editar Endereço da OS</DialogTitle>
         </DialogHeader>
         <form action={handleFormAction} className="space-y-4 pt-4">
             <input type="hidden" name="id" value={rental.id} />

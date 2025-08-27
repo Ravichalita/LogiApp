@@ -77,7 +77,7 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Alterar Usuário Designado</DialogTitle>
+          <DialogTitle>Alterar Usuário Designado da OS</DialogTitle>
         </DialogHeader>
         <form action={handleFormAction} className="space-y-4 pt-4">
             <input type="hidden" name="id" value={rental.id} />
