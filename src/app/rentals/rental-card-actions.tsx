@@ -5,7 +5,7 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, ChevronDown, Phone, Mail, FileText, MoreVertical, Plus, Minus, XCircle } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -13,12 +13,6 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 
 import type { getRentalStatus } from '../page';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -184,87 +178,59 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
       </div>
        <div className="flex w-full items-center gap-2 mt-auto">
-            {isPendingStatus ? (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" className="w-full" disabled={isDeleting}>
-                            {isDeleting ? <Spinner size="small" /> : <XCircle />}
-                            Cancelar Agendamento
-                        </Button>
-                    </AlertDialogTrigger>
+            <div className="flex-grow-0">
+                <AlertDialog>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            {canEdit && (
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/rentals/${rental.id}/edit`}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Editar OS
+                                    </Link>
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                             <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                     <Trash2 className="mr-2 h-4 w-4" />
+                                     Excluir OS
+                                </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                      <AlertDialogContent>
                         <AlertDialogHeader>
                             <AlertDialogTitle className="flex items-center gap-2">
                                 <TriangleAlert className="h-6 w-6 text-destructive" />
-                                Cancelar este Agendamento?
+                                Você tem certeza?
                             </AlertDialogTitle>
                             <AlertDialogDescription>
-                                Esta ação não pode ser desfeita e irá remover permanentemente o registro deste agendamento.
+                                Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
                             </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                {isDeleting ? <Spinner size="small" /> : 'Sim, Cancelar'}
+                                {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            ) : (
-                <>
-                    {canEdit && (
-                         <AlertDialog>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="icon" className="shrink-0">
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                     <DropdownMenuItem asChild>
-                                        <Link href={`/rentals/${rental.id}/edit`}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            Editar OS
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <AlertDialogTrigger asChild>
-                                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Excluir OS
-                                        </DropdownMenuItem>
-                                    </AlertDialogTrigger>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center gap-2">
-                                        <TriangleAlert className="h-6 w-6 text-destructive" />
-                                        Você tem certeza?
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                        {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )}
-                    <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
-                        <input type="hidden" name="rentalId" value={rental.id} />
-                        <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                            {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                            Finalizar OS
-                        </Button>
-                    </form>
-                </>
-            )}
+            </div>
+            <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                <input type="hidden" name="rentalId" value={rental.id} />
+                <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                    {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                    Finalizar OS
+                </Button>
+            </form>
         </div>
     </div>
   );
