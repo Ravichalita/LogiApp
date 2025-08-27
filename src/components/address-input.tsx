@@ -20,15 +20,14 @@ interface AddressInputProps {
   value?: string; // Controlled value from parent
 }
 
-export function AddressInput({ 
-  id, 
-  initialValue = '', 
-  onInputChange, 
-  onLocationSelect, 
+export function AddressInput({
+  id,
+  initialValue = '',
+  onInputChange,
+  onLocationSelect,
   value: controlledValue,
   initialLocation,
 }: AddressInputProps) {
-  
   const [searchValue, setSearchValue] = useState(initialValue);
   const [selectedAddress, setSelectedAddress] = useState(initialValue);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
