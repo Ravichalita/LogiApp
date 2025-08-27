@@ -13,9 +13,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { getPopulatedRentalById } from '@/lib/data-server-actions';
+import { useParams } from 'next/navigation';
 
 
-export default function EditRentalPage({ params: { id } }: { params: { id: string } }) {
+export default function EditRentalPage() {
+  const params = useParams();
+  const rentalId = params.id as string;
   const { accountId } = useAuth();
   const [rental, setRental] = useState<PopulatedRental | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -23,7 +26,6 @@ export default function EditRentalPage({ params: { id } }: { params: { id: strin
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const rentalId = id;
 
   useEffect(() => {
     if (!accountId || !rentalId) {
