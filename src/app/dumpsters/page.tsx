@@ -13,7 +13,7 @@ import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Search, GanttChartSquare } from 'lucide-react';
-import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO, subDays, endOfDay } from 'date-fns';
+import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO, subDays, endOfDay, addDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -81,6 +81,12 @@ export default function DumpstersPage() {
   const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos'>('Todos');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+
+  const spreadsheetDateRange = useMemo(() => {
+    const startDate = new Date();
+    const endDate = addDays(startDate, 29); // 30 days total
+    return `${format(startDate, 'dd/MM')} - ${format(endDate, 'dd/MM')}`;
+  }, []);
 
   useEffect(() => {
     if (accountId) {
@@ -205,7 +211,10 @@ export default function DumpstersPage() {
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="flex items-center gap-3">
                     <GanttChartSquare className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-lg font-medium">Planilha de Disponibilidade</CardTitle>
+                    <div className="flex flex-col md:flex-row md:items-baseline md:gap-2">
+                         <CardTitle className="text-lg font-medium">Planilha de Disponibilidade</CardTitle>
+                         <span className="text-sm text-muted-foreground">{spreadsheetDateRange}</span>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -310,5 +319,7 @@ export default function DumpstersPage() {
     </div>
   );
 }
+
+    
 
     

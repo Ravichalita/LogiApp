@@ -86,7 +86,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
           className="sticky top-0 z-10 grid bg-card"
           style={{ gridTemplateColumns: `minmax(120px, 1.5fr) repeat(${NUMBER_OF_DAYS}, minmax(32px, 1fr))` }}
         >
-          <div className="p-1 border-b border-r text-muted-foreground font-semibold">Caçamba</div>
+          <div className="p-1 border-b border-r text-muted-foreground font-semibold"></div>
           {dateHeaders.map((header, index) => (
             <div key={index} className={cn("flex flex-col items-center justify-center border-b border-r p-1 text-center font-semibold", header.isWeekend && 'text-muted-foreground', header.isToday && 'bg-primary/10')}>
               <span>{header.dayOfMonth}</span>
@@ -123,3 +123,5 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     </TooltipProvider>
   );
 }
+
+    
