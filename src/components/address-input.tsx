@@ -70,21 +70,23 @@ export function AddressInput({ id, initialValue = '', onInputChange, onLocationS
 
   return (
     <div className={cn("relative w-full", className)}>
-      <div className="flex gap-2">
-        <StandaloneSearchBox
-          onLoad={onLoad}
-          onPlacesChanged={onPlacesChanged}
-        >
-          <Input
-            id={id}
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="Digite o endereço..."
-            required
-            className="w-full"
-            autoComplete="off"
-          />
-        </StandaloneSearchBox>
+      <div className="flex gap-2 items-start">
+        <div className="flex-grow">
+            <StandaloneSearchBox
+                onLoad={onLoad}
+                onPlacesChanged={onPlacesChanged}
+            >
+            <Input
+                id={id}
+                value={inputValue}
+                onChange={handleInputChange}
+                placeholder="Digite o endereço..."
+                required
+                className="w-full"
+                autoComplete="off"
+            />
+            </StandaloneSearchBox>
+        </div>
         <MapDialog
           onLocationSelect={onLocationSelect}
           initialLocation={initialLocation}
