@@ -34,24 +34,15 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   const formId = "client-form";
   const { toast } = useToast();
   
-  // State for all fields to have full control
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [cpfCnpj, setCpfCnpj] = useState('');
-  const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [observations, setObservations] = useState('');
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
 
-  const resetFormState = () => {
-      setName('');
-      setPhone('');
-      setCpfCnpj('');
-      setEmail('');
-      setAddress('');
-      setObservations('');
-      setLocation(null);
-      setState(initialState);
+  const resetForm = () => {
+    setAddress('');
+    setLocation(null);
+    setState(initialState);
+    const form = document.getElementById(formId) as HTMLFormElement;
+    form?.reset();
   };
   
   const handleLocationSelect = (selectedLocation: Location) => {
@@ -66,6 +57,14 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
+    
+    // Ensure the latest address from state is included
+    formData.set('address', address);
+    if(location) {
+      formData.set('latitude', String(location.lat));
+      formData.set('longitude', String(location.lng));
+    }
+
     startTransition(async () => {
       if (!accountId) {
         toast({ title: 'Erro', description: 'Conta não identificada.', variant: 'destructive' });
@@ -93,7 +92,7 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
             title: "Sucesso!",
             description: "Novo cliente cadastrado.",
         });
-        resetFormState();
+        resetForm();
         onSave?.();
       }
     });
@@ -106,35 +105,32 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
   return (
     <div className="flex flex-col h-full">
       <form id={formId} onSubmit={handleSubmit} className="space-y-4 overflow-y-auto px-6 pb-4 flex-grow">
-        <input type="hidden" name="address" value={address} />
-        {location && <input type="hidden" name="latitude" value={location.lat} />}
-        {location && <input type="hidden" name="longitude" value={location.lng} />}
         
         <div className="space-y-2">
           <Label htmlFor="name">Nome do Cliente</Label>
-          <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="João da Silva Construções" required />
+          <Input id="name" name="name" placeholder="João da Silva Construções" required />
           {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 98765-4321" required />
+          <Input id="phone" name="phone" placeholder="(11) 98765-4321" required />
           {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
         </div>
          <div className="space-y-2">
           <Label htmlFor="cpfCnpj">CPF/CNPJ (Opcional)</Label>
-          <Input id="cpfCnpj" name="cpfCnpj" value={cpfCnpj} onChange={(e) => setCpfCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+          <Input id="cpfCnpj" name="cpfCnpj" placeholder="00.000.000/0000-00" />
           {state?.errors?.cpfCnpj && <p className="text-sm font-medium text-destructive">{state.errors.cpfCnpj[0]}</p>}
         </div>
          <div className="space-y-2">
           <Label htmlFor="email">E-mail</Label>
-          <Input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="contato@joao.com" />
+          <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
         </div>
         <div className="space-y-2">
             <Label htmlFor="address-input">Endereço Principal</Label>
             <AddressInput
                 id="address-input"
-                value={address}
+                initialValue={address}
                 onLocationSelect={handleLocationSelect}
                 onInputChange={handleAddressChange}
             />
@@ -142,13 +138,13 @@ export function ClientForm({ onSave }: { onSave?: () => void }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="observations">Observações</Label>
-          <Textarea id="observations" name="observations" value={observations} onChange={(e) => setObservations(e.target.value)} placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+          <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
           {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
         </div>
       </form>
        <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline" onClick={resetFormState}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
             </DialogClose>
             <SubmitButton isPending={isPending} formId={formId} />
         </DialogFooter>

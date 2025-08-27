@@ -11,17 +11,22 @@ import { cn } from '@/lib/utils';
 
 interface AddressInputProps {
   id?: string;
-  value: string;
-  onInputChange: (value: string) => void;
+  initialValue?: string;
+  onInputChange?: (value: string) => void;
   onLocationSelect: (location: Location) => void;
   initialLocation?: { lat: number; lng: number } | null;
   className?: string;
 }
 
-export function AddressInput({ id, value, onInputChange, onLocationSelect, initialLocation, className }: AddressInputProps) {
+export function AddressInput({ id, initialValue = '', onInputChange, onLocationSelect, initialLocation, className }: AddressInputProps) {
+  const [inputValue, setInputValue] = useState(initialValue);
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const portalRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(false);
+
+  useEffect(() => {
+    setInputValue(initialValue);
+  }, [initialValue]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -54,6 +59,8 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
           address: place.formatted_address,
         };
         onLocationSelect(location);
+        setInputValue(place.formatted_address); // Update input value on selection
+        onInputChange?.(place.formatted_address);
       }
     }
   };
@@ -72,6 +79,11 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
     };
   }, []);
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    onInputChange?.(e.target.value);
+  }
+
 
   if (!isLoaded) {
     return <Skeleton className="h-10 w-full" />;
@@ -86,8 +98,8 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
         >
           <Input
             id={id}
-            value={value}
-            onChange={(e) => onInputChange(e.target.value)}
+            value={inputValue}
+            onChange={handleInputChange}
             placeholder="Digite o endereço..."
             required
             className="w-full"
@@ -100,7 +112,7 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
         />
       </div>
       {/* This div is the portal where suggestions will be rendered */}
-      <div ref={portalRef} className="absolute z-50 w-full" />
+      <div ref={portalRef} className="absolute z-[9999] w-full" />
     </div>
   );
 }

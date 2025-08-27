@@ -39,22 +39,6 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
     client.latitude && client.longitude ? { lat: client.latitude, lng: client.longitude } : null
   );
 
-  useEffect(() => {
-    if (state?.message === 'success') {
-      toast({
-        title: "Sucesso!",
-        description: "Cliente atualizado.",
-      });
-      onSave();
-    } else if (state?.message === 'error' && state.error) {
-      toast({
-        title: "Erro",
-        description: state.error,
-        variant: "destructive",
-      });
-    }
-  }, [state, toast, onSave]);
-  
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setAddress(selectedLocation.address);
@@ -67,10 +51,37 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
       if (!accountId) return;
-      formData.set('address', address); // Make sure the address from state is in formData
+
+      formData.set('address', address);
+      if (location) {
+        formData.set('latitude', String(location.lat));
+        formData.set('longitude', String(location.lng));
+      }
+
       const boundAction = updateClient.bind(null, accountId);
       const result = await boundAction(state, formData);
-      setState(result);
+
+      if (result.errors) {
+         toast({
+            title: "Erro de Validação",
+            description: Object.values(result.errors).flat().join(' '),
+            variant: "destructive"
+         });
+         setState(result);
+      } else if (result.message === 'error') {
+          toast({
+            title: "Erro ao Salvar",
+            description: result.error,
+            variant: "destructive",
+          });
+          setState(result);
+      } else {
+         toast({
+            title: "Sucesso!",
+            description: "Cliente atualizado.",
+        });
+        onSave();
+      }
     });
   };
 
@@ -78,9 +89,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
     <>
       <form id={formId} action={handleFormAction} className="space-y-4 overflow-y-auto p-6 pt-2 pb-4 flex-grow">
         <input type="hidden" name="id" value={client.id} />
-        {location && <input type="hidden" name="latitude" value={location.lat} />}
-        {location && <input type="hidden" name="longitude" value={location.lng} />}
-
+        
         <div className="space-y-2">
           <Label htmlFor="name">Nome do Cliente</Label>
           <Input id="name" name="name" defaultValue={client.name} required />
@@ -105,7 +114,7 @@ export function EditClientForm({ client, onSave }: { client: Client, onSave: () 
             <Label htmlFor="address-input">Endereço Principal</Label>
             <AddressInput
                 id="address-input"
-                value={address}
+                initialValue={address}
                 onLocationSelect={handleLocationSelect}
                 onInputChange={handleAddressChange}
                 initialLocation={location}
