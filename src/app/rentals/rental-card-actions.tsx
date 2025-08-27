@@ -119,24 +119,22 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        <div className="flex items-stretch justify-between gap-4">
-            <div className="flex items-start gap-3">
+        <div className="flex items-stretch justify-between gap-2">
+            <div className="flex items-start gap-3 flex-grow">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Local de Entrega</span>
                     <span className="font-medium">{rental.deliveryAddress}</span>
                 </div>
             </div>
-             <div className="flex items-center gap-2 shrink-0">
-                {!!rental.latitude && !!rental.longitude && (
-                <Button variant="outline" size="sm" asChild className="h-auto">
-                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                        <GoogleMapsIcon className="h-4 w-4" />
-                        <span>Abrir no Mapa</span>
-                    </Link>
-                </Button>
-                )}
-            </div>
+            {!!rental.latitude && !!rental.longitude && (
+            <Button variant="outline" size="sm" asChild className="h-auto">
+                <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                    <GoogleMapsIcon className="h-4 w-4" />
+                    <span>Abrir no Mapa</span>
+                </Link>
+            </Button>
+            )}
         </div>
         <div className="flex items-center justify-between">
             <div className="flex items-start gap-3">
