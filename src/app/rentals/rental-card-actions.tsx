@@ -187,7 +187,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-green-600 dark:text-green-500 hover:underline"
             >
-                <WhatsAppIcon className="h-7 w-7"/>
+                <WhatsAppIcon className="h-10 w-10"/>
                 <span className="font-medium">{rental.client?.phone}</span>
             </a>
         </div>
