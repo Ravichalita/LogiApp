@@ -28,7 +28,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     const today = startOfToday();
     const dates = Array.from({ length: NUMBER_OF_DAYS }, (_, i) => addDays(today, i));
     const dateHeaders = dates.map(date => {
-      const dayOfWeekShort = format(date, 'EEE', { locale: ptBR });
+      const dayOfWeekShort = format(date, 'EEE', { locale: ptBR }).replace('.', ''); // Remove the dot
       return {
         dayOfWeek: dayOfWeekShort.charAt(0).toUpperCase() + dayOfWeekShort.slice(1),
         dayOfMonth: format(date, 'd'),
