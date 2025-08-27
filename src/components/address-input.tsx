@@ -12,9 +12,10 @@ interface AddressInputProps {
   id?: string;
   initialValue: string;
   onLocationSelect: (location: Location) => void;
+  initialLocation?: { lat: number; lng: number } | null;
 }
 
-export function AddressInput({ id, initialValue, onLocationSelect }: AddressInputProps) {
+export function AddressInput({ id, initialValue, onLocationSelect, initialLocation }: AddressInputProps) {
   const [inputValue, setInputValue] = useState(initialValue);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -72,9 +73,7 @@ export function AddressInput({ id, initialValue, onLocationSelect }: AddressInpu
       </div>
       <MapDialog
         onLocationSelect={onLocationSelect}
-        initialLocation={
-          autocomplete?.getPlace()?.geometry?.location?.toJSON() || null
-        }
+        initialLocation={initialLocation}
       />
     </div>
   );

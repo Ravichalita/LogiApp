@@ -235,6 +235,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             id="address-input"
             initialValue={deliveryAddress}
             onLocationSelect={handleLocationSelect}
+            initialLocation={location}
         />
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
