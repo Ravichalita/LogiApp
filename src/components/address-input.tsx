@@ -40,6 +40,7 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
       setIsPopoverOpen(true);
     } else {
         setPredictions([]);
+        setIsPopoverOpen(false);
     }
   };
 
@@ -61,6 +62,13 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
         setIsPopoverOpen(false);
     }
   }, [value]);
+  
+  const handleInputBlur = () => {
+    // A small delay is necessary to allow the click event on the suggestion to register
+    setTimeout(() => {
+        setIsPopoverOpen(false);
+    }, 150);
+  }
 
 
   if (!isLoaded) {
@@ -80,17 +88,21 @@ export function AddressInput({ id, value, onInputChange, onLocationSelect, initi
         >
           <Popover open={isPopoverOpen && predictions.length > 0} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
-                <Input
-                  ref={inputRef}
-                  id={id}
-                  value={value}
-                  onChange={(e) => onInputChange(e.target.value)}
-                  placeholder="Digite o endereço..."
-                  required
-                  className="w-full"
-                  autoComplete="off"
-                />
+                {/* This trigger is now a wrapper and doesn't render anything itself,
+                    allowing the Input below to be the main interactive element. */}
+                <div />
             </PopoverTrigger>
+             <Input
+                ref={inputRef}
+                id={id}
+                value={value}
+                onChange={(e) => onInputChange(e.target.value)}
+                onBlur={handleInputBlur}
+                placeholder="Digite o endereço..."
+                required
+                className="w-full"
+                autoComplete="off"
+            />
             <PopoverContent className="p-0 border-0 shadow-md">
                  <Command>
                     <CommandList>
