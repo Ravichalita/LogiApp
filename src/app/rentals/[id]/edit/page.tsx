@@ -23,11 +23,12 @@ export default function EditRentalPage({ params }: { params: { id: string } }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { id: rentalId } = params;
 
   useEffect(() => {
-    if (!accountId || !params.id) {
+    if (!accountId || !rentalId) {
         if (!accountId) setError("A conta não foi identificada.");
-        if (!params.id) setError("A OS não foi identificada.");
+        if (!rentalId) setError("A OS não foi identificada.");
         setLoading(false);
         return;
     };
@@ -37,7 +38,7 @@ export default function EditRentalPage({ params }: { params: { id: string } }) {
         setError(null);
         try {
             const [rentalData, clientData, teamData, accountData] = await Promise.all([
-                getPopulatedRentalById(accountId, params.id),
+                getPopulatedRentalById(accountId, rentalId),
                 fetchClients(accountId),
                 fetchTeamMembers(accountId),
                 new Promise<Account | null>((resolve) => {
@@ -68,7 +69,7 @@ export default function EditRentalPage({ params }: { params: { id: string } }) {
 
     fetchData();
 
-  }, [accountId, params.id]);
+  }, [accountId, rentalId]);
 
 
   if (loading) {
