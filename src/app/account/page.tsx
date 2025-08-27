@@ -9,6 +9,12 @@ import { DeleteSelfAccountButton } from './delete-self-account-button';
 import { ResetPasswordCard } from './reset-password-card';
 import { Separator } from '@/components/ui/separator';
 import { TriangleAlert } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 
 export default function AccountPage() {
@@ -51,23 +57,24 @@ export default function AccountPage() {
                 <ResetPasswordCard />
 
                 {!isSuperAdmin && (
-                    <Card className="border-destructive">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-destructive">
-                                <TriangleAlert className="h-5 w-5" />
-                                Encerrar Conta
-                            </CardTitle>
-                            <CardDescription>
-                                Esta é uma ação permanente e não pode ser desfeita.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm mb-4">
-                                Ao encerrar sua conta, seu usuário de acesso e todos os seus dados pessoais associados serão permanentemente excluídos. Seus aluguéis existentes não serão apagados, mas serão desvinculados do seu usuário.
-                            </p>
-                        <DeleteSelfAccountButton />
-                        </CardContent>
-                    </Card>
+                    <Accordion type="single" collapsible className="w-full">
+                        <AccordionItem value="delete-account" className="border border-destructive/50 rounded-lg bg-card">
+                            <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                                <div className="flex items-center gap-2">
+                                        <TriangleAlert className="h-5 w-5" />
+                                        <span className="font-semibold">Encerrar Conta</span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="px-4 pb-4 space-y-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        Esta é uma ação permanente e irreversível. Ao encerrar sua conta, seu usuário de acesso e todos os seus dados pessoais associados serão permanentemente excluídos.
+                                    </p>
+                                    <DeleteSelfAccountButton />
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 )}
             </div>
         </div>
