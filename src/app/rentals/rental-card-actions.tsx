@@ -179,56 +179,11 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 <WhatsAppIcon className="h-5 w-5"/>
                 <span className="font-medium">{rental.client?.phone}</span>
             </a>
-             {canEdit && (
-                 <Button asChild variant="link" className="p-0 h-auto text-sm">
-                    <Link href={`/rentals/${rental.id}/edit`}>
-                        Editar OS
-                    </Link>
-                 </Button>
-             )}
         </div>
 
 
       </div>
        <div className="flex w-full items-center gap-2 mt-auto">
-            {canEdit && !isPendingStatus && (
-                 <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon" className="shrink-0">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Excluir OS
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <TriangleAlert className="h-6 w-6 text-destructive" />
-                            Você tem certeza?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                            {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-
             {isPendingStatus ? (
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -256,15 +211,62 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AlertDialogContent>
                 </AlertDialog>
             ) : (
-                <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
-                    <input type="hidden" name="rentalId" value={rental.id} />
-                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                    {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
-                    Finalizar OS
-                    </Button>
-                </form>
+                <>
+                    <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                        <input type="hidden" name="rentalId" value={rental.id} />
+                        <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                        {isFinishing ? <Spinner size="small" /> : <CheckCircle />}
+                        Finalizar OS
+                        </Button>
+                    </form>
+                    {canEdit && (
+                         <AlertDialog>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="icon" className="shrink-0">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/rentals/${rental.id}/edit`}>
+                                            <Edit className="mr-2 h-4 w-4" />
+                                            Editar OS
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <AlertDialogTrigger asChild>
+                                        <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Excluir OS
+                                        </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                    <TriangleAlert className="h-6 w-6 text-destructive" />
+                                    Você tem certeza?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                    {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
+                </>
             )}
         </div>
     </div>
   );
 }
+
