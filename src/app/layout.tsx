@@ -21,8 +21,9 @@ const pt_sans = PT_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CaçambaControl",
-  description: "Gerencie seus aluguéis de caçamba com facilidade.",
+  title: "LogiApp",
+  description: "Gestão de Logistica.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -32,6 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#000000" />
+      </head>
       <body
         className={`${inter.variable} ${pt_sans.variable} bg-background`}
       >
