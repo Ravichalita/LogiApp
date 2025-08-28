@@ -181,7 +181,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      if (!firebaseUser.emailVerified) {
+      const isSuperAdminUser = firebaseUser.email === SUPER_ADMIN_EMAIL;
+      
+      if (!firebaseUser.emailVerified && !isSuperAdminUser) {
           setUser(firebaseUser);
           setLoading(false);
           return;
@@ -200,11 +202,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(firebaseUser);
         setAccountId(claimsAccountId);
         
-        let isSuperAdminUser = false;
         // Check for Super Admin
-        if (firebaseUser.email === SUPER_ADMIN_EMAIL) {
+        if (isSuperAdminUser) {
             setIsSuperAdmin(true);
-            isSuperAdminUser = true;
         }
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -309,9 +309,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user && !isPublicRoute) {
       router.push('/login');
     } else if (user) {
-       if (!user.emailVerified && !pathname.startsWith('/verify-email')) {
+       const isSuperAdminUser = user.email === SUPER_ADMIN_EMAIL;
+       if (!user.emailVerified && !isSuperAdminUser && !pathname.startsWith('/verify-email')) {
          router.push('/verify-email');
-       } else if (user.emailVerified && nonAuthRoutes.includes(pathname)) {
+       } else if ((user.emailVerified || isSuperAdminUser) && nonAuthRoutes.includes(pathname)) {
          router.push('/');
       }
     }
