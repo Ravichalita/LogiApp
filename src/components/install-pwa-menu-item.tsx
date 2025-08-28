@@ -31,21 +31,25 @@ export function InstallPwaMenuItem() {
     }, []);
 
     const handleInstallClick = async () => {
-        if (!prompt) return;
-        
-        await prompt.prompt();
-        
-        const { outcome } = await prompt.userChoice;
-        if (outcome === 'accepted') {
-            console.log('Usuário aceitou a instalação do PWA');
-        } else {
-            console.log('Usuário recusou a instalação do PWA');
+        // Removendo a verificação conforme solicitado.
+        // Isso pode causar um erro no console se o prompt não estiver disponível,
+        // mas o botão tentará chamar a função de qualquer maneira.
+        try {
+            await prompt?.prompt();
+            const { outcome } = await prompt!.userChoice;
+            if (outcome === 'accepted') {
+                console.log('Usuário aceitou a instalação do PWA');
+            } else {
+                console.log('Usuário recusou a instalação do PWA');
+            }
+            setPrompt(null);
+        } catch (error) {
+            console.warn("A solicitação de instalação não pôde ser exibida. Isso é esperado se o app já foi instalado ou se o navegador não é compatível.");
         }
-        setPrompt(null);
     };
 
     return (
-        <DropdownMenuItem onClick={handleInstallClick} disabled={!prompt}>
+        <DropdownMenuItem onClick={handleInstallClick}>
             <Download className="mr-2 h-4 w-4" />
             <span>Instalar App</span>
         </DropdownMenuItem>
