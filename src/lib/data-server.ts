@@ -50,7 +50,7 @@ export async function ensureUserDocument(
 
     // If the user document already exists, we assume the setup is complete and do nothing.
     const userDocSnap = await userDocRef.get();
-    if (userDocSnap.exists()) {
+    if (userDocSnap.exists) {
         const existingData = userDocSnap.data();
         if (existingData && existingData.accountId) {
              console.log(`User document for ${userPayload.email} already exists. Skipping creation.`);
