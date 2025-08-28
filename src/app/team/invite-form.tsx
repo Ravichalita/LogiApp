@@ -43,7 +43,7 @@ function SuccessDialog({
 
     if (!newUser) return null;
     
-    const message = `Olá, ${newUser.name}! Bem-vindo(a) ao LogiApp.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso. Para isso, acesse o menu no canto superior direito, clique em "Sua Conta" e depois em "Alterar Senha".`;
+    const message = `Olá, ${newUser.name}! Bem-vindo(a) ao LogiApp.\n\nGuarde seus dados para acessar sua conta:\n\n*Link de Acesso:* ${loginUrl}\n*E-mail:* ${newUser.email}\n*Senha:* ${newUser.password}\n\nRecomendamos alterar sua senha no primeiro acesso. Para isso, acesse o menu no canto superior direito, clique em "Sua Conta" e depois em "Alterar Senha".\n\n------------------------------------\n\n*📱 Como começar a usar o app*\n\n1️⃣ *Instalar o App*\nAo abrir o app no navegador, vai aparecer um botão “Instalar App”. Toque nesse botão e siga as instruções para adicionar o app à tela inicial do seu celular.\n\n2️⃣ *Permitir Notificações*\nAssim que entrar no app, aparecerá um pedido para enviar notificações. Toque em “Permitir” para receber avisos importantes.\n\n3️⃣ *Redefinir a Senha*\nNo primeiro acesso, será exibida uma tela para redefinir sua senha. Siga as instruções para criar uma nova senha segura.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
