@@ -1,55 +1,80 @@
-// Import and initialize the Firebase SDK
-importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
 
-// Parse the config from the query string
-const urlParams = new URLSearchParams(self.location.search);
-const firebaseConfig = JSON.parse(urlParams.get('firebaseConfig'));
+// Import and initialize Firebase
+import { initializeApp } from 'firebase/app';
+import { getMessaging } from 'firebase/messaging/sw';
 
-// Initialize Firebase
-if (firebase.apps.length === 0) {
-  firebase.initializeApp(firebaseConfig);
+// This is a special query parameter that will be added by the client
+const firebaseConfig = new URL(location).searchParams.get('firebaseConfig');
+if (!firebaseConfig) {
+    throw new Error('Firebase config not found in service worker query parameters.');
 }
+const app = initializeApp(JSON.parse(firebaseConfig));
+const messaging = getMessaging(app);
 
-const messaging = firebase.messaging();
-
-// This listener handles notifications when the app is in the background or closed.
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  // Customize the notification here
-  const notificationTitle = payload.data.title;
-  const notificationOptions = {
-    body: payload.data.body,
-    icon: payload.data.icon || '/favicon.ico',
-    data: {
-        link: payload.data.link || '/'
+// --- Push Event Handler ---
+// This is the core logic that handles incoming push notifications when the app is in the background.
+self.addEventListener('push', (event) => {
+    console.log('[Service Worker] Push Received.');
+    if (!event.data) {
+        console.log('[Service Worker] Push event but no data');
+        return;
     }
-  };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+    try {
+        const notificationData = event.data.json();
+        console.log('[Service Worker] Notification data:', notificationData);
+
+        const title = notificationData.data.title || 'Nova Notificação';
+        const options = {
+            body: notificationData.data.body || 'Você tem uma nova atualização.',
+            icon: notificationData.data.icon || '/favicon.ico',
+            badge: '/badge.png', // Optional: an icon for the notification tray
+            data: {
+                link: notificationData.data.link || '/',
+            },
+        };
+
+        // This tells the browser to wait until the notification is shown.
+        // It's crucial for preventing the "This site has been updated..." message.
+        event.waitUntil(self.registration.showNotification(title, options));
+
+    } catch (e) {
+        console.error('[Service Worker] Error processing push event:', e);
+        // Fallback notification if parsing fails
+        const title = "Nova Notificação";
+        const options = { body: "Você recebeu uma nova atualização." };
+        event.waitUntil(self.registration.showNotification(title, options));
+    }
 });
 
-// This listener handles the click event on a notification.
-self.addEventListener('notificationclick', function(event) {
-    event.notification.close(); // Close the notification
 
-    const link = event.notification.data.link || '/';
+// --- Notification Click Handler ---
+// This handles what happens when a user clicks on the notification.
+self.addEventListener('notificationclick', (event) => {
+    console.log('[Service Worker] Notification click Received.');
 
-    // This looks for an existing window and focuses it if it exists.
-    // If it doesn't exist, it opens a new one.
-    event.waitUntil(
-        clients.matchAll({
-            type: "window"
-        })
-        .then(function(clientList) {
-            for (var i = 0; i < clientList.length; i++) {
-                var client = clientList[i];
-                if (client.url == '/' && 'focus' in client)
-                    return client.focus();
+    // Close the notification pop-up
+    event.notification.close();
+
+    const linkToOpen = event.notification.data.link || '/';
+
+    // This looks for an existing window/tab for your site and focuses it.
+    // If it can't find one, it opens a new one.
+    const promiseChain = clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+    }).then((clientList) => {
+        for (const client of clientList) {
+            // Check if the client is already on the target link
+            if (client.url === linkToOpen && 'focus' in client) {
+                return client.focus();
             }
-            if (clients.openWindow)
-                return clients.openWindow(link);
-        })
-    );
+        }
+        // If no client is found or none match, open a new window
+        if (clients.openWindow) {
+            return clients.openWindow(linkToOpen);
+        }
+    });
+
+    event.waitUntil(promiseChain);
 });
