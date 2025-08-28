@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { InstallPwaButton } from "./install-pwa-button";
 
 
 const navLinks = [
@@ -68,7 +67,6 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-            <InstallPwaButton />
             {isSuperAdmin && (
                  <Button variant="ghost" size="icon" asChild className="inline-flex">
                     <Link href="/admin/clients">

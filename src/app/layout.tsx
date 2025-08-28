@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { ThemeProvider } from "@/components/theme-provider";
+import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -52,6 +53,7 @@ export default function RootLayout({
                   <div className="h-16 md:hidden" />
                   <BottomNav />
                   <FloatingActionButton />
+                  <InstallPwaPrompt />
               </div>
               <Toaster />
           </AuthProvider>
