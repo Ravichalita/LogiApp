@@ -1,80 +1,60 @@
 
-// Import and initialize Firebase
-import { initializeApp } from 'firebase/app';
-import { getMessaging } from 'firebase/messaging/sw';
+// Import the Firebase app and messaging libraries
+importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
 
-// This is a special query parameter that will be added by the client
-const firebaseConfig = new URL(location).searchParams.get('firebaseConfig');
-if (!firebaseConfig) {
-    throw new Error('Firebase config not found in service worker query parameters.');
-}
-const app = initializeApp(JSON.parse(firebaseConfig));
-const messaging = getMessaging(app);
+// Get the Firebase config from the query parameter
+const urlParams = new URLSearchParams(self.location.search);
+const firebaseConfig = JSON.parse(urlParams.get('firebaseConfig'));
 
-// --- Push Event Handler ---
-// This is the core logic that handles incoming push notifications when the app is in the background.
-self.addEventListener('push', (event) => {
-    console.log('[Service Worker] Push Received.');
-    if (!event.data) {
-        console.log('[Service Worker] Push event but no data');
-        return;
-    }
+// Initialize the Firebase app in the service worker
+if (firebaseConfig) {
+    firebase.initializeApp(firebaseConfig);
+    const messaging = firebase.messaging();
 
-    try {
-        const notificationData = event.data.json();
-        console.log('[Service Worker] Notification data:', notificationData);
-
-        const title = notificationData.data.title || 'Nova Notificação';
-        const options = {
-            body: notificationData.data.body || 'Você tem uma nova atualização.',
-            icon: notificationData.data.icon || '/favicon.ico',
-            badge: '/badge.png', // Optional: an icon for the notification tray
+    // If you want to handle push messages in the background, you can add a listener here.
+    // This is useful for displaying notifications when the app is not in the foreground.
+    messaging.onBackgroundMessage((payload) => {
+        console.log('[firebase-messaging-sw.js] Received background message ', payload);
+        
+        // Customize the notification here
+        const notificationTitle = payload.data.title || 'Nova Notificação';
+        const notificationOptions = {
+            body: payload.data.body || 'Você tem uma nova mensagem.',
+            icon: payload.data.icon || '/favicon.ico',
             data: {
-                link: notificationData.data.link || '/',
-            },
+                link: payload.data.link || '/'
+            }
         };
 
-        // This tells the browser to wait until the notification is shown.
-        // It's crucial for preventing the "This site has been updated..." message.
-        event.waitUntil(self.registration.showNotification(title, options));
-
-    } catch (e) {
-        console.error('[Service Worker] Error processing push event:', e);
-        // Fallback notification if parsing fails
-        const title = "Nova Notificação";
-        const options = { body: "Você recebeu uma nova atualização." };
-        event.waitUntil(self.registration.showNotification(title, options));
-    }
-});
+        return self.registration.showNotification(notificationTitle, notificationOptions);
+    });
+} else {
+    console.error("Firebase config not found in service worker query parameters.");
+}
 
 
-// --- Notification Click Handler ---
-// This handles what happens when a user clicks on the notification.
+// Optional: Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-    console.log('[Service Worker] Notification click Received.');
+    console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification);
 
-    // Close the notification pop-up
     event.notification.close();
 
-    const linkToOpen = event.notification.data.link || '/';
+    const link = event.notification.data?.link || '/';
 
-    // This looks for an existing window/tab for your site and focuses it.
-    // If it can't find one, it opens a new one.
-    const promiseChain = clients.matchAll({
-        type: 'window',
-        includeUncontrolled: true
-    }).then((clientList) => {
-        for (const client of clientList) {
-            // Check if the client is already on the target link
-            if (client.url === linkToOpen && 'focus' in client) {
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            if (clientList.length > 0) {
+                let client = clientList[0];
+                for (let i = 0; i < clientList.length; i++) {
+                    if (clientList[i].focused) {
+                        client = clientList[i];
+                    }
+                }
+                client.navigate(link);
                 return client.focus();
             }
-        }
-        // If no client is found or none match, open a new window
-        if (clients.openWindow) {
-            return clients.openWindow(linkToOpen);
-        }
-    });
-
-    event.waitUntil(promiseChain);
+            return clients.openWindow(link);
+        })
+    );
 });
