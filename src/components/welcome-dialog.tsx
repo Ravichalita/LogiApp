@@ -74,7 +74,7 @@ export function WelcomeDialog({ isOpen, onClose }: WelcomeDialogProps) {
           </div>
           <DialogTitle className="text-center text-2xl font-headline">Bem-vindo(a)!</DialogTitle>
           <DialogDescription className="text-center pt-2">
-            Sua conta foi criada com uma senha temporária. Para sua segurança, recomendamos que você a altere agora.
+            Sua conta foi criada com uma senha temporária. Para sua segurança, recomendamos que você a altere agora. Ao clicar no link que você receberá, basta inserir sua nova senha.
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-4 text-sm text-muted-foreground space-y-4">
@@ -88,7 +88,7 @@ export function WelcomeDialog({ isOpen, onClose }: WelcomeDialogProps) {
         <DialogFooter className="flex-col-reverse sm:flex-row p-6 bg-muted/50 rounded-b-lg">
           <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">Lembrar Depois</Button>
           <Button onClick={handleResetPassword} disabled={isPending} className="w-full sm:w-auto">
-              {isPending ? <Spinner size="small" /> : 'Redefinir Senha Agora'}
+              {isPending ? <Spinner size="small" /> : 'Enviar Link de Redefinição'}
           </Button>
         </DialogFooter>
       </DialogContent>
