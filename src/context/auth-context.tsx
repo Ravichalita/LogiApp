@@ -30,7 +30,8 @@ interface AuthContextType {
   role: UserRole | null;
   isSuperAdmin: boolean;
   deferredPrompt: BeforeInstallPromptEvent | null;
-  setDeferredPrompt: (prompt: BeforeInstallPromptEvent | null) => void;
+  isPwaInstalled: boolean;
+  handleInstall: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -42,7 +43,8 @@ export const AuthContext = createContext<AuthContextType>({
   role: null,
   isSuperAdmin: false,
   deferredPrompt: null,
-  setDeferredPrompt: () => {},
+  isPwaInstalled: false,
+  handleInstall: () => {},
 });
 
 const nonAuthRoutes = ['/login', '/signup'];
@@ -82,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const sessionWorkPerformed = useRef(false); // Used for all once-per-session tasks
   const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
 
@@ -117,13 +120,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             e.preventDefault();
             setDeferredPrompt(e as BeforeInstallPromptEvent);
         };
+        
+        const handleAppInstalled = () => {
+            setIsPwaInstalled(true);
+            setDeferredPrompt(null);
+        };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.addEventListener('appinstalled', handleAppInstalled);
+
+        // Check if the app is already installed on load
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsPwaInstalled(true);
+        }
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('appinstalled', handleAppInstalled);
         };
     }, []);
+
+    const handleInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            console.log('PWA installation accepted');
+        } else {
+            console.log('PWA installation dismissed');
+        }
+        setDeferredPrompt(null);
+    };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -293,7 +320,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role,
     isSuperAdmin,
     deferredPrompt,
-    setDeferredPrompt,
+    isPwaInstalled,
+    handleInstall,
   };
 
   return (

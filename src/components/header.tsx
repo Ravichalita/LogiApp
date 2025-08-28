@@ -18,6 +18,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TestNotificationMenuItem } from "./test-notification-menu-item";
+import { InstallPwaMenuItem } from "./install-pwa-menu-item";
 
 
 const navLinks = [
@@ -28,15 +29,9 @@ const navLinks = [
 
 export function Header() {
   const pathname = usePathname();
-  const { user, userAccount, logout, isSuperAdmin, deferredPrompt } = useAuth();
+  const { user, userAccount, logout, isSuperAdmin } = useAuth();
   const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
   const permissions = userAccount?.permissions;
-
-  const handleInstallClick = () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-    }
-  };
 
   const renderNavLinks = () =>
     navLinks.map((link) => (
@@ -138,12 +133,7 @@ export function Header() {
                     <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
-              {deferredPrompt && (
-                <DropdownMenuItem onClick={handleInstallClick}>
-                  <Download className="mr-2 h-4 w-4" />
-                  <span>Instalar App</span>
-                </DropdownMenuItem>
-              )}
+              <InstallPwaMenuItem />
               <TestNotificationMenuItem />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>

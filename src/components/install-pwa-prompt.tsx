@@ -8,35 +8,31 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { useAuth } from '@/context/auth-context';
 
 export function InstallPwaPrompt() {
-    const { deferredPrompt, setDeferredPrompt } = useAuth();
+    const { deferredPrompt, handleInstall, isPwaInstalled } = useAuth();
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        if (deferredPrompt) {
-            setIsVisible(true);
-        }
-    }, [deferredPrompt]);
-
-
-    const handleInstall = async () => {
-        if (!deferredPrompt) return;
-        
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            console.log('PWA installation accepted');
+        if (deferredPrompt && !isPwaInstalled) {
+            const dismissed = localStorage.getItem('pwaInstallDismissed');
+            if (!dismissed) {
+                setIsVisible(true);
+            }
         } else {
-            console.log('PWA installation dismissed');
+            setIsVisible(false);
         }
-        setDeferredPrompt(null);
-        setIsVisible(false);
-    };
+    }, [deferredPrompt, isPwaInstalled]);
 
     const handleDismiss = () => {
+        localStorage.setItem('pwaInstallDismissed', 'true');
         setIsVisible(false);
     };
+    
+    const handleInstallClick = () => {
+        handleInstall();
+        setIsVisible(false);
+    }
 
-    if (!isVisible || !deferredPrompt) {
+    if (!isVisible) {
         return null;
     }
 
@@ -58,7 +54,7 @@ export function InstallPwaPrompt() {
                     </p>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
-                    <Button className="w-full" onClick={handleInstall}>
+                    <Button className="w-full" onClick={handleInstallClick}>
                         <Download className="mr-2 h-4 w-4" />
                         Instalar
                     </Button>
