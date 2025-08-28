@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface BeforeInstallPromptEvent extends Event {
     readonly platforms: Array<string>;
@@ -15,12 +16,13 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPwaMenuItem() {
-    const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
-            setPrompt(e as BeforeInstallPromptEvent);
+            setDeferredPrompt(e as BeforeInstallPromptEvent);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -31,25 +33,39 @@ export function InstallPwaMenuItem() {
     }, []);
 
     const handleInstallClick = async () => {
-        // Removendo a verificação conforme solicitado.
-        // Isso pode causar um erro no console se o prompt não estiver disponível,
-        // mas o botão tentará chamar a função de qualquer maneira.
+        if (!deferredPrompt) {
+            toast({
+                title: "App já instalado ou indisponível",
+                description: "A instalação não está disponível no momento.",
+                variant: 'default'
+            });
+            return;
+        }
+
         try {
-            await prompt?.prompt();
-            const { outcome } = await prompt!.userChoice;
+            // Show the install prompt
+            await deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') {
-                console.log('Usuário aceitou a instalação do PWA');
+                console.log('User accepted the A2HS prompt');
             } else {
-                console.log('Usuário recusou a instalação do PWA');
+                console.log('User dismissed the A2HS prompt');
             }
-            setPrompt(null);
+            // We can only use the prompt once, so clear it.
+            setDeferredPrompt(null);
         } catch (error) {
-            console.warn("A solicitação de instalação não pôde ser exibida. Isso é esperado se o app já foi instalado ou se o navegador não é compatível.");
+             console.error('Error during app installation:', error);
+             toast({
+                title: "Erro na Instalação",
+                description: "Não foi possível iniciar a instalação do aplicativo.",
+                variant: 'destructive'
+            });
         }
     };
 
     return (
-        <DropdownMenuItem onClick={handleInstallClick}>
+        <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt}>
             <Download className="mr-2 h-4 w-4" />
             <span>Instalar App</span>
         </DropdownMenuItem>

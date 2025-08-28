@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
@@ -18,39 +19,20 @@ export function TestNotificationMenuItem() {
     }, []);
 
     const showLocalNotification = (title: string, options: NotificationOptions) => {
-        // Use the Service Worker to show the notification
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.getRegistration().then((reg) => {
-                if (reg) {
-                    reg.showNotification(title, options).catch(e => {
-                        console.error("Error showing notification via Service Worker: ", e);
-                        toast({
-                           title: 'Erro ao exibir notificação',
-                           description: 'Não foi possível criar a notificação de teste.',
-                           variant: 'destructive',
-                        });
-                    });
-                } else {
-                     // Fallback for when registration is not ready for some reason
-                     new Notification(title, options);
-                }
+        try {
+            new Notification(title, options);
+        } catch (e) {
+            console.error("Error showing notification: ", e);
+            toast({
+               title: 'Erro ao exibir notificação',
+               description: 'Não foi possível criar a notificação de teste.',
+               variant: 'destructive',
             });
-        } else {
-             // Fallback for development or environments without a service worker
-             try {
-                new Notification(title, options);
-             } catch (e) {
-                 toast({
-                    title: 'Erro ao exibir notificação',
-                    description: 'Não foi possível criar a notificação de teste.',
-                    variant: 'destructive',
-                });
-             }
         }
     };
 
     const handleTestNotification = async () => {
-        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+        if (!('Notification' in window)) {
             toast({
                 title: 'Navegador incompatível',
                 description: 'Este navegador não suporta notificações de desktop.',
