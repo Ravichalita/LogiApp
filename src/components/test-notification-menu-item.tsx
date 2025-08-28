@@ -36,13 +36,12 @@ export function TestNotificationMenuItem() {
         }
         
         if (permission === 'granted') {
+            // Show local notification immediately for user feedback
+            showLocalTestNotification();
+
+            // Also send a real push notification to test background/delivery mechanism
             startTransition(async () => {
-                toast({ title: 'Enviando Notificação de Teste...', description: 'Você deve receber um alerta em breve.' });
-                
-                // Show notification immediately for user feedback, even with app open
-                showLocalTestNotification();
-                
-                // Also send a real push notification to test background/delivery mechanism
+                toast({ title: 'Enviando Notificação de Teste...', description: 'Um push real também foi enviado para teste em 2º plano.' });
                 await sendNotification({
                     userId: user.uid,
                     title: 'Teste de Notificação (Push)',
