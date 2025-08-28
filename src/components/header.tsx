@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Truck, LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck } from "lucide-react";
+import { Truck, LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck, Download } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -28,9 +28,15 @@ const navLinks = [
 
 export function Header() {
   const pathname = usePathname();
-  const { user, userAccount, logout, isSuperAdmin } = useAuth();
+  const { user, userAccount, logout, isSuperAdmin, deferredPrompt } = useAuth();
   const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
   const permissions = userAccount?.permissions;
+
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+    }
+  };
 
   const renderNavLinks = () =>
     navLinks.map((link) => (
@@ -132,6 +138,12 @@ export function Header() {
                     <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
+              {deferredPrompt && (
+                <DropdownMenuItem onClick={handleInstallClick}>
+                  <Download className="mr-2 h-4 w-4" />
+                  <span>Instalar App</span>
+                </DropdownMenuItem>
+              )}
               <TestNotificationMenuItem />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
