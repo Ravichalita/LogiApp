@@ -14,38 +14,58 @@ const firestore = getFirestore();
  * Also ensures the user has the correct custom claims in Firebase Auth.
  * This is a critical function for security and multi-tenancy.
  *
- * @param userPayload The user data from the signup form.
+ * @param userPayload The user data. For new users, it includes a password. For existing auth users (recovery), it does not.
  * @param inviterAccountId Optional ID of an existing account to join (for invites).
  * @returns The ID of the account the user is associated with.
  * @throws An error if the transaction fails or if the auth user can't be cleaned up on failure.
  */
 export async function ensureUserDocument(
-    userPayload: z.infer<typeof SignupSchema>, 
+    userPayload: Omit<z.infer<typeof SignupSchema>, 'confirmPassword'>, 
     inviterAccountId?: string | null
 ): Promise<{ accountId: string; userId: string }> {
     
-    // Check if user already exists before creating a new auth record
-    const existingUser = await adminAuth.getUserByEmail(userPayload.email).catch(() => null);
-    if (existingUser) {
-        throw new Error("Este e-mail já está cadastrado.");
-    }
-    
-    let newUserRecord: UserRecord | null = null;
-    try {
-        const isInviteFlow = !!inviterAccountId;
+    let userRecord: UserRecord | null = null;
+    let isNewUser = false;
 
-        // Step 1: Create the user in Firebase Auth
-        newUserRecord = await adminAuth.createUser({
+    // Check if user already exists
+    userRecord = await adminAuth.getUserByEmail(userPayload.email).catch(() => null);
+
+    if (!userRecord) {
+        // User does not exist, create them in Auth
+        if (!userPayload.password) {
+            throw new Error("A senha é necessária para criar um novo usuário.");
+        }
+        userRecord = await adminAuth.createUser({
             email: userPayload.email,
             password: userPayload.password,
             displayName: userPayload.name,
             emailVerified: true, // Auto-verify email for simplicity in this app
         });
+        isNewUser = true;
+    }
+    
+    // At this point, we have a valid userRecord, either existing or newly created.
+    const uid = userRecord.uid;
+    const userDocRef = firestore.doc(`users/${uid}`);
 
-        const uid = newUserRecord.uid;
-        const userDocRef = firestore.doc(`users/${uid}`);
+    // If the user document already exists, we assume the setup is complete and do nothing.
+    const userDocSnap = await userDocRef.get();
+    if (userDocSnap.exists()) {
+        const existingData = userDocSnap.data();
+        if (existingData && existingData.accountId) {
+             console.log(`User document for ${userPayload.email} already exists. Skipping creation.`);
+             // Ensure claims are set, as they might be missing in a recovery scenario
+             if (!userRecord.customClaims?.accountId) {
+                 await adminAuth.setCustomUserClaims(uid, { accountId: existingData.accountId, role: existingData.role });
+             }
+             return { accountId: existingData.accountId, userId: uid };
+        }
+    }
+    
+    try {
+        const isInviteFlow = !!inviterAccountId;
 
-        // Step 2: Run a Firestore transaction to create database documents and set claims
+        // Run a Firestore transaction to create database documents and set claims
         const accountId = await firestore.runTransaction(async (transaction) => {
             let determinedAccountId: string;
             let role: UserRole;
@@ -85,10 +105,10 @@ export async function ensureUserDocument(
                 });
             }
 
-            // Step 3: Set custom claims in Firebase Auth. This is critical for security rules.
+            // Set custom claims in Firebase Auth. This is critical for security rules.
             await adminAuth.setCustomUserClaims(uid, { accountId: determinedAccountId, role });
 
-            // Step 4: Create the user document in Firestore.
+            // Create the user document in Firestore.
             const userAccountData = {
                 email: userPayload.email,
                 name: userPayload.name,
@@ -109,12 +129,13 @@ export async function ensureUserDocument(
     } catch (error) {
         console.error("Erro na transação de ensureUserDocument. Revertendo...", error);
         
-        if (newUserRecord) {
+        // If we created a new Auth user but the transaction failed, we should delete the Auth user.
+        if (isNewUser && userRecord) {
             try {
-                await adminAuth.deleteUser(newUserRecord.uid);
-                console.log(`Usuário Auth ${newUserRecord.uid} limpo com sucesso após falha na transação.`);
+                await adminAuth.deleteUser(userRecord.uid);
+                console.log(`Usuário Auth ${userRecord.uid} limpo com sucesso após falha na transação.`);
             } catch (deleteError) {
-                 console.error(`CRÍTICO: Falha ao limpar o usuário Auth ${newUserRecord.uid} após falha na transação. Por favor, delete manualmente. Erro: ${deleteError}`);
+                 console.error(`CRÍTICO: Falha ao limpar o usuário Auth ${userRecord.uid} após falha na transação. Por favor, delete manualmente. Erro: ${deleteError}`);
             }
         }
 

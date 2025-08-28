@@ -3,12 +3,13 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
-import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { getFirebase, setupFcm } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import { createFirestoreBackupAction, checkAndSendDueNotificationsAction } from '@/lib/actions';
+import { ensureUserDocument } from '@/lib/data-server';
 import { differenceInDays, parseISO } from 'date-fns';
 import { WelcomeDialog } from '@/components/welcome-dialog';
 
@@ -190,21 +191,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const tokenResult = await getIdTokenResult(firebaseUser, true);
-        const claimsAccountId = tokenResult.claims.accountId as string | undefined;
+        let tokenResult = await getIdTokenResult(firebaseUser);
+        let claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
-        if (!claimsAccountId && !isSuperAdminUser) {
+        // *** RECOVERY LOGIC ***
+        // If claims are missing, it might be a new super admin user who needs their account created.
+        if (!claimsAccountId && isSuperAdminUser) {
+            console.log("Super admin is missing claims. Attempting to ensure user document exists...");
+            await ensureUserDocument({
+                name: firebaseUser.displayName || 'Super Admin',
+                email: firebaseUser.email!,
+                // Password is not needed here as auth user already exists.
+                // The server action will handle this case gracefully.
+            });
+            // Force refresh the token to get the new claims.
+            tokenResult = await getIdTokenResult(firebaseUser, true);
+            claimsAccountId = tokenResult.claims.accountId as string | undefined;
+
+            if (!claimsAccountId) {
+                // If claims are still missing after recovery attempt, something is critically wrong.
+                console.error("Critical: Failed to set claims for super admin after recovery attempt. Logging out.");
+                await logout();
+                return;
+            }
+        } else if (!claimsAccountId && !isSuperAdminUser) {
             console.error("Critical: accountId claim is missing for non-superadmin. Logging out.");
             await logout();
             return;
         }
 
-        const effectiveAccountId = claimsAccountId || firebaseUser.uid; // SuperAdmin accountId is its own UID
+        const effectiveAccountId = claimsAccountId!;
         
         setUser(firebaseUser);
         setAccountId(effectiveAccountId);
         
-        // Check for Super Admin
         if (isSuperAdminUser) {
             setIsSuperAdmin(true);
         }
@@ -229,7 +249,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  }
 
             } else {
-                console.error("User document not found, which should not happen after signup. Logging out.");
+                console.error("User document not found, which should not happen after login. Logging out.");
                 logout();
             }
         }, async (error) => {
@@ -243,30 +263,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const accountData = { id: accountSnap.id, ...accountSnap.data() } as Account;
                 setAccount(accountData);
             } else {
-                // *** RECOVERY LOGIC ***
-                // If account is not found, but user is the super admin, create it for them.
-                if (isSuperAdminUser) {
-                    console.warn("Super Admin account not found. Recreating it...");
-                    try {
-                        const newAccountData = {
-                            ownerId: firebaseUser.uid,
-                            members: [firebaseUser.uid],
-                            createdAt: new Date().toISOString(),
-                            rentalPrices: [],
-                            backupPeriodicityDays: 7,
-                            backupRetentionDays: 90,
-                        };
-                        await setDoc(accountDocRef, newAccountData);
-                        setAccount({id: accountDocRef.id, ...newAccountData});
-                        console.log("Super Admin account recreated successfully.");
-                    } catch (e) {
-                         console.error("Failed to recreate Super Admin account. Logging out.", e);
-                         logout();
-                    }
-                } else {
-                    console.error("Account document not found. Logging out.");
-                    logout();
-                }
+                console.error("Account document not found after claims were confirmed. Logging out.");
+                logout();
             }
         }, async (error) => {
              console.error("Error listening to account document:", error);
