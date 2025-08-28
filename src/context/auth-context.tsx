@@ -3,13 +3,14 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { getFirebase, setupFcm } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import { createFirestoreBackupAction, checkAndSendDueNotificationsAction } from '@/lib/actions';
 import { differenceInDays, parseISO } from 'date-fns';
+import { WelcomeDialog } from '@/components/welcome-dialog';
 
 
 interface BeforeInstallPromptEvent extends Event {
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const sessionWorkPerformed = useRef(false); // Used for all once-per-session tasks
   const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
 
@@ -151,6 +153,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setDeferredPrompt(null);
     };
+    
+    const handleCloseWelcomeDialog = () => {
+        if (!user) return;
+        const userRef = doc(db, 'users', user.uid);
+        updateDoc(userRef, { hasSeenWelcome: true }).catch(console.error);
+        setShowWelcomeDialog(false);
+    }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -158,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsSuperAdmin(false);
       sessionWorkPerformed.current = false; // Reset on user change
       fcmSetupPerformed.current = false;
+      setShowWelcomeDialog(false);
       if (userDocUnsubscribe.current) userDocUnsubscribe.current();
       if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
 
@@ -210,6 +220,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  
                  setUserAccount(userData);
                  setRole(userData.role);
+
+                 // Check if it's the first time the user sees this
+                 if (!userData.hasSeenWelcome) {
+                     setShowWelcomeDialog(true);
+                 }
+
             } else {
                 console.error("User document not found, which should not happen after signup. Logging out.");
                 logout();
@@ -327,6 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
+      <WelcomeDialog isOpen={showWelcomeDialog} onOpenChange={handleCloseWelcomeDialog} />
     </AuthContext.Provider>
   );
 }

@@ -97,6 +97,7 @@ export async function ensureUserDocument(
                 status: 'ativo',
                 permissions: permissions,
                 createdAt: FieldValue.serverTimestamp(),
+                hasSeenWelcome: false, // Initialize the flag for the welcome dialog
             };
             transaction.set(userDocRef, userAccountData);
 

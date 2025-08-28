@@ -172,6 +172,7 @@ export const UserAccountSchema = z.object({
   cpf: z.string().optional(),
   createdAt: z.custom<FieldValue>().optional(),
   fcmTokens: z.array(z.string()).optional(),
+  hasSeenWelcome: z.boolean().optional(),
 });
 
 export const UpdateUserProfileSchema = z.object({
