@@ -30,12 +30,12 @@ export function TestNotificationMenuItem() {
 
         if (permission === 'granted') {
             startTransition(async () => {
-                toast({ title: 'Enviando Notificação...', description: 'Você deve receber um alerta em breve.'});
                 await sendNotification({
                     userId: user.uid,
                     title: 'Teste de Notificação ✅',
                     body: 'Se você recebeu isso, suas notificações estão funcionando!',
                 });
+                toast({ title: 'Notificação Enviada!', description: 'Você deve receber um alerta do sistema em breve.'});
             });
         } else if (permission === 'default') {
             try {
@@ -43,8 +43,9 @@ export function TestNotificationMenuItem() {
                 setPermission(newPermission);
                 if (newPermission === 'granted') {
                     toast({ title: 'Permissão Concedida!', description: 'Agora vamos registrar seu dispositivo e enviar um teste.' });
-                    await setupFcm(user.uid); // Ensure device is registered
-                    handleTestNotification(); // Re-run to send the notification
+                    await setupFcm(user.uid);
+                    // Rerun after a short delay to ensure registration completes
+                    setTimeout(() => handleTestNotification(), 1000);
                 } else {
                      toast({ title: 'Permissão Negada', description: 'Você não receberá notificações.', variant: 'destructive' });
                 }
