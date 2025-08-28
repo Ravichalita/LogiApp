@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#70A4A4" />
+        <meta name="theme-color" content="#18181b" />
       </head>
       <body
         className={`${inter.variable} ${pt_sans.variable} bg-background`}
