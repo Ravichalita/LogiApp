@@ -11,8 +11,6 @@ interface BeforeInstallPromptEvent extends Event {
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const STORAGE_KEY = 'pwaInstallPromptDismissed';
-
 export function InstallPwaPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isVisible, setIsVisible] = useState(false);
@@ -22,11 +20,8 @@ export function InstallPwaPrompt() {
             e.preventDefault();
             const promptEvent = e as BeforeInstallPromptEvent;
             
-            const dismissed = localStorage.getItem(STORAGE_KEY);
-            if (!dismissed) {
-                setDeferredPrompt(promptEvent);
-                setIsVisible(true);
-            }
+            setDeferredPrompt(promptEvent);
+            setIsVisible(true);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -51,7 +46,6 @@ export function InstallPwaPrompt() {
     };
 
     const handleDismiss = () => {
-        localStorage.setItem(STORAGE_KEY, 'true');
         setIsVisible(false);
     };
 
