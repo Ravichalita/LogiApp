@@ -11,12 +11,15 @@ interface NotificationPayload {
     title: string;
     body: string;
     link?: string;
+    isTest?: boolean;
 }
 
-// A simple wrapper to call a server action. For now, it just logs to console.
-// In a real app, this would be a server action that calls the admin-side `sendNotification`.
+// A simple wrapper to call a server action.
 export async function sendNotification(payload: NotificationPayload) {
-    console.log("Client is requesting to send a notification:", payload);
-    // In a real implementation, you would have a server action here:
-    await sendNotificationServerAction(payload);
+    try {
+        await sendNotificationServerAction(payload);
+    } catch (error) {
+        console.error("Failed to send notification via server action:", error);
+        // Optionally, handle the error in the UI
+    }
 }

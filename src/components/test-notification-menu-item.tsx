@@ -6,7 +6,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Bell, BellRing, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { sendNotification } from '@/lib/notifications'; 
+import { sendNotification } from '@/lib/notifications-client'; 
 import { setupFcm } from '@/lib/firebase-client';
 import { Spinner } from './ui/spinner';
 
@@ -27,27 +27,28 @@ export function TestNotificationMenuItem() {
             toast({ title: 'Erro', description: 'Você precisa estar logado para testar as notificações.', variant: 'destructive' });
             return;
         }
-        
-        // This function will now be responsible for showing a notification locally
-        // AND sending a push to test background delivery.
+
         const showLocalTestNotification = () => {
-            new Notification('Teste de Notificação ✅', {
+             new Notification('Teste de Notificação ✅', {
                 body: 'Se você recebeu isso, suas notificações estão funcionando!',
                 icon: '/favicon.ico',
             });
-        };
-
+        }
+        
         if (permission === 'granted') {
             startTransition(async () => {
-                showLocalTestNotification(); // Show notification immediately for user feedback
-                // Also send a push notification to test background/delivery mechanism
+                toast({ title: 'Enviando Notificação de Teste...', description: 'Você deve receber um alerta em breve.' });
+                
+                // Show notification immediately for user feedback, even with app open
+                showLocalTestNotification();
+                
+                // Also send a real push notification to test background/delivery mechanism
                 await sendNotification({
                     userId: user.uid,
                     title: 'Teste de Notificação (Push)',
                     body: 'Este é o push real enviado pelo servidor.',
                     isTest: true, 
                 });
-                toast({ title: 'Notificação de Teste Enviada!', description: 'Você deve ter recebido um alerta do sistema.'});
             });
         } else if (permission === 'default') {
             try {
