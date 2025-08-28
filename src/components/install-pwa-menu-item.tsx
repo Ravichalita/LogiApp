@@ -17,7 +17,6 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPwaMenuItem() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-    const { toast } = useToast();
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
@@ -35,22 +34,21 @@ export function InstallPwaMenuItem() {
     }, []);
 
     const handleInstallClick = async () => {
-        // Se o deferredPrompt não estiver disponível, não faz nada.
-        // Isso não deveria acontecer por causa da renderização condicional abaixo.
+        // O prompt não deve ser nulo aqui por causa da renderização condicional,
+        // mas adicionamos uma verificação por segurança.
         if (!deferredPrompt) {
             return;
         }
 
         // Mostra o prompt de instalação
-        await deferredPrompt.prompt();
+        deferredPrompt.prompt();
 
         // Espera o usuário responder ao prompt
-        const { outcome } = await deferredPrompt.userChoice;
+        // Opcionalmente, pode-se usar o resultado para analytics
+        await deferredPrompt.userChoice;
         
-        // Opcionalmente, envie analytics sobre o resultado
-        console.log(`User response to the install prompt: ${outcome}`);
-
-        // O prompt só pode ser usado uma vez, então limpamos o estado
+        // O prompt só pode ser usado uma vez. Limpamos o estado para que
+        // o botão "Instalar" não seja mais exibido.
         setDeferredPrompt(null);
     };
 
