@@ -5,31 +5,18 @@ import { useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { X, Download } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
-
-interface BeforeInstallPromptEvent extends Event {
-    prompt: () => Promise<void>;
-    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
+import { useAuth } from '@/context/auth-context';
 
 export function InstallPwaPrompt() {
-    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const { deferredPrompt, setDeferredPrompt } = useAuth();
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        const handleBeforeInstallPrompt = (e: Event) => {
-            e.preventDefault();
-            const promptEvent = e as BeforeInstallPromptEvent;
-            
-            setDeferredPrompt(promptEvent);
+        if (deferredPrompt) {
             setIsVisible(true);
-        };
+        }
+    }, [deferredPrompt]);
 
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        };
-    }, []);
 
     const handleInstall = async () => {
         if (!deferredPrompt) return;

@@ -12,6 +12,15 @@ import { createFirestoreBackupAction, checkAndSendDueNotificationsAction } from 
 import { differenceInDays, parseISO } from 'date-fns';
 
 
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: Array<string>;
+    readonly userChoice: Promise<{
+        outcome: 'accepted' | 'dismissed';
+        platform: string;
+    }>;
+    prompt(): Promise<void>;
+}
+
 interface AuthContextType {
   user: User | null;
   userAccount: UserAccount | null;
@@ -20,6 +29,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   role: UserRole | null;
   isSuperAdmin: boolean;
+  deferredPrompt: BeforeInstallPromptEvent | null;
+  setDeferredPrompt: (prompt: BeforeInstallPromptEvent | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -30,6 +41,8 @@ export const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   role: null,
   isSuperAdmin: false,
+  deferredPrompt: null,
+  setDeferredPrompt: () => {},
 });
 
 const nonAuthRoutes = ['/login', '/signup'];
@@ -68,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const sessionWorkPerformed = useRef(false); // Used for all once-per-session tasks
   const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
 
@@ -97,6 +111,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signOut(auth);
     router.push('/login');
   }, [auth, router]);
+
+   useEffect(() => {
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e as BeforeInstallPromptEvent);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        };
+    }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -265,6 +292,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     role,
     isSuperAdmin,
+    deferredPrompt,
+    setDeferredPrompt,
   };
 
   return (

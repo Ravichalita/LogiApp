@@ -1,42 +1,20 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface BeforeInstallPromptEvent extends Event {
-    readonly platforms: Array<string>;
-    readonly userChoice: Promise<{
-        outcome: 'accepted' | 'dismissed';
-        platform: string;
-    }>;
-    prompt(): Promise<void>;
-}
+import { useAuth } from '@/context/auth-context';
 
 export function InstallPwaMenuItem() {
-    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const { deferredPrompt, setDeferredPrompt } = useAuth();
     const { toast } = useToast();
-
-    useEffect(() => {
-        const handleBeforeInstallPrompt = (e: Event) => {
-            e.preventDefault();
-            setDeferredPrompt(e as BeforeInstallPromptEvent);
-        };
-
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        return () => {
-            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        };
-    }, []);
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) {
-            toast({
-                title: 'App já instalado ou indisponível',
-                description: 'A opção de instalação não está disponível no seu navegador ou o app já foi instalado.',
+             toast({
+                title: 'Opção de instalação indisponível',
+                description: 'A instalação do aplicativo não está disponível no momento.',
                 variant: 'destructive',
             });
             return;
@@ -49,6 +27,7 @@ export function InstallPwaMenuItem() {
         } else {
             console.log('User dismissed the install prompt');
         }
+        // Clear the prompt once it's used
         setDeferredPrompt(null);
     };
 
