@@ -343,7 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
-      <WelcomeDialog isOpen={showWelcomeDialog} onOpenChange={handleCloseWelcomeDialog} />
+      <WelcomeDialog isOpen={showWelcomeDialog} onClose={handleCloseWelcomeDialog} />
     </AuthContext.Provider>
   );
 }
