@@ -18,9 +18,12 @@ export function TestNotificationMenuItem() {
         }
     }, []);
 
-    const showLocalNotification = (title: string, options: NotificationOptions) => {
+    const showLocalNotification = () => {
         try {
-            new Notification(title, options);
+            new Notification('Teste de Notificação ✅', {
+                body: 'Se você pode ver isso, suas notificações estão funcionando!',
+                icon: '/favicon.ico',
+            });
         } catch (e) {
             console.error("Error showing notification: ", e);
             toast({
@@ -40,8 +43,16 @@ export function TestNotificationMenuItem() {
             });
             return;
         }
+        
+        const currentPermission = Notification.permission;
+        setPermission(currentPermission);
 
-        if (permission === 'denied') {
+        if (currentPermission === 'granted') {
+            showLocalNotification();
+            return;
+        }
+
+        if (currentPermission === 'denied') {
             toast({
                 title: 'Notificações Bloqueadas',
                 description: 'Você precisa permitir as notificações nas configurações do seu navegador ou do aplicativo para continuar.',
@@ -50,16 +61,8 @@ export function TestNotificationMenuItem() {
             });
             return;
         }
-
-        if (permission === 'granted') {
-            showLocalNotification('Teste de Notificação ✅', {
-                body: 'Se você pode ver isso, suas notificações estão funcionando!',
-                icon: '/favicon.ico'
-            });
-            return;
-        }
         
-        if (permission === 'default') {
+        if (currentPermission === 'default') {
             startTransition(async () => {
                  try {
                     const newPermission = await Notification.requestPermission();
@@ -69,10 +72,8 @@ export function TestNotificationMenuItem() {
                             title: 'Permissão Concedida!',
                             description: 'Tente testar a notificação novamente.'
                         });
-                        showLocalNotification('Permissão concedida!', {
-                            body: 'Suas notificações agora estão ativadas.',
-                            icon: '/favicon.ico'
-                        });
+                        // Show a notification immediately after permission is granted
+                        showLocalNotification();
                     } else {
                         toast({
                             title: 'Permissão Negada',
