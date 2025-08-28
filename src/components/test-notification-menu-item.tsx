@@ -28,23 +28,38 @@ export function TestNotificationMenuItem() {
             return;
         }
 
-        startTransition(async () => {
-            if (permission === 'granted') {
-                // Directly create a local notification to test visibility
-                try {
-                    new Notification('Teste de Notificação ✅', {
-                        body: 'Se você pode ver isso, suas notificações estão funcionando!',
-                        icon: '/favicon.ico'
-                    });
-                } catch (e) {
-                     toast({
-                        title: 'Erro ao exibir notificação',
-                        description: 'Não foi possível criar a notificação de teste.',
-                        variant: 'destructive',
-                    });
-                }
-            } else if (permission === 'default') {
-                try {
+        if (permission === 'granted') {
+            // Se a permissão já foi concedida, crie a notificação localmente.
+            // Isso não precisa de startTransition.
+            try {
+                new Notification('Teste de Notificação ✅', {
+                    body: 'Se você pode ver isso, suas notificações estão funcionando!',
+                    icon: '/favicon.ico'
+                });
+            } catch (e) {
+                 toast({
+                    title: 'Erro ao exibir notificação',
+                    description: 'Não foi possível criar a notificação de teste.',
+                    variant: 'destructive',
+                });
+            }
+            return;
+        }
+        
+        if (permission === 'denied') {
+            toast({
+                title: 'Notificações Bloqueadas',
+                description: 'Você precisa permitir as notificações nas configurações do seu navegador ou do aplicativo para continuar.',
+                variant: 'destructive',
+                duration: 10000,
+            });
+            return;
+        }
+
+        if (permission === 'default') {
+            // startTransition é útil aqui porque requestPermission é assíncrono.
+            startTransition(async () => {
+                 try {
                     const newPermission = await Notification.requestPermission();
                     setPermission(newPermission); // Update state with the new permission
                     if (newPermission === 'granted') {
@@ -71,15 +86,8 @@ export function TestNotificationMenuItem() {
                         variant: 'destructive'
                     });
                 }
-            } else if (permission === 'denied') {
-                toast({
-                    title: 'Notificações Bloqueadas',
-                    description: 'Você precisa permitir as notificações nas configurações do seu navegador ou do aplicativo para continuar.',
-                    variant: 'destructive',
-                    duration: 10000,
-                });
-            }
-        });
+            });
+        }
     };
 
     const getMenuContent = () => {
