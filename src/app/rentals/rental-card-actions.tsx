@@ -62,28 +62,6 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
     return digits;
 }
 
-function WhatsAppIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        {...props}
-      >
-        <path
-          d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.07 22l5.25-1.38c1.45.79 3.08 1.21 4.72 1.21h.01c5.46 0 9.91-4.45 9.91-9.91s-4.45-9.91-9.91-9.91zM12.04 20.15c-1.48 0-2.93-.4-4.2-1.15l-.3-.17-3.12.82.83-3.04-.2-.32a8.3 8.3 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24s8.24 3.7 8.24 8.24-3.7 8.24-8.24 8.24zm4.52-6.2c-.25-.13-1.47-.73-1.7-.82s-.39-.13-.55.13c-.16.25-.64.82-.79.99s-.29.2-.54.06c-.25-.13-1.06-.39-2-1.23s-1.44-1.93-1.68-2.26c-.24-.32-.01-.5.11-.64s.25-.29.37-.44c.12-.15.16-.25.24-.41.08-.16.12-.31.06-.59s-1.03-2.47-1.42-3.37c-.39-.9-.78-1.03-1.06-1.03h-.48c-.28 0-.6.09-.9.31s-1.16 1.13-1.16 2.76c0 1.63 1.18 3.22 1.35 3.44s2.39 3.65 5.78 5.07c.8.33 1.42.53 1.9.68.48.15.93.13 1.29.08.39-.04 1.2-.49 1.41-1.04.21-.55.21-1.02.15-1.15s-.18-.21-.43-.34z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-}
-
-function GoogleMapsIcon(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-        </svg>
-    )
-}
-
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { accountId, userAccount } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
@@ -176,7 +154,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-green-600 dark:text-green-500 hover:underline"
             >
-                <WhatsAppIcon className="h-10 w-10"/>
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoA2AAdVgAAAFsSURBVHic7dXhUQMxGIXhH6kESqAESqAESqAESqAESqAESqAEUqAEYgN2s/3zN5Nch+zM3S13k/zD/Jk1yfF/+b5O5O/vj+AD8BGYA/9tW8wI/AT+A+cdeD7gUfAG/AL+AY8L3g8wV2B7wXvA3YV/Be8F9xZ8G/ht4Z+Ffxz8y+C/A38z/F8B/4d/Gvzr4F8H/zr4N8D/Ffy/gH8Z/Gvg3wJ/C/xb4L8F/gHwL4B/APz74H8F/CvgnwR/EvyT4D8G/yT4H8F/BP8h+J/BPwv+C/BPwX8G/gr8L/C/wv8q/Gvwr8K/Cv5V8a/Gvxb8a/Gvxr8W/Gvxb8e/Fvzb8e/Fvzb8W/Bvwb8G/hvwb8G/Bv4b8G/hv4L/FfyX4L+C/xL8l+C/hP8S/JfkvwX/JfkvwX8J/kvw34L/Fvy34L8F/y3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z347sP/AH8F/l1931EAAAAASUVORK5CYII=" alt="WhatsApp Icon" className="h-10 w-10" />
                 <span className="font-medium">{rental.client?.phone}</span>
             </a>
         </div>
