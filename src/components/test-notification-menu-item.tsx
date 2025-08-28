@@ -12,7 +12,6 @@ export function TestNotificationMenuItem() {
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [isPending, startTransition] = useTransition();
 
-    // Check initial permission status on component mount
     useEffect(() => {
         if ('Notification' in window) {
             setPermission(Notification.permission);
@@ -20,8 +19,6 @@ export function TestNotificationMenuItem() {
     }, []);
 
     const showLocalNotification = () => {
-        // Use the service worker to show the notification
-        // This is more robust, especially on mobile.
         navigator.serviceWorker.ready.then((registration) => {
             registration.showNotification('Teste de Notificação ✅', {
                 body: 'Se você pode ver isso, suas notificações estão funcionando!',
@@ -48,7 +45,7 @@ export function TestNotificationMenuItem() {
         }
         
         const currentPermission = Notification.permission;
-        setPermission(currentPermission); // Update state just in case it changed
+        setPermission(currentPermission);
 
         if (currentPermission === 'granted') {
             showLocalNotification();
@@ -95,7 +92,6 @@ export function TestNotificationMenuItem() {
         }
     };
     
-    // Helper to determine the menu item's content based on permission status
     const getMenuContent = () => {
         switch (permission) {
             case 'granted':
@@ -113,7 +109,6 @@ export function TestNotificationMenuItem() {
     return (
         <DropdownMenuItem 
             onSelect={(e) => {
-                e.preventDefault(); // Prevents the menu from closing prematurely if we are requesting permission
                 handleTestNotification();
             }} 
             disabled={isPending}
@@ -123,3 +118,4 @@ export function TestNotificationMenuItem() {
         </DropdownMenuItem>
     );
 }
+
