@@ -80,7 +80,7 @@ export function AdminClientActions({ client }: { client: AdminClientView }) {
               )}
             </DropdownMenuItem>
              <AlertDialogTrigger asChild>
-                <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setIsAlertOpen(true);}}>
+                <DropdownMenuItem className="text-[#ff1c00]" onSelect={(e) => { e.preventDefault(); setIsAlertOpen(true);}}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Excluir Conta
                 </DropdownMenuItem>

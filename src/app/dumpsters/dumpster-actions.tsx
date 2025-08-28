@@ -130,7 +130,7 @@ export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }
                   <DropdownMenuSeparator />
                   <AlertDialogTrigger asChild disabled={isRented || isReserved}>
                   <DropdownMenuItem 
-                      className="text-[#ff1c00] dark:text-[#ff1c00]" 
+                      className="text-[#ff1c00]" 
                       onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
                       disabled={isRented || isReserved}
                   >

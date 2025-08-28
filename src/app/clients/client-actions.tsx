@@ -104,7 +104,7 @@ export function ClientActions({ client }: { client: Client }) {
               {canDelete && (
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem 
-                    className="text-[#ff1c00] dark:text-[#ff1c00]" 
+                    className="text-[#ff1c00]" 
                     onSelect={handleOpenDeleteDialog}
                     disabled={isCheckingRentals}
                   >
