@@ -18,6 +18,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { InstallPwaMenuItem } from "./install-pwa-menu-item";
+import { TestNotificationMenuItem } from "./test-notification-menu-item";
 
 
 const navLinks = [
@@ -132,6 +133,7 @@ export function Header() {
                     <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
+              <TestNotificationMenuItem />
               <InstallPwaMenuItem />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
