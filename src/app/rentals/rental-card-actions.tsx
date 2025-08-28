@@ -64,15 +64,15 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
 }
 
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg 
-        xmlns="http://www.w3.org/2000/svg" 
-        viewBox="0 0 20.02 20.02"
-        {...props}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      {...props}
     >
-      <path d="M10.01,0C4.5,0,.02,4.44.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z" fill="currentColor" />
-      <path d="M5.39,9.36c-.71-1.36-.65-2.83.51-3.83.46-.44,1.36-.4,1.62.16l.8,1.92c.1.21.09.42-.06.63-.19.22-.37.44-.56.66-.15.17-.22.31-.08.48.76,1.28,1.86,2.32,3.42,2.98.23.09.39.07.55-.12.24-.29.48-.59.72-.88.2-.26.39-.29.68-.17.66.31,1.98.94,1.98.94.49.37-.19,1.8-.79,2.16-.87.51-1.46.43-2.37.25-2.97-.59-5.28-3.13-6.43-5.18h0Z" fill="currentColor" />
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 12c0 1.77.46 3.44 1.34 4.9L2 22l5.3-1.48c1.37.81 2.94 1.23 4.57 1.23h.01c5.46 0 9.91-4.45 9.91-9.92 0-5.46-4.45-9.91-9.91-9.91zM17.5 14.3c-.28-.14-1.65-.82-1.9-.96-.25-.14-.44-.24-.62.24-.18.48-.72.96-.88 1.15-.16.2-.32.22-.6.08-.28-.14-1.18-.43-2.25-1.39-.83-.75-1.39-1.67-1.55-1.96-.16-.29-.01-.45.13-.58.13-.12.28-.31.42-.46.14-.15.18-.25.28-.41.09-.17.05-.31-.02-.45l-.62-1.5c-.24-.58-.5-.63-.68-.64-.17-.01-.36 0-.53 0-.17 0-.44.08-.68.31-.24.24-.92.9-1.12 2.12-.2 1.22.25 2.52.53 2.8.28.28 1.8 2.8 4.36 4.02 2.56 1.22 2.56.82 3.01.77.45-.05 1.41-.58 1.61-.14.2-.44.2-2.13.14-2.31-.05-.17-.18-.27-.36-.41z" />
     </svg>
-);
+  );
 
 
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
@@ -126,12 +126,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </div>
             </div>
             {!!rental.latitude && !!rental.longitude && (
-            <Button variant="outline" size="sm" asChild className="h-auto">
-                <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                    <MapPin className="h-4 w-4" />
-                    <span>Abrir no Mapa</span>
-                </Link>
-            </Button>
+                <Button variant="outline" size="sm" asChild className="flex flex-col items-center justify-center p-2 h-auto w-[65%] text-xs text-center md:flex-row md:w-auto md:h-auto md:p-2 md:text-sm">
+                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                        <MapPin className="h-4 w-4 mb-1 md:mb-0 md:mr-2" />
+                        <span className="leading-tight">Abrir no Mapa</span>
+                    </Link>
+                </Button>
             )}
         </div>
         <div className="flex items-center justify-between">
