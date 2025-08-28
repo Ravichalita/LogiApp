@@ -1,16 +1,16 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Plus, UserPlus, Building } from 'lucide-react';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
 import { InviteForm } from '@/app/team/invite-form';
@@ -25,8 +25,6 @@ interface NewItemDialogProps {
 
 export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [formKey, setFormKey] = useState(Date.now());
-
 
   const titles = {
     dumpster: 'Nova Caçamba',
@@ -39,23 +37,16 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     team: 'Crie uma conta para um funcionário. Ele terá acesso aos dados da sua empresa com as permissões que você definir.',
     clientAdmin: 'Crie uma nova conta de administrador para seu cliente. Ele terá uma conta separada e isolada para gerenciar os próprios dados.',
   };
-
+  
   const handleSave = () => {
-    handleOpenChange(false);
+    setIsOpen(false);
     onSuccess?.();
   }
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      setFormKey(Date.now());
-    }
-  };
-
   const formComponent = {
-    dumpster: <DumpsterForm key={formKey} onSave={handleSave} />,
-    team: <InviteForm key={formKey} onSave={handleSave} />,
-    clientAdmin: <AdminInviteForm key={formKey} onSave={handleSave} />,
+    dumpster: <DumpsterForm onSave={handleSave} />,
+    team: <InviteForm onSave={handleSave} />,
+    clientAdmin: <AdminInviteForm onSave={handleSave} />,
   };
   
    const iconComponent = {
@@ -64,33 +55,25 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     clientAdmin: <Building className="h-7 w-7" />,
    }
    
-   const sheetContentClasses = {
-    dumpster: "sm:max-w-lg",
-    team: "sm:max-w-lg",
-    clientAdmin: "sm:max-w-lg",
-   }
-   
   return (
-    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
         <Button className="h-16 w-16 rounded-full shadow-lg">
             {iconComponent[itemType as keyof typeof iconComponent]}
             <span className="sr-only">{titles[itemType as keyof typeof titles]}</span>
         </Button>
-      </SheetTrigger>
-      <SheetContent 
-        className={cn("p-0 flex flex-col", sheetContentClasses[itemType as keyof typeof sheetContentClasses])}
-      >
-        <SheetHeader className="p-6 pb-4">
-          <SheetTitle>{titles[itemType as keyof typeof titles]}</SheetTitle>
-          <SheetDescription>
+      </DialogTrigger>
+      <DialogContent className="p-0">
+        <DialogHeader>
+          <DialogTitle>{titles[itemType as keyof typeof titles]}</DialogTitle>
+          <DialogDescription>
             {descriptions[itemType as keyof typeof descriptions]}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex-grow overflow-y-auto px-1 py-4">
             {formComponent[itemType as keyof typeof formComponent]}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
