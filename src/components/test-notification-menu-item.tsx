@@ -12,6 +12,7 @@ export function TestNotificationMenuItem() {
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [isPending, startTransition] = useTransition();
 
+    // Check initial permission status on component mount
     useEffect(() => {
         if ('Notification' in window) {
             setPermission(Notification.permission);
@@ -19,22 +20,24 @@ export function TestNotificationMenuItem() {
     }, []);
 
     const showLocalNotification = () => {
-        try {
-            new Notification('Teste de Notificação ✅', {
+        // Use the service worker to show the notification
+        // This is more robust, especially on mobile.
+        navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification('Teste de Notificação ✅', {
                 body: 'Se você pode ver isso, suas notificações estão funcionando!',
                 icon: '/favicon.ico',
             });
-        } catch (e) {
-            console.error("Error showing notification: ", e);
-            toast({
+        }).catch(err => {
+             console.error("Service Worker not ready or notification failed: ", err);
+             toast({
                title: 'Erro ao exibir notificação',
                description: 'Não foi possível criar a notificação de teste.',
                variant: 'destructive',
             });
-        }
+        });
     };
 
-    const handleTestNotification = async () => {
+    const handleTestNotification = () => {
         if (!('Notification' in window)) {
             toast({
                 title: 'Navegador incompatível',
@@ -45,7 +48,7 @@ export function TestNotificationMenuItem() {
         }
         
         const currentPermission = Notification.permission;
-        setPermission(currentPermission);
+        setPermission(currentPermission); // Update state just in case it changed
 
         if (currentPermission === 'granted') {
             showLocalNotification();
@@ -70,9 +73,8 @@ export function TestNotificationMenuItem() {
                     if (newPermission === 'granted') {
                         toast({
                             title: 'Permissão Concedida!',
-                            description: 'Tente testar a notificação novamente.'
+                            description: 'A notificação de teste será exibida em seguida.'
                         });
-                        // Show a notification immediately after permission is granted
                         showLocalNotification();
                     } else {
                         toast({
@@ -92,7 +94,8 @@ export function TestNotificationMenuItem() {
             });
         }
     };
-
+    
+    // Helper to determine the menu item's content based on permission status
     const getMenuContent = () => {
         switch (permission) {
             case 'granted':
@@ -108,7 +111,13 @@ export function TestNotificationMenuItem() {
     const { icon, text } = getMenuContent();
 
     return (
-        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleTestNotification(); }} disabled={isPending}>
+        <DropdownMenuItem 
+            onSelect={(e) => {
+                e.preventDefault(); // Prevents the menu from closing prematurely if we are requesting permission
+                handleTestNotification();
+            }} 
+            disabled={isPending}
+        >
             {isPending ? <Spinner size="small" className="mr-2" /> : icon}
             <span>{text}</span>
         </DropdownMenuItem>
