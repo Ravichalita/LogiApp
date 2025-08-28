@@ -5,14 +5,10 @@ import { useState, useEffect, useTransition } from 'react';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Bell, BellRing, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
-import { sendNotification } from '@/lib/notifications-client'; 
-import { setupFcm } from '@/lib/firebase-client';
 import { Spinner } from './ui/spinner';
 
 export function TestNotificationMenuItem() {
     const { toast } = useToast();
-    const { user } = useAuth();
     const [permission, setPermission] = useState<NotificationPermission>('default');
     const [isPending, startTransition] = useTransition();
 
@@ -23,44 +19,67 @@ export function TestNotificationMenuItem() {
     }, []);
 
     const handleTestNotification = async () => {
-        if (!user) {
-            toast({ title: 'Erro', description: 'Você precisa estar logado para testar as notificações.', variant: 'destructive' });
+        if (!('Notification' in window)) {
+            toast({
+                title: 'Navegador incompatível',
+                description: 'Este navegador não suporta notificações de desktop.',
+                variant: 'destructive'
+            });
             return;
         }
-        
-        if (permission === 'granted') {
-            startTransition(async () => {
-                toast({ title: 'Enviando Notificação de Teste...', description: 'Você deve receber uma notificação do sistema em breve.' });
-                await sendNotification({
-                    userId: user.uid,
-                    title: 'Teste de Notificação ✅',
-                    body: 'Se você recebeu isso, suas notificações estão funcionando!',
-                });
-            });
-        } else if (permission === 'default') {
-            try {
-                const newPermission = await Notification.requestPermission();
-                setPermission(newPermission);
-                if (newPermission === 'granted') {
-                    toast({ title: 'Permissão Concedida!', description: 'Agora vamos registrar seu dispositivo e enviar um teste.' });
-                    await setupFcm(user.uid);
-                    // Rerun after a short delay to ensure registration completes
-                    setTimeout(() => handleTestNotification(), 1000);
-                } else {
-                     toast({ title: 'Permissão Negada', description: 'Você não receberá notificações.', variant: 'destructive' });
+
+        startTransition(async () => {
+            if (permission === 'granted') {
+                // Directly create a local notification to test visibility
+                try {
+                    new Notification('Teste de Notificação ✅', {
+                        body: 'Se você pode ver isso, suas notificações estão funcionando!',
+                        icon: '/favicon.ico'
+                    });
+                } catch (e) {
+                     toast({
+                        title: 'Erro ao exibir notificação',
+                        description: 'Não foi possível criar a notificação de teste.',
+                        variant: 'destructive',
+                    });
                 }
-            } catch (error) {
-                console.error("Error requesting notification permission:", error);
-                toast({ title: 'Erro', description: 'Não foi possível solicitar permissão.', variant: 'destructive' });
+            } else if (permission === 'default') {
+                try {
+                    const newPermission = await Notification.requestPermission();
+                    setPermission(newPermission); // Update state with the new permission
+                    if (newPermission === 'granted') {
+                        toast({
+                            title: 'Permissão Concedida!',
+                            description: 'Tente testar a notificação novamente.'
+                        });
+                         new Notification('Permissão concedida!', {
+                            body: 'Suas notificações agora estão ativadas.',
+                            icon: '/favicon.ico'
+                        });
+                    } else {
+                        toast({
+                            title: 'Permissão Negada',
+                            description: 'Você não receberá notificações.',
+                            variant: 'destructive'
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error requesting notification permission:", error);
+                    toast({
+                        title: 'Erro',
+                        description: 'Não foi possível solicitar permissão.',
+                        variant: 'destructive'
+                    });
+                }
+            } else if (permission === 'denied') {
+                toast({
+                    title: 'Notificações Bloqueadas',
+                    description: 'Você precisa permitir as notificações nas configurações do seu navegador ou do aplicativo para continuar.',
+                    variant: 'destructive',
+                    duration: 10000,
+                });
             }
-        } else if (permission === 'denied') {
-            toast({
-                title: 'Notificações Bloqueadas',
-                description: 'Você precisa permitir as notificações nas configurações do seu navegador ou do aplicativo para continuar.',
-                variant: 'destructive',
-                duration: 10000,
-            });
-        }
+        });
     };
 
     const getMenuContent = () => {
