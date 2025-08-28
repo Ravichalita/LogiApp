@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 interface RentalCardActionsProps {
     rental: PopulatedRental;
@@ -65,12 +66,13 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
+      viewBox="0 0 24 24"
       {...props}
     >
-      <path d="M10.01,0C4.5,0,.02,4.44.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z" />
-      <path d="M5.39,9.36c-.71-1.36-.65-2.83.51-3.83.46-.44,1.36-.4,1.62.16l.8,1.92c.1.21.09.42-.06.63-.19.22-.37.44-.56.66-.15.17-.22.31-.08.48.76,1.28,1.86,2.32,3.42,2.98.23.09.39.07.55-.12.24-.29.48-.59.72-.88.2-.26.39-.29.68-.17.66.31,1.98.94,1.98.94.49.37-.19,1.8-.79,2.16-.87.51-1.46.43-2.37.25-2.97-.59-5.28-3.13-6.43-5.18h0Z" />
+      <path
+        fill="currentColor"
+        d="M19.004 4.981a9.85 9.85 0 0 0-14.008 0A9.85 9.85 0 0 0 4.98 19.005c.014.015.027.03.042.044l-1.03 3.96 4.05-1.01a9.83 9.83 0 0 0 4.98.98h.02a9.85 9.85 0 0 0 9.85-9.85c0-2.69-1.08-5.14-2.85-6.92zm-1.53 12.48c-.45.85-1.53 1.55-2.54 1.7-1.02.14-2.1.08-3.1-.25-.99-.33-1.93-.8-2.78-1.4-1.39-1-2.6-2.38-3.46-3.95-.85-1.57-1.02-3.3-0.45-4.99.3-.85.83-1.6 1.5-2.2.3-.3.6-.5.9-.6.3-.1.6-.1.9-.1.3 0 .6.1.8.2.2.1.4.3.6.5.2.2.3.4.4.6l.8 1.9c.1.3.1.6 0 .9-.1.3-.2.5-.4.7-.2.2-.4.4-.6.6-.2.2-.3.4-.2.7.2.5.5 1 .9 1.5s.9 1 1.4 1.4c.5.4 1 .7 1.6.9.3.1.6 0 .8-.2.2-.2.4-.3.6-.5s.5-.3.8-.2c.3.1.7.3 1 .4l1.9.8c.3.1.6.1.9 0 .3-.1.5-.2.7-.4.2-.2.4-.3.6-.5.2-.2.3-.4.3-.7s-.1-.6-.2-1z"
+      />
     </svg>
 );
 
@@ -224,7 +226,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             {isPendingStatus ? (
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button className="w-full" variant="destructive" disabled={isDeleting}>
+                        <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
                             <XCircle className="mr-2 h-4 w-4" />
                             Cancelar Agendamento
                         </Button>
