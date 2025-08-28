@@ -193,14 +193,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const tokenResult = await getIdTokenResult(firebaseUser, true);
         const claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
-        if (!claimsAccountId) {
-            console.error("Critical: accountId claim is missing. Logging out.");
+        if (!claimsAccountId && !isSuperAdminUser) {
+            console.error("Critical: accountId claim is missing for non-superadmin. Logging out.");
             await logout();
             return;
         }
+
+        const effectiveAccountId = claimsAccountId || firebaseUser.uid; // SuperAdmin accountId is its own UID
         
         setUser(firebaseUser);
-        setAccountId(claimsAccountId);
+        setAccountId(effectiveAccountId);
         
         // Check for Super Admin
         if (isSuperAdminUser) {
@@ -212,7 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (userDocSnap.exists()) {
                  const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                  
-                 if (!userData.accountId || userData.accountId !== claimsAccountId) {
+                 if (!userData.accountId || userData.accountId !== effectiveAccountId) {
                     console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
                     logout();
                     return; 
@@ -235,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await logout();
         });
 
-        const accountDocRef = doc(db, 'accounts', claimsAccountId);
+        const accountDocRef = doc(db, 'accounts', effectiveAccountId);
         accountDocUnsubscribe.current = onSnapshot(accountDocRef, async (accountSnap) => {
             if (accountSnap.exists()) {
                 const accountData = { id: accountSnap.id, ...accountSnap.data() } as Account;
@@ -310,8 +312,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/login');
     } else if (user) {
        const isSuperAdminUser = user.email === SUPER_ADMIN_EMAIL;
-       if (!user.emailVerified && !isSuperAdminUser && !pathname.startsWith('/verify-email')) {
-         router.push('/verify-email');
+       if (!user.emailVerified && !isSuperAdminUser) {
+         if (!pathname.startsWith('/verify-email')) {
+            router.push('/verify-email');
+         }
        } else if ((user.emailVerified || isSuperAdminUser) && nonAuthRoutes.includes(pathname)) {
          router.push('/');
       }
