@@ -17,12 +17,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function InstallPwaMenuItem() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
-            // Previne que o mini-infobar apareça no Chrome
             e.preventDefault();
-            // Guarda o evento para que ele possa ser acionado mais tarde.
             setDeferredPrompt(e as BeforeInstallPromptEvent);
         };
 
@@ -34,31 +33,34 @@ export function InstallPwaMenuItem() {
     }, []);
 
     const handleInstallClick = async () => {
-        // O prompt não deve ser nulo aqui por causa da renderização condicional,
-        // mas adicionamos uma verificação por segurança.
         if (!deferredPrompt) {
+            toast({
+                title: 'App já instalado ou indisponível',
+                description: 'A instalação não está disponível no momento. O app pode já estar instalado ou o navegador não é compatível.',
+                variant: 'destructive',
+            })
             return;
         }
 
-        // Mostra o prompt de instalação
         deferredPrompt.prompt();
 
-        // Espera o usuário responder ao prompt
-        // Opcionalmente, pode-se usar o resultado para analytics
-        await deferredPrompt.userChoice;
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+        } else {
+            console.log('User dismissed the install prompt');
+        }
         
-        // O prompt só pode ser usado uma vez. Limpamos o estado para que
-        // o botão "Instalar" não seja mais exibido.
         setDeferredPrompt(null);
     };
 
-    // Só renderiza o item do menu se o prompt de instalação estiver disponível
-    if (!deferredPrompt) {
-        return null;
-    }
-
     return (
-        <DropdownMenuItem onSelect={handleInstallClick}>
+        <DropdownMenuItem onSelect={(e) => {
+            e.preventDefault(); // Prevent menu from closing if we need to show a toast
+            handleInstallClick();
+        }}
+        disabled={!deferredPrompt}
+        >
             <Download className="mr-2 h-4 w-4" />
             <span>Instalar App</span>
         </DropdownMenuItem>
