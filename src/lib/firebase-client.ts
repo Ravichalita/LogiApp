@@ -92,15 +92,21 @@ export const setupFcm = async (userId: string) => {
         onMessage(messaging, (payload) => {
             console.log('Foreground message received. ', payload);
             
-            // Do not show toast for test notifications
+            const title = payload.data?.title;
+            const body = payload.data?.body;
+
+            // For test notifications, manually create a system notification to force it to appear
             if (payload.data?.isTest === 'true') {
+                if (title && body) {
+                    new Notification(title, { body: body });
+                }
                 return;
             }
 
-            // Show a custom toast notification here instead of a system notification
+            // For other notifications, show a custom toast notification
             toast({
-                title: payload.data?.title,
-                description: payload.data?.body,
+                title: title,
+                description: body,
             });
         });
     } catch (error) {
