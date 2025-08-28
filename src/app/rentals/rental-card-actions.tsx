@@ -62,6 +62,19 @@ function formatPhoneNumberForWhatsApp(phone: string): string {
     return digits;
 }
 
+const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+    {...props}
+  >
+    <path d="M10.01,0C4.5,0,.02,4.44.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z" />
+    <path d="M5.39,9.36c-.71-1.36-.65-2.83.51-3.83.46-.44,1.36-.4,1.62.16l.8,1.92c.1.21.09.42-.06.63-.19.22-.37.44-.56.66-.15.17-.22.31-.08.48.76,1.28,1.86,2.32,3.42,2.98.23.09.39.07.55-.12.24-.29.48-.59.72-.88.2-.26.39-.29.68-.17.66.31,1.98.94,1.98.94.49.37-.19,1.8-.79,2.16-.87.51-1.46.43-2.37.25-2.97-.59-5.28-3.13-6.43-5.18h0Z" />
+  </svg>
+);
+
+
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { accountId, userAccount } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
@@ -154,7 +167,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-green-600 dark:text-green-500 hover:underline"
             >
-                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoA2AAdVgAAAFsSURBVHic7dXhUQMxGIXhH6kESqAESqAESqAESqAESqAESqAEUqAEYgN2s/3zN5Nch+zM3S13k/zD/Jk1yfF/+b5O5O/vj+AD8BGYA/9tW8wI/AT+A+cdeD7gUfAG/AL+AY8L3g8wV2B7wXvA3YV/Be8F9xZ8G/ht4Z+Ffxz8y+C/A38z/F8B/4d/Gvzr4F8H/zr4N8D/Ffy/gH8Z/Gvg3wJ/C/xb4L8F/gHwL4B/APz74H8F/CvgnwR/EvyT4D8G/yT4H8F/BP8h+J/BPwv+C/BPwX8G/gr8L/C/wv8q/Gvwr8K/Cv5V8a/Gvxb8a/Gvxr8W/Gvxb8e/Fvzb8e/Fvzb8W/Bvwb8G/hvwb8G/Bv4b8G/hv4L/FfyX4L+C/xL8l+C/hP8S/JfkvwX/JfkvwX8J/kvw34L/Fvy34L8F/y3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34L/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z3478F/D/578N+D/x789+C/B/89+O/Bfw/+e/Dfg/8e/Pfgvwf/PfjvwX8P/nvw34P/Hvz34L8H/z347sP/AH8F/l1931EAAAAASUVORK5CYII=" alt="WhatsApp Icon" className="h-10 w-10" />
+                <WhatsAppIcon className="h-10 w-10" />
                 <span className="font-medium">{rental.client?.phone}</span>
             </a>
         </div>
