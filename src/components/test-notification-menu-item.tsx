@@ -34,8 +34,9 @@ export function TestNotificationMenuItem() {
                     userId: user.uid,
                     title: 'Teste de Notificação ✅',
                     body: 'Se você recebeu isso, suas notificações estão funcionando!',
+                    isTest: true,
                 });
-                toast({ title: 'Notificação Enviada!', description: 'Você deve receber um alerta do sistema em breve.'});
+                toast({ title: 'Notificação de Teste Enviada!', description: 'Você deve receber um alerta do sistema em breve.'});
             });
         } else if (permission === 'default') {
             try {

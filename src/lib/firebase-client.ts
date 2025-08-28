@@ -1,3 +1,4 @@
+
 // src/lib/firebase-client.ts
 'use client';
 import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
@@ -90,6 +91,12 @@ export const setupFcm = async (userId: string) => {
         // Handle foreground messages
         onMessage(messaging, (payload) => {
             console.log('Foreground message received. ', payload);
+            
+            // Do not show toast for test notifications
+            if (payload.data?.isTest === 'true') {
+                return;
+            }
+
             // Show a custom toast notification here instead of a system notification
             toast({
                 title: payload.data?.title,
