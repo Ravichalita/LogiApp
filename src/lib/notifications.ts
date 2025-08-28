@@ -10,9 +10,10 @@ interface NotificationPayload {
     title: string;
     body: string;
     link?: string;
+    image?: string; // Add optional image property
 }
 
-export async function sendNotification({ userId, title, body, link }: NotificationPayload) {
+export async function sendNotification({ userId, title, body, link, image }: NotificationPayload) {
     if (!userId) return;
 
     try {
@@ -37,6 +38,7 @@ export async function sendNotification({ userId, title, body, link }: Notificati
                 body,
                 icon: '/favicon.ico', // Optional: if you have a favicon
                 link: link || '/', // Default link if none provided
+                image: image || '', // Include image url in data payload
             },
             tokens,
         };

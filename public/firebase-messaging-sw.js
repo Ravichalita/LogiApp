@@ -1,62 +1,57 @@
 
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing.');
-});
+// This file needs to be in the public folder.
+// It's a service worker that handles background notifications.
 
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating.');
-});
+// Scripts for firebase and firebase messaging
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
+// Get the firebase config from the query string
+const urlParams = new URLSearchParams(self.location.search);
+const firebaseConfig = JSON.parse(urlParams.get('firebaseConfig'));
 
-// Check if firebase is defined before using it
-if (typeof importScripts === 'function') {
-  try {
-    const urlParams = new URLSearchParams(location.search);
-    const firebaseConfigEncoded = urlParams.get('firebaseConfig');
+// Initialize the Firebase app in the service worker
+firebase.initializeApp(firebaseConfig);
 
-    if (!firebaseConfigEncoded) {
-        console.error("Firebase config not found in service worker URL.");
-    } else {
-        const firebaseConfig = JSON.parse(decodeURIComponent(firebaseConfigEncoded));
-        
-        importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
-        importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
+// Retrieve an instance of Firebase Messaging so that it can handle background messages.
+const messaging = firebase.messaging();
 
-        firebase.initializeApp(firebaseConfig);
-
-        const messaging = firebase.messaging();
-        
-        messaging.onBackgroundMessage(function (payload) {
-          console.log(
-            '[firebase-messaging-sw.js] Received background message ',
-            payload
-          );
-          // Customize notification here
-          const notificationTitle = payload.data.title;
-          const notificationOptions = {
-            body: payload.data.body,
-            icon: payload.data.icon,
-            data: {
-              link: payload.data.link
-            }
-          };
-
-          self.registration.showNotification(notificationTitle, notificationOptions);
-        });
-
-        self.addEventListener('notificationclick', function(event) {
-          console.log('[Service Worker] Notification click Received.');
-
-          event.notification.close();
-          const link = event.notification.data?.link || '/';
-          
-          event.waitUntil(
-            clients.openWindow(link)
-          );
-        });
-
+messaging.onBackgroundMessage((payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
+  const notificationTitle = payload.data.title;
+  const notificationOptions = {
+    body: payload.data.body,
+    icon: payload.data.icon || '/favicon.ico',
+    image: payload.data.image, // Add the image here
+    data: {
+        url: payload.data.link || '/' // Pass the link to the data property
     }
-  } catch (e) {
-    console.error('Error importing or initializing Firebase in service worker:', e);
-  }
-}
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close(); // Close the notification
+
+    const urlToOpen = event.notification.data.url;
+
+    event.waitUntil(
+        clients.matchAll({
+            type: 'window',
+            includeUncontrolled: true
+        }).then((clientList) => {
+            if (clientList.length > 0) {
+                let client = clientList[0];
+                for (let i = 0; i < clientList.length; i++) {
+                    if (clientList[i].focused) {
+                        client = clientList[i];
+                    }
+                }
+                return client.focus().then(c => c.navigate(urlToOpen));
+            }
+            return clients.openWindow(urlToOpen);
+        })
+    );
+});
