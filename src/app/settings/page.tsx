@@ -117,7 +117,7 @@ export default function SettingsPage() {
                     </AccordionItem>
 
                     <AccordionItem value="danger-zone" className="border border-destructive/50 rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 text-destructive hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                        <AccordionTrigger className="p-4 text-[#ff0000] hover:no-underline [&[data-state=open]>svg]:rotate-180">
                             <div className="flex items-center gap-2">
                                     <TriangleAlert className="h-5 w-5" />
                                     <span className="font-semibold">Reset</span>

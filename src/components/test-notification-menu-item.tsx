@@ -6,6 +6,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Bell, BellRing, BellOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from './ui/spinner';
+import { cn } from '@/lib/utils';
 
 export function TestNotificationMenuItem() {
     const { toast } = useToast();
@@ -97,7 +98,7 @@ export function TestNotificationMenuItem() {
             case 'granted':
                 return { icon: <BellRing className="mr-2 h-4 w-4 text-green-500" />, text: 'Testar Notificações' };
             case 'denied':
-                return { icon: <BellOff className="mr-2 h-4 w-4 text-destructive" />, text: 'Notificações Bloqueadas' };
+                return { icon: <BellOff className="mr-2 h-4 w-4 text-[#ff0000] dark:text-[#ff0000]" />, text: 'Notificações Bloqueadas' };
             case 'default':
             default:
                 return { icon: <Bell className="mr-2 h-4 w-4" />, text: 'Ativar Notificações' };
@@ -118,4 +119,3 @@ export function TestNotificationMenuItem() {
         </DropdownMenuItem>
     );
 }
-

@@ -57,7 +57,7 @@
     --accent: 0 0% 18%;
     --accent-foreground: 0 0% 98%;
    
-    --destructive: 0 100% 50%;
+    --destructive: 0 100% 31%; /* #a10000 */
     --destructive-foreground: 0 0% 98%;
    
     --border: 0 0% 25%;
