@@ -65,7 +65,7 @@ export function InstallPwaMenuItem() {
     };
 
     return (
-        <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt}>
+        <DropdownMenuItem onClick={handleInstallClick}>
             <Download className="mr-2 h-4 w-4" />
             <span>Instalar App</span>
         </DropdownMenuItem>
