@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['firebase-admin'],
   },
+  // Allow the service worker to be served from the public directory
+  async rewrites() {
+    return [
+      {
+        source: '/firebase-messaging-sw.js',
+        destination: '/_next/static/firebase-messaging-sw.js',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

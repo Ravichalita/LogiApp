@@ -27,26 +27,14 @@ export function TestNotificationMenuItem() {
             toast({ title: 'Erro', description: 'Você precisa estar logado para testar as notificações.', variant: 'destructive' });
             return;
         }
-
-        const showLocalTestNotification = () => {
-             new Notification('Teste de Notificação ✅', {
-                body: 'Se você recebeu isso, suas notificações estão funcionando!',
-                icon: '/favicon.ico',
-            });
-        }
         
         if (permission === 'granted') {
-            // Show local notification immediately for user feedback
-            showLocalTestNotification();
-
-            // Also send a real push notification to test background/delivery mechanism
             startTransition(async () => {
-                toast({ title: 'Enviando Notificação de Teste...', description: 'Um push real também foi enviado para teste em 2º plano.' });
+                toast({ title: 'Enviando Notificação de Teste...', description: 'Você deve receber uma notificação do sistema em breve.' });
                 await sendNotification({
                     userId: user.uid,
-                    title: 'Teste de Notificação (Push)',
-                    body: 'Este é o push real enviado pelo servidor.',
-                    isTest: true, 
+                    title: 'Teste de Notificação ✅',
+                    body: 'Se você recebeu isso, suas notificações estão funcionando!',
                 });
             });
         } else if (permission === 'default') {

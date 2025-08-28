@@ -95,19 +95,19 @@ export const setupFcm = async (userId: string) => {
             const title = payload.data?.title;
             const body = payload.data?.body;
 
-            // For test notifications, manually create a system notification to force it to appear
-            if (payload.data?.isTest === 'true') {
-                if (title && body) {
-                    new Notification(title, { body: body });
-                }
-                return;
+            // Always show a system notification, even in foreground.
+             if (title && body) {
+                const notificationOptions = {
+                    body: body,
+                    icon: payload.data?.icon || '/favicon.ico',
+                    data: {
+                        link: payload.data?.link || '/'
+                    }
+                };
+                navigator.serviceWorker.getRegistration().then(reg => {
+                    reg?.showNotification(title, notificationOptions);
+                });
             }
-
-            // For other notifications, show a custom toast notification
-            toast({
-                title: title,
-                description: body,
-            });
         });
     } catch (error) {
         console.error('An error occurred while setting up FCM.', error);
