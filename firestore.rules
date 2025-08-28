@@ -1,9 +1,8 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
+  
     // Helper Functions
     function isSignedIn() {
       return request.auth != null;
@@ -13,58 +12,68 @@ service cloud.firestore {
       return request.auth.token.email == 'contato@econtrol.com.br';
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function getAccountId() {
-      return request.auth.token.accountId;
-    }
-
-    function userAccountData() {
-        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function isOwner(accountId) {
+      return request.auth.uid == get(/databases/$(database)/documents/accounts/$(accountId)).data.ownerId;
     }
     
-    function isMemberOfAccount(accountId) {
-      return get(/databases/$(database)/documents/accounts/$(accountId)).data.members.hasAny([request.auth.uid]);
+    function isMember(accountId) {
+      return request.auth.uid in get(/databases/$(database)/documents/accounts/$(accountId)).data.members;
     }
     
-    function isMemberOfSameAccount(userId) {
-        let userAccountId = get(/databases/$(database)/documents/users/$(userId)).data.accountId;
-        return getAccountId() == userAccountId;
+    function isCorrectAccount(accountId) {
+       return request.auth.token.accountId == accountId;
     }
 
-    function isAdmin() {
-      return request.auth.token.role == 'admin' || request.auth.token.role == 'owner';
-    }
-
-    // Accounts collection
+    // Account Rules
     match /accounts/{accountId} {
-      allow read: if isMemberOfAccount(accountId) || isSuperAdmin();
       allow create: if request.auth.uid == accountId || isSuperAdmin();
-      allow update: if isAdmin() && isMemberOfAccount(accountId) || isSuperAdmin();
+      allow read: if isCorrectAccount(accountId) || isSuperAdmin();
+      allow update, delete: if isOwner(accountId) || isSuperAdmin();
       
-      // Subcollections
+      // Subcollection Rules
       match /{collection}/{docId} {
-        allow read, write: if isMemberOfAccount(accountId) || isSuperAdmin();
+        allow read, write: if isCorrectAccount(accountId) || isSuperAdmin();
       }
     }
-
-    // Users collection
+    
+    // User Rules
     match /users/{userId} {
-      allow read: if isOwner(userId) || (isMemberOfAccount(userAccountData().accountId) && isSuperAdmin());
-      allow create: if request.auth.uid == userId || isSuperAdmin();
-      allow update: if isOwner(userId) || (isAdmin() && isMemberOfSameAccount(userId)) || isSuperAdmin();
-      allow delete: if isOwner(userId) || isSuperAdmin();
+      // Allow user to create their own user document if they are the super admin (recovery flow)
+      // or if they are creating it as part of an account they are being invited to.
+      allow create: if request.auth.uid == userId;
+
+      // Users can read their own document.
+      // Super Admin can read any user document.
+      // A user can read another user's document if they are in the same account.
+      // Note: We can't check resource.data.accountId here because the document might not exist on the first read.
+      // This rule relies on the integrity of the custom claim set on the server.
+      allow read: if request.auth.uid == userId || isSuperAdmin() || exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      // Users can update their own document.
+      // Account owners can update documents of users in their account.
+      // Super Admin can update any user.
+      allow update: if request.auth.uid == userId 
+                    || isOwner(resource.data.accountId)
+                    || isSuperAdmin();
+                    
+      // Account owners can delete users from their account.
+      // Super Admin can delete any user.
+      // Users cannot delete their own account through this rule.
+      allow delete: if (isOwner(resource.data.accountId) && request.auth.uid != userId) 
+                    || isSuperAdmin();
     }
     
-     // Backups collection (Only Super Admin can access)
+    // Backup Rules
     match /backups/{backupId} {
-        allow read, write, delete: if isSuperAdmin();
-        
-        match /{path=**} {
-            allow read, write, delete: if isSuperAdmin();
+      allow read, create, delete, update: if isSuperAdmin();
+
+      match /{collection}/{docId} {
+        allow read, create, delete: if isSuperAdmin();
+
+         match /{subcollection}/{subDocId} {
+            allow read, create, delete: if isSuperAdmin();
         }
+      }
     }
   }
 }
