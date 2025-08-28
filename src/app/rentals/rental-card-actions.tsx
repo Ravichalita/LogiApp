@@ -195,7 +195,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             )}
                             <DropdownMenuSeparator />
                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-[#ff0000] dark:text-[#ff0000]" onSelect={(e) => e.preventDefault()}>
+                                <DropdownMenuItem className="text-[#ff1c00] dark:text-[#ff1c00]" onSelect={(e) => e.preventDefault()}>
                                      <Trash2 className="mr-2 h-4 w-4" />
                                      {isPendingStatus ? 'Cancelar Agendamento' : 'Excluir OS'}
                                 </DropdownMenuItem>
