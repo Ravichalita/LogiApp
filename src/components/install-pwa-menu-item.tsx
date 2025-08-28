@@ -44,12 +44,8 @@ export function InstallPwaMenuItem() {
         setPrompt(null);
     };
 
-    if (!prompt) {
-        return null;
-    }
-
     return (
-        <DropdownMenuItem onClick={handleInstallClick}>
+        <DropdownMenuItem onClick={handleInstallClick} disabled={!prompt}>
             <Download className="mr-2 h-4 w-4" />
             <span>Instalar App</span>
         </DropdownMenuItem>
