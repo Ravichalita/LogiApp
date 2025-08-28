@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { InstallPwaMenuItem } from "./install-pwa-menu-item";
 import { TestNotificationMenuItem } from "./test-notification-menu-item";
 
 
@@ -134,7 +133,6 @@ export function Header() {
                   </Link>
               </DropdownMenuItem>
               <TestNotificationMenuItem />
-              <InstallPwaMenuItem />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
