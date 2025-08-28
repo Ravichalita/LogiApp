@@ -21,7 +21,9 @@ export function InstallPwaMenuItem() {
 
     useEffect(() => {
         const handleBeforeInstallPrompt = (e: Event) => {
+            // Previne que o mini-infobar apareça no Chrome
             e.preventDefault();
+            // Guarda o evento para que ele possa ser acionado mais tarde.
             setDeferredPrompt(e as BeforeInstallPromptEvent);
         };
 
@@ -33,39 +35,32 @@ export function InstallPwaMenuItem() {
     }, []);
 
     const handleInstallClick = async () => {
+        // Se o deferredPrompt não estiver disponível, não faz nada.
+        // Isso não deveria acontecer por causa da renderização condicional abaixo.
         if (!deferredPrompt) {
-            toast({
-                title: "App já instalado ou indisponível",
-                description: "A instalação não está disponível no momento.",
-                variant: 'default'
-            });
             return;
         }
 
-        try {
-            // Show the install prompt
-            await deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                console.log('User accepted the A2HS prompt');
-            } else {
-                console.log('User dismissed the A2HS prompt');
-            }
-            // We can only use the prompt once, so clear it.
-            setDeferredPrompt(null);
-        } catch (error) {
-             console.error('Error during app installation:', error);
-             toast({
-                title: "Erro na Instalação",
-                description: "Não foi possível iniciar a instalação do aplicativo.",
-                variant: 'destructive'
-            });
-        }
+        // Mostra o prompt de instalação
+        await deferredPrompt.prompt();
+
+        // Espera o usuário responder ao prompt
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        // Opcionalmente, envie analytics sobre o resultado
+        console.log(`User response to the install prompt: ${outcome}`);
+
+        // O prompt só pode ser usado uma vez, então limpamos o estado
+        setDeferredPrompt(null);
     };
 
+    // Só renderiza o item do menu se o prompt de instalação estiver disponível
+    if (!deferredPrompt) {
+        return null;
+    }
+
     return (
-        <DropdownMenuItem onClick={handleInstallClick}>
+        <DropdownMenuItem onSelect={handleInstallClick}>
             <Download className="mr-2 h-4 w-4" />
             <span>Instalar App</span>
         </DropdownMenuItem>
