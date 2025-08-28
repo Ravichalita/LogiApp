@@ -70,7 +70,7 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
             {descriptions[itemType as keyof typeof descriptions]}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow overflow-y-auto px-1 py-4">
+        <div className="flex-grow overflow-y-auto px-6 py-4">
             {formComponent[itemType as keyof typeof formComponent]}
         </div>
       </DialogContent>
