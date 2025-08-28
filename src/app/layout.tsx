@@ -22,8 +22,8 @@ const pt_sans = PT_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "CaçambaControl",
-  description: "Controle de aluguel de caçambas",
+  title: "LogiApp - Gestão de Logistica Integrada",
+  description: "Gestão de Logística Integrada",
   manifest: "/manifest.json",
 };
 
