@@ -7,6 +7,7 @@ import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { ThemeProvider } from "@/components/theme-provider";
+import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -21,8 +22,8 @@ const pt_sans = PT_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LogiApp",
-  description: "Gestão de Logística",
+  title: "CaçambaControl",
+  description: "Controle de aluguel de caçambas",
   manifest: "/manifest.json",
 };
 
@@ -34,15 +35,15 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#70A4A4" />
       </head>
       <body
         className={`${inter.variable} ${pt_sans.variable} bg-background`}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <AuthProvider>
@@ -52,6 +53,7 @@ export default function RootLayout({
                   <div className="h-16 md:hidden" />
                   <BottomNav />
                   <FloatingActionButton />
+                  <InstallPwaPrompt />
               </div>
               <Toaster />
           </AuthProvider>
