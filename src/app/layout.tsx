@@ -22,7 +22,7 @@ const pt_sans = PT_Sans({
 
 export const metadata: Metadata = {
   title: "LogiApp",
-  description: "Gestão de Logistica.",
+  description: "Gestão de Logística",
   manifest: "/manifest.json",
 };
 
