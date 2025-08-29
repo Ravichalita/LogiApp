@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NewItemDialog } from "@/components/new-item-dialog";
+import { NewItemDialog } from "./new-item-dialog";
 
 export function FloatingActionButton() {
     const { user, userAccount } = useAuth();
@@ -59,3 +59,4 @@ export function FloatingActionButton() {
         </div>
     )
 }
+
