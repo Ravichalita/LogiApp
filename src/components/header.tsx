@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -55,10 +56,8 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full border-b bg-card">
       <div className="container flex h-16 items-center">
         <div className="flex items-center">
-            <Link href="/" className="mr-6 flex items-center space-x-2">
-                <svg viewBox="0 0 60 60" className="h-8 w-8 fill-current">
-                  <path fill="orange" d="M46.69,19.23l-16.87-9.73c-.97-.56-2.17-.56-3.14,0l-8.43,4.87c-.54.31-.51,1.08.04,1.39,0,0,.01,0,.02,0l17.38,9.86c1,.57,1.62,1.63,1.62,2.78v19.65s0,.01,0,.02c0,.66.68,1.1,1.26.76l8.12-4.69c.97-.56,1.57-1.6,1.57-2.72v-19.48c0-1.12-.6-2.16-1.58-2.72ZM56.24,18.81c0-2.02-1.09-3.91-2.84-4.92L31.09,1.01c-1.75-1.01-3.93-1.01-5.68,0L3.1,13.9c-1.75,1.01-2.84,2.9-2.84,4.92v25.76c0,2.02,1.1,3.91,2.85,4.92l22.31,12.88c.88.51,1.86.76,2.84.76.98,0,1.97-.25,2.84-.76l22.31-12.89c1.75-1.01,2.84-2.9,2.84-4.92v-25.76ZM51.88,46.84l-22.31,12.89c-.81.47-1.81.47-2.62,0l-22.31-12.88c-.81-.47-1.31-1.34-1.31-2.27v-25.76c0-.93.49-1.8,1.3-2.27L26.93,3.66c.4-.23.86-.35,1.31-.35.45,0,.91.12,1.31.35l22.31,12.88c.81.47,1.31,1.34,1.31,2.27v25.76c0,.93-.49-1.8-1.3,2.27Z"/>
-                </svg>
+                     <Link href="/" className="mr-6 flex items-center space-x-2">
+                     <Image src="/192x192.png" alt="LogiApp Logo" width={28} height={28} />
                 <span className="font-bold inline-block text-primary">LogiApp</span>
             </Link>
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>
@@ -70,15 +69,6 @@ export function Header() {
                     <Link href="/admin/clients">
                         <ShieldCheck className="h-5 w-5" />
                         <span className="sr-only">Admin Clientes</span>
-                    </Link>
-                </Button>
-            )}
-
-            {(isAdmin || permissions?.canAccessSettings) && (
-                 <Button variant="ghost" size="icon" asChild className="inline-flex">
-                    <Link href="/settings">
-                        <Settings className="h-5 w-5" />
-                        <span className="sr-only">Ajustes</span>
                     </Link>
                 </Button>
             )}
@@ -129,6 +119,14 @@ export function Header() {
                     <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
+              {(isAdmin || permissions?.canAccessSettings) && (
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Ajustes</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <InstallPwaMenuItem />
               <TestNotificationMenuItem />
               <DropdownMenuSeparator />
