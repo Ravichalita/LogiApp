@@ -29,6 +29,10 @@ if (firebaseConfig) {
 
         return self.registration.showNotification(notificationTitle, notificationOptions);
     });
+    
+self.addEventListener('fetch', (event) => {
+});
+
 } else {
     console.error("Firebase config not found in service worker query parameters.");
 }
