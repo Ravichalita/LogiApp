@@ -4,65 +4,48 @@
 
 @layer base {
   :root {
-    --background: 240 5% 96%;
-    --foreground: 240 6% 10%;
-    
-    --card: 240 5% 100%;
-    --card-foreground: 240 6% 10%;
-    
-    --popover: 240 5% 100%;
-    --popover-foreground: 240 6% 10%;
-    
-    --primary: 180 20% 54%; /* Muted Teal: #70A4A4 */
-    --primary-foreground: 240 6% 10%;
-    
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 10%;
-    
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    
-    --accent: 49 30% 57%; /* Pale Gold: #B4A470 */
-    --accent-foreground: 240 6% 10%;
-    
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 180 20% 54%;
-    
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 346.8 77.2% 49.8%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 346.8 77.2% 49.8%;
     --radius: 0.5rem;
   }
  
   .dark {
-    --background: 240 5% 15%;
+    --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
-   
-    --card: 240 4% 18%;
+    --card: 240 10% 3.9%;
     --card-foreground: 0 0% 98%;
-   
-    --popover: 240 5% 15%;
+    --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-   
-    --primary: 180 20% 54%; /* Muted Teal: #70A4A4 */
-    --primary-foreground: 240 6% 10%;
-   
-    --secondary: 240 4% 20%;
+    --primary: 346.8 77.2% 49.8%;
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
-   
-    --muted: 240 4% 20%;
-    --muted-foreground: 240 4% 65%;
-   
-    --accent: 49 30% 57%; /* Pale Gold: #B4A470 */
-    --accent-foreground: 240 6% 10%;
-   
-    --destructive: 0 63% 51%;
-    --destructive-foreground: 0 0% 100%;
-   
-    --border: 240 4% 25%;
-    --input: 240 4% 25%;
-    --ring: 180 20% 54%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 346.8 77.2% 49.8%;
   }
 }
  
