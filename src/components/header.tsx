@@ -59,7 +59,7 @@ export function Header() {
         <div className="flex items-center">
                      <Link href="/" className="mr-6 flex items-center space-x-2">
                      <Image src="/192x192.png" alt="LogiApp Logo" width={28} height={28} />
-                <span className="font-bold inline-block text-primary">CaçambaControl</span>
+                <span className="font-bold inline-block text-primary">LogiApp</span>
             </Link>
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>
         </div>

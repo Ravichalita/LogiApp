@@ -41,7 +41,7 @@ export function InstallPwaPrompt() {
             <Card className="shadow-2xl animate-in slide-in-from-bottom-10">
                 <CardHeader className="p-4">
                     <CardTitle className="flex items-center justify-between text-base">
-                        Instalar o App CaçambaControl
+                        Instalar o App LogiApp
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleDismiss}>
                             <X className="h-4 w-4" />
                             <span className="sr-only">Fechar</span>
