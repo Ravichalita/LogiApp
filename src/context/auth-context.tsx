@@ -12,6 +12,7 @@ import { createFirestoreBackupAction, checkAndSendDueNotificationsAction } from 
 import { ensureUserDocument } from '@/lib/data-server';
 import { differenceInDays, parseISO } from 'date-fns';
 import { WelcomeDialog } from '@/components/welcome-dialog';
+import { sendNotification } from '@/lib/notifications-client';
 
 
 interface BeforeInstallPromptEvent extends Event {
@@ -246,6 +247,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  // Check if it's the first time the user sees this
                  if (!userData.hasSeenWelcome) {
                      setShowWelcomeDialog(true);
+                     // Send install push notification on first welcome
+                     sendNotification({
+                         userId: userData.id,
+                         title: "Bem-vindo ao LogiApp!",
+                         body: "Instale o LogiApp na sua tela inicial para uma experiência melhor.",
+                         link: "/",
+                     });
                  }
 
             } else {
@@ -358,3 +366,5 @@ export function useAuth() {
   }
   return context;
 }
+
+    

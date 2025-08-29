@@ -17,9 +17,15 @@ interface NotificationPayload {
 // A simple wrapper to call a server action.
 export async function sendNotification(payload: NotificationPayload) {
     try {
-        await sendNotificationServerAction(payload);
+        // Use a timeout to ensure the user document update (hasSeenWelcome) doesn't race with the notification check.
+        // This gives the Firestore update a moment to complete before the server action reads the document.
+        setTimeout(() => {
+            sendNotificationServerAction(payload).catch(console.error);
+        }, 1000);
     } catch (error) {
         console.error("Failed to send notification via server action:", error);
         // Optionally, handle the error in the UI
     }
 }
+
+    
