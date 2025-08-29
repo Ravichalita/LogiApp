@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -58,7 +59,7 @@ export function Header() {
         <div className="flex items-center">
                      <Link href="/" className="mr-6 flex items-center space-x-2">
                      <Image src="/192x192.png" alt="LogiApp Logo" width={28} height={28} />
-                <span className="font-bold inline-block text-primary">LogiApp</span>
+                <span className="font-bold inline-block text-primary">CaçambaControl</span>
             </Link>
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>
         </div>
@@ -123,7 +124,7 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link href="/settings">
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Ajustes</span>
+                    <span>Configurações</span>
                   </Link>
                 </DropdownMenuItem>
               )}
