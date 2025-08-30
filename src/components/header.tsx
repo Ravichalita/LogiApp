@@ -84,7 +84,7 @@ export function Header() {
             )}
              {/* TODO: Add real permission check here */}
              {(isSuperAdmin || (isAdmin || permissions?.canAccessNotificationsStudio)) && (
-                <Button variant="ghost" size="icon" asChild className="inline-flex">
+                <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
                     <Link href="/notifications-studio">
                         <Megaphone className="h-5 w-5" />
                         <span className="sr-only">Notificações Personalizadas</span>
