@@ -86,6 +86,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
+  const canDelete = isAdmin || userAccount?.permissions?.canEditRentals;
   const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
 
   const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
@@ -193,13 +194,17 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                                     </Link>
                                 </DropdownMenuItem>
                             )}
-                            <DropdownMenuSeparator />
-                             <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                     <Trash2 className="mr-2 h-4 w-4" />
-                                     {isPendingStatus ? 'Cancelar Agendamento' : 'Excluir OS'}
-                                </DropdownMenuItem>
-                            </AlertDialogTrigger>
+                            {canDelete && (
+                                <>
+                                <DropdownMenuSeparator />
+                                 <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                         <Trash2 className="mr-2 h-4 w-4" />
+                                         {isPendingStatus ? 'Cancelar Agendamento' : 'Excluir OS'}
+                                    </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -223,31 +228,33 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </AlertDialog>
             </div>
             {isPendingStatus ? (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Cancelar Agendamento
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2">
-                                <TriangleAlert className="h-6 w-6 text-destructive" />
-                                Cancelar Agendamento?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                {isDeleting ? <Spinner size="small" /> : 'Sim, Cancelar'}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                canDelete && (
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancelar Agendamento
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                    <TriangleAlert className="h-6 w-6 text-destructive" />
+                                    Cancelar Agendamento?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                    {isDeleting ? <Spinner size="small" /> : 'Sim, Cancelar'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )
             ) : (
                 <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
                     <input type="hidden" name="rentalId" value={rental.id} />
