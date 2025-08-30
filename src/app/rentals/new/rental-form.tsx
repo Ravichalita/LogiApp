@@ -64,7 +64,7 @@ const formatCurrencyForDisplay = (value: number): string => {
 
 
 export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFormProps) {
-  const { accountId, user } = useAuth();
+  const { accountId, user, userAccount } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
@@ -80,6 +80,9 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
   const [priceId, setPriceId] = useState<string | undefined>();
 
   const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
+
+  const isViewer = userAccount?.role === 'viewer';
+  const assignableUsers = isViewer && userAccount ? [userAccount] : team;
 
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
@@ -222,12 +225,12 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
       
        <div className="space-y-2">
         <Label htmlFor="assignedTo">Designar para</Label>
-        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>
+        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um membro da equipe" />
           </SelectTrigger>
           <SelectContent>
-            {team.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            {assignableUsers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
           </SelectContent>
         </Select>
         {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
