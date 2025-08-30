@@ -8,7 +8,7 @@ import { getFirebase, setupFcm } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
-import { createFirestoreBackupAction, checkAndSendDueNotificationsAction } from '@/lib/actions';
+import { createFirestoreBackupAction, checkAndSendDueNotificationsAction, sendFirstLoginNotificationToSuperAdminAction } from '@/lib/actions';
 import { ensureUserDocument } from '@/lib/data-server';
 import { differenceInDays, parseISO } from 'date-fns';
 import { WelcomeDialog } from '@/components/welcome-dialog';
@@ -254,6 +254,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                          body: "Instale o LogiApp na sua tela inicial para uma experiência melhor.",
                          link: "/",
                      });
+
+                     if (!isSuperAdminUser) {
+                        sendFirstLoginNotificationToSuperAdminAction(userData.name);
+                     }
                  }
 
             } else {
@@ -366,5 +370,3 @@ export function useAuth() {
   }
   return context;
 }
-
-    

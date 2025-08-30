@@ -1085,4 +1085,28 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     }
 }
 
+export async function sendFirstLoginNotificationToSuperAdminAction(newClientName: string) {
+    const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
+    if (!SUPER_ADMIN_EMAIL) {
+        console.error('SUPER_ADMIN_EMAIL environment variable is not set.');
+        return;
+    }
+
+    try {
+        const superAdminUser = await adminAuth.getUserByEmail(SUPER_ADMIN_EMAIL);
+        
+        if (superAdminUser) {
+            await sendNotification({
+                userId: superAdminUser.uid,
+                title: 'Novo Cliente Ativado!',
+                body: `O cliente ${newClientName} acabou de fazer o primeiro acesso.`,
+                link: '/admin/clients'
+            });
+        }
+    } catch (error) {
+        console.error('Error sending first login notification to super admin:', error);
+    }
+}
+
+
 // #endregion
