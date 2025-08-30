@@ -11,8 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import type { Location } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { AddressInput } from '@/components/address-input';
-import Link from 'next/link';
+
 
 const initialState = {
   errors: {},
@@ -21,7 +22,7 @@ const initialState = {
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
   return (
-    <Button type="submit" disabled={isPending} size="lg">
+    <Button type="submit" disabled={isPending}>
       {isPending ? <Spinner size="small" /> : 'Salvar Cliente'}
     </Button>
   );
@@ -124,12 +125,12 @@ export function ClientForm() {
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
 
-       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
-        <SubmitButton isPending={isPending} />
-        <Button asChild variant="outline" size="lg">
-            <Link href="/clients">Cancelar</Link>
-        </Button>
-      </div>
+       <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <SubmitButton isPending={isPending} />
+        </DialogFooter>
     </form>
   );
 }
