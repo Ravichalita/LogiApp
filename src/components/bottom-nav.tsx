@@ -61,7 +61,7 @@ export function BottomNav() {
             )}
           >
             <Icon className="h-6 w-6" />
-            <span className="text-xs">{label}</span>
+            <span className="text-[10px]">{label}</span>
           </Link>
         ))}
       </div>
