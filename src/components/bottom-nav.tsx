@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users, Settings, BarChart } from 'lucide-react';
+import { Home, LayoutGrid, Users, Settings, BarChart, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
@@ -15,12 +15,13 @@ const baseNavLinks = [
 ];
 
 const financeLink = { href: '/finance', label: 'Estatísticas', icon: BarChart };
+const notificationsLink = { href: '/notifications-studio', label: 'Notificações', icon: Megaphone };
 
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { user, userAccount } = useAuth();
-  const isAdmin = userAccount?.role === 'admin';
+  const { user, userAccount, isSuperAdmin } = useAuth();
+  const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
   const permissions = userAccount?.permissions;
 
   if (!user) {
@@ -32,9 +33,14 @@ export function BottomNav() {
   if(isAdmin || permissions?.canAccessFinance) {
       navLinks.push(financeLink);
   }
+  
+  if (isSuperAdmin || isAdmin || permissions?.canAccessNotificationsStudio) {
+      navLinks.push(notificationsLink);
+  }
 
   const getGridColsClass = () => {
     switch (navLinks.length) {
+        case 5: return "grid-cols-5";
         case 4: return "grid-cols-4";
         default: return "grid-cols-3";
     }

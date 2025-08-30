@@ -1,64 +1,51 @@
 
-// Import the Firebase app and messaging libraries
+// This file needs to be in the public directory
+
+// Scripts for Firebase
 importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
 
-// Get the Firebase config from the query parameter
+// Get Firebase config from query string
 const urlParams = new URLSearchParams(self.location.search);
 const firebaseConfig = JSON.parse(urlParams.get('firebaseConfig'));
 
-// Initialize the Firebase app in the service worker
-if (firebaseConfig) {
-    firebase.initializeApp(firebaseConfig);
-    const messaging = firebase.messaging();
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const messaging = firebase.messaging();
 
-    // If you want to handle push messages in the background, you can add a listener here.
-    // This is useful for displaying notifications when the app is not in the foreground.
-    messaging.onBackgroundMessage((payload) => {
-        console.log('[firebase-messaging-sw.js] Received background message ', payload);
-        
-        // Customize the notification here
-        const notificationTitle = payload.data.title || 'Nova Notificação';
-        const notificationOptions = {
-            body: payload.data.body || 'Você tem uma nova mensagem.',
-            icon: payload.data.icon || '/favicon.ico',
-            data: {
-                link: payload.data.link || '/'
-            }
-        };
+// Handle incoming messages when the app is in the background
+messaging.onBackgroundMessage((payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
+  const notificationTitle = payload.data.title;
+  const notificationOptions = {
+    body: payload.data.body,
+    icon: '/192x192.png' // You can use a generic icon
+  };
 
-        return self.registration.showNotification(notificationTitle, notificationOptions);
-    });
-    
-self.addEventListener('fetch', (event) => {
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-} else {
-    console.error("Firebase config not found in service worker query parameters.");
-}
-
-
-// Optional: Handle notification clicks
+// Optional: Handle notification click
 self.addEventListener('notificationclick', (event) => {
-    console.log('[firebase-messaging-sw.js] Notification click Received.', event.notification);
-
+    console.log('[firebase-messaging-sw.js] Notification click Received.', event);
     event.notification.close();
 
-    const link = event.notification.data?.link || '/';
-
+    // This looks for an existing window and focuses it.
+    // If no window is found, it opens a new one.
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            if (clientList.length > 0) {
-                let client = clientList[0];
-                for (let i = 0; i < clientList.length; i++) {
-                    if (clientList[i].focused) {
-                        client = clientList[i];
-                    }
+        clients.matchAll({
+            type: "window"
+        }).then((clientList) => {
+            for (let i = 0; i < clientList.length; i++) {
+                const client = clientList[i];
+                if (client.url == '/' && 'focus' in client) {
+                    return client.focus();
                 }
-                client.navigate(link);
-                return client.focus();
             }
-            return clients.openWindow(link);
+            if (clients.openWindow) {
+                return clients.openWindow('/');
+            }
         })
     );
 });

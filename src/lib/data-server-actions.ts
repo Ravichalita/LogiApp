@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
 import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental } from './types';
 import { adminDb } from './firebase-admin';
 

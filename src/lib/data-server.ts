@@ -95,6 +95,7 @@ export async function ensureUserDocument(
                     canEditDumpsters: true,
                     canEditRentals: true,
                     canAccessSettings: true,
+                    canAccessNotificationsStudio: true,
                 });
                 
                 const newAccountRef = firestore.doc(`accounts/${determinedAccountId}`);

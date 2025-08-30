@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck, Download } from "lucide-react";
+import { LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck, Download, Megaphone } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -79,6 +79,15 @@ export function Header() {
                     <Link href="/finance">
                         <BarChart className="h-5 w-5" />
                         <span className="sr-only">Estatísticas</span>
+                    </Link>
+                </Button>
+            )}
+             {/* TODO: Add real permission check here */}
+             {(isSuperAdmin || (isAdmin || permissions?.canAccessNotificationsStudio)) && (
+                <Button variant="ghost" size="icon" asChild className="inline-flex">
+                    <Link href="/notifications-studio">
+                        <Megaphone className="h-5 w-5" />
+                        <span className="sr-only">Notificações Personalizadas</span>
                     </Link>
                 </Button>
             )}

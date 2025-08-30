@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getMessaging } from 'firebase-admin/messaging';
@@ -9,12 +10,9 @@ interface NotificationPayload {
     userId: string;
     title: string;
     body: string;
-    link?: string;
-    image?: string;
-    isTest?: boolean;
 }
 
-export async function sendNotification({ userId, title, body, link, image, isTest = false }: NotificationPayload) {
+export async function sendNotification({ userId, title, body }: NotificationPayload) {
     if (!userId) return;
 
     try {
@@ -37,10 +35,6 @@ export async function sendNotification({ userId, title, body, link, image, isTes
             data: {
                 title,
                 body,
-                icon: '/favicon.ico', // Optional: if you have a favicon
-                link: link || '/', // Default link if none provided
-                image: image || '', // Include image url in data payload
-                isTest: isTest ? 'true' : 'false',
             },
             tokens,
         };

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
@@ -252,7 +253,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                          userId: userData.id,
                          title: "Bem-vindo ao LogiApp!",
                          body: "Instale o LogiApp na sua tela inicial para uma experiência melhor.",
-                         link: "/",
                      });
 
                      if (!isSuperAdminUser) {
@@ -301,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // --- Perform all session tasks here ---
         checkAndTriggerAutoBackup(account.id, account);
         checkAndSendDueNotificationsAction(account.id);
-
+        
         if (!fcmSetupPerformed.current) {
             setupFcm(user.uid);
             fcmSetupPerformed.current = true;

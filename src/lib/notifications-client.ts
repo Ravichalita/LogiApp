@@ -10,8 +10,6 @@ interface NotificationPayload {
     userId: string;
     title: string;
     body: string;
-    link?: string;
-    isTest?: boolean;
 }
 
 // A simple wrapper to call a server action.
@@ -27,5 +25,3 @@ export async function sendNotification(payload: NotificationPayload) {
         // Optionally, handle the error in the UI
     }
 }
-
-    

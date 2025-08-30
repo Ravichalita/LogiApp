@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -11,7 +12,8 @@ import type { UserAccount, UserRole, UserStatus, Permissions } from './types';
 import { ensureUserDocument } from './data-server';
 import { cookies } from 'next/cookies';
 import { sendNotification } from './notifications';
-import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format } from 'date-fns';
+import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -104,6 +106,7 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
 
         await userRef.update({ permissions: validatedPermissions });
         revalidatePath('/team');
+        revalidatePath('/notifications-studio');
         return { message: 'success' };
     } catch(e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -470,7 +473,6 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         userId: rentalData.assignedTo,
         title: 'Nova OS Designada',
         body: `Você foi designado para a OS da ${dumpsterName}.`,
-        link: `/?rentalId=${newRentalRef.id}`
     });
 
   } catch (e) {
@@ -599,7 +601,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                 userId: updateData.assignedTo,
                 title: 'Você foi designado para uma OS',
                 body: `Você agora é o responsável pela OS para ${clientName}.`,
-                link: `/?rentalId=${id}`
             });
         }
         
@@ -972,7 +973,6 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
                 userId: rental.assignedTo,
                 title: 'Lembrete de Retirada',
                 body: `A OS para ${rental.deliveryAddress} vence amanhã.`,
-                link: `/?rentalId=${rental.id}`,
             });
             batch.update(doc.ref, { 'notificationsSent.due': true });
             notificationsSentCount++;
@@ -984,7 +984,6 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
                 userId: rental.assignedTo,
                 title: 'OS Atrasada!',
                 body: `A OS para ${rental.deliveryAddress} está atrasada.`,
-                link: `/?rentalId=${rental.id}`,
             });
             batch.update(doc.ref, { 'notificationsSent.late': true });
             notificationsSentCount++;
@@ -996,6 +995,101 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
         console.log(`Committed ${notificationsSentCount} notification status updates.`);
     }
 }
+
+export async function sendPushNotificationAction(formData: FormData) {
+    const NotificationSchema = z.object({
+        title: z.string().min(1, 'O título é obrigatório.'),
+        message: z.string().min(1, 'A mensagem é obrigatória.'),
+        targetType: z.enum(['all-company', 'specific-clients', 'specific-users', 'my-team', 'specific-members']),
+        targetIds: z.string().optional(),
+        senderAccountId: z.string(),
+    });
+
+    const parsed = NotificationSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!parsed.success) {
+        return { message: 'error', error: 'Dados do formulário inválidos.' };
+    }
+    
+    const { title, message, targetType, targetIds, senderAccountId } = parsed.data;
+    
+    try {
+        let recipientIds: string[] = [];
+        
+        switch (targetType) {
+            case 'all-company':
+                const usersSnap = await adminDb.collection('users').get();
+                recipientIds = usersSnap.docs.map(d => d.id);
+                break;
+            case 'my-team': {
+                const accountSnap = await adminDb.doc(`accounts/${senderAccountId}`).get();
+                recipientIds = accountSnap.data()?.members || [];
+                break;
+            }
+            case 'specific-members': {
+                recipientIds = targetIds ? targetIds.split(',') : [];
+                break;
+            }
+            case 'specific-clients': {
+                if (!targetIds) break;
+                const accountIds = targetIds.split(',');
+                const accountPromises = accountIds.map(id => adminDb.doc(`accounts/${id}`).get());
+                const accountSnaps = await Promise.all(accountPromises);
+                recipientIds = accountSnaps.flatMap(snap => snap.data()?.members || []);
+                break;
+            }
+            case 'specific-users': {
+                 if (!targetIds) break;
+                 recipientIds = targetIds.split(',');
+                 break;
+            }
+        }
+
+        if (recipientIds.length === 0) {
+            return { message: 'error', error: 'Nenhum destinatário encontrado para a seleção.' };
+        }
+
+        const uniqueRecipientIds = [...new Set(recipientIds)];
+        
+        const notificationPromises = uniqueRecipientIds.map(userId => 
+            sendNotification({
+                userId,
+                title,
+                body: message,
+            })
+        );
+        
+        await Promise.all(notificationPromises);
+
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function sendFirstLoginNotificationToSuperAdminAction(newClientName: string) {
+    const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
+    if (!SUPER_ADMIN_EMAIL) {
+        console.error('SUPER_ADMIN_EMAIL is not set.');
+        return;
+    }
+
+    try {
+        const superAdminUser = await adminAuth.getUserByEmail(SUPER_ADMIN_EMAIL);
+        
+        if (superAdminUser) {
+            await sendNotification({
+                userId: superAdminUser.uid,
+                title: 'Novo Cliente Ativado!',
+                body: `O cliente ${newClientName} acabou de fazer o primeiro acesso.`,
+            });
+        }
+    } catch (error) {
+        console.error('Error sending first login notification to super admin:', error);
+    }
+}
+
+
 // #endregion
 
 // #region Super Admin Actions
@@ -1085,28 +1179,9 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     }
 }
 
-export async function sendFirstLoginNotificationToSuperAdminAction(newClientName: string) {
-    const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
-    if (!SUPER_ADMIN_EMAIL) {
-        console.error('SUPER_ADMIN_EMAIL is not set.');
-        return;
-    }
 
-    try {
-        const superAdminUser = await adminAuth.getUserByEmail(SUPER_ADMIN_EMAIL);
-        
-        if (superAdminUser) {
-            await sendNotification({
-                userId: superAdminUser.uid,
-                title: 'Novo Cliente Ativado!',
-                body: `O cliente ${newClientName} acabou de fazer o primeiro acesso.`,
-                link: '/admin/clients'
-            });
-        }
-    } catch (error) {
-        console.error('Error sending first login notification to super admin:', error);
-    }
-}
 
 
 // #endregion
+
+    
