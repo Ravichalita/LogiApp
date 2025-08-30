@@ -19,17 +19,16 @@ export function FloatingActionButton() {
 
     const pagesToHideFab = [
         '/rentals/new', 
-        '/clients/new', 
+        '/clients/new',
         '/finance', 
         '/settings', 
         '/admin/clients', 
         '/notifications-studio'
     ];
 
-    if (pagesToHideFab.some(path => pathname.startsWith(path))) {
+    if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
         return null;
     }
-
 
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
@@ -42,7 +41,14 @@ export function FloatingActionButton() {
                 return null;
             case '/clients':
                  if (isAdmin || permissions?.canEditClients) {
-                    return <NewItemDialog itemType="client" />;
+                    return (
+                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                            <Link href="/clients/new">
+                                <Plus className="h-8 w-8" />
+                                <span className="sr-only">Novo Cliente</span>
+                            </Link>
+                        </Button>
+                    );
                 }
                 return null;
             case '/team':
