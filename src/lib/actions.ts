@@ -1086,9 +1086,9 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 }
 
 export async function sendFirstLoginNotificationToSuperAdminAction(newClientName: string) {
-    const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
+    const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
     if (!SUPER_ADMIN_EMAIL) {
-        console.error('SUPER_ADMIN_EMAIL environment variable is not set.');
+        console.error('SUPER_ADMIN_EMAIL is not set.');
         return;
     }
 
