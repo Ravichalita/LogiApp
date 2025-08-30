@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
-import { FloatingActionButton } from "@/app/floating-action-button";
+import { FloatingActionButton } from "@/components/floating-action-button";
 import { ThemeProvider } from "@/components/theme-provider";
 import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
 
