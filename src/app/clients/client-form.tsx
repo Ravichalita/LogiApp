@@ -11,8 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { Location } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { AddressInput } from '@/components/address-input';
+import Link from 'next/link';
 
 
 const initialState = {
@@ -125,12 +125,12 @@ export function ClientForm() {
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
 
-       <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
+       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
           <SubmitButton isPending={isPending} />
-        </DialogFooter>
+          <Button asChild type="button" variant="outline">
+            <Link href="/clients">Cancelar</Link>
+          </Button>
+        </div>
     </form>
   );
 }
