@@ -225,7 +225,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
       
        <div className="space-y-2">
         <Label htmlFor="assignedTo">Designar para</Label>
-        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
+        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um membro da equipe" />
           </SelectTrigger>
