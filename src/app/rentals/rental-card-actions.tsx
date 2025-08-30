@@ -5,7 +5,7 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -156,6 +156,16 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
                         <span className="font-medium">{formatCurrency(totalValue)}</span>
                     </div>
+                </div>
+            </div>
+        )}
+
+        {rental.observations && (
+            <div className="flex items-start gap-3">
+                <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Observações</span>
+                <p className="font-medium whitespace-pre-wrap">{rental.observations}</p>
                 </div>
             </div>
         )}

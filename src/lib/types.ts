@@ -118,6 +118,7 @@ export const RentalSchema = z.object({
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
   assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
+  observations: z.string().optional(),
   notificationsSent: z.object({
     due: z.boolean().default(false),
     late: z.boolean().default(false),
@@ -142,6 +143,7 @@ export const UpdateRentalSchema = z.object({
     longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
     value: z.coerce.number().positive({ message: "O valor deve ser positivo." }).optional(),
     assignedTo: z.string().optional(),
+    observations: z.string().optional(),
 }).refine(data => {
     if (data.rentalDate && data.returnDate) {
         return new Date(data.returnDate) > new Date(data.rentalDate);

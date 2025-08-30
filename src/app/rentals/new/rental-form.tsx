@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { CalendarIcon, User, AlertCircle } from 'lucide-react';
@@ -375,6 +376,12 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             />
         )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
+      </div>
+
+       <div className="space-y-2">
+        <Label htmlFor="observations">Observações</Label>
+        <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+        {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
       </div>
 
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
