@@ -74,15 +74,6 @@ export const BackupSchema = z.object({
 export type Backup = z.infer<typeof BackupSchema>;
 // #endregion
 
-// #region Attachment
-export const AttachmentSchema = z.object({
-  name: z.string(),
-  url: z.string().url(),
-  type: z.string(),
-});
-export type Attachment = z.infer<typeof AttachmentSchema>;
-// #endregion
-
 
 // #region Base Schemas
 export const ClientSchema = z.object({
@@ -131,7 +122,6 @@ export const RentalSchema = z.object({
   createdBy: z.string(),
   assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
   observations: z.string().optional(),
-  attachments: z.array(AttachmentSchema).optional().default([]),
   notificationsSent: z.object({
     due: z.boolean().default(false),
     late: z.boolean().default(false),
@@ -157,7 +147,6 @@ export const UpdateRentalSchema = z.object({
     value: z.coerce.number().positive({ message: "O valor deve ser positivo." }).optional(),
     assignedTo: z.string().optional(),
     observations: z.string().optional(),
-    attachments: z.array(AttachmentSchema).optional(),
 }).refine(data => {
     if (data.rentalDate && data.returnDate) {
         return new Date(data.returnDate) > new Date(data.rentalDate);

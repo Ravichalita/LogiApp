@@ -6,7 +6,7 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Paperclip } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +35,6 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { RentalAttachments } from './rental-attachments';
 
 interface RentalCardActionsProps {
     rental: PopulatedRental;
@@ -163,13 +162,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             </div>
         )}
 
-        <Separator />
-
-        <div className="space-y-2">
-            <h4 className="font-medium flex items-center gap-2"><Paperclip className="h-4 w-4" /> Anexos</h4>
-            <RentalAttachments rental={rental} isCompleted={false} />
-        </div>
-        
         <Separator />
         
         <div className="flex items-center justify-between">

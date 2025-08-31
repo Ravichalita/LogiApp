@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { CompletedRental, Account, Attachment } from '@/lib/types';
+import type { CompletedRental, Account } from '@/lib/types';
 import { getCompletedRentals } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,7 +22,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { RentalAttachments } from '../rentals/rental-attachments';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -115,11 +114,6 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
                             </div>
                         </div>
                     )}
-                    <Separator />
-                    <div className="space-y-2">
-                        <h4 className="font-medium flex items-center gap-2"><Paperclip className="h-4 w-4" /> Anexos</h4>
-                        <RentalAttachments rental={rental} isCompleted={true} />
-                    </div>
                 </div>
             </DialogContent>
         </Dialog>

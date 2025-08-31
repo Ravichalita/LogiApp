@@ -7,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -624,37 +624,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
     redirect('/');
 }
-
-export async function addAttachmentToRentalAction(accountId: string, rentalId: string, attachment: z.infer<typeof AttachmentSchema>) {
-    if (!accountId || !rentalId) return { message: 'error', error: 'ID da conta ou do aluguel ausente.' };
-
-    try {
-        const rentalRef = adminDb.doc(`accounts/${accountId}/rentals/${rentalId}`);
-        await rentalRef.update({
-            attachments: FieldValue.arrayUnion(attachment)
-        });
-        revalidatePath('/');
-        return { message: 'success' };
-    } catch(e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function addAttachmentToCompletedRentalAction(accountId: string, completedRentalId: string, attachment: z.infer<typeof AttachmentSchema>) {
-    if (!accountId || !completedRentalId) return { message: 'error', error: 'ID da conta ou do aluguel ausente.' };
-
-    try {
-        const rentalRef = adminDb.doc(`accounts/${accountId}/completed_rentals/${completedRentalId}`);
-        await rentalRef.update({
-            attachments: FieldValue.arrayUnion(attachment)
-        });
-        revalidatePath('/finance');
-        return { message: 'success' };
-    } catch(e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
 
 // #endregion
 
