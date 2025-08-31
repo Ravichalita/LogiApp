@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, RentalPriceSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
 import { cookies } from 'next/cookies';
 import { sendNotification } from './notifications';
@@ -414,33 +414,44 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
 // #region Rental Actions
 
 export async function createRental(accountId: string, createdBy: string, prevState: any, formData: FormData) {
-  const rawData = Object.fromEntries(formData.entries());
-  
-  const rawValue = rawData.value as string;
-  const numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
-
-  const validatedFields = RentalSchema.safeParse({
-    ...rawData,
-    value: numericValue,
-    status: 'Pendente',
-    createdBy: createdBy,
-    notificationsSent: { due: false, late: false } // Initialize notifications field
-  });
-
-  if (!validatedFields.success) {
-    console.log(validatedFields.error.flatten().fieldErrors);
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'error',
-    };
-  }
-
   const db = getFirestore(adminApp);
-
+  const accountRef = db.doc(`accounts/${accountId}`);
+  
   try {
+    const newSequentialId = await db.runTransaction(async (transaction) => {
+        const accountSnap = await transaction.get(accountRef);
+        if (!accountSnap.exists) {
+            throw new Error("Conta não encontrada.");
+        }
+        const currentCounter = accountSnap.data()?.rentalCounter || 0;
+        const newCounter = currentCounter + 1;
+        transaction.update(accountRef, { rentalCounter: newCounter });
+        return newCounter;
+    });
+
+    const rawData = Object.fromEntries(formData.entries());
+    const rawValue = rawData.value as string;
+    const numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
+
+    const validatedFields = RentalSchema.safeParse({
+        ...rawData,
+        sequentialId: newSequentialId,
+        value: numericValue,
+        status: 'Pendente',
+        createdBy: createdBy,
+        notificationsSent: { due: false, late: false }
+    });
+    
+    if (!validatedFields.success) {
+      console.log(validatedFields.error.flatten().fieldErrors);
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: 'error',
+      };
+    }
+
     const rentalData = validatedFields.data;
 
-    // Check for scheduling conflicts before creating
     const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
     const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
     const existingRentalsSnap = await q.get();
@@ -452,26 +463,23 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         const existingRental = doc.data() as Rental;
         const existingStart = new Date(existingRental.rentalDate);
         const existingEnd = new Date(existingRental.returnDate);
-
-        // Conflict condition: (StartA < EndB) and (EndA > StartB)
         if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
             return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
         }
     }
     
-    const newRentalRef = await rentalsRef.add({
+    await rentalsRef.add({
       ...rentalData,
       accountId,
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    // Send notification to assigned user
     const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
     const dumpsterName = dumpsterSnap.data()?.name || 'Caçamba';
     
     await sendNotification({
         userId: rentalData.assignedTo,
-        title: 'Nova OS Designada',
+        title: `Nova OS #${newSequentialId} Designada`,
         body: `Você foi designado para a OS da ${dumpsterName}.`,
     });
 
@@ -503,6 +511,11 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         
         const rentalData = rentalSnap.data() as Rental;
 
+        // Fetch related data to store a complete snapshot
+        const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
+        const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
+        const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
+
         const rentalDate = new Date(rentalData.rentalDate);
         const returnDate = new Date(rentalData.returnDate);
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
@@ -516,7 +529,11 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             completedDate: FieldValue.serverTimestamp(),
             rentalDays,
             totalValue,
-            accountId, 
+            accountId,
+            // Store denormalized data for historical integrity
+            client: clientSnap.exists() ? clientSnap.data() : null,
+            dumpster: dumpsterSnap.exists() ? dumpsterSnap.data() : null,
+            assignedToUser: assignedToSnap.exists() ? assignedToSnap.data() : null,
         };
         
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
@@ -527,7 +544,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         await batch.commit();
 
         revalidatePath('/');
-        revalidatePath('/finance'); // Revalidate finance page as well
+        revalidatePath('/finance');
         
     } catch(e) {
          console.error("Failed to finish rental:", e);
@@ -575,7 +592,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     
     const { id, ...rentalData } = validatedFields.data;
     
-    // Remove undefined fields to prevent Firestore errors
     const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined));
 
     if (Object.keys(updateData).length === 0) {
@@ -585,7 +601,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     try {
         const rentalDoc = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
         
-        // Get rental before update to check for changes
         const rentalBeforeUpdate = (await rentalDoc.get()).data() as Rental;
         
         await rentalDoc.update({
@@ -593,7 +608,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
           updatedAt: FieldValue.serverTimestamp(),
         });
 
-        // If assigned user changed, send notification
         if (updateData.assignedTo && updateData.assignedTo !== rentalBeforeUpdate.assignedTo) {
             const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${rentalBeforeUpdate.clientId}`).get();
             const clientName = clientSnap.data()?.name || 'Cliente';
@@ -656,20 +670,16 @@ async function deleteQueryBatch(db: FirebaseFirestore.Firestore, query: Firebase
 
     const batchSize = snapshot.size;
     if (batchSize === 0) {
-        // When there are no documents left, we are done
         resolve(true);
         return;
     }
 
-    // Delete documents in a batch
     const batch = db.batch();
     snapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
     });
     await batch.commit();
 
-    // Recurse on the next process tick, to avoid
-    // exploding the stack.
     process.nextTick(() => {
         deleteQueryBatch(db, query, resolve);
     });
@@ -699,15 +709,14 @@ export async function resetAllDataAction(accountId: string) {
     try {
         const db = getFirestore(adminApp);
         
-        // Delete all subcollections
         const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
         for (const collection of collectionsToDelete) {
             await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
         }
         
-        // Clear rental prices from account document
         await db.doc(`accounts/${accountId}`).update({
-            rentalPrices: []
+            rentalPrices: [],
+            rentalCounter: 0,
         });
 
 
@@ -815,11 +824,9 @@ export async function createFirestoreBackupAction(accountId: string, retentionDa
 
         await backupDocRef.update({ status: 'completed' });
         
-        // Update the last backup date on the account document
         const accountRef = db.doc(`accounts/${accountId}`);
         await accountRef.update({ lastBackupDate: timestamp.toISOString() });
 
-        // Clean up old backups if retentionDays is provided
         if (typeof retentionDays === 'number' && retentionDays > 0) {
             await cleanupOldBackupsAction(accountId, retentionDays);
         }
@@ -875,12 +882,10 @@ export async function restoreFirestoreBackupAction(accountId: string, backupId: 
     const subcollections = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
 
     try {
-        // Step 1: Delete all current data in subcollections
         for (const collection of subcollections) {
             await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
         }
 
-        // Step 2: Restore account document data
         const backupAccountRef = db.doc(`backups/${backupId}/accounts/${accountId}`);
         const backupAccountSnap = await backupAccountRef.get();
 
@@ -889,12 +894,10 @@ export async function restoreFirestoreBackupAction(accountId: string, backupId: 
         }
         const accountData = backupAccountSnap.data();
         if (accountData) {
-            // Ensure lastBackupDate is updated to prevent immediate re-backup
             accountData.lastBackupDate = new Date().toISOString();
         }
         await db.doc(`accounts/${accountId}`).set(accountData!);
 
-        // Step 3: Copy data from backup subcollections to live subcollections
         for (const collection of subcollections) {
             const sourcePath = `backups/${backupId}/accounts/${accountId}/${collection}`;
             const destPath = `accounts/${accountId}/${collection}`;
@@ -924,13 +927,11 @@ export async function deleteFirestoreBackupAction(accountId: string, backupId: s
             throw new Error("Backup não encontrado ou você não tem permissão para excluí-lo.");
         }
         
-        // Delete all subcollections within the backup first
-        const subcollections = ['accounts']; // We store all data under 'accounts' subcollection in backup
+        const subcollections = ['accounts'];
         for (const collection of subcollections) {
             await deleteCollection(db, `backups/${backupId}/${collection}`, 50);
         }
         
-        // Finally, delete the main backup document
         await backupDocRef.delete();
         
         revalidatePath('/settings');
@@ -968,7 +969,6 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
         const rental = { id: doc.id, ...doc.data() } as Rental;
         const returnDate = parseISO(rental.returnDate);
 
-        // Due tomorrow notification
         if (isToday(addDays(returnDate, -1)) && !rental.notificationsSent?.due) {
             await sendNotification({
                 userId: rental.assignedTo,
@@ -979,7 +979,6 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
             notificationsSentCount++;
         }
 
-        // Late notification
         if (isAfter(today, returnDate) && !rental.notificationsSent?.late) {
              await sendNotification({
                 userId: rental.assignedTo,
@@ -1107,7 +1106,6 @@ export async function updateUserStatusAction(userId: string, disabled: boolean) 
         const userData = userSnap.data() as UserAccount;
         const newStatus: UserStatus = disabled ? 'inativo' : 'ativo';
 
-        // If the user is an owner, cascade the status change to all members of their account
         if (userData.role === 'owner') {
             const accountRef = adminDb.doc(`accounts/${userData.accountId}`);
             const accountSnap = await accountRef.get();
@@ -1123,7 +1121,6 @@ export async function updateUserStatusAction(userId: string, disabled: boolean) 
                 await batch.commit();
             }
         } else {
-            // If it's a regular user, just update their own status
             await adminAuth.updateUser(userId, { disabled });
             await userRef.update({ status: newStatus });
         }
@@ -1144,31 +1141,24 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
         const db = adminDb;
         const batch = db.batch();
 
-        // 1. Delete all subcollections within the account
         const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
         for (const collection of collectionsToDelete) {
             await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
         }
 
-        // 2. Get all members of the account to delete their user docs and auth records
         const accountRef = db.doc(`accounts/${accountId}`);
         const accountSnap = await accountRef.get();
         const memberIds: string[] = accountSnap.data()?.members || [];
         
-        // 3. Delete user documents in a batch
         memberIds.forEach(userId => {
             const userRef = db.doc(`users/${userId}`);
             batch.delete(userRef);
         });
         
-        // 4. Delete the account document itself
         batch.delete(accountRef);
         
-        // Commit all Firestore deletions
         await batch.commit();
         
-        // 5. Delete all auth users associated with the account
-        // This is done after the batch to avoid leaving orphaned Firestore data if auth deletion fails.
         const authDeletePromises = memberIds.map(userId => adminAuth.deleteUser(userId));
         await Promise.all(authDeletePromises);
         

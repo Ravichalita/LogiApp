@@ -1,19 +1,26 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { CompletedRental, Account } from '@/lib/types';
-import { getCompletedRentals, getAccount } from '@/lib/data-server-actions';
+import { getCompletedRentals } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 function formatCurrency(value: number | undefined | null) {
     if (value === undefined || value === null) {
@@ -43,10 +50,72 @@ function StatCard({ title, value, icon: Icon, loading }: { title: string, value:
     )
 }
 
+function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental: CompletedRental | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+    if (!rental) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Detalhes da OS #{rental.sequentialId}</DialogTitle>
+                    <DialogDescription>Finalizada em {format(parseISO(rental.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                     <div className="flex items-start gap-3">
+                        <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Cliente</span>
+                            <span className="font-medium">{rental.client?.name}</span>
+                        </div>
+                    </div>
+                     <div className="flex items-start gap-3">
+                        <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Caçamba</span>
+                            <span className="font-medium">{rental.dumpster?.name} ({rental.dumpster?.size}m³)</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Endereço</span>
+                            <span className="font-medium">{rental.deliveryAddress}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Período</span>
+                            <span className="font-medium">{format(parseISO(rental.rentalDate), 'dd/MM/yy')} - {format(parseISO(rental.returnDate), 'dd/MM/yy')} ({rental.rentalDays} dias)</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <DollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-sm text-muted-foreground">Valor Total</span>
+                            <span className="font-medium">{formatCurrency(rental.totalValue)}</span>
+                        </div>
+                    </div>
+                    {rental.observations && (
+                         <div className="flex items-start gap-3">
+                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Observações</span>
+                                <p className="font-medium whitespace-pre-wrap">{rental.observations}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function FinancePage() {
     const { accountId, userAccount, loading: authLoading } = useAuth();
     const [completedRentals, setCompletedRentals] = useState<CompletedRental[]>([]);
     const [loadingData, setLoadingData] = useState(true);
+    const [selectedRental, setSelectedRental] = useState<CompletedRental | null>(null);
 
     const isAdmin = userAccount?.role === 'admin';
     const canAccess = isAdmin || userAccount?.permissions?.canAccessFinance;
@@ -153,7 +222,7 @@ export default function FinancePage() {
                 <Card className="lg:col-span-3">
                     <CardHeader>
                         <CardTitle className="font-headline">Histórico de Faturamento</CardTitle>
-                        <CardDescription>Lista de todos os aluguéis finalizados.</CardDescription>
+                        <CardDescription>Lista de todos os aluguéis finalizados. Clique para ver detalhes.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? <Skeleton className="h-40 w-full" /> : (
@@ -161,25 +230,23 @@ export default function FinancePage() {
                                 <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>OS ID</TableHead>
+                                        <TableHead>OS</TableHead>
                                         <TableHead>Cliente</TableHead>
-                                        <TableHead>Designado para</TableHead>
                                         <TableHead className="text-right">Finalizado em</TableHead>
-                                        <TableHead className="text-right">Valor Total</TableHead>
+                                        <TableHead className="text-right">Valor</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {completedRentals.length > 0 ? completedRentals.map(rental => (
-                                        <TableRow key={rental.id}>
-                                            <TableCell className="font-mono text-xs text-muted-foreground">{rental.originalRentalId}</TableCell>
+                                        <TableRow key={rental.id} onClick={() => setSelectedRental(rental)} className="cursor-pointer">
+                                            <TableCell className="font-mono text-xs font-bold">#{rental.sequentialId}</TableCell>
                                             <TableCell className="font-medium whitespace-nowrap">{rental.client?.name ?? 'N/A'}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{rental.assignedToUser?.name ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{formatCurrency(rental.totalValue)}</TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
+                                            <TableCell colSpan={4} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -189,6 +256,7 @@ export default function FinancePage() {
                     </CardContent>
                 </Card>
              </div>
+             <CompletedRentalDetailsDialog rental={selectedRental} isOpen={!!selectedRental} onOpenChange={(open) => !open && setSelectedRental(null)} />
         </div>
     );
 }

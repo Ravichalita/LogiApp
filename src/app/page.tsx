@@ -199,7 +199,8 @@ export default function HomePage() {
         filtered = filtered.filter(rental => 
             rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
             rental.dumpster?.name.toLowerCase().includes(lowercasedTerm) ||
-            rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm)
+            rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
+            String(rental.sequentialId).includes(lowercasedTerm)
         );
     }
 
@@ -275,7 +276,7 @@ export default function HomePage() {
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-                placeholder="Buscar por cliente, caçamba ou usuário..."
+                placeholder="Buscar por cliente, caçamba, usuário ou nº da OS..."
                 className="pl-9 bg-card"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -307,14 +308,18 @@ export default function HomePage() {
                     <div className="flex items-start justify-between">
                         <div className="flex items-baseline gap-4 flex-wrap">
                           <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
-                          <p className="text-muted-foreground">
-                                Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
-                            </p>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                            <Hash className="h-4 w-4"/>
+                            <span>OS #{rental.sequentialId}</span>
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 ml-2">
                             <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                         </div>
                     </div>
+                    <p className="text-muted-foreground mt-2">
+                        Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
+                    </p>
                     <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
                         <div className="flex items-center gap-2">
                             <User className="h-5 w-5" /> 

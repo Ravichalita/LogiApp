@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
@@ -39,47 +40,15 @@ const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot): any => {
 export async function getCompletedRentals(accountId: string): Promise<CompletedRental[]> {
     try {
         const rentalsCol = adminDb.collection(`accounts/${accountId}/completed_rentals`);
-        const rentalsSnap = await rentalsCol.where('accountId', '==', accountId).get();
+        const rentalsSnap = await rentalsCol.orderBy('completedDate', 'desc').get();
         
         if (rentalsSnap.empty) {
             return [];
         }
 
-        const rentalPromises = rentalsSnap.docs.map(async (rentalDoc) => {
-            const rentalData = toSerializableObject(rentalDoc.data());
-
-            // Fetch client, dumpster, and user data in parallel
-            const clientPromise = rentalData.clientId 
-                ? adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get()
-                : Promise.resolve(null);
-            
-            const dumpsterPromise = rentalData.dumpsterId
-                ? adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get()
-                : Promise.resolve(null);
-            
-            const assignedToPromise = rentalData.assignedTo
-                ? adminDb.doc(`users/${rentalData.assignedTo}`).get()
-                : Promise.resolve(null);
-
-            const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise]);
-
-            return {
-                ...rentalData,
-                id: rentalDoc.id,
-                client: clientSnap ? docToSerializable(clientSnap) : null,
-                dumpster: dumpsterSnap ? docToSerializable(dumpsterSnap) : null,
-                assignedToUser: assignedToSnap ? docToSerializable(assignedToSnap) : null,
-            } as CompletedRental;
-        });
-
-        let rentals = await Promise.all(rentalPromises);
+        const rentals = rentalsSnap.docs.map(doc => toSerializableObject({ id: doc.id, ...doc.data() }) as CompletedRental);
         
-        // Sort by completion date, most recent first
-        return rentals.sort((a, b) => {
-            const dateA = a.completedDate ? new Date(a.completedDate).getTime() : 0;
-            const dateB = b.completedDate ? new Date(b.completedDate).getTime() : 0;
-            return dateB - dateA;
-        });
+        return rentals;
 
     } catch (error) {
         console.error("Error fetching completed rentals:", error);

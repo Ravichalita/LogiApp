@@ -33,6 +33,7 @@ export type RentalPrice = z.infer<typeof RentalPriceSchema>;
 export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
+    rentalCounter: z.number().int().optional().default(0),
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
     lastBackupDate: z.string().optional(),
     backupPeriodicityDays: z.number().int().min(1).optional().default(7),
@@ -107,6 +108,7 @@ export const UpdateDumpsterSchema = DumpsterSchema.extend({
 
 
 export const RentalSchema = z.object({
+  sequentialId: z.number().int().positive(),
   dumpsterId: z.string({ required_error: "Selecione uma caçamba." }),
   clientId: z.string({ required_error: "Selecione um cliente." }),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
@@ -217,6 +219,7 @@ export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'compl
     completedDate: string; // Serialized as ISO string
     accountId: string;
     client?: Client | null;
+    dumpster?: Dumpster | null;
     assignedToUser?: UserAccount | null;
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;

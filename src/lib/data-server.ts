@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import type { UserRecord } from "firebase-admin/auth";
@@ -103,6 +104,7 @@ export async function ensureUserDocument(
                     ownerId: uid,
                     createdAt: FieldValue.serverTimestamp(),
                     members: [uid],
+                    rentalCounter: 0,
                 });
             }
 

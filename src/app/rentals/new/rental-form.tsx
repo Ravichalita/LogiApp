@@ -124,7 +124,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             return;
         }
         
-        formData.set('deliveryAddress', deliveryAddress); // Make sure address is in form data
+        formData.set('deliveryAddress', deliveryAddress);
         if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
         if (returnDate) formData.set('returnDate', returnDate.toISOString());
         if (location) {
@@ -226,7 +226,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
       
        <div className="space-y-2">
         <Label htmlFor="assignedTo">Designar para</Label>
-        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>
+        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um membro da equipe" />
           </SelectTrigger>

@@ -6,7 +6,7 @@ import { useAuth } from '@/context/auth-context';
 import type { PopulatedRental, Client, Dumpster, UserAccount, Account } from '@/lib/types';
 import { getDoc, doc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/data';
-import { fetchTeamMembers, fetchClients, getDumpsters, getAccount } from '@/lib/data';
+import { fetchTeamMembers, fetchClients, getAccount } from '@/lib/data';
 import { EditRentalForm } from './edit-rental-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -119,7 +119,7 @@ export default function EditRentalPage() {
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Editar Ordem de Serviço</CardTitle>
+                <CardTitle className="font-headline text-2xl">Editar Ordem de Serviço #{rental?.sequentialId}</CardTitle>
                 <CardDescription>Ajuste as informações da OS e salve as alterações.</CardDescription>
             </CardHeader>
             <CardContent>
