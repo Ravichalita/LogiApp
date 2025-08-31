@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
-import { createRental, getDirectionsAction } from '@/lib/actions';
+import { createRental } from '@/lib/actions';
 import type { Client, Location, UserAccount, Service, Account, DirectionsResponse } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AddressInput } from '@/components/address-input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { MapDialog } from '@/components/map-dialog';
+import { getDirectionsAction } from '@/lib/data-server-actions';
 
 const initialState = {
   errors: {},
@@ -144,7 +145,7 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
   const timeOptions = generateTimeOptions();
-  const baseLocation = account.baseLocation;
+  const baseLocation = account?.baseLocation;
 
   useEffect(() => {
     setOperationDate(new Date());
@@ -414,3 +415,4 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
     </form>
   );
 }
+

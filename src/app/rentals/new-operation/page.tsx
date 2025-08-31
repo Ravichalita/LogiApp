@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -94,12 +95,13 @@ export default function NewOperationPage() {
                  <Skeleton className="h-10 w-full" />
               </div>
             </div>
-          ) : (trucks.length > 0 && clients.length > 0) ? (
+          ) : (trucks.length > 0 && clients.length > 0 && account) ? (
              <OperationForm 
                 trucks={trucks} 
                 clients={clients} 
                 team={team} 
-                services={account?.services || []}
+                services={account.services || []}
+                account={account}
              />
           ) : (
             <Alert>
@@ -108,6 +110,7 @@ export default function NewOperationPage() {
               <AlertDescription>
                 {trucks.length === 0 && <p>Não há caminhões cadastrados. <Link href="/trucks" className="font-bold underline">Gerencie sua frota</Link>.</p>}
                 {clients.length === 0 && <p>Não há clientes cadastrados. <Link href="/clients" className="font-bold underline">Cadastre um novo cliente</Link>.</p>}
+                 {!account && <p>As configurações da conta não foram carregadas.</p>}
               </AlertDescription>
             </Alert>
           )}
