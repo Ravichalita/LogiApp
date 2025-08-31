@@ -1,15 +1,34 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Proíbe o acesso a todos os arquivos por padrão.
-    match /{allPaths=**} {
-      allow read, write: if false;
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.accountId != null;
     }
 
-    // Permite que um usuário autenticado leia e escreva arquivos
-    // SOMENTE dentro do diretório da sua própria conta.
-    match /accounts/{accountId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.token.accountId == accountId;
+    // Permite uploads para /rentals
+    match /accounts/{accountId}/rentals/{rentalId}/{fileName=**} {
+      function rentalExistsAndBelongs() {
+        return exists(/databases/(default)/documents/accounts/$(accountId)/rentals/$(rentalId));
+      }
+      allow read, write: if isSignedIn()
+                   && request.auth.token.accountId == accountId
+                   && rentalExistsAndBelongs();
+    }
+
+    // Permite uploads para /completed_rentals
+    match /accounts/{accountId}/completed_rentals/{rentalId}/{fileName=**} {
+      function completedRentalExistsAndBelongs() {
+        return exists(/databases/(default)/documents/accounts/$(accountId)/completed_rentals/$(rentalId));
+      }
+      allow read, write: if isSignedIn()
+                   && request.auth.token.accountId == accountId
+                   && completedRentalExistsAndBelongs();
+    }
+
+    // Nega todos os outros acessos por padrão
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }
