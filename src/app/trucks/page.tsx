@@ -68,10 +68,12 @@ export default function TrucksPage() {
           <DialogHeader>
             <DialogTitle>{selectedTruck ? 'Editar Caminhão' : 'Adicionar Caminhão'}</DialogTitle>
           </DialogHeader>
-          <TruckForm
-            onSuccess={handleFormSuccess}
-            onCancel={() => setIsFormOpen(false)}
-          />
+          <div className="p-6">
+            <TruckForm
+                onSuccess={handleFormSuccess}
+                onCancel={() => setIsFormOpen(false)}
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </div>
