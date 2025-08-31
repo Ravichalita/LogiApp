@@ -433,8 +433,12 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     const rawValue = rawData.value as string;
     const numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
 
+    // For operations, dumpsterId is repurposed for truckId from the form
+    const dumpsterId = rawData.osType === 'operation' ? rawData.truckId as string : rawData.dumpsterId as string;
+
     const validatedFields = RentalSchema.safeParse({
         ...rawData,
+        dumpsterId,
         sequentialId: newSequentialId,
         value: numericValue,
         status: 'Pendente',
@@ -452,35 +456,40 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     const rentalData = validatedFields.data;
 
-    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
-    const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
-    const existingRentalsSnap = await q.get();
+    // Skip conflict check for operations as they don't have long-term resource allocation
+    if (rentalData.osType === 'rental') {
+        const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+        const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
+        const existingRentalsSnap = await q.get();
 
-    const newRentalStart = new Date(rentalData.rentalDate);
-    const newRentalEnd = new Date(rentalData.returnDate);
+        const newRentalStart = new Date(rentalData.rentalDate);
+        const newRentalEnd = new Date(rentalData.returnDate);
 
-    for (const doc of existingRentalsSnap.docs) {
-        const existingRental = doc.data() as Rental;
-        const existingStart = new Date(existingRental.rentalDate);
-        const existingEnd = new Date(existingRental.returnDate);
-        if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
-            return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
+        for (const doc of existingRentalsSnap.docs) {
+            const existingRental = doc.data() as Rental;
+            const existingStart = new Date(existingRental.rentalDate);
+            const existingEnd = new Date(existingRental.returnDate);
+            if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
+                return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
+            }
         }
     }
     
+    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
     await rentalsRef.add({
       ...rentalData,
       accountId,
       createdAt: FieldValue.serverTimestamp(),
     });
 
+    // TODO: Fetch Truck name if it's an operation
     const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
-    const dumpsterName = dumpsterSnap.data()?.name || 'Caçamba';
+    const resourceName = dumpsterSnap.data()?.name || 'Recurso';
     
     await sendNotification({
         userId: rentalData.assignedTo,
         title: `Nova OS #${newSequentialId} Designada`,
-        body: `Você foi designado para a OS da ${dumpsterName}.`,
+        body: `Você foi designado para a OS da ${resourceName}.`,
     });
 
   } catch (e) {

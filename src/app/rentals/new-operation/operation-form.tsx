@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -11,9 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, Truck, Check } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, Truck, Check, Clock } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, set } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -109,6 +110,14 @@ const MultiSelect = ({ name, placeholder, options, onSelectionChange }: { name: 
     );
   };
 
+const generateTimeOptions = () => {
+    const options = [];
+    for (let i = 0; i < 24; i++) {
+        options.push(`${i.toString().padStart(2, '0')}:00`);
+        options.push(`${i.toString().padStart(2, '0')}:30`);
+    }
+    return options;
+};
 
 export function OperationForm({ trucks, clients, team, services }: OperationFormProps) {
   const { accountId, user, userAccount } = useAuth();
@@ -120,6 +129,7 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
   const [assignedToId, setAssignedToId] = useState<string | undefined>(user?.uid);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [operationDate, setOperationDate] = useState<Date | undefined>();
+  const [operationTime, setOperationTime] = useState<string>('08:00');
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState('');
@@ -127,6 +137,7 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
 
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
+  const timeOptions = generateTimeOptions();
 
   useEffect(() => {
     setOperationDate(new Date());
@@ -166,16 +177,25 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
             return;
         }
         
-        formData.set('deliveryAddress', deliveryAddress);
+        let combinedDate: Date | undefined = undefined;
         if (operationDate) {
-            formData.set('rentalDate', operationDate.toISOString());
-            formData.set('returnDate', operationDate.toISOString()); // For operations, dates are the same
+            const [hours, minutes] = operationTime.split(':').map(Number);
+            combinedDate = set(operationDate, { hours, minutes });
         }
+
+        formData.set('deliveryAddress', deliveryAddress);
+        if (combinedDate) {
+            formData.set('rentalDate', combinedDate.toISOString());
+            formData.set('returnDate', combinedDate.toISOString()); // For operations, dates are the same
+        } else if (operationDate) {
+            formData.set('rentalDate', operationDate.toISOString());
+            formData.set('returnDate', operationDate.toISOString());
+        }
+
         if (location) {
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        // Rename dumpsterId to truckId for clarity in operations
         if (selectedTruckId) formData.set('dumpsterId', selectedTruckId);
         formData.set('osType', 'operation');
         formData.set('serviceIds', serviceIds.join(','));
@@ -262,32 +282,47 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
       </div>
       
       <div className="space-y-2">
-          <Label>Data da Operação</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !operationDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {operationDate ? format(operationDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={operationDate}
-                onSelect={setOperationDate}
-                initialFocus
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
-          {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
+        <Label>Data e Hora da Operação</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !operationDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {operationDate ? format(operationDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={operationDate}
+                  onSelect={setOperationDate}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+             <Select value={operationTime} onValueChange={setOperationTime}>
+                <SelectTrigger>
+                    <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <SelectValue />
+                    </div>
+                </SelectTrigger>
+                <SelectContent>
+                    {timeOptions.map(time => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                    ))}
+                </SelectContent>
+             </Select>
         </div>
+        {(errors?.rentalDate || errors?.returnDate) && <p className="text-sm font-medium text-destructive">{errors.rentalDate?.[0] || errors.returnDate?.[0]}</p>}
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="services">Serviços</Label>
