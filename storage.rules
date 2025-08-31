@@ -1,14 +1,13 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    // Regra geral: apenas usuários autenticados podem acessar
+    // Proíbe o acesso a todos os arquivos por padrão.
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
 
-    // Isola os dados por conta.
-    // Usuários só podem acessar arquivos dentro da pasta de sua própria conta.
+    // Permite que um usuário autenticado leia e escreva arquivos
+    // SOMENTE dentro do diretório da sua própria conta.
     match /accounts/{accountId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.token.accountId == accountId;
     }
