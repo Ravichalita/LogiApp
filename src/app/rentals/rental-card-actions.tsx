@@ -111,15 +111,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-             <div className="flex items-start gap-3">
-                <Hash className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">OS Nº</span>
-                    <span className="font-medium">{rental.sequentialId}</span>
-                </div>
-            </div>
-        </div>
         <div className="flex items-stretch justify-between gap-2">
             <div className="flex items-start gap-3 flex-grow">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
