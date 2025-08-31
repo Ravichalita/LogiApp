@@ -17,20 +17,6 @@ export function FloatingActionButton() {
         return null;
     }
 
-    const pagesToHideFab = [
-        '/rentals/new', 
-        '/clients/new',
-        '/finance', 
-        '/settings', 
-        '/admin/clients', 
-        '/notifications-studio',
-        '/trucks'
-    ];
-
-    if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
-        return null;
-    }
-
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
 
@@ -57,6 +43,17 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="team" />;
                 }
                 return null;
+            // Explicitly handle routes where no FAB should be shown
+            case '/trucks':
+            case '/finance':
+            case '/settings':
+            case '/admin/clients':
+            case '/notifications-studio':
+                return null;
+            // Hide on any new/edit page as well
+            case (pathname.match(/(\/new|\/edit)/) || {}).input:
+                return null;
+            // Default FAB for home and other pages
             case '/':
             default:
                 return (
