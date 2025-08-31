@@ -161,6 +161,7 @@ export default function FinancePage() {
                                 <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead>OS ID</TableHead>
                                         <TableHead>Cliente</TableHead>
                                         <TableHead>Designado para</TableHead>
                                         <TableHead className="text-right">Finalizado em</TableHead>
@@ -170,6 +171,7 @@ export default function FinancePage() {
                                 <TableBody>
                                     {completedRentals.length > 0 ? completedRentals.map(rental => (
                                         <TableRow key={rental.id}>
+                                            <TableCell className="font-mono text-xs text-muted-foreground">{rental.originalRentalId}</TableCell>
                                             <TableCell className="font-medium whitespace-nowrap">{rental.client?.name ?? 'N/A'}</TableCell>
                                             <TableCell className="whitespace-nowrap">{rental.assignedToUser?.name ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
@@ -177,7 +179,7 @@ export default function FinancePage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
+                                            <TableCell colSpan={5} className="text-center h-24">Nenhum aluguel finalizado ainda.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

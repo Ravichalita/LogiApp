@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown } from 'lucide-react';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -353,3 +353,4 @@ export default function HomePage() {
     </div>
   );
 }
+

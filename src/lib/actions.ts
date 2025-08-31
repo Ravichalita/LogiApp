@@ -527,6 +527,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         await batch.commit();
 
         revalidatePath('/');
+        revalidatePath('/finance'); // Revalidate finance page as well
         
     } catch(e) {
          console.error("Failed to finish rental:", e);
