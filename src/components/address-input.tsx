@@ -15,9 +15,9 @@ interface AddressInputProps {
   initialValue?: string;
   onInputChange?: (value: string) => void;
   onLocationSelect: (location: Location) => void;
+  value?: string; // Controlled value from parent
   initialLocation?: { lat: number; lng: number } | null;
   className?: string;
-  value?: string; // Controlled value from parent
 }
 
 export function AddressInput({
@@ -43,7 +43,7 @@ export function AddressInput({
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
-    libraries: ['places', 'geocoding'],
+    libraries: ['places', 'geocoding', 'routes'],
     preventLoad: !googleMapsApiKey,
   });
 
