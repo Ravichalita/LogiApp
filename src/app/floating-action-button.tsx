@@ -3,25 +3,33 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NewItemDialog } from "@/components/new-item-dialog";
+import { NewItemDialog } from "./new-item-dialog";
 
 export function FloatingActionButton() {
     const { user, userAccount } = useAuth();
     const pathname = usePathname();
-    const isAdmin = userAccount?.role === 'admin';
+    const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
 
     if (!user) {
         return null;
     }
 
-    // Don't show FAB on these pages
-    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/admin/clients')) {
+    const pagesToHideFab = [
+        '/rentals/new', 
+        '/clients/new',
+        '/finance', 
+        '/settings', 
+        '/admin/clients', 
+        '/notifications-studio',
+        '/trucks'
+    ];
+
+    if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
         return null;
     }
-
 
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
@@ -30,6 +38,18 @@ export function FloatingActionButton() {
             case '/dumpsters':
                 if (isAdmin || permissions?.canEditDumpsters) {
                     return <NewItemDialog itemType="dumpster" />;
+                }
+                return null;
+            case '/clients':
+                 if (isAdmin || permissions?.canEditClients) {
+                    return (
+                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                            <Link href="/clients/new">
+                                <Plus className="h-8 w-8" />
+                                <span className="sr-only">Novo Cliente</span>
+                            </Link>
+                        </Button>
+                    );
                 }
                 return null;
             case '/team':
@@ -43,7 +63,7 @@ export function FloatingActionButton() {
                     <Button asChild className="h-16 w-16 rounded-full shadow-lg">
                         <Link href="/rentals/new">
                             <Plus className="h-8 w-8" />
-                            <span className="sr-only">Novo Aluguel</span>
+                            <span className="sr-only">Gerar OS</span>
                         </Link>
                     </Button>
                 );
