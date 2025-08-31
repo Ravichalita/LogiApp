@@ -2,9 +2,9 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
-import { createRental } from '@/lib/actions';
-import type { Client, Dumpster, Location, UserAccount, Service } from '@/lib/types';
+import { useEffect, useState, useTransition, useCallback } from 'react';
+import { createRental, getDirectionsAction } from '@/lib/actions';
+import type { Client, Location, UserAccount, Service, Account, DirectionsResponse } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,9 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, Truck, Check, Clock } from 'lucide-react';
+import { CalendarIcon, User, Truck, Check, Clock, Route, Milestone } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, set } from 'date-fns';
+import { set } from 'date-fns';
+import { format } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -23,6 +24,7 @@ import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AddressInput } from '@/components/address-input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { MapDialog } from '@/components/map-dialog';
 
 const initialState = {
   errors: {},
@@ -42,6 +44,7 @@ interface OperationFormProps {
   clients: Client[];
   team: UserAccount[];
   services: Service[];
+  account: Account;
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -119,7 +122,7 @@ const generateTimeOptions = () => {
     return options;
 };
 
-export function OperationForm({ trucks, clients, team, services }: OperationFormProps) {
+export function OperationForm({ trucks, clients, team, services, account }: OperationFormProps) {
   const { accountId, user, userAccount } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -134,15 +137,41 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState('');
   const [serviceIds, setServiceIds] = useState<string[]>([]);
+  
+  const [directions, setDirections] = useState<DirectionsResponse | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
 
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
   const timeOptions = generateTimeOptions();
+  const baseLocation = account.baseLocation;
 
   useEffect(() => {
     setOperationDate(new Date());
     setAssignedToId(user?.uid)
   }, [user]);
+
+  const calculateRoute = useCallback(async (destination: { lat: number, lng: number }) => {
+    if (!baseLocation) return;
+    setIsCalculatingRoute(true);
+    setDirections(null);
+    const result = await getDirectionsAction(baseLocation, destination);
+    if ('error' in result) {
+        toast({ title: "Erro de Rota", description: result.error, variant: 'destructive'});
+    } else {
+        setDirections(result);
+    }
+    setIsCalculatingRoute(false);
+  }, [baseLocation, toast]);
+
+  const handleLocationSelect = useCallback((selectedLocation: Location) => {
+    const newLocation = { lat: selectedLocation.lat, lng: selectedLocation.lng };
+    setLocation(newLocation);
+    setDeliveryAddress(selectedLocation.address);
+    if (baseLocation) {
+        calculateRoute(newLocation);
+    }
+  }, [baseLocation, calculateRoute]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -150,24 +179,24 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
       if (client) {
          setDeliveryAddress(client.address);
          if (client.latitude && client.longitude) {
-           setLocation({ lat: client.latitude, lng: client.longitude });
+            const newLocation = { lat: client.latitude, lng: client.longitude };
+            setLocation(newLocation);
+            if (baseLocation) calculateRoute(newLocation);
          } else {
            setLocation(null);
+           setDirections(null);
          }
       }
     } else {
        setDeliveryAddress('');
        setLocation(null);
+       setDirections(null);
     }
-  }, [selectedClientId, clients]);
-  
-  const handleLocationSelect = (selectedLocation: Location) => {
-    setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
-    setDeliveryAddress(selectedLocation.address);
-  };
-  
+  }, [selectedClientId, clients, baseLocation, calculateRoute]);
+
   const handleAddressChange = (newAddress: string) => {
     setDeliveryAddress(newAddress);
+    if(directions) setDirections(null); // Clear directions if address is manually changed
   }
 
   const handleFormAction = (formData: FormData) => {
@@ -186,7 +215,7 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
         formData.set('deliveryAddress', deliveryAddress);
         if (combinedDate) {
             formData.set('rentalDate', combinedDate.toISOString());
-            formData.set('returnDate', combinedDate.toISOString()); // For operations, dates are the same
+            formData.set('returnDate', combinedDate.toISOString());
         } else if (operationDate) {
             formData.set('rentalDate', operationDate.toISOString());
             formData.set('returnDate', operationDate.toISOString());
@@ -196,9 +225,12 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        if (selectedTruckId) formData.set('dumpsterId', selectedTruckId);
+        if (selectedTruckId) formData.set('dumpsterId', selectedTruckId); // Repurposing dumpsterId for truckId
         formData.set('osType', 'operation');
         formData.set('serviceIds', serviceIds.join(','));
+        if (directions) {
+            formData.set('distance', String(directions.distance.value));
+        }
 
 
         const boundAction = createRental.bind(null, accountId, user.uid);
@@ -213,7 +245,7 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
                 variant: "destructive"
              })
         }
-        if (result?.message && !result.errors) { // For general server errors
+        if (result?.message && !result.errors) {
             toast({ title: "Erro", description: result.message, variant: "destructive"});
         }
     });
@@ -270,7 +302,15 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="address-input">Endereço da Operação</Label>
+        <div className="flex justify-between items-center">
+            <Label htmlFor="address-input">Endereço da Operação</Label>
+             {directions && (
+                <div className="flex items-center text-xs font-medium text-muted-foreground">
+                    <Route className="h-4 w-4 mr-1" />
+                    Distância: {directions.distance.text}
+                </div>
+            )}
+        </div>
         <AddressInput
             id="address-input"
             value={deliveryAddress}
@@ -279,6 +319,16 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
             initialLocation={location}
         />
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
+        {isCalculatingRoute && <div className="flex items-center text-sm text-muted-foreground"><Spinner size="small" /> Calculando rota...</div>}
+        {directions && (
+            <div className="flex items-center text-sm text-muted-foreground gap-2">
+                <Route className="h-4 w-4" />
+                <span>Distância: <b>{directions.distance.text}</b></span>
+                <Clock className="h-4 w-4" />
+                <span>Duração: <b>{directions.duration.text}</b></span>
+                 <MapDialog onLocationSelect={() => {}} origin={baseLocation} destination={location} />
+            </div>
+        )}
       </div>
       
       <div className="space-y-2">
@@ -329,7 +379,7 @@ export function OperationForm({ trucks, clients, team, services }: OperationForm
         <MultiSelect 
             name="serviceIds"
             placeholder="Selecione um ou mais serviços"
-            options={services.map(s => ({ value: s.id, label: s.name, icon: User }))} // Replace User icon
+            options={services.map(s => ({ value: s.id, label: s.name, icon: Milestone }))}
             onSelectionChange={setServiceIds}
         />
       </div>

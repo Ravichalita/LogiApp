@@ -7,8 +7,8 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema, UpdateBaseAddressSchema } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account, DirectionsResponse } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -145,7 +145,7 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
 
         // 4. Remove user from account members list
         batch.update(accountRef, {
-            members: FieldValue.arrayRemove(userId)
+            members: FieldValue.arrayRemove(uid)
         });
 
         // 5. Delete the user document itself
@@ -443,7 +443,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         value: numericValue,
         status: 'Pendente',
         createdBy: createdBy,
-        notificationsSent: { due: false, late: false }
+        notificationsSent: { due: false, late: false },
+        serviceIds: rawData.serviceIds ? (rawData.serviceIds as string).split(',') : [],
+        distance: rawData.distance ? parseFloat(rawData.distance as string) : undefined,
     });
     
     if (!validatedFields.success) {
@@ -660,6 +662,66 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function updateBaseAddressAction(accountId: string, prevState: any, formData: FormData) {
+    const validatedFields = UpdateBaseAddressSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return { message: 'error', error: validatedFields.error.flatten().fieldErrors.baseAddress?.[0] };
+    }
+
+    try {
+        const { baseAddress, baseLatitude, baseLongitude } = validatedFields.data;
+        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        await accountRef.update({
+            baseAddress,
+            baseLocation: { lat: baseLatitude, lng: baseLongitude },
+        });
+        revalidatePath('/settings');
+        revalidatePath('/rentals/new-operation');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function getDirectionsAction(origin: {lat: number, lng: number}, destination: {lat: number, lng: number}): Promise<DirectionsResponse | { error: string }> {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+        return { error: 'A chave da API do Google Maps não está configurada.' };
+    }
+
+    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
+    url.searchParams.append('origin', `${origin.lat},${origin.lng}`);
+    url.searchParams.append('destination', `${destination.lat},${destination.lng}`);
+    url.searchParams.append('key', apiKey);
+    
+    try {
+        const response = await fetch(url.toString());
+        const data = await response.json();
+
+        if (data.status !== 'OK') {
+            return { error: `Erro da API do Google: ${data.status} - ${data.error_message || ''}` };
+        }
+
+        const route = data.routes[0];
+        if (!route || !route.legs[0]) {
+            return { error: 'Nenhuma rota encontrada.' };
+        }
+        
+        const leg = route.legs[0];
+        const points = route.overview_polyline.points;
+        const decodedPath: google.maps.LatLngLiteral[] = google.maps.geometry.encoding.decodePath(points);
+
+        return {
+            distance: leg.distance, // { text: '...', value: '...' (meters)}
+            duration: leg.duration, // { text: '...', value: '...' (seconds)}
+            route: decodedPath
+        };
+    } catch (error) {
+        return { error: handleFirebaseError(error) };
     }
 }
 

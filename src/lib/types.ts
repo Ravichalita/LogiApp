@@ -45,12 +45,23 @@ export const AccountSchema = z.object({
     lastBackupDate: z.string().optional(),
     backupPeriodicityDays: z.number().int().min(1).optional().default(7),
     backupRetentionDays: z.number().int().min(1).optional().default(90),
+    baseAddress: z.string().optional(),
+    baseLocation: z.object({
+        lat: z.number(),
+        lng: z.number(),
+    }).optional(),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
 export const UpdateBackupSettingsSchema = z.object({
   backupPeriodicityDays: z.coerce.number().int().min(1, "A periodicidade deve ser de no mínimo 1 dia."),
   backupRetentionDays: z.coerce.number().int().min(1, "A retenção deve ser de no mínimo 1 dia."),
+});
+
+export const UpdateBaseAddressSchema = z.object({
+    baseAddress: z.string().min(1, "O endereço é obrigatório."),
+    baseLatitude: z.coerce.number(),
+    baseLongitude: z.coerce.number(),
 });
 
 
@@ -117,7 +128,7 @@ export const UpdateDumpsterSchema = DumpsterSchema.extend({
 
 export const RentalSchema = z.object({
   sequentialId: z.number().int().positive(),
-  dumpsterId: z.string({ required_error: "Selecione uma caçamba." }),
+  dumpsterId: z.string({ required_error: "Selecione uma caçamba ou caminhão." }),
   clientId: z.string({ required_error: "Selecione um cliente." }),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
@@ -135,6 +146,7 @@ export const RentalSchema = z.object({
   }).optional(),
   osType: z.enum(['rental', 'operation']).default('rental'),
   serviceIds: z.array(z.string()).optional(),
+  distance: z.number().optional(),
 });
 
 const UpdateRentalPeriodSchema = z.object({
@@ -236,6 +248,12 @@ export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
 export type UserStatus = UserAccount['status'];
 export type Location = { lat: number; lng: number; address: string; };
+export type DirectionsResponse = {
+    distance: { text: string, value: number }, // value in meters
+    duration: { text: string, value: number }, // value in seconds
+    route: google.maps.LatLngLiteral[],
+}
+
 
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
