@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Users, History, Megaphone, Truck } from 'lucide-react';
+import { ClipboardList, Users, Megaphone, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { CacambaIcon } from '@/components/icons/cacamba-icon';
@@ -15,7 +15,6 @@ const baseNavLinks = [
   { href: '/trucks', label: 'Caminhões', icon: Truck },
 ];
 
-const financeLink = { href: '/finance', label: 'Histórico', icon: History };
 const notificationsLink = { href: '/notifications-studio', label: 'Notificações', icon: Megaphone };
 
 export function BottomNav() {
@@ -29,10 +28,6 @@ export function BottomNav() {
   }
 
   const navLinks = [...baseNavLinks];
-
-  if (isAdmin || permissions?.canAccessFinance) {
-    navLinks.push(financeLink);
-  }
 
   if (isSuperAdmin || isAdmin || permissions?.canAccessNotificationsStudio) {
     navLinks.push(notificationsLink);
