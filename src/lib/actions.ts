@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema, UpdateBaseAddressSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account, DirectionsResponse } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -145,7 +145,7 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
 
         // 4. Remove user from account members list
         batch.update(accountRef, {
-            members: FieldValue.arrayRemove(uid)
+            members: FieldValue.arrayRemove(userId)
         });
 
         // 5. Delete the user document itself
@@ -684,44 +684,6 @@ export async function updateBaseAddressAction(accountId: string, prevState: any,
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function getDirectionsAction(origin: {lat: number, lng: number}, destination: {lat: number, lng: number}): Promise<DirectionsResponse | { error: string }> {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-        return { error: 'A chave da API do Google Maps não está configurada.' };
-    }
-
-    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
-    url.searchParams.append('origin', `${origin.lat},${origin.lng}`);
-    url.searchParams.append('destination', `${destination.lat},${destination.lng}`);
-    url.searchParams.append('key', apiKey);
-    
-    try {
-        const response = await fetch(url.toString());
-        const data = await response.json();
-
-        if (data.status !== 'OK') {
-            return { error: `Erro da API do Google: ${data.status} - ${data.error_message || ''}` };
-        }
-
-        const route = data.routes[0];
-        if (!route || !route.legs[0]) {
-            return { error: 'Nenhuma rota encontrada.' };
-        }
-        
-        const leg = route.legs[0];
-        const points = route.overview_polyline.points;
-        const decodedPath: google.maps.LatLngLiteral[] = google.maps.geometry.encoding.decodePath(points);
-
-        return {
-            distance: leg.distance, // { text: '...', value: '...' (meters)}
-            duration: leg.duration, // { text: '...', value: '...' (seconds)}
-            route: decodedPath
-        };
-    } catch (error) {
-        return { error: handleFirebaseError(error) };
     }
 }
 

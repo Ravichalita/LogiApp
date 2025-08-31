@@ -48,6 +48,7 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
   const { toast } = useToast();
   
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const isRouteMap = origin && destination;
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: googleMapsApiKey ?? '',
@@ -60,7 +61,7 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
   }, []);
 
   const calculateRoute = useCallback(() => {
-    if (!origin || !destination || !window.google) return;
+    if (!isRouteMap || !window.google) return;
     const directionsService = new window.google.maps.DirectionsService();
     directionsService.route(
       {
@@ -81,7 +82,7 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
         }
       }
     );
-  }, [origin, destination, toast]);
+  }, [origin, destination, isRouteMap, toast]);
 
 
   useEffect(() => {
@@ -104,24 +105,23 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
   }, [isOpen, map, initialLocation]);
 
   useEffect(() => {
-      if (isOpen && origin && destination) {
+      if (isOpen && isRouteMap) {
           calculateRoute();
       } else if (isOpen) {
           setDirections(null);
       }
-  }, [isOpen, origin, destination, calculateRoute]);
+  }, [isOpen, isRouteMap, calculateRoute]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
-    if (event.latLng) {
-      const newPos = {
-        lat: event.latLng.lat(),
-        lng: event.latLng.lng(),
-      };
-      setSelectedPosition(newPos);
-      if (onLocationSelect) {
-        handleConfirm(newPos);
-      }
-    }
+    if (isRouteMap || !event.latLng) return;
+    
+    const newPos = {
+      lat: event.latLng.lat(),
+      lng: event.latLng.lng(),
+    };
+    setSelectedPosition(newPos);
+    // For selection maps, we confirm immediately.
+    handleConfirm(newPos);
   };
 
   const handleConfirm = async (positionToConfirm?: { lat: number; lng: number }) => {
@@ -151,11 +151,9 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
   
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (!open) {
+    if (!open && !isRouteMap) {
         // Reset state when closing if not a directions map
-        if (!origin || !destination) {
-            setSelectedPosition(initialLocation || undefined);
-        }
+        setSelectedPosition(initialLocation || undefined);
     }
   }
 
@@ -193,10 +191,10 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
                 center={center}
                 zoom={directions ? undefined : 15}
                 onLoad={onMapLoad}
-                onClick={directions ? undefined : handleMapClick}
+                onClick={handleMapClick}
                 options={{
-                    disableDefaultUI: !!directions,
-                    clickableIcons: !directions,
+                    disableDefaultUI: isRouteMap,
+                    clickableIcons: !isRouteMap,
                 }}
             >
                 {directions ? (
@@ -222,16 +220,16 @@ export function MapDialog({ onLocationSelect, initialLocation, origin, destinati
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="icon">
-          <MapPin className="h-4 w-4" />
-          <span className="sr-only">Localizar no Mapa</span>
+          {isRouteMap ? <Route className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+          <span className="sr-only">{isRouteMap ? "Ver Rota" : "Localizar no Mapa"}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{directions ? "Rota da Operação" : "Selecione a Localização no Mapa"}</DialogTitle>
+          <DialogTitle>{isRouteMap ? "Rota da Operação" : "Selecione a Localização no Mapa"}</DialogTitle>
         </DialogHeader>
         <div className="py-4">{renderMap()}</div>
-        {!directions && (
+        {!isRouteMap && (
             <DialogFooter>
             <DialogClose asChild>
                 <Button variant="outline">Cancelar</Button>

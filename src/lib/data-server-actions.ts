@@ -3,7 +3,7 @@
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment } from './types';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, DirectionsResponse } from './types';
 import { adminDb } from './firebase-admin';
 
 // Helper to convert Timestamps to serializable format
@@ -35,6 +35,15 @@ const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot): any => {
   }
   return toSerializableObject({ id: doc.id, ...doc.data() });
 };
+
+// Helper function for error handling
+function handleFirebaseError(error: unknown): string {
+  let message = 'Ocorreu um erro desconhecido.';
+  if (error instanceof Error) {
+    message = error.message;
+  }
+  return message;
+}
 
 
 export async function getCompletedRentals(accountId: string): Promise<CompletedRental[]> {
@@ -170,5 +179,40 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
     } catch (error) {
         console.error(`Error fetching populated rental by ID ${rentalId}:`, error);
         return null;
+    }
+}
+
+export async function getDirectionsAction(origin: {lat: number, lng: number}, destination: {lat: number, lng: number}): Promise<DirectionsResponse | { error: string }> {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+        return { error: 'A chave da API do Google Maps não está configurada.' };
+    }
+
+    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
+    url.searchParams.append('origin', `${origin.lat},${origin.lng}`);
+    url.searchParams.append('destination', `${destination.lat},${destination.lng}`);
+    url.searchParams.append('key', apiKey);
+    
+    try {
+        const response = await fetch(url.toString());
+        const data = await response.json();
+
+        if (data.status !== 'OK') {
+            return { error: `Erro da API do Google: ${data.status} - ${data.error_message || ''}` };
+        }
+
+        const route = data.routes[0];
+        if (!route || !route.legs[0]) {
+            return { error: 'Nenhuma rota encontrada.' };
+        }
+        
+        const leg = route.legs[0];
+        
+        return {
+            distance: leg.distance, // { text: '...', value: '...' (meters)}
+            duration: leg.duration, // { text: '...', value: '...' (seconds)}
+        };
+    } catch (error) {
+        return { error: handleFirebaseError(error) };
     }
 }

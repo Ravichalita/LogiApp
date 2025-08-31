@@ -45,7 +45,7 @@ interface OperationFormProps {
   clients: Client[];
   team: UserAccount[];
   services: Service[];
-  account: Account;
+  account: Account | null;
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -321,7 +321,7 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
         />
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
         {isCalculatingRoute && <div className="flex items-center text-sm text-muted-foreground"><Spinner size="small" /> Calculando rota...</div>}
-        {directions && (
+        {directions && baseLocation && location && (
             <div className="flex items-center text-sm text-muted-foreground gap-2">
                 <Route className="h-4 w-4" />
                 <span>Distância: <b>{directions.distance.text}</b></span>
@@ -415,4 +415,3 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
     </form>
   );
 }
-
