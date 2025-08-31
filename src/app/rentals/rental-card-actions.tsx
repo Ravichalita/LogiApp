@@ -82,8 +82,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const [isFinishing, startFinishTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
-  
-  const finishFormRef = useRef<HTMLFormElement>(null);
 
   const isAdmin = userAccount?.role === 'admin';
   const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
@@ -95,16 +93,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
-
-  const handleFinishAction = (formData: FormData) => {
-    startFinishTransition(async () => {
-        if (!accountId) return;
-        
-        await finishRentalAction(accountId, formData);
-        
-        toast({ title: "Sucesso!", description: "Ordem de Serviço finalizada." });
-    })
-  }
 
   const handleDeleteAction = () => {
      startDeleteTransition(async () => {
@@ -118,6 +106,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
      });
   }
 
+  const boundFinishRentalAction = finishRentalAction.bind(null, accountId!);
+
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
@@ -126,7 +116,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 <Hash className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">OS Nº</span>
-                    <span className="font-medium font-mono text-xs">{rental.sequentialId}</span>
+                    <span className="font-medium">{rental.sequentialId}</span>
                 </div>
             </div>
         </div>
@@ -277,7 +267,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AlertDialog>
                 )
             ) : (
-                <form action={handleFinishAction} className="flex-grow">
+                 <form action={boundFinishRentalAction} className="flex-grow">
                     <input type="hidden" name="rentalId" value={rental.id} />
                     <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                         {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}

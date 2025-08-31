@@ -10,7 +10,6 @@ import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPricesSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, RentalPriceSchema } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
-import { cookies } from 'next/cookies';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
@@ -493,9 +492,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
 export async function finishRentalAction(accountId: string, formData: FormData) {
     const rentalId = formData.get('rentalId') as string;
-
-    if (!rentalId) {
-        return { message: 'error', error: 'Rental ID is missing.' };
+    if (!rentalId || !accountId) {
+        console.error("finishRentalAction called without rentalId or accountId.");
+        return { message: 'error', error: 'ID da OS ou da conta está ausente.' };
     }
     
     const db = getFirestore(adminApp);
@@ -543,14 +542,13 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         
         await batch.commit();
 
-        revalidatePath('/');
-        revalidatePath('/finance');
-        
     } catch(e) {
          console.error("Failed to finish rental:", e);
-         return { message: 'error', error: handleFirebaseError(e) as string };
+         throw e; // Rethrow to be caught by Next.js form handling
     }
-
+    
+    revalidatePath('/');
+    revalidatePath('/finance');
     redirect('/');
 }
 
