@@ -30,11 +30,6 @@ export default function TrucksPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
 
-  const handleAddTruck = () => {
-    setSelectedTruck(null);
-    setIsFormOpen(true);
-  };
-
   const handleEditTruck = (truck: Truck) => {
     setSelectedTruck(truck);
     setIsFormOpen(true);
@@ -62,19 +57,6 @@ export default function TrucksPage() {
           />
         ))}
       </div>
-      <Button
-        className="fixed bottom-16 right-4 h-16 w-16 rounded-full shadow-lg md:hidden"
-        onClick={handleAddTruck}
-      >
-        <Plus className="h-8 w-8" />
-      </Button>
-       <Button
-        className="hidden md:flex fixed bottom-16 right-4 h-14 rounded-md shadow-lg items-center gap-2"
-        onClick={handleAddTruck}
-      >
-        <Plus className="h-5 w-5" />
-        <span>Adicionar Caminhão</span>
-      </Button>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent>

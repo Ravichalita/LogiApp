@@ -43,8 +43,13 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="team" />;
                 }
                 return null;
-            // Explicitly handle routes where no FAB should be shown
             case '/trucks':
+                // For now, let's assume adding trucks is an admin/owner feature
+                 if (isAdmin) {
+                    return <NewItemDialog itemType="truck" />;
+                }
+                return null;
+            // Explicitly handle routes where no FAB should be shown
             case '/finance':
             case '/settings':
             case '/admin/clients':

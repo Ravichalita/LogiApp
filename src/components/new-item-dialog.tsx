@@ -11,15 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, UserPlus, Building, User } from 'lucide-react';
+import { Plus, UserPlus, Building, User, Truck } from 'lucide-react';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
 import { InviteForm } from '@/app/team/invite-form';
 import { AdminInviteForm } from '@/app/team/admin-invite-form';
 import { ClientForm } from '@/app/clients/client-form';
+import { TruckForm } from '@/app/trucks/truck-form';
 import { useRouter } from 'next/navigation';
 
 interface NewItemDialogProps {
-  itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client';
+  itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client' | 'truck';
   onSuccess?: () => void;
 }
 
@@ -31,14 +32,16 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     dumpster: 'Nova Caçamba',
     team: 'Adicionar membro à equipe',
     clientAdmin: 'Cadastrar Novo Cliente (Admin)',
-    client: 'Novo Cliente'
+    client: 'Novo Cliente',
+    truck: 'Adicionar Caminhão'
   };
 
   const descriptions = {
     dumpster: 'Cadastre uma nova caçamba no seu inventário.',
     team: 'Crie uma conta para um funcionário. Ele terá acesso aos dados da sua empresa com as permissões que você definir.',
     clientAdmin: 'Crie uma nova conta de administrador para seu cliente. Ele terá uma conta separada e isolada para gerenciar os próprios dados.',
-    client: 'Adicione um novo cliente à sua lista.'
+    client: 'Adicione um novo cliente à sua lista.',
+    truck: 'Cadastre um novo caminhão na sua frota.'
   };
   
   const handleSave = () => {
@@ -50,18 +53,25 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     }
   }
 
+  const handleTruckSuccess = () => {
+      setIsOpen(false);
+      onSuccess?.();
+  }
+
   const formComponent = {
     dumpster: <DumpsterForm onSave={handleSave} />,
     team: <InviteForm onSave={handleSave} />,
     clientAdmin: <AdminInviteForm onSave={handleSave} />,
     client: <ClientForm />,
+    truck: <TruckForm onSuccess={handleTruckSuccess} onCancel={() => setIsOpen(false)} />
   };
   
    const iconComponent = {
     dumpster: <Plus className="h-8 w-8" />,
     team: <UserPlus className="h-7 w-7" />,
     clientAdmin: <Building className="h-7 w-7" />,
-    client: <User className="h-7 w-7" />
+    client: <User className="h-7 w-7" />,
+    truck: <Plus className="h-8 w-8" />,
    }
    
   return (
