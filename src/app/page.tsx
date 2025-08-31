@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
@@ -303,16 +304,13 @@ export default function HomePage() {
             return (
             <Accordion type="single" collapsible className="w-full" key={rental.id}>
                 <AccordionItem value={rental.id} className="border-none">
-                <Card className="h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                    <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
+                        {rental.sequentialId}
+                    </span>
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                        <div className="flex items-baseline gap-4 flex-wrap">
-                          <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
-                          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                            <Hash className="h-4 w-4"/>
-                            <span>OS #{rental.sequentialId}</span>
-                          </div>
-                        </div>
+                        <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
                         <div className="flex flex-col items-end gap-1 ml-2">
                             <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                         </div>
@@ -358,4 +356,5 @@ export default function HomePage() {
     </div>
   );
 }
+
 
