@@ -78,7 +78,7 @@ export function FloatingActionButton() {
                         <DropdownMenuItem asChild>
                            <Link href="/rentals/new-operation">
                                 <Replace className="mr-2 h-4 w-4" />
-                                <span>Operação</span>
+                                <span>Nova Operação</span>
                            </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
