@@ -3,7 +3,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Truck } from 'lucide-react';
+import { Truck as TruckIcon } from 'lucide-react';
 
 export interface Truck {
   id: string;
@@ -11,6 +11,7 @@ export interface Truck {
   licensePlate: string;
   year: number;
   capacity: string;
+  type: 'Caminhão a vácuo' | 'Hidro-Vácuo combinado';
 }
 
 interface TruckCardProps {
@@ -24,12 +25,15 @@ export function TruckCard({ truck, onEdit, onDelete }: TruckCardProps) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{truck.model}</CardTitle>
-        <Truck className="h-4 w-4 text-muted-foreground" />
+        <TruckIcon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         <div className="text-lg font-bold">{truck.licensePlate}</div>
         <p className="text-xs text-muted-foreground">
-          Ano: {truck.year} - Capacidade: {truck.capacity}
+          Ano: {truck.year} - {truck.type}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Capacidade: {truck.capacity}
         </p>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" size="sm" onClick={onEdit}>

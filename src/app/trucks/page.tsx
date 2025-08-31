@@ -16,6 +16,7 @@ const initialTrucks: Truck[] = [
     licensePlate: 'BRA2E19',
     year: 2023,
     capacity: '25 toneladas',
+    type: 'Caminhão a vácuo',
   },
   {
     id: '2',
@@ -23,6 +24,7 @@ const initialTrucks: Truck[] = [
     licensePlate: 'PRL1A23',
     year: 2022,
     capacity: '27 toneladas',
+    type: 'Hidro-Vácuo combinado',
   },
 ];
 

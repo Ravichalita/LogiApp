@@ -15,12 +15,14 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
   model: z.string().min(2, 'O modelo deve ter pelo menos 2 caracteres.'),
   licensePlate: z.string().length(7, 'A placa deve ter 7 caracteres.'),
-  year: z.number().int().min(1900).max(new Date().getFullYear() + 1),
+  year: z.coerce.number().int().min(1900).max(new Date().getFullYear() + 1),
   capacity: z.string().min(1, 'A capacidade é obrigatória.'),
+  type: z.enum(['Caminhão a vácuo', 'Hidro-Vácuo combinado'], { required_error: 'O tipo é obrigatório.'}),
 });
 
 type TruckFormValues = z.infer<typeof formSchema>;
@@ -91,8 +93,29 @@ export function TruckForm({ onSuccess, onCancel }: TruckFormProps) {
             <FormItem>
               <FormLabel>Ano</FormLabel>
               <FormControl>
-                <Input type="number" placeholder="Ex: 2023" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} />
+                <Input type="number" placeholder="Ex: 2023" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tipo</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                        <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo do caminhão" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="Caminhão a vácuo">Caminhão a vácuo</SelectItem>
+                        <SelectItem value="Hidro-Vácuo combinado">Hidro-Vácuo combinado</SelectItem>
+                    </SelectContent>
+                </Select>
               <FormMessage />
             </FormItem>
           )}
