@@ -23,7 +23,8 @@ export function FloatingActionButton() {
         '/finance', 
         '/settings', 
         '/admin/clients', 
-        '/notifications-studio'
+        '/notifications-studio',
+        '/trucks',
     ];
 
     if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {

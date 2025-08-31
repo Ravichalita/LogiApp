@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { TruckCard, Truck } from './truck-card';
 import { TruckForm } from './truck-form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { NewItemDialog } from '@/components/new-item-dialog';
 
 const initialTrucks: Truck[] = [
   {
@@ -57,6 +58,10 @@ export default function TrucksPage() {
           />
         ))}
       </div>
+
+       <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50">
+           <NewItemDialog itemType="truck" />
+       </div>
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent>
