@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck, Download, Megaphone } from "lucide-react";
+import { LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck, Download, Megaphone, MoreVertical } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -53,55 +53,109 @@ export function Header() {
     return null;
   }
 
+  const userActions = (
+    <>
+      {isSuperAdmin && (
+        <DropdownMenuItem asChild>
+          <Link href="/admin/clients">
+            <ShieldCheck />
+            <span>Painel de Clientes</span>
+          </Link>
+        </DropdownMenuItem>
+      )}
+      {(isAdmin || permissions?.canAccessFinance) && (
+        <DropdownMenuItem asChild>
+          <Link href="/finance">
+            <BarChart />
+            <span>Estatísticas</span>
+          </Link>
+        </DropdownMenuItem>
+      )}
+      {(isSuperAdmin || (isAdmin || permissions?.canAccessNotificationsStudio)) && (
+        <DropdownMenuItem asChild>
+          <Link href="/notifications-studio">
+            <Megaphone />
+            <span>Notificações</span>
+          </Link>
+        </DropdownMenuItem>
+      )}
+      {(isAdmin || permissions?.canAccessTeam) && (
+        <DropdownMenuItem asChild>
+          <Link href="/team">
+            <Users />
+            <span>Equipe</span>
+          </Link>
+        </DropdownMenuItem>
+      )}
+    </>
+  )
+
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card">
       <div className="container flex h-16 items-center">
         <div className="flex items-center">
-                     <Link href="/" className="mr-6 flex items-center space-x-2">
-                     <Image src="/192x192.png" alt="LogiApp Logo" width={28} height={28} />
-                <span className="font-bold inline-block text-primary">LogiApp</span>
+           <Link href="/" className="mr-6 flex items-center space-x-2">
+             <Image src="/192x192.png" alt="LogiApp Logo" width={28} height={28} />
+             <span className="font-bold inline-block text-primary">LogiApp</span>
             </Link>
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-            {isSuperAdmin && (
-                 <Button variant="ghost" size="icon" asChild className="inline-flex">
-                    <Link href="/admin/clients">
-                        <ShieldCheck className="h-5 w-5" />
-                        <span className="sr-only">Admin Clientes</span>
+            {/* Desktop Icons */}
+            <div className="hidden md:flex items-center space-x-1">
+              {isSuperAdmin && (
+                   <Button variant="ghost" size="icon" asChild>
+                      <Link href="/admin/clients">
+                          <ShieldCheck className="h-5 w-5" />
+                          <span className="sr-only">Admin Clientes</span>
+                      </Link>
+                  </Button>
+              )}
+              {(isAdmin || permissions?.canAccessFinance) && (
+                   <Button variant="ghost" size="icon" asChild>
+                      <Link href="/finance">
+                          <BarChart className="h-5 w-5" />
+                          <span className="sr-only">Estatísticas</span>
+                      </Link>
+                  </Button>
+              )}
+               {(isSuperAdmin || (isAdmin || permissions?.canAccessNotificationsStudio)) && (
+                  <Button variant="ghost" size="icon" asChild>
+                      <Link href="/notifications-studio">
+                          <Megaphone className="h-5 w-5" />
+                          <span className="sr-only">Notificações</span>
+                      </Link>
+                  </Button>
+              )}
+              {(isAdmin || permissions?.canAccessTeam) && (
+                <Button variant="ghost" size="icon" asChild>
+                    <Link href="/team">
+                        <Users className="h-5 w-5" />
+                        <span className="sr-only">Equipe</span>
                     </Link>
                 </Button>
-            )}
-
-            {(isAdmin || permissions?.canAccessFinance) && (
-                 <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
-                    <Link href="/finance">
-                        <BarChart className="h-5 w-5" />
-                        <span className="sr-only">Estatísticas</span>
-                    </Link>
-                </Button>
-            )}
-             {/* TODO: Add real permission check here */}
-             {(isSuperAdmin || (isAdmin || permissions?.canAccessNotificationsStudio)) && (
-                <Button variant="ghost" size="icon" asChild className="hidden md:inline-flex">
-                    <Link href="/notifications-studio">
-                        <Megaphone className="h-5 w-5" />
-                        <span className="sr-only">Notificações Personalizadas</span>
-                    </Link>
-                </Button>
-            )}
+              )}
+            </div>
 
             <ThemeToggle />
 
-            {(isAdmin || permissions?.canAccessTeam) && (
-              <Button variant="ghost" size="icon" asChild className="inline-flex">
-                  <Link href="/team">
-                      <Users className="h-5 w-5" />
-                      <span className="sr-only">Equipe</span>
-                  </Link>
-              </Button>
-            )}
+            {/* Mobile Dropdown */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-5 w-5" />
+                    <span className="sr-only">Mais opções</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Ações Rápidas</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {userActions}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
