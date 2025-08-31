@@ -473,7 +473,14 @@ export async function createRental(accountId: string, createdBy: string, prevSta
       };
     }
 
-    const rentalData = validatedFields.data;
+    let rentalData = validatedFields.data;
+
+    // Remove distance field if it's not an operation to prevent Firestore error
+    if (rentalData.osType !== 'operation') {
+        const { distance, ...rest } = rentalData;
+        rentalData = rest as typeof rentalData;
+    }
+
 
     // Skip conflict check for operations as they don't have long-term resource allocation
     if (rentalData.osType === 'rental') {

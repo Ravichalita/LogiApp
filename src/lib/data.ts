@@ -172,11 +172,14 @@ export function getPopulatedRentals(
             const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
                 const rentalData = rentalDoc.data() as Omit<Rental, 'id'>;
 
-                const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
+                // For operations, dumpsterId is the truckId. For now, we fetch from the same collection.
+                // This assumes truck data is also in a 'dumpsters' collection or similar structure.
+                // A better long-term solution might be a separate 'trucks' collection.
+                const resourcePromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
                 const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
 
-                const [dumpsterSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, clientPromise, assignedToPromise]);
+                const [resourceSnap, clientSnap, assignedToSnap] = await Promise.all([resourcePromise, clientPromise, assignedToPromise]);
 
                 const selectedServices = (rentalData.serviceIds || []).map(id => servicesMap.get(id)).filter(Boolean) as Service[];
 
@@ -185,7 +188,7 @@ export function getPopulatedRentals(
                     ...rentalData,
                     rentalDate: rentalData.rentalDate?.toDate ? rentalData.rentalDate.toDate().toISOString() : rentalData.rentalDate,
                     returnDate: rentalData.returnDate?.toDate ? rentalData.returnDate.toDate().toISOString() : rentalData.returnDate,
-                    dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
+                    dumpster: resourceSnap.exists() ? { id: resourceSnap.id, ...resourceSnap.data() } as Dumpster : null,
                     client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
                     assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
                     services: selectedServices,

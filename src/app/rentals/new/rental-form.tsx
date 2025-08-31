@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -131,6 +132,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
+        formData.set('osType', 'rental');
 
         const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
