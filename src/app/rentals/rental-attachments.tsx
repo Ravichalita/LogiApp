@@ -15,6 +15,7 @@ import { addAttachmentToRentalAction, addAttachmentToCompletedRentalAction } fro
 import { nanoid } from 'nanoid';
 import { File, Upload, Trash2, Download, Paperclip, Image as ImageIcon, FileText, FileQuestion } from 'lucide-react';
 import Link from 'next/link';
+import { getIdToken } from 'firebase/auth';
 
 interface RentalAttachmentsProps {
     rental: PopulatedRental | CompletedRental;
@@ -36,9 +37,9 @@ function getFileIcon(fileName: string) {
 }
 
 export function RentalAttachments({ rental, isCompleted }: RentalAttachmentsProps) {
-    const { accountId } = useAuth();
+    const { accountId, user } = useAuth();
     const { toast } = useToast();
-    const { storage } = getFirebase();
+    const { storage, auth } = getFirebase();
     const [isPending, startTransition] = useTransition();
     const [uploadingFile, setUploadingFile] = useState<File | null>(null);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -50,11 +51,21 @@ export function RentalAttachments({ rental, isCompleted }: RentalAttachmentsProp
         }
     };
 
-    const handleUpload = (file: File) => {
-        if (!accountId || !storage) {
-            toast({ title: 'Erro', description: 'Serviço de armazenamento não disponível.', variant: 'destructive' });
+    const handleUpload = async (file: File) => {
+        if (!accountId || !storage || !auth.currentUser) {
+            toast({ title: 'Erro', description: 'Serviço de armazenamento ou usuário não disponível.', variant: 'destructive' });
             return;
         }
+
+        try {
+             // Force refresh the token to ensure custom claims are present.
+             await getIdToken(auth.currentUser, true);
+        } catch (error) {
+            console.error("Token refresh failed:", error);
+            toast({ title: 'Erro de Autenticação', description: 'Não foi possível verificar suas permissões. Tente novamente.', variant: 'destructive' });
+            return;
+        }
+
 
         setUploadingFile(file);
         setUploadProgress(0);
@@ -71,7 +82,7 @@ export function RentalAttachments({ rental, isCompleted }: RentalAttachmentsProp
             },
             (error) => {
                 console.error("Upload error:", error);
-                toast({ title: 'Erro de Upload', description: 'Não foi possível enviar o arquivo.', variant: 'destructive' });
+                toast({ title: 'Erro de Upload', description: 'Não foi possível enviar o arquivo. Verifique suas permissões e tente novamente.', variant: 'destructive' });
                 setUploadingFile(null);
             },
             () => {
