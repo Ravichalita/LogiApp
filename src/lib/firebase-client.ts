@@ -2,6 +2,7 @@
 // src/lib/firebase-client.ts
 'use client';
 import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -35,6 +36,17 @@ export function getFirebase() {
   const db = getFirestore(app);
   const storage = getStorage(app);
   const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
+
+  // Initialize App Check
+  if (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+      initializeAppCheck(app, {
+          provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
+          isTokenAutoRefreshEnabled: true,
+      });
+  } else {
+      console.warn("Firebase App Check is not initialized. Missing NEXT_PUBLIC_RECAPTCHA_SITE_KEY.");
+  }
+
 
   return { app, auth, db, analytics, storage };
 }
