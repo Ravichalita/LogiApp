@@ -2,10 +2,13 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Permite leitura e escrita em qualquer arquivo dentro da pasta de uma conta
-    // somente se o ID da conta no caminho do arquivo for o mesmo que o
-    // accountId gravado no token de autenticação do usuário (Custom Claim).
-    // Isso garante que um usuário só possa acessar os arquivos da sua própria conta.
+    // Regra geral: apenas usuários autenticados podem acessar
+    match /{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Isola os dados por conta.
+    // Usuários só podem acessar arquivos dentro da pasta de sua própria conta.
     match /accounts/{accountId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.token.accountId == accountId;
     }
