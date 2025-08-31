@@ -1,11 +1,13 @@
 rules_version = '2';
 
+// Documentação de Regras do Storage: https://firebase.google.com/docs/storage/security
 service firebase.storage {
   match /b/{bucket}/o {
-    // Secure access to files by ensuring the user's account ID, stored in their
-    // auth token, matches the account ID in the storage path.
+    // Apenas usuários autenticados podem acessar o diretório de suas contas.
+    // O accountId no caminho DEVE corresponder ao accountId associado ao usuário.
     match /accounts/{accountId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.token['accountId'] == accountId;
+      allow read, write: if request.auth != null && 
+                           get(/databases/(default)/documents/accounts/$(accountId)).data.members.hasAny([request.auth.uid]);
     }
   }
 }

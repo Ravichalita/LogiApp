@@ -5,7 +5,7 @@
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { getFirebase, setupFcm } from '@/lib/firebase-client';
+import { getFirebase, setupFcm, getFirebaseIdToken } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
@@ -193,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
+        await getFirebaseIdToken(); // Force refresh the token to get fresh claims.
         let tokenResult = await getIdTokenResult(firebaseUser);
         let claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
