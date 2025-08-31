@@ -1,14 +1,15 @@
 
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { CompletedRental, Account } from '@/lib/types';
+import type { CompletedRental, Account, Attachment } from '@/lib/types';
 import { getCompletedRentals } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Paperclip } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -21,6 +22,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { RentalAttachments } from '../rentals/rental-attachments';
+
 
 function formatCurrency(value: number | undefined | null) {
     if (value === undefined || value === null) {
@@ -60,7 +63,7 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
                     <DialogTitle>Detalhes da OS #{rental.sequentialId}</DialogTitle>
                     <DialogDescription>Finalizada em {format(parseISO(rental.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
                      <div className="flex items-start gap-3">
                         <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
@@ -112,6 +115,11 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
                             </div>
                         </div>
                     )}
+                    <Separator />
+                    <div className="space-y-2">
+                        <h4 className="font-medium flex items-center gap-2"><Paperclip className="h-4 w-4" /> Anexos</h4>
+                        <RentalAttachments rental={rental} isCompleted={true} />
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
@@ -246,7 +254,7 @@ export default function FinancePage() {
                                 <TableBody>
                                     {completedRentals.length > 0 ? completedRentals.map(rental => (
                                         <TableRow key={rental.id} onClick={() => setSelectedRental(rental)} className="cursor-pointer">
-                                            <TableCell className="font-mono text-xs font-bold">#{rental.sequentialId}</TableCell>
+                                            <TableCell className="font-mono text-xs font-bold">{rental.sequentialId}</TableCell>
                                             <TableCell className="font-medium whitespace-nowrap">{rental.client?.name ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{format(parseISO(rental.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{formatCurrency(rental.totalValue)}</TableCell>

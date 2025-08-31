@@ -5,6 +5,7 @@ import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { toast } from '@/hooks/use-toast';
 
@@ -26,15 +27,16 @@ export function getFirebase() {
   if (typeof window === 'undefined') {
     // This is a dummy return for the server. The actual initialization
     // will happen in a useEffect on the client.
-    return { app: null, auth: null, db: null, analytics: null };
+    return { app: null, auth: null, db: null, analytics: null, storage: null };
   }
 
   const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const storage = getStorage(app);
   const analytics = isSupported().then(yes => yes ? getAnalytics(app) : null);
 
-  return { app, auth, db, analytics };
+  return { app, auth, db, analytics, storage };
 }
 
 // Add this function to be callable from the AuthProvider

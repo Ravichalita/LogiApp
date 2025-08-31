@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
 import { updateRentalAction } from '@/lib/actions';
-import type { Client, PopulatedRental, Location, UserAccount, RentalPrice } from '@/lib/types';
+import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Paperclip } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isBefore as isBeforeDate, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,6 +21,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
+import { Separator } from '@/components/ui/separator';
+import { RentalAttachments } from '../../rental-attachments';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
@@ -262,6 +265,13 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         <Textarea id="observations" name="observations" defaultValue={rental.observations} placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
       </div>
+
+        <Separator />
+        <div className="space-y-2">
+            <Label className="flex items-center gap-2"><Paperclip className="h-4 w-4" /> Anexos</Label>
+            <RentalAttachments rental={rental} isCompleted={false} />
+        </div>
+
 
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <Button type="submit" disabled={isPending} size="lg">

@@ -3,7 +3,7 @@
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental } from './types';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment } from './types';
 import { adminDb } from './firebase-admin';
 
 // Helper to convert Timestamps to serializable format
