@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
@@ -123,8 +124,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
              <div className="flex items-start gap-3">
                 <Hash className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">ID da OS</span>
-                    <span className="font-medium font-mono text-xs">{rental.id}</span>
+                    <span className="text-sm text-muted-foreground">OS Nº</span>
+                    <span className="font-medium font-mono text-xs">{rental.sequentialId}</span>
                 </div>
             </div>
         </div>
