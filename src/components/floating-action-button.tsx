@@ -32,6 +32,7 @@ export function FloatingActionButton() {
         '/settings', 
         '/admin/clients', 
         '/notifications-studio',
+        '/trucks',
     ];
 
     if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
@@ -57,11 +58,6 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="team" />;
                 }
                 return null;
-            case '/trucks':
-                if (isAdmin) {
-                    return <NewItemDialog itemType="truck" />;
-                }
-                return null;
             case '/':
             default:
                 return (
@@ -79,8 +75,8 @@ export function FloatingActionButton() {
                             <span>Aluguel de Caçamba</span>
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem asChild disabled>
-                           <Link href="#">
+                        <DropdownMenuItem asChild>
+                           <Link href="/rentals/new-operation">
                                 <Replace className="mr-2 h-4 w-4" />
                                 <span>Operação</span>
                            </Link>
