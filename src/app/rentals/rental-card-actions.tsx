@@ -196,13 +196,13 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                                     </Link>
                                 </DropdownMenuItem>
                             )}
-                            {canDelete && (
+                            {canDelete && !isPendingStatus && (
                                 <>
                                 <DropdownMenuSeparator />
                                  <AlertDialogTrigger asChild>
                                     <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
                                          <Trash2 className="mr-2 h-4 w-4" />
-                                         {isPendingStatus ? 'Cancelar Agendamento' : 'Excluir OS'}
+                                         Excluir OS
                                     </DropdownMenuItem>
                                 </AlertDialogTrigger>
                                 </>
