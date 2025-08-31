@@ -99,8 +99,9 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const handleFinishAction = (formData: FormData) => {
     startFinishTransition(async () => {
         if (!accountId) return;
-        const boundAction = finishRentalAction.bind(null, accountId);
-        await boundAction(formData);
+        
+        await finishRentalAction(accountId, formData);
+        
         toast({ title: "Sucesso!", description: "Ordem de Serviço finalizada." });
     })
   }
@@ -276,7 +277,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AlertDialog>
                 )
             ) : (
-                <form ref={finishFormRef} action={handleFinishAction} className="flex-grow">
+                <form action={handleFinishAction} className="flex-grow">
                     <input type="hidden" name="rentalId" value={rental.id} />
                     <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                         {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
