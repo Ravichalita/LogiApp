@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users, Settings, BarChart, Megaphone } from 'lucide-react';
+import { Home, LayoutGrid, Users, History, Megaphone } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
@@ -14,7 +14,7 @@ const baseNavLinks = [
   { href: '/clients', label: 'Clientes', icon: Users },
 ];
 
-const financeLink = { href: '/finance', label: 'Estatísticas', icon: BarChart };
+const financeLink = { href: '/finance', label: 'Histórico', icon: History };
 const notificationsLink = { href: '/notifications-studio', label: 'Notificações', icon: Megaphone };
 
 

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Users, BarChart, Settings, ShieldCheck, Download, Megaphone, MoreVertical } from "lucide-react";
+import { LogOut, User as UserIcon, Users, Settings, ShieldCheck, Download, Megaphone, MoreVertical, History } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -66,8 +66,8 @@ export function Header() {
       {(isAdmin || permissions?.canAccessFinance) && (
         <DropdownMenuItem asChild>
           <Link href="/finance">
-            <BarChart />
-            <span>Estatísticas</span>
+            <History />
+            <span>Histórico</span>
           </Link>
         </DropdownMenuItem>
       )}
@@ -115,8 +115,8 @@ export function Header() {
               {(isAdmin || permissions?.canAccessFinance) && (
                    <Button variant="ghost" size="icon" asChild>
                       <Link href="/finance">
-                          <BarChart className="h-5 w-5" />
-                          <span className="sr-only">Estatísticas</span>
+                          <History className="h-5 w-5" />
+                          <span className="sr-only">Histórico</span>
                       </Link>
                   </Button>
               )}
