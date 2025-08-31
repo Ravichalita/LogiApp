@@ -16,7 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from './rentals/rental-card-actions';
-import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash } from 'lucide-react';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Milestone } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
 
-type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
+type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje' | 'Em Andamento';
 type RentalStatusFilter = RentalStatus | 'Todas';
 type OsTypeFilter = 'all' | 'rental' | 'operation';
 
@@ -33,7 +33,18 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
+  
+  if (rental.osType === 'operation') {
+      if (isToday(rentalDate)) {
+        return { text: 'Em Andamento', variant: 'success', order: 1 };
+      }
+       if (isBefore(today, rentalDate)) {
+        return { text: 'Pendente', variant: 'secondary', order: 2 };
+      }
+      return { text: 'Em Atraso', variant: 'destructive', order: 3 }; // Or some other status for past operations
+  }
 
+  // Logic for 'rental' type
   if (isAfter(today, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
@@ -53,6 +64,7 @@ const statusFilterOptions: { label: string, value: RentalStatusFilter }[] = [
     { label: "Todas", value: 'Todas' },
     { label: "Pendente", value: 'Pendente' },
     { label: "Ativo", value: 'Ativo' },
+    { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Em Atraso", value: 'Em Atraso' },
 ];
@@ -211,7 +223,8 @@ export default function HomePage() {
         const lowercasedTerm = searchTerm.toLowerCase();
         filtered = filtered.filter(rental => 
             rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
-            rental.dumpster?.name.toLowerCase().includes(lowercasedTerm) ||
+            (rental.osType === 'rental' && rental.dumpster?.name.toLowerCase().includes(lowercasedTerm)) ||
+            (rental.osType === 'operation' && rental.services.some(s => s.name.toLowerCase().includes(lowercasedTerm))) ||
             rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
             String(rental.sequentialId).includes(lowercasedTerm)
         );
@@ -308,26 +321,35 @@ export default function HomePage() {
                 </Button>
             ))}
         </div>
-        {osTypeFilter !== 'operation' && (
-            <div className="flex flex-wrap gap-2">
-                {statusFilterOptions.map(option => (
-                    <Button
-                        key={option.value}
-                        variant={statusFilter === option.value ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setStatusFilter(option.value)}
-                        className="text-xs h-7"
-                    >
-                        {option.label}
-                    </Button>
-                ))}
-            </div>
-        )}
+        
+        <div className="flex flex-wrap gap-2">
+            {statusFilterOptions.map(option => {
+                if (osTypeFilter === 'operation' && ['Ativo', 'Encerra hoje'].includes(option.label)) return null;
+                if (osTypeFilter === 'rental' && ['Em Andamento'].includes(option.label)) return null;
+                return (
+                <Button
+                    key={option.value}
+                    variant={statusFilter === option.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(option.value)}
+                    className="text-xs h-7"
+                >
+                    {option.label}
+                </Button>
+            )}
+            )}
+        </div>
       </div>
 
       <div className="space-y-4">
         {filteredAndSortedRentals.length > 0 ? filteredAndSortedRentals.map((rental) => {
             const status = getRentalStatus(rental);
+            const isOperation = rental.osType === 'operation';
+            const title = isOperation 
+                ? rental.services.map(s => s.name).join(', ') || 'Operação'
+                : rental.dumpster?.name;
+            const icon = isOperation ? <Milestone className="h-5 w-5" /> : <Truck className="h-5 w-5" />;
+
             return (
             <Accordion type="single" collapsible className="w-full" key={rental.id}>
                 <AccordionItem value={rental.id} className="border-none">
@@ -337,7 +359,7 @@ export default function HomePage() {
                     </span>
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                        <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
+                        <CardTitle className="text-xl font-headline flex items-center gap-2">{icon}{title}</CardTitle>
                         <div className="flex flex-col items-end gap-1 ml-2">
                             <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                         </div>
@@ -358,7 +380,11 @@ export default function HomePage() {
                         </div>
                         <div className="flex items-center gap-2 text-right">
                             <Calendar className="h-5 w-5" />
-                            <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                            {isOperation ? (
+                                <span>{format(parseISO(rental.rentalDate), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+                            ) : (
+                                <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                            )}
                         </div>
                     </div>
                     </CardHeader>

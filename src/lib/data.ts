@@ -14,7 +14,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup } from './types';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Service } from './types';
 
 type Unsubscribe = () => void;
 
@@ -164,6 +164,11 @@ export function getPopulatedRentals(
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         try {
+            // Get all services available in the account once
+            const accountDoc = await getDoc(doc(db, `accounts/${accountId}`));
+            const allServices = (accountDoc.data()?.services || []) as Service[];
+            const servicesMap = new Map(allServices.map(s => [s.id, s]));
+
             const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
                 const rentalData = rentalDoc.data() as Omit<Rental, 'id'>;
 
@@ -173,6 +178,8 @@ export function getPopulatedRentals(
 
                 const [dumpsterSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, clientPromise, assignedToPromise]);
 
+                const selectedServices = (rentalData.serviceIds || []).map(id => servicesMap.get(id)).filter(Boolean) as Service[];
+
                 return {
                     id: rentalDoc.id,
                     ...rentalData,
@@ -181,6 +188,7 @@ export function getPopulatedRentals(
                     dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
                     client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
                     assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
+                    services: selectedServices,
                 };
             });
 

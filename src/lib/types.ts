@@ -251,7 +251,6 @@ export type Location = { lat: number; lng: number; address: string; };
 export type DirectionsResponse = {
     distance: { text: string, value: number }, // value in meters
     duration: { text: string, value: number }, // value in seconds
-    route: google.maps.LatLngLiteral[],
 }
 
 
@@ -263,6 +262,7 @@ export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assigned
     dumpster: Dumpster | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
+    services: Service[];
 };
 export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'clientId'> & {
     id: string;

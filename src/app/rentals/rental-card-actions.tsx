@@ -4,9 +4,9 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
-import type { PopulatedRental } from '@/lib/types';
+import type { PopulatedRental, Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Truck, Milestone, Route } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +35,8 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { CacambaIcon } from '@/components/icons/cacamba-icon';
+
 
 interface RentalCardActionsProps {
     rental: PopulatedRental;
@@ -88,11 +90,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const canDelete = isAdmin || userAccount?.permissions?.canEditRentals;
   const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
 
-  const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
+  const isOperation = rental.osType === 'operation';
+  const isFinalizeDisabled = isOperation ? status.text === 'Pendente' : !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
   const isPendingStatus = status.text === 'Pendente';
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
-  const totalValue = rental.value * rentalDays;
+  const totalValue = isOperation ? rental.value : rental.value * rentalDays;
 
   const handleDeleteAction = () => {
      startDeleteTransition(async () => {
@@ -111,11 +114,21 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
+        {isOperation ? (
+            <div className="flex items-start gap-3">
+                <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Caminhão</span>
+                    <span className="font-medium">{rental.dumpster?.name}</span>
+                </div>
+            </div>
+        ) : null}
+
         <div className="flex items-stretch justify-between gap-2">
             <div className="flex items-start gap-3 flex-grow">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">Local de Entrega</span>
+                    <span className="text-sm text-muted-foreground">Local</span>
                     <span className="font-medium">{rental.deliveryAddress}</span>
                 </div>
             </div>
@@ -128,24 +141,29 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </Button>
             )}
         </div>
-        <div className="flex items-center justify-between">
+        
+         {isOperation && rental.services.length > 0 && (
             <div className="flex items-start gap-3">
-                <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                <Milestone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">Período</span>
-                     <p className="font-semibold text-base">
-                        {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                    </p>
+                    <span className="text-sm text-muted-foreground">Serviços</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                        {rental.services.map(service => (
+                            <Badge key={service.id} variant="secondary">{service.name}</Badge>
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
+        )}
         
         {canSeeFinance && (
             <div className="flex items-center justify-between">
                 <div className="flex items-start gap-3">
                     <CircleDollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                     <div className="flex flex-col">
-                        <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                        <span className="text-sm text-muted-foreground">
+                            {isOperation ? "Valor Combinado" : `Valor Total Previsto (${rentalDays} ${rentalDays > 1 ? 'dias' : 'dia'})`}
+                        </span>
                         <span className="font-medium">{formatCurrency(totalValue)}</span>
                     </div>
                 </div>
