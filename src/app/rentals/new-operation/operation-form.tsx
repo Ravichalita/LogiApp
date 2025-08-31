@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Dumpster, Location, UserAccount, RentalPrice } from '@/lib/types';
+import type { Client, Dumpster, Location, UserAccount, Service } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, Truck, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,16 +21,11 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AddressInput } from '@/components/address-input';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 const initialState = {
   errors: {},
   message: '',
-};
-
-export type DumpsterForForm = Dumpster & { 
-  specialStatus?: string;
-  disabled: boolean;
-  disabledRanges: { from: Date; to: Date }[];
 };
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -42,10 +37,10 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 interface OperationFormProps {
-  dumpsters: DumpsterForForm[];
+  trucks: any[]; // Replace with actual Truck type
   clients: Client[];
   team: UserAccount[];
-  rentalPrices?: RentalPrice[];
+  services: Service[];
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -56,38 +51,85 @@ const formatCurrencyForInput = (valueInCents: string): string => {
     return `${reais.toLocaleString('pt-BR')},${centavos}`;
 };
 
-const formatCurrencyForDisplay = (value: number): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-};
+const MultiSelect = ({ name, placeholder, options, onSelectionChange }: { name: string; placeholder: string; options: { value: string, label: string, icon: React.ElementType }[], onSelectionChange: (values: string[]) => void }) => {
+    const [open, setOpen] = useState(false);
+    const [selectedValues, setSelectedValues] = useState<string[]>([]);
+    
+    const toggleSelection = (value: string) => {
+      const newSelection = selectedValues.includes(value) 
+          ? selectedValues.filter(v => v !== value) 
+          : [...selectedValues, value];
+  
+      setSelectedValues(newSelection);
+      onSelectionChange(newSelection);
+    }
+  
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <input type="hidden" name={name} value={selectedValues.join(',')} />
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="w-full justify-between"
+          >
+            {selectedValues.length > 0
+              ? `${selectedValues.length} selecionado(s)`
+              : placeholder}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+          <Command>
+            <CommandInput placeholder="Buscar..." />
+            <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+            <CommandList>
+              <CommandGroup>
+                {options.map(option => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={() => toggleSelection(option.value)}
+                  >
+                    <div className={cn(
+                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                      selectedValues.includes(option.value) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                    )}>
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <span>{option.label}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
 
-export function OperationForm({ dumpsters, clients, team, rentalPrices }: OperationFormProps) {
+export function OperationForm({ trucks, clients, team, services }: OperationFormProps) {
   const { accountId, user, userAccount } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
+  const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
   const [assignedToId, setAssignedToId] = useState<string | undefined>(user?.uid);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
-  const [rentalDate, setRentalDate] = useState<Date | undefined>();
-  const [returnDate, setReturnDate] = useState<Date | undefined>();
+  const [operationDate, setOperationDate] = useState<Date | undefined>();
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState('');
-  const [priceId, setPriceId] = useState<string | undefined>();
-
-  const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
 
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
 
   useEffect(() => {
-    // Initialize dates only on the client to avoid hydration mismatch
-    setRentalDate(new Date());
+    setOperationDate(new Date());
     setAssignedToId(user?.uid)
   }, [user]);
 
@@ -125,13 +167,19 @@ export function OperationForm({ dumpsters, clients, team, rentalPrices }: Operat
         }
         
         formData.set('deliveryAddress', deliveryAddress);
-        if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
-        if (returnDate) formData.set('returnDate', returnDate.toISOString());
+        if (operationDate) {
+            formData.set('rentalDate', operationDate.toISOString());
+            formData.set('returnDate', operationDate.toISOString()); // For operations, dates are the same
+        }
         if (location) {
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
+        // Rename dumpsterId to truckId for clarity in operations
+        if (selectedTruckId) formData.set('dumpsterId', selectedTruckId);
         formData.set('osType', 'operation');
+        formData.set('serviceIds', serviceIds.join(','));
+
 
         const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
@@ -151,65 +199,28 @@ export function OperationForm({ dumpsters, clients, team, rentalPrices }: Operat
     });
   };
 
-  const handlePriceSelection = (selectedPriceId: string) => {
-    setPriceId(selectedPriceId);
-    const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
-    if(selectedPrice) {
-        // Here we format the value which is in Reais (e.g. 250.00) to cents string ("25000")
-        const valueInCents = (selectedPrice.value * 100).toString();
-        setValue(formatCurrencyForInput(valueInCents));
-    }
-  }
-  
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     setValue(formatCurrencyForInput(rawValue));
   }
 
-  const isDeliveryOnReturnDay = rentalDate && selectedDumpsterInfo?.disabledRanges.some(range => isSameDay(addDays(range.to, 1), rentalDate));
-
-  const getNextBookingDate = (): Date | null => {
-      if (!rentalDate || !selectedDumpsterInfo) return null;
-
-      const nextBooking = selectedDumpsterInfo.disabledRanges
-          .map(range => range.from)
-          .find(from => from > rentalDate);
-      
-      return nextBooking || null;
-  }
-
-  const nextBookingDate = getNextBookingDate();
-
   return (
     <form action={handleFormAction} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="dumpsterId">Caçamba</Label>
-        <Select name="dumpsterId" onValueChange={setSelectedDumpsterId} required>
+        <Label htmlFor="truckId">Caminhão</Label>
+        <Select name="truckId" onValueChange={setSelectedTruckId} required>
           <SelectTrigger>
-            <SelectValue placeholder="Selecione uma caçamba disponível" />
+            <SelectValue placeholder="Selecione um caminhão" />
           </SelectTrigger>
           <SelectContent>
-            {dumpsters.map(d => (
-              <SelectItem key={d.id} value={d.id} disabled={d.status === 'Em Manutenção'}>
-                <div className="flex justify-between w-full">
-                    <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
-                    {d.specialStatus && (
-                      <span className={cn(
-                        "text-xs ml-4 font-semibold",
-                        d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
-                        d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
-                        d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-red-500' // fallback for maintenance
-                      )}>
-                        {d.specialStatus}
-                      </span>
-                    )}
-                </div>
+            {trucks.map(t => (
+              <SelectItem key={t.id} value={t.id}>
+                <span>{`${t.model} (${t.licensePlate})`}</span>
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{errors.dumpsterId[0]}</p>}
+        {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}
       </div>
 
       <div className="space-y-2">
@@ -239,7 +250,7 @@ export function OperationForm({ dumpsters, clients, team, rentalPrices }: Operat
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="address-input">Endereço de Entrega</Label>
+        <Label htmlFor="address-input">Endereço da Operação</Label>
         <AddressInput
             id="address-input"
             value={deliveryAddress}
@@ -250,28 +261,26 @@ export function OperationForm({ dumpsters, clients, team, rentalPrices }: Operat
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Data de Entrega</Label>
+      <div className="space-y-2">
+          <Label>Data da Operação</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
                 className={cn(
                   "w-full justify-start text-left font-normal",
-                  !rentalDate && "text-muted-foreground"
+                  !operationDate && "text-muted-foreground"
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {rentalDate ? format(rentalDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                {operationDate ? format(operationDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={rentalDate}
-                onSelect={setRentalDate}
-                disabled={selectedDumpsterInfo?.disabledRanges}
+                selected={operationDate}
+                onSelect={setOperationDate}
                 initialFocus
                 locale={ptBR}
               />
@@ -279,94 +288,21 @@ export function OperationForm({ dumpsters, clients, team, rentalPrices }: Operat
           </Popover>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
         </div>
-        <div className="space-y-2">
-          <Label>Data de Retirada (Prevista)</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !returnDate && "text-muted-foreground"
-                )}
-                disabled={!rentalDate}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={returnDate}
-                onSelect={setReturnDate}
-                disabled={(date) => {
-                    if (!rentalDate || isBeforeDate(date, rentalDate)) {
-                        return true;
-                    }
-                    if (nextBookingDate && date >= nextBookingDate) {
-                        return true;
-                    }
-                    return false;
-                }}
-                initialFocus
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
-           {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
-        </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="services">Serviços</Label>
+        <MultiSelect 
+            name="serviceIds"
+            placeholder="Selecione um ou mais serviços"
+            options={services.map(s => ({ value: s.id, label: s.name, icon: User }))} // Replace User icon
+            onSelectionChange={setServiceIds}
+        />
       </div>
-      
-       <div className="pt-2 space-y-2">
-          {isDeliveryOnReturnDay && (
-              <Alert variant="warning">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Atenção: Giro Rápido!</AlertTitle>
-                  <AlertDescription>
-                     A entrega coincide com a data de retirada de outro aluguel para esta caçamba.
-                  </AlertDescription>
-              </Alert>
-          )}
-          {nextBookingDate && (
-             <Alert variant="info">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Disponibilidade Limitada</AlertTitle>
-                  <AlertDescription>
-                    Esta caçamba já tem um agendamento futuro a partir de {format(nextBookingDate, "dd/MM/yyyy", { locale: ptBR })}. A data de retirada deve ser anterior a isso.
-                  </AlertDescription>
-              </Alert>
-          )}
-       </div>
+
 
        <div className="space-y-2">
-        <Label htmlFor="value">Valor da Diária (R$)</Label>
-        {(rentalPrices && rentalPrices.length > 0) ? (
-            <div className="flex gap-2">
-                <Select onValueChange={handlePriceSelection} value={priceId}>
-                     <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma tabela de preço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {rentalPrices.map(p => (
-                            <SelectItem key={p.id} value={p.id}>
-                                {p.name} ({formatCurrencyForDisplay(p.value)})
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                 <Input
-                    id="value"
-                    name="value"
-                    value={value}
-                    onChange={handleValueChange}
-                    placeholder="R$ 0,00"
-                    required
-                    className="w-1/3 text-right"
-                    />
-            </div>
-        ) : (
-            <Input
+        <Label htmlFor="value">Valor Combinado (R$)</Label>
+         <Input
             id="value"
             name="value"
             value={value}
@@ -375,13 +311,12 @@ export function OperationForm({ dumpsters, clients, team, rentalPrices }: Operat
             required
             className="text-right"
             />
-        )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 
        <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+        <Textarea id="observations" name="observations" placeholder="Ex: Detalhes específicos da operação." />
         {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
       </div>
 

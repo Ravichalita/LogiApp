@@ -7,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -648,6 +648,31 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
         });
         revalidatePath('/settings');
         revalidatePath('/rentals/new');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function updateServicesAction(accountId: string, services: Service[]) {
+    const validatedFields = z.array(ServiceSchema).safeParse(services);
+    
+    if (!validatedFields.success) {
+        const error = validatedFields.error.flatten().fieldErrors;
+        console.error("Service validation error:", error);
+        return {
+            message: 'error',
+            error: JSON.stringify(error),
+        };
+    }
+
+    try {
+        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        await accountRef.update({
+            services: validatedFields.data ?? []
+        });
+        revalidatePath('/settings');
+        revalidatePath('/rentals/new-operation');
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };

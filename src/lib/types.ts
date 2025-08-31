@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 
@@ -30,11 +29,19 @@ export const RentalPriceSchema = z.object({
 
 export type RentalPrice = z.infer<typeof RentalPriceSchema>;
 
+export const ServiceSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: "O nome do serviço é obrigatório." }),
+});
+export type Service = z.infer<typeof ServiceSchema>;
+
+
 export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
     rentalCounter: z.number().int().optional().default(0),
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
+    services: z.array(ServiceSchema).optional().default([]),
     lastBackupDate: z.string().optional(),
     backupPeriodicityDays: z.number().int().min(1).optional().default(7),
     backupRetentionDays: z.number().int().min(1).optional().default(90),
@@ -127,6 +134,7 @@ export const RentalSchema = z.object({
     late: z.boolean().default(false),
   }).optional(),
   osType: z.enum(['rental', 'operation']).default('rental'),
+  serviceIds: z.array(z.string()).optional(),
 });
 
 const UpdateRentalPeriodSchema = z.object({
