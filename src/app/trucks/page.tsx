@@ -1,0 +1,92 @@
+
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { TruckCard, Truck } from './truck-card';
+import { TruckForm } from './truck-form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+const initialTrucks: Truck[] = [
+  {
+    id: '1',
+    model: 'Scania R450',
+    licensePlate: 'BRA2E19',
+    year: 2023,
+    capacity: '25 toneladas',
+  },
+  {
+    id: '2',
+    model: 'Volvo FH 540',
+    licensePlate: 'PRL1A23',
+    year: 2022,
+    capacity: '27 toneladas',
+  },
+];
+
+export default function TrucksPage() {
+  const [trucks, setTrucks] = useState<Truck[]>(initialTrucks);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
+
+  const handleAddTruck = () => {
+    setSelectedTruck(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditTruck = (truck: Truck) => {
+    setSelectedTruck(truck);
+    setIsFormOpen(true);
+  };
+
+  const handleDeleteTruck = (truckId: string) => {
+    setTrucks(trucks.filter(truck => truck.id !== truckId));
+  };
+
+  const handleFormSuccess = () => {
+    setIsFormOpen(false);
+    // Here you would typically refetch the trucks from the API
+  };
+
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Caminhões</h1>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {trucks.map(truck => (
+          <TruckCard
+            key={truck.id}
+            truck={truck}
+            onEdit={() => handleEditTruck(truck)}
+            onDelete={() => handleDeleteTruck(truck.id)}
+          />
+        ))}
+      </div>
+      <Button
+        className="fixed bottom-16 right-4 h-16 w-16 rounded-full shadow-lg md:hidden"
+        onClick={handleAddTruck}
+      >
+        <Plus className="h-8 w-8" />
+      </Button>
+       <Button
+        className="hidden md:flex fixed bottom-16 right-4 h-14 rounded-md shadow-lg items-center gap-2"
+        onClick={handleAddTruck}
+      >
+        <Plus className="h-5 w-5" />
+        <span>Adicionar Caminhão</span>
+      </Button>
+
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedTruck ? 'Editar Caminhão' : 'Adicionar Caminhão'}</DialogTitle>
+          </DialogHeader>
+          <TruckForm
+            onSuccess={handleFormSuccess}
+            onCancel={() => setIsFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

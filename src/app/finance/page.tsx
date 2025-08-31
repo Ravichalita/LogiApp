@@ -57,48 +57,48 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
+            <DialogContent className="max-w-lg w-[90vw] sm:w-full rounded-lg">
+                <DialogHeader className="px-6 pt-6">
                     <DialogTitle>Detalhes da OS #{rental.sequentialId}</DialogTitle>
                     <DialogDescription>Finalizada em {format(parseISO(rental.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
-                     <div className="flex items-start gap-3">
+                <div className="space-y-4 p-6 max-h-[70vh] overflow-y-auto">
+                     <div className="flex items-start gap-4">
                         <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Cliente</span>
                             <span className="font-medium">{rental.client?.name}</span>
                         </div>
                     </div>
-                     <div className="flex items-start gap-3">
+                     <div className="flex items-start gap-4">
                         <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Responsável</span>
                             <span className="font-medium">{rental.assignedToUser?.name ?? 'N/A'}</span>
                         </div>
                     </div>
-                     <div className="flex items-start gap-3">
+                     <div className="flex items-start gap-4">
                         <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Caçamba</span>
                             <span className="font-medium">{rental.dumpster?.name} ({rental.dumpster?.size}m³)</span>
                         </div>
                     </div>
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-4">
                         <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Endereço</span>
                             <span className="font-medium">{rental.deliveryAddress}</span>
                         </div>
                     </div>
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-4">
                         <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Período</span>
                             <span className="font-medium">{format(parseISO(rental.rentalDate), 'dd/MM/yy')} - {format(parseISO(rental.returnDate), 'dd/MM/yy')} ({rental.rentalDays} dias)</span>
                         </div>
                     </div>
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-4">
                         <DollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Valor Total</span>
@@ -106,7 +106,7 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
                         </div>
                     </div>
                     {rental.observations && (
-                         <div className="flex items-start gap-3">
+                         <div className="flex items-start gap-4">
                             <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                             <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Observações</span>

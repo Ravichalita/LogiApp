@@ -3,20 +3,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users, History, Megaphone } from 'lucide-react';
+import { ClipboardList, Users, History, Megaphone, Truck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
-
+import { CacambaIcon } from '@/components/icons/cacamba-icon';
 
 const baseNavLinks = [
-  { href: '/', label: 'Painel', icon: Home },
-  { href: '/dumpsters', label: 'Caçambas', icon: LayoutGrid },
+  { href: '/', label: 'OS', icon: ClipboardList },
+  { href: '/dumpsters', label: 'Caçambas', icon: CacambaIcon },
   { href: '/clients', label: 'Clientes', icon: Users },
+  { href: '/trucks', label: 'Caminhões', icon: Truck },
 ];
 
 const financeLink = { href: '/finance', label: 'Histórico', icon: History };
 const notificationsLink = { href: '/notifications-studio', label: 'Notificações', icon: Megaphone };
-
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -27,19 +27,20 @@ export function BottomNav() {
   if (!user) {
     return null;
   }
-  
+
   const navLinks = [...baseNavLinks];
 
-  if(isAdmin || permissions?.canAccessFinance) {
-      navLinks.push(financeLink);
+  if (isAdmin || permissions?.canAccessFinance) {
+    navLinks.push(financeLink);
   }
-  
+
   if (isSuperAdmin || isAdmin || permissions?.canAccessNotificationsStudio) {
-      navLinks.push(notificationsLink);
+    navLinks.push(notificationsLink);
   }
 
   const getGridColsClass = () => {
     switch (navLinks.length) {
+        case 6: return "grid-cols-6";
         case 5: return "grid-cols-5";
         case 4: return "grid-cols-4";
         default: return "grid-cols-3";
