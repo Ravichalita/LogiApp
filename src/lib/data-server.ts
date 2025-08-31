@@ -56,7 +56,7 @@ export async function ensureUserDocument(
         if (existingData && existingData.accountId) {
              console.log(`User document for ${userPayload.email} already exists. Skipping creation.`);
              // Ensure claims are set, as they might be missing in a recovery scenario
-             if (!userRecord.customClaims?.accountId) {
+             if (!userRecord.customClaims?.accountId || userRecord.customClaims.accountId !== existingData.accountId) {
                  await adminAuth.setCustomUserClaims(uid, { accountId: existingData.accountId, role: existingData.role });
              }
              return { accountId: existingData.accountId, userId: uid };
