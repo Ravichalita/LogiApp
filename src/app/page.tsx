@@ -5,7 +5,7 @@
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, fetchTeamMembers } from '@/lib/data';
-import type { PopulatedRental, UserAccount } from '@/lib/types';
+import type { PopulatedRental, UserAccount, Rental } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays } from 'date-fns';
 import {
   Accordion,
@@ -27,6 +27,7 @@ import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type RentalStatusFilter = RentalStatus | 'Todas';
+type OsTypeFilter = 'all' | 'rental' | 'operation';
 
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning', order: number } {
   const today = startOfToday();
@@ -48,12 +49,18 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
 }
 
-const filterOptions: { label: string, value: RentalStatusFilter }[] = [
+const statusFilterOptions: { label: string, value: RentalStatusFilter }[] = [
     { label: "Todas", value: 'Todas' },
     { label: "Pendente", value: 'Pendente' },
     { label: "Ativo", value: 'Ativo' },
     { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Em Atraso", value: 'Em Atraso' },
+];
+
+const osTypeFilterOptions: { label: string, value: OsTypeFilter }[] = [
+    { label: 'Todas as OS', value: 'all' },
+    { label: 'Aluguéis', value: 'rental' },
+    { label: 'Operações', value: 'operation' },
 ];
 
 
@@ -147,6 +154,7 @@ export default function HomePage() {
   const [localLoading, setLocalLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
+  const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
   const isAdmin = userAccount?.role === 'admin';
@@ -188,6 +196,10 @@ export default function HomePage() {
   const filteredAndSortedRentals = useMemo(() => {
     let filtered = rentals;
 
+    if (osTypeFilter !== 'all') {
+        filtered = filtered.filter(rental => (rental.osType || 'rental') === osTypeFilter);
+    }
+
     if (statusFilter !== 'Todas') {
         filtered = filtered.filter(rental => {
             const status = getRentalStatus(rental);
@@ -213,7 +225,7 @@ export default function HomePage() {
         }
         return parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime();
     });
-  }, [rentals, statusFilter, searchTerm]);
+  }, [rentals, statusFilter, osTypeFilter, searchTerm]);
 
   if (authLoading || localLoading) {
     return (
@@ -283,19 +295,34 @@ export default function HomePage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
             />
         </div>
-        <div className="flex flex-wrap gap-2">
-            {filterOptions.map(option => (
-                <Button
+        <div className='flex flex-wrap gap-2'>
+            {osTypeFilterOptions.map(option => (
+                 <Button
                     key={option.value}
-                    variant={statusFilter === option.value ? "default" : "outline"}
+                    variant={osTypeFilter === option.value ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setStatusFilter(option.value)}
+                    onClick={() => setOsTypeFilter(option.value)}
                     className="text-xs h-7"
                 >
                     {option.label}
                 </Button>
             ))}
         </div>
+        {osTypeFilter !== 'operation' && (
+            <div className="flex flex-wrap gap-2">
+                {statusFilterOptions.map(option => (
+                    <Button
+                        key={option.value}
+                        variant={statusFilter === option.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setStatusFilter(option.value)}
+                        className="text-xs h-7"
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
+        )}
       </div>
 
       <div className="space-y-4">

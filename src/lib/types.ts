@@ -126,6 +126,7 @@ export const RentalSchema = z.object({
     due: z.boolean().default(false),
     late: z.boolean().default(false),
   }).optional(),
+  osType: z.enum(['rental', 'operation']).default('rental'),
 });
 
 const UpdateRentalPeriodSchema = z.object({

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -18,6 +19,7 @@ import { AdminInviteForm } from '@/app/team/admin-invite-form';
 import { ClientForm } from '@/app/clients/client-form';
 import { TruckForm } from '@/app/trucks/truck-form';
 import { useRouter } from 'next/navigation';
+import { CacambaIcon } from './icons/cacamba-icon';
 
 interface NewItemDialogProps {
   itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client' | 'truck';
@@ -67,11 +69,11 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
   };
   
    const iconComponent = {
-    dumpster: <Plus className="h-8 w-8" />,
+    dumpster: <CacambaIcon className="h-8 w-8" />,
     team: <UserPlus className="h-7 w-7" />,
     clientAdmin: <Building className="h-7 w-7" />,
     client: <User className="h-7 w-7" />,
-    truck: <Plus className="h-8 w-8" />,
+    truck: <Truck className="h-7 w-7" />,
    }
    
   return (
