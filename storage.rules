@@ -1,21 +1,25 @@
-
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    
-    function isSignedIn() {
+    // Helper function to check if a user is signed in and has the necessary account ID claim.
+    function isSignedInAndHasAccount() {
       return request.auth != null && request.auth.token.accountId != null;
     }
 
-    // Rule for active rentals
-    match /accounts/{accountId}/rentals/{rentalId}/{fileName} {
-      allow read, write: if isSignedIn() && request.auth.token.accountId == accountId;
+    // Match any file within any account's directory structure.
+    // e.g., accounts/{accountId}/rentals/{rentalId}/{fileName}
+    // or accounts/{accountId}/completed_rentals/{rentalId}/{fileName}
+    match /accounts/{accountId}/{allPaths=**} {
+      // Allow read and write access only if the user is authenticated
+      // and their account ID claim matches the account ID in the file path.
+      // This is the most secure and direct way to enforce multi-tenancy isolation.
+      allow read, write: if isSignedInAndHasAccount() && request.auth.token.accountId == accountId;
     }
 
-    // Rule for completed rentals
-    match /accounts/{accountId}/completed_rentals/{rentalId}/{fileName} {
-      allow read, write: if isSignedIn() && request.auth.token.accountId == accountId;
+    // Explicitly deny access to any other path to follow the principle of least privilege.
+    match /{path=**} {
+        allow read, write: if false;
     }
   }
 }
