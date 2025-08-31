@@ -2,8 +2,10 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to read/write only within their own account's folder
+    // Match any file path under an account's directory
     match /accounts/{accountId}/{allPaths=**} {
+      // Allow read and write access only if the user is authenticated
+      // and their custom auth token claim for 'accountId' matches the {accountId} in the path.
       allow read, write: if request.auth != null && request.auth.token.accountId == accountId;
     }
   }
