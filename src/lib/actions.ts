@@ -530,9 +530,9 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             totalValue,
             accountId,
             // Store denormalized data for historical integrity
-            client: clientSnap.exists() ? clientSnap.data() : null,
-            dumpster: dumpsterSnap.exists() ? dumpsterSnap.data() : null,
-            assignedToUser: assignedToSnap.exists() ? assignedToSnap.data() : null,
+            client: clientSnap.exists ? clientSnap.data() : null,
+            dumpster: dumpsterSnap.exists ? dumpsterSnap.data() : null,
+            assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
         };
         
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
