@@ -417,24 +417,41 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   const db = getFirestore(adminApp);
   const accountRef = db.doc(`accounts/${accountId}`);
   
+  const rawData = Object.fromEntries(formData.entries());
+  const osType = rawData.osType === 'operation' ? 'operation' : 'rental';
+
   try {
     const newSequentialId = await db.runTransaction(async (transaction) => {
         const accountSnap = await transaction.get(accountRef);
         if (!accountSnap.exists) {
             throw new Error("Conta não encontrada.");
         }
-        const currentCounter = accountSnap.data()?.rentalCounter || 0;
-        const newCounter = currentCounter + 1;
-        transaction.update(accountRef, { rentalCounter: newCounter });
-        return newCounter;
-    });
 
-    const rawData = Object.fromEntries(formData.entries());
+        let newCounter;
+        let fieldToUpdate;
+        let prefix;
+
+        if (osType === 'operation') {
+            const currentCounter = accountSnap.data()?.operationCounter || 0;
+            newCounter = currentCounter + 1;
+            fieldToUpdate = 'operationCounter';
+            prefix = 'OP';
+        } else {
+            const currentCounter = accountSnap.data()?.rentalCounter || 0;
+            newCounter = currentCounter + 1;
+            fieldToUpdate = 'rentalCounter';
+            prefix = 'AL';
+        }
+
+        transaction.update(accountRef, { [fieldToUpdate]: newCounter });
+        return `${prefix}-${newCounter}`;
+    });
+    
     const rawValue = rawData.value as string;
     const numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
 
     // For operations, dumpsterId is repurposed for truckId from the form
-    const dumpsterId = rawData.osType === 'operation' ? rawData.truckId as string : rawData.dumpsterId as string;
+    const dumpsterId = osType === 'operation' ? rawData.truckId as string : rawData.dumpsterId as string;
 
     const validatedFields = RentalSchema.safeParse({
         ...rawData,
@@ -777,6 +794,7 @@ export async function resetAllDataAction(accountId: string) {
         await db.doc(`accounts/${accountId}`).update({
             rentalPrices: [],
             rentalCounter: 0,
+            operationCounter: 0,
         });
 
 

@@ -226,7 +226,7 @@ export default function HomePage() {
             (rental.osType === 'rental' && rental.dumpster?.name.toLowerCase().includes(lowercasedTerm)) ||
             (rental.osType === 'operation' && rental.services.some(s => s.name.toLowerCase().includes(lowercasedTerm))) ||
             rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
-            String(rental.sequentialId).includes(lowercasedTerm)
+            String(rental.sequentialId).toLowerCase().includes(lowercasedTerm)
         );
     }
 
@@ -383,7 +383,9 @@ export default function HomePage() {
                             {isOperation ? (
                                 <span>{format(parseISO(rental.rentalDate), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
                             ) : (
-                                <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                                <span>
+                                    {format(parseISO(rental.rentalDate), "dd/MM", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+                                </span>
                             )}
                         </div>
                     </div>

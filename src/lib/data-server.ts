@@ -105,6 +105,7 @@ export async function ensureUserDocument(
                     createdAt: FieldValue.serverTimestamp(),
                     members: [uid],
                     rentalCounter: 0,
+                    operationCounter: 0,
                 });
             }
 
