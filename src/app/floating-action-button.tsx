@@ -4,7 +4,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus, Replace } from "lucide-react";
+import { Plus, Replace, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NewItemDialog } from "./new-item-dialog";
@@ -32,6 +32,7 @@ export function FloatingActionButton() {
         '/settings', 
         '/admin/clients', 
         '/notifications-studio',
+        '/trucks',
     ];
 
     if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
@@ -50,17 +51,19 @@ export function FloatingActionButton() {
                 return null;
             case '/clients':
                  if (isAdmin || permissions?.canEditClients) {
-                    return <NewItemDialog itemType="client" />;
+                    return (
+                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                            <Link href="/clients/new">
+                                <User className="h-7 w-7" />
+                                <span className="sr-only">Novo Cliente</span>
+                            </Link>
+                        </Button>
+                    );
                 }
                 return null;
             case '/team':
                 if (isAdmin || permissions?.canAccessTeam) {
                     return <NewItemDialog itemType="team" />;
-                }
-                return null;
-            case '/trucks':
-                 if (isAdmin) {
-                    return <NewItemDialog itemType="truck" />;
                 }
                 return null;
             case '/':
