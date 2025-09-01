@@ -182,8 +182,8 @@ export async function getActiveRentalsForUser(accountId: string, id: string, fie
     const rentals = rentalsSnapshot.docs.map(doc => doc.data() as Rental);
     const operations = operationsSnapshot.docs.map(doc => doc.data() as Rental);
 
-    const combined = [...rentals, ...operations]
-        .filter(os => isAfter(parseISO(os.returnDate), today) || isToday(parseISO(os.returnDate)));
+    // This correctly includes overdue items for this specific check.
+    const combined = [...rentals, ...operations];
 
     return combined.map(data => ({
         ...data,
@@ -247,13 +247,9 @@ export function getPopulatedRentals(
 
     const processSnapshot = async (snapshot: DocumentData, type: 'rental' | 'operation') => {
         if (!servicesMap) return; // Wait for services to be loaded
-        const today = startOfToday();
-
-        const activeDocs = snapshot.docs.filter((doc: DocumentData) => {
-            const data = doc.data();
-            const returnDate = data.returnDate?.toDate ? data.returnDate.toDate() : parseISO(data.returnDate);
-            return isAfter(returnDate, today) || isToday(returnDate);
-        });
+        
+        // No date filtering here. We fetch all active OS and let the UI sort and filter them.
+        const activeDocs = snapshot.docs;
 
         const promises = activeDocs.map((doc: DocumentData) => populateOS(doc, accountId, servicesMap!));
         const populatedData = (await Promise.all(promises)).filter(Boolean) as PopulatedRental[];
