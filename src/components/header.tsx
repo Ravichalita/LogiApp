@@ -21,6 +21,9 @@ import { HeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import React from "react";
+import { Settings, Download, Bell } from "lucide-react";
+import { InstallPwaMenuItem } from "./install-pwa-menu-item";
+import { TestNotificationMenuItem } from "./test-notification-menu-item";
 
 
 const navLinks = [
@@ -54,7 +57,7 @@ export function Header() {
     ));
 
   // Hide header on auth pages
-  if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email')) {
+  if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email') || pathname.startsWith('/restore-from-backup')) {
     return null;
   }
 
@@ -92,7 +95,7 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
+               <DropdownMenuItem asChild>
                 <Link href="/account">
                   <UserIcon className="mr-2 h-4 w-4" />
                   <span>Sua Conta</span>

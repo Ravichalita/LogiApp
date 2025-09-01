@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone, Settings, Download, Bell } from "lucide-react";
+import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -54,15 +54,28 @@ export function HeaderActions() {
       label: "Equipe",
       shouldRender: isAdmin || permissions?.canAccessTeam,
     },
+     {
+      href: "/settings",
+      icon: <Settings className="h-5 w-5" />,
+      label: "Configurações",
+      shouldRender: isAdmin || permissions?.canAccessSettings,
+    },
   ];
   
   const userActions = [
+     {
+      href: "/account",
+      icon: <User className="mr-2 h-4 w-4" />,
+      label: "Sua Conta",
+      component: Link,
+      shouldRender: true,
+    },
     {
       href: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
       label: "Configurações",
       component: Link,
-      shouldRender: isAdmin || permissions?.canAccessSettings,
+      shouldRender: isMobile && (isAdmin || permissions?.canAccessSettings), // Only for mobile dropdown
     },
     {
       href: "#",
@@ -89,9 +102,18 @@ export function HeaderActions() {
   }
 
   if (isMobile) {
-    if (visibleNavActions.length === 0 && visibleUserActions.length === 0) {
+    // On mobile, the combined list goes into the dropdown
+    const allMobileActions = [
+        ...visibleNavActions,
+        // Add separator if both lists have items
+        ...(visibleNavActions.length > 0 && visibleUserActions.length > 0 ? [{isSeparator: true}] : []),
+        ...visibleUserActions
+    ];
+    
+    if (allMobileActions.length === 0) {
         return null;
     }
+
     return (
         <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -101,30 +123,34 @@ export function HeaderActions() {
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-            {visibleNavActions.map((action) => (
-            <DropdownMenuItem key={action.href} asChild>
-                <Link href={action.href}>
-                {action.icon}
-                <span className="ml-2">{action.label}</span>
-                </Link>
-            </DropdownMenuItem>
+            {navActions.filter(a => a.shouldRender).map(action => (
+                 <DropdownMenuItem key={action.href} asChild>
+                    <Link href={action.href}>
+                        {React.cloneElement(action.icon, {className: "mr-2 h-4 w-4"})}
+                        <span>{action.label}</span>
+                    </Link>
+                </DropdownMenuItem>
             ))}
-            {(visibleNavActions.length > 0 && visibleUserActions.length > 0) && <DropdownMenuSeparator />}
             
-            {visibleUserActions.map((action) => {
-              const ActionComponent = action.component;
-              if (ActionComponent === Link) {
-                 return (
-                  <DropdownMenuItem key={action.href} asChild>
-                      <Link href={action.href}>
+            {(navActions.filter(a => a.shouldRender).length > 0 && userActions.filter(a => a.shouldRender).length > 0) && <DropdownMenuSeparator />}
+            
+            {userActions.filter(a => a.shouldRender).map((action, index) => {
+              if ('component' in action) {
+                const ActionComponent = action.component;
+                if (ActionComponent === Link) {
+                    return (
+                    <DropdownMenuItem key={action.href} asChild>
+                        <Link href={action.href}>
                         {action.icon}
                         <span>{action.label}</span>
-                      </Link>
-                  </DropdownMenuItem>
-                )
+                        </Link>
+                    </DropdownMenuItem>
+                    )
+                }
+                 // For components like InstallPwaMenuItem, which is a DropdownMenuItem itself
+                return <ActionComponent key={action.label} />
               }
-              // For components like InstallPwaMenuItem, which is a DropdownMenuItem itself
-              return <ActionComponent key={action.label} />
+              return null;
             })}
 
         </DropdownMenuContent>
@@ -132,6 +158,7 @@ export function HeaderActions() {
     );
   }
 
+  // Desktop view
   return (
     <>
       {visibleNavActions.map((action) => (
