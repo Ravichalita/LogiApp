@@ -126,8 +126,10 @@ export default function DumpstersPage() {
       const activeRental = dumpsterRentals.find(r => {
           const rentalStart = parseISO(r.rentalDate);
           const rentalEnd = parseISO(r.returnDate);
-          return isToday(rentalStart) || isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
+          // An active rental is one where today is between the start and end dates (inclusive).
+          return isToday(rentalStart) || isToday(rentalEnd) || isWithinInterval(today, { start: rentalStart, end: rentalEnd });
       });
+
 
       if(activeRental) {
         const returnDate = parseISO(activeRental.returnDate);

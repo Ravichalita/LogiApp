@@ -13,9 +13,11 @@ import {
   DocumentData,
   orderBy,
   collectionGroup,
+  Timestamp,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
 import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Service, Truck, Operation } from './types';
+import { startOfToday } from 'date-fns';
 
 type Unsubscribe = () => void;
 
@@ -140,7 +142,12 @@ export async function fetchTrucks(accountId: string): Promise<Truck[]> {
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId));
+    const today = startOfToday();
+    const q = query(
+        rentalsCollection, 
+        where("accountId", "==", accountId),
+        where("returnDate", ">=", Timestamp.fromDate(today))
+    );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const rentals = querySnapshot.docs.map(doc => {
@@ -164,11 +171,12 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
 export async function getActiveRentalsForUser(accountId: string, id: string, field: 'assignedTo' | 'clientId' = 'assignedTo'): Promise<Rental[]> {
     if (!accountId || !id) return [];
     
+    const today = startOfToday();
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const qRentals = query(rentalsCollection, where(field, "==", id));
+    const qRentals = query(rentalsCollection, where(field, "==", id), where("returnDate", ">=", Timestamp.fromDate(today)));
     
     const operationsCollection = collection(db, `accounts/${accountId}/operations`);
-    const qOperations = query(operationsCollection, where(field, "==", id));
+    const qOperations = query(operationsCollection, where(field, "==", id), where("returnDate", ">=", Timestamp.fromDate(today)));
     
     const [rentalsSnapshot, operationsSnapshot] = await Promise.all([
         getDocs(qRentals),
@@ -252,9 +260,17 @@ export function getPopulatedRentals(
         }
         updateCombinedResults();
     };
+    
+    const today = startOfToday();
 
-    let rentalsQuery: Query<DocumentData> = query(collection(db, `accounts/${accountId}/rentals`));
-    let operationsQuery: Query<DocumentData> = query(collection(db, `accounts/${accountId}/operations`));
+    let rentalsQuery: Query<DocumentData> = query(
+        collection(db, `accounts/${accountId}/rentals`), 
+        where("returnDate", ">=", Timestamp.fromDate(today))
+    );
+    let operationsQuery: Query<DocumentData> = query(
+        collection(db, `accounts/${accountId}/operations`),
+        where("returnDate", ">=", Timestamp.fromDate(today))
+    );
 
     if (assignedToId) {
         rentalsQuery = query(rentalsQuery, where("assignedTo", "==", assignedToId));
