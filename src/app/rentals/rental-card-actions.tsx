@@ -115,15 +115,15 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        {isOperation ? (
+        {isOperation && rental.dumpster && (
             <div className="flex items-start gap-3">
                 <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Caminhão</span>
-                    <span className="font-medium">{rental.dumpster?.name}</span>
+                    <span className="font-medium">{rental.dumpster.name}</span>
                 </div>
             </div>
-        ) : null}
+        )}
 
         <div className="flex items-stretch justify-between gap-2">
             <div className="flex items-start gap-3 flex-grow">
@@ -143,6 +143,16 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             )}
         </div>
         
+         {isOperation && rental.distance && (
+             <div className="flex items-start gap-3">
+                <Route className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Distância da Rota</span>
+                    <span className="font-medium">{(rental.distance / 1000).toFixed(1)} km</span>
+                </div>
+            </div>
+        )}
+
          {isOperation && rental.services.length > 0 && (
             <div className="flex items-start gap-3">
                 <Milestone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
