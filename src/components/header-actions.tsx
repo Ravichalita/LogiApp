@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User } from "lucide-react";
+import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User, History } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -37,8 +37,8 @@ export function HeaderActions() {
     },
     {
       href: "/finance",
-      icon: <BarChart className="h-5 w-5" />,
-      label: "Estatísticas",
+      icon: <History className="h-5 w-5" />,
+      label: "Histórico",
       shouldRender: isAdmin || permissions?.canAccessFinance,
     },
     {
