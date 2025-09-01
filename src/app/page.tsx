@@ -6,15 +6,8 @@ import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, UserAccount, Rental } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays } from 'date-fns';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RentalCardActions } from './rentals/rental-card-actions';
 import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Milestone } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -23,6 +16,7 @@ import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
+import { RentalDetailsDialog } from './rentals/rental-details-dialog';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje' | 'Em Andamento';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -103,13 +97,6 @@ function RentalCardSkeleton() {
                                     <Skeleton className="h-5 w-3/4" />
                                 </div>
                             </div>
-                            <div className="flex items-start gap-3">
-                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
-                                <div className="flex flex-col gap-2 w-full">
-                                    <Skeleton className="h-4 w-1/4" />
-                                    <Skeleton className="h-5 w-1/2" />
-                                </div>
-                            </div>
                         </div>
                         <div className="flex flex-col md:flex-row w-full gap-2 mt-4">
                             <Skeleton className="h-10 w-full" />
@@ -139,13 +126,6 @@ function RentalCardSkeleton() {
                                 <div className="flex flex-col gap-2 w-full">
                                     <Skeleton className="h-4 w-1/4" />
                                     <Skeleton className="h-5 w-3/4" />
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
-                                <div className="flex flex-col gap-2 w-full">
-                                    <Skeleton className="h-4 w-1/4" />
-                                    <Skeleton className="h-5 w-1/2" />
                                 </div>
                             </div>
                         </div>
@@ -359,56 +339,51 @@ export default function HomePage() {
             const icon = isOperation ? <Milestone className="h-5 w-5" /> : <Truck className="h-5 w-5" />;
 
             return (
-            <Accordion type="single" collapsible className="w-full" key={rental.id}>
-                <AccordionItem value={rental.id} className="border-none">
-                <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                    <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
+                <Card key={rental.id} className="relative flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                     <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
                         {rental.sequentialId}
                     </span>
                     <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                        <CardTitle className="text-xl font-headline flex items-center gap-2">{icon}{title}</CardTitle>
-                        <div className="flex flex-col items-end gap-1 ml-2">
-                            <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                        <div className="flex items-start justify-between">
+                            <CardTitle className="text-xl font-headline flex items-center gap-2">{icon}{title}</CardTitle>
+                             <div className="flex flex-col items-end gap-1 ml-2">
+                                <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                            </div>
                         </div>
-                    </div>
-                    <p className="text-muted-foreground mt-2">
-                        Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
-                    </p>
-                    <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
-                        <div className="flex items-center gap-2">
-                            <User className="h-5 w-5" /> 
-                            {canEdit ? (
-                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                    <span className="cursor-pointer hover:underline">{rental.assignedToUser?.name}</span>
-                                </EditAssignedUserDialog>
-                            ) : (
-                                <span>{rental.assignedToUser?.name}</span>
-                            )}
+                        <p className="text-muted-foreground mt-2">
+                            Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
+                        </p>
+                        <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
+                             <div className="flex items-center gap-2">
+                                <User className="h-5 w-5" /> 
+                                {canEdit ? (
+                                    <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                        <span className="cursor-pointer hover:underline">{rental.assignedToUser?.name}</span>
+                                    </EditAssignedUserDialog>
+                                ) : (
+                                    <span>{rental.assignedToUser?.name}</span>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 text-right">
+                                <Calendar className="h-5 w-5" />
+                                {isOperation ? (
+                                    <span>{format(parseISO(rental.rentalDate), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+                                ) : (
+                                    <span>
+                                        {format(parseISO(rental.rentalDate), "dd/MM", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 text-right">
-                            <Calendar className="h-5 w-5" />
-                            {isOperation ? (
-                                <span>{format(parseISO(rental.rentalDate), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
-                            ) : (
-                                <span>
-                                    {format(parseISO(rental.rentalDate), "dd/MM", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                                </span>
-                            )}
-                        </div>
-                    </div>
                     </CardHeader>
-                    <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
-                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
-                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                        </AccordionTrigger>
-                        <AccordionContent className="p-4">
-                            <RentalCardActions rental={rental} status={status} />
-                        </AccordionContent>
+                    <CardContent className="mt-auto p-4 pt-0">
+                        <RentalDetailsDialog rental={rental}>
+                            <Button variant="outline" className="w-full">
+                                Ver Detalhes
+                            </Button>
+                        </RentalDetailsDialog>
                     </CardContent>
                 </Card>
-                </AccordionItem>
-            </Accordion>
             );
         }) : (
             <div className="text-center py-16 bg-card rounded-lg border">
@@ -419,3 +394,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
