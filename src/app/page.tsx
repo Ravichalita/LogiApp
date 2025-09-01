@@ -343,6 +343,11 @@ export default function HomePage() {
 
       <div className="space-y-4">
         {filteredAndSortedRentals.length > 0 ? filteredAndSortedRentals.map((rental) => {
+            // Add a guard clause to ensure essential data exists
+            if (!rental || !rental.client || !rental.assignedToUser) {
+                return null;
+            }
+
             const status = getRentalStatus(rental);
             const isOperation = rental.osType === 'operation';
             const title = isOperation 

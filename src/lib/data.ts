@@ -196,7 +196,7 @@ export function getPopulatedRentals(
             });
 
             const populatedRentals = await Promise.all(rentalPromises);
-            onData(populatedRentals.filter(r => r.client && r.dumpster && r.assignedToUser));
+            onData(populatedRentals.filter(r => !!r)); // Return all populated rentals, even if some fields are null
         } catch(e) {
             console.error("Error processing populated rentals:", e)
             if (e instanceof Error) {
