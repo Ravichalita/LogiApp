@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
-import { getPopulatedRentals, fetchClients } from '@/lib/data';
+import { getPopulatedRentals, fetchClients, getDumpsters } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox, DumpsterOptionsMenu } from './dumpster-actions';
@@ -74,6 +74,7 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[]
 
 export default function DumpstersPage() {
   const { accountId, userAccount } = useAuth();
+  const [allDumpsters, setAllDumpsters] = useState<Dumpster[]>([]);
   const [allServiceOrders, setAllServiceOrders] = useState<PopulatedRental[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,13 +95,13 @@ export default function DumpstersPage() {
       const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : userAccount?.id;
 
-      const unsubscribe = getPopulatedRentals(
+      const unsubDumpsters = getDumpsters(accountId, (dumpsters) => {
+        setAllDumpsters(dumpsters);
+      });
+
+      const unsubServiceOrders = getPopulatedRentals(
         accountId,
         (data) => {
-          // The dumpsters are implicitly loaded via the populated rentals,
-          // so we can extract them here.
-          const uniqueDumpsters = Array.from(new Map(data.filter(d => d.dumpster).map(item => [item.dumpster!.id, item.dumpster!])).values());
-          
           setAllServiceOrders(data);
           if(loading) setLoading(false);
         },
@@ -113,8 +114,12 @@ export default function DumpstersPage() {
       
       fetchClients(accountId).then(setClients);
 
-      return () => unsubscribe();
+      return () => {
+        unsubDumpsters();
+        unsubServiceOrders();
+      }
     } else {
+        setAllDumpsters([]);
         setAllServiceOrders([]);
         setClients([]);
         setLoading(false);
@@ -123,16 +128,6 @@ export default function DumpstersPage() {
 
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
-    
-    // Create a map of all unique dumpsters from the service orders
-    const dumpstersMap = new Map<string, Dumpster>();
-    allServiceOrders.forEach(os => {
-        if (os.dumpster && !dumpstersMap.has(os.dumpster.id)) {
-            dumpstersMap.set(os.dumpster.id, os.dumpster);
-        }
-    });
-
-    const allDumpsters = Array.from(dumpstersMap.values());
     const rentalServiceOrders = allServiceOrders.filter(os => os.osType === 'rental');
 
     return allDumpsters.map(d => {
@@ -168,7 +163,7 @@ export default function DumpstersPage() {
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-  }, [allServiceOrders]);
+  }, [allDumpsters, allServiceOrders]);
 
   const filteredDumpsters = useMemo(() => {
     let result = dumpstersWithDerivedStatus;
