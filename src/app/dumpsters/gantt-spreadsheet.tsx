@@ -17,7 +17,7 @@ import { DUMPSTER_COLORS } from '@/lib/types';
 
 interface GanttSpreadsheetProps {
   dumpsters: Dumpster[];
-  rentals: Rental[];
+  rentals: (Rental & {id: string})[];
   clients: Client[];
 }
 
@@ -46,6 +46,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
         const dailyStatuses = dates.map(date => {
           const rentalOnDate = rentals.find(r =>
             r.dumpsterId === dumpster.id &&
+            r.osType === 'rental' &&
             isWithinInterval(date, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) })
           );
 
@@ -123,5 +124,3 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     </TooltipProvider>
   );
 }
-
-    
