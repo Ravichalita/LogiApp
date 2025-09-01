@@ -60,10 +60,10 @@ export default function RestoreFromBackupPage() {
       } else {
         toast({
           title: 'Backup Restaurado com Sucesso!',
-          description: 'Seus dados foram restaurados. A página será recarregada.',
+          description: 'Seus dados foram restaurados. Por favor, faça login novamente.',
         });
-        // Reload the page to re-trigger the AuthProvider logic
-        window.location.reload();
+        // Log out the user to force a fresh login with the restored data
+        await logout();
       }
     });
   }
