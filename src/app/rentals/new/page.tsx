@@ -61,55 +61,48 @@ export default function NewRentalPage() {
   const dumpstersForForm = useMemo((): DumpsterForForm[] => {
     const today = startOfDay(new Date());
 
-    return dumpsters
-      .map(d => {
+    return dumpsters.map(d => {
         if (d.status === 'Em Manutenção') {
-          return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [] };
+            return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [] };
         }
-        
+
         const dumpsterRentals = allRentals
             .filter(r => r.dumpsterId === d.id)
             .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
 
-        const disabledRanges = dumpsterRentals.map(r => {
-            const rentalStart = startOfDay(parseISO(r.rentalDate));
-            const rentalEnd = endOfDay(parseISO(r.returnDate));
-            // A caçamba fica disponível no dia da retirada, então o bloqueio vai até o dia anterior.
-            return {
-                from: rentalStart,
-                to: subDays(rentalEnd, 1),
-            }
-        }).filter(range => range.to >= range.from); // Ensure range is valid
+        const disabledRanges = dumpsterRentals.map(r => ({
+            from: startOfDay(parseISO(r.rentalDate)),
+            to: subDays(endOfDay(parseISO(r.returnDate)), 1),
+        })).filter(range => range.to >= range.from);
 
-        // Find the current or next rental to determine the specialStatus
         const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
         const currentOrNextRental = sortedRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
-
-        let specialStatus: string | undefined = undefined;
         
+        let specialStatus: string | undefined = undefined;
+
         if (currentOrNextRental) {
             const rentalStart = startOfDay(parseISO(currentOrNextRental.rentalDate));
             const rentalEnd = endOfDay(parseISO(currentOrNextRental.returnDate));
 
             if (isWithinInterval(today, { start: rentalStart, end: rentalEnd })) {
-                 if (isToday(rentalEnd)) {
+                if (isToday(rentalEnd)) {
                     specialStatus = `Encerra hoje`;
-                 } else {
+                } else {
                     specialStatus = `Alugada até ${format(rentalEnd, 'dd/MM/yy')}`;
-                 }
+                }
             } else if (isBefore(today, rentalStart)) {
                 specialStatus = `Reservada para ${format(rentalStart, 'dd/MM/yy')}`;
             }
         }
-        
+
         return { 
-          ...d, 
-          disabled: d.status === 'Em Manutenção',
-          specialStatus,
-          disabledRanges,
+            ...d, 
+            disabled: d.status === 'Em Manutenção',
+            specialStatus,
+            disabledRanges,
         };
-      });
-  }, [dumpsters, allRentals]);
+    });
+}, [dumpsters, allRentals]);
 
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
