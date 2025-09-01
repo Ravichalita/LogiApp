@@ -21,9 +21,6 @@ import { HeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import React from "react";
-import { Settings, Download, Bell } from "lucide-react";
-import { InstallPwaMenuItem } from "./install-pwa-menu-item";
-import { TestNotificationMenuItem } from "./test-notification-menu-item";
 
 
 const navLinks = [
@@ -73,7 +70,7 @@ export function Header() {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <HeaderActions />
+          {!isMobile && <HeaderActions />}
           <ThemeToggle />
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -108,7 +105,7 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
+          {isMobile && <HeaderActions />}
         </div>
       </div>
     </header>

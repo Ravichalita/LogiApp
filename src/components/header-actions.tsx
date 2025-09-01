@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User } from "lucide-react";
+import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -54,28 +54,15 @@ export function HeaderActions() {
       label: "Equipe",
       shouldRender: isAdmin || permissions?.canAccessTeam,
     },
-     {
-      href: "/settings",
-      icon: <Settings className="h-5 w-5" />,
-      label: "Configurações",
-      shouldRender: isAdmin || permissions?.canAccessSettings,
-    },
   ];
   
   const userActions = [
-     {
-      href: "/account",
-      icon: <User className="mr-2 h-4 w-4" />,
-      label: "Sua Conta",
-      component: Link,
-      shouldRender: true,
-    },
     {
       href: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
       label: "Configurações",
       component: Link,
-      shouldRender: isMobile && (isAdmin || permissions?.canAccessSettings), // Only for mobile dropdown
+      shouldRender: isAdmin || permissions?.canAccessSettings,
     },
     {
       href: "#",
@@ -93,24 +80,15 @@ export function HeaderActions() {
     },
   ]
 
-  const visibleNavActions = navActions.filter((action) => action.shouldRender);
-  const visibleUserActions = userActions.filter((action) => action.shouldRender);
-
+  const visibleDesktopActions = navActions.filter((action) => action.shouldRender);
+  const visibleMobileActions = [...navActions, ...userActions].filter((action) => action.shouldRender);
 
   if (!isClient) {
     return null;
   }
 
   if (isMobile) {
-    // On mobile, the combined list goes into the dropdown
-    const allMobileActions = [
-        ...visibleNavActions,
-        // Add separator if both lists have items
-        ...(visibleNavActions.length > 0 && visibleUserActions.length > 0 ? [{isSeparator: true}] : []),
-        ...visibleUserActions
-    ];
-    
-    if (allMobileActions.length === 0) {
+    if (visibleMobileActions.length === 0) {
         return null;
     }
 
@@ -118,8 +96,8 @@ export function HeaderActions() {
         <DropdownMenu>
         <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
-            <MoreVertical className="h-5 w-5" />
-            <span className="sr-only">Mais opções</span>
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Abrir menu</span>
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -134,23 +112,19 @@ export function HeaderActions() {
             
             {(navActions.filter(a => a.shouldRender).length > 0 && userActions.filter(a => a.shouldRender).length > 0) && <DropdownMenuSeparator />}
             
-            {userActions.filter(a => a.shouldRender).map((action, index) => {
-              if ('component' in action) {
-                const ActionComponent = action.component;
-                if (ActionComponent === Link) {
-                    return (
-                    <DropdownMenuItem key={action.href} asChild>
-                        <Link href={action.href}>
-                        {action.icon}
-                        <span>{action.label}</span>
-                        </Link>
-                    </DropdownMenuItem>
-                    )
-                }
-                 // For components like InstallPwaMenuItem, which is a DropdownMenuItem itself
-                return <ActionComponent key={action.label} />
+            {userActions.filter(a => a.shouldRender).map((action) => {
+              const ActionComponent = action.component;
+              if (ActionComponent === Link) {
+                  return (
+                  <DropdownMenuItem key={action.href} asChild>
+                      <Link href={action.href}>
+                      {action.icon}
+                      <span>{action.label}</span>
+                      </Link>
+                  </DropdownMenuItem>
+                  )
               }
-              return null;
+               return <ActionComponent key={action.label} />
             })}
 
         </DropdownMenuContent>
@@ -161,7 +135,7 @@ export function HeaderActions() {
   // Desktop view
   return (
     <>
-      {visibleNavActions.map((action) => (
+      {visibleDesktopActions.map((action) => (
         <Button key={action.href} variant="ghost" size="icon" asChild>
           <Link href={action.href}>
             {action.icon}
@@ -169,6 +143,14 @@ export function HeaderActions() {
           </Link>
         </Button>
       ))}
+      {(isAdmin || permissions?.canAccessSettings) && (
+           <Button variant="ghost" size="icon" asChild>
+              <Link href="/settings">
+                <Settings className="h-5 w-5" />
+                <span className="sr-only">Configurações</span>
+              </Link>
+          </Button>
+      )}
     </>
   );
 }
