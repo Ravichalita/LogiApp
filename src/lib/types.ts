@@ -126,10 +126,22 @@ export const UpdateDumpsterSchema = DumpsterSchema.extend({
   id: z.string(),
 });
 
+export const TruckSchema = z.object({
+  model: z.string().min(2, 'O modelo deve ter pelo menos 2 caracteres.'),
+  licensePlate: z.string().min(7, 'A placa deve ter 7 caracteres.'),
+  year: z.coerce.number().int().min(1900).max(new Date().getFullYear() + 2),
+  status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']),
+});
+
+export const UpdateTruckSchema = TruckSchema.extend({
+  id: z.string(),
+});
+
 
 export const RentalSchema = z.object({
   sequentialId: z.string(),
-  dumpsterId: z.string({ required_error: "Selecione uma caçamba ou caminhão." }),
+  dumpsterId: z.string({ required_error: "Selecione uma caçamba." }).optional(),
+  truckId: z.string({ required_error: "Selecione um caminhão." }).optional(),
   clientId: z.string({ required_error: "Selecione um cliente." }),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
@@ -234,6 +246,7 @@ export const RentalPricesSchema = z.object({
 // #region TypeScript Types
 export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
+export type Truck = z.infer<typeof TruckSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
 // Make completedDate a string to allow for serialization from server component
@@ -243,6 +256,7 @@ export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'compl
     accountId: string;
     client?: Client | null;
     dumpster?: Dumpster | null;
+    truck?: Truck | null;
     assignedToUser?: UserAccount | null;
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
@@ -261,6 +275,7 @@ export type EnhancedDumpster = Dumpster & { derivedStatus: string };
 export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
     id: string;
     dumpster: Dumpster | null;
+    truck: Truck | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
     services: Service[];

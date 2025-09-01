@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
@@ -115,12 +114,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        {isOperation && rental.dumpster && (
+        {isOperation && rental.truck && (
             <div className="flex items-start gap-3">
                 <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Caminhão</span>
-                    <span className="font-medium">{rental.dumpster.name}</span>
+                    <span className="font-medium">{rental.truck.model}</span>
                 </div>
             </div>
         )}

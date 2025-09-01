@@ -3,9 +3,9 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { PopulatedRental, Client, Dumpster, UserAccount, Account, Service } from '@/lib/types';
+import type { PopulatedRental, Client, Dumpster, UserAccount, Account, Service, Truck } from '@/lib/types';
 import { getDoc, doc } from 'firebase/firestore';
-import { getFirebase, fetchClients, getAccount, getDumpsters, fetchTeamMembers } from '@/lib/data';
+import { getFirebase, fetchClients, getAccount, getDumpsters, fetchTeamMembers, fetchTrucks } from '@/lib/data';
 import { EditRentalForm } from './edit-rental-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,7 +25,8 @@ export default function EditRentalPage() {
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [resources, setResources] = useState<Dumpster[]>([]); // Can be dumpsters or trucks
+  const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
 
   useEffect(() => {
     if (!accountId || !rentalId) {
@@ -49,7 +50,7 @@ export default function EditRentalPage() {
 
             const isOperation = rentalData.osType === 'operation';
 
-            const [clientData, teamData, accountData, allDumpsters] = await Promise.all([
+            const [clientData, teamData, accountData, allDumpsters, allTrucks] = await Promise.all([
                 fetchClients(accountId),
                 fetchTeamMembers(accountId),
                 new Promise<Account | null>((resolve) => {
@@ -63,21 +64,15 @@ export default function EditRentalPage() {
                         unsub();
                         resolve(dumpsters);
                     });
-                })
+                }),
+                fetchTrucks(accountId),
             ]);
             
             setClients(clientData);
             setTeam(teamData);
             setAccount(accountData);
-
-            if (isOperation) {
-                const trucks = allDumpsters.filter(
-                    d => d.name.toLowerCase().includes('caminhão') || d.name.toLowerCase().includes('scania') || d.name.toLowerCase().includes('volvo')
-                );
-                setResources(trucks);
-            } else {
-                setResources(allDumpsters);
-            }
+            setDumpsters(allDumpsters);
+            setTrucks(allTrucks);
 
         } catch (e) {
             console.error(e);
@@ -147,7 +142,8 @@ export default function EditRentalPage() {
                         clients={clients}
                         team={team}
                         rentalPrices={account.rentalPrices}
-                        resources={resources}
+                        dumpsters={dumpsters}
+                        trucks={trucks}
                         services={account.services}
                     />
                 )}

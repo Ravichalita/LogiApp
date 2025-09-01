@@ -14,7 +14,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Service } from './types';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Service, Truck } from './types';
 
 type Unsubscribe = () => void;
 
@@ -107,6 +107,35 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
 }
 // #endregion
 
+// #region Truck Data
+export function getTrucks(accountId: string, callback: (trucks: Truck[]) => void): Unsubscribe {
+    const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
+    const q = query(trucksCollection, where("accountId", "==", accountId));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const trucks = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        } as Truck));
+        callback(trucks);
+    }, (error) => {
+        console.error("Error fetching trucks:", error);
+        callback([]);
+    });
+
+    return unsubscribe;
+}
+
+export async function fetchTrucks(accountId: string): Promise<Truck[]> {
+    const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
+    const q = query(trucksCollection, where("accountId", "==", accountId));
+    const querySnapshot = await getDocs(q);
+    const trucks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Truck));
+    return trucks.sort((a, b) => a.model.localeCompare(b.model));
+}
+// #endregion
+
+
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
@@ -172,14 +201,12 @@ export function getPopulatedRentals(
             const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
                 const rentalData = rentalDoc.data() as Omit<Rental, 'id'>;
 
-                // For operations, dumpsterId is the truckId. For now, we fetch from the same collection.
-                // This assumes truck data is also in a 'dumpsters' collection or similar structure.
-                // A better long-term solution might be a separate 'trucks' collection.
-                const resourcePromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
+                const dumpsterPromise = rentalData.dumpsterId ? getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId)) : Promise.resolve(null);
+                const truckPromise = rentalData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, rentalData.truckId)) : Promise.resolve(null);
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
                 const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
 
-                const [resourceSnap, clientSnap, assignedToSnap] = await Promise.all([resourcePromise, clientPromise, assignedToPromise]);
+                const [dumpsterSnap, truckSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, truckPromise, clientPromise, assignedToPromise]);
 
                 const selectedServices = (rentalData.serviceIds || []).map(id => servicesMap.get(id)).filter(Boolean) as Service[];
 
@@ -188,7 +215,8 @@ export function getPopulatedRentals(
                     ...rentalData,
                     rentalDate: rentalData.rentalDate?.toDate ? rentalData.rentalDate.toDate().toISOString() : rentalData.rentalDate,
                     returnDate: rentalData.returnDate?.toDate ? rentalData.returnDate.toDate().toISOString() : rentalData.returnDate,
-                    dumpster: resourceSnap.exists() ? { id: resourceSnap.id, ...resourceSnap.data() } as Dumpster : null,
+                    dumpster: dumpsterSnap && dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
+                    truck: truckSnap && truckSnap.exists() ? { id: truckSnap.id, ...truckSnap.data() } as Truck : null,
                     client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
                     assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
                     services: selectedServices,
@@ -196,7 +224,7 @@ export function getPopulatedRentals(
             });
 
             const populatedRentals = await Promise.all(rentalPromises);
-            onData(populatedRentals.filter(r => !!r)); // Return all populated rentals, even if some fields are null
+            onData(populatedRentals.filter(r => r.client && r.assignedToUser));
         } catch(e) {
             console.error("Error processing populated rentals:", e)
             if (e instanceof Error) {

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
@@ -225,6 +224,7 @@ export default function HomePage() {
             rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
             (rental.osType === 'rental' && rental.dumpster?.name.toLowerCase().includes(lowercasedTerm)) ||
             (rental.osType === 'operation' && rental.services.some(s => s.name.toLowerCase().includes(lowercasedTerm))) ||
+            (rental.osType === 'operation' && rental.truck?.model.toLowerCase().includes(lowercasedTerm)) ||
             rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
             String(rental.sequentialId).toLowerCase().includes(lowercasedTerm)
         );
@@ -351,7 +351,7 @@ export default function HomePage() {
             const status = getRentalStatus(rental);
             const isOperation = rental.osType === 'operation';
             const title = isOperation 
-                ? rental.services.map(s => s.name).join(', ') || 'Operação'
+                ? (rental.services?.map(s => s.name).join(', ') || 'Operação')
                 : rental.dumpster?.name;
             const icon = isOperation ? <Milestone className="h-5 w-5" /> : <Truck className="h-5 w-5" />;
 

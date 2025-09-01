@@ -1,10 +1,9 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
 import { updateRentalAction } from '@/lib/actions';
-import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Service, Dumpster } from '@/lib/types';
+import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Service, Dumpster, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,7 +28,8 @@ interface EditRentalFormProps {
   clients: Client[];
   team: UserAccount[];
   rentalPrices?: RentalPrice[];
-  resources: Dumpster[]; // Can be dumpsters or trucks
+  dumpsters: Dumpster[];
+  trucks: Truck[];
   services: Service[];
 }
 
@@ -115,7 +115,7 @@ const MultiSelect = ({ name, placeholder, options, defaultValues, onSelectionCha
     );
 };
 
-export function EditRentalForm({ rental, clients, team, rentalPrices, resources, services }: EditRentalFormProps) {
+export function EditRentalForm({ rental, clients, team, rentalPrices, dumpsters, trucks, services }: EditRentalFormProps) {
   const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -215,11 +215,14 @@ export function EditRentalForm({ rental, clients, team, rentalPrices, resources,
     <form action={handleFormAction} className="space-y-6">
         {/* Hidden inputs to pass data not directly in a form field */}
         <input type="hidden" name="clientId" value={rental.clientId} />
-        <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
+        {isOperation 
+            ? <input type="hidden" name="truckId" value={rental.truck?.id} />
+            : <input type="hidden" name="dumpsterId" value={rental.dumpster?.id} />
+        }
 
       <div className="space-y-2">
         <Label>{isOperation ? 'Caminhão' : 'Caçamba'}</Label>
-        <Input value={`${rental.dumpster?.name} (${rental.dumpster?.size}m³)`} disabled />
+        <Input value={isOperation ? rental.truck?.model : rental.dumpster?.name} disabled />
       </div>
 
       <div className="space-y-2">

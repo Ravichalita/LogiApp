@@ -1,10 +1,9 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Location, UserAccount, Service, Account, DirectionsResponse, Dumpster } from '@/lib/types';
+import type { Client, Location, UserAccount, Service, Account, DirectionsResponse, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, Truck, Check, Clock, Route, Milestone } from 'lucide-react';
+import { CalendarIcon, User, Truck as TruckIcon, Check, Clock, Route, Milestone } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { set } from 'date-fns';
 import { format } from 'date-fns-tz';
@@ -41,7 +40,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 interface OperationFormProps {
-  trucks: Dumpster[]; // Use Dumpster type for trucks
+  trucks: Truck[];
   clients: Client[];
   team: UserAccount[];
   services: Service[];
@@ -226,8 +225,6 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        // Use 'dumpsterId' to store the truck's ID
-        if (selectedTruckId) formData.set('dumpsterId', selectedTruckId);
         
         formData.set('osType', 'operation');
         formData.set('serviceIds', serviceIds.join(','));
@@ -270,7 +267,7 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
           <SelectContent>
             {trucks.map(t => (
               <SelectItem key={t.id} value={t.id}>
-                <span>{t.name}</span>
+                <span>{t.model} ({t.licensePlate})</span>
               </SelectItem>
             ))}
           </SelectContent>

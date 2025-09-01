@@ -1,145 +1,105 @@
 
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { createTruckAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
+import { Spinner } from '@/components/ui/spinner';
+import { DialogClose, DialogFooter } from '@/components/ui/dialog';
+import type { Truck } from '@/lib/types';
 
-const formSchema = z.object({
-  model: z.string().min(2, 'O modelo deve ter pelo menos 2 caracteres.'),
-  licensePlate: z.string().length(7, 'A placa deve ter 7 caracteres.'),
-  year: z.coerce.number().int().min(1900).max(new Date().getFullYear() + 1),
-  capacity: z.string().min(1, 'A capacidade é obrigatória.'),
-  type: z.enum(['Caminhão a vácuo', 'Hidro-Vácuo combinado'], { required_error: 'O tipo é obrigatório.'}),
-});
 
-type TruckFormValues = z.infer<typeof formSchema>;
+const initialState = {
+  errors: {},
+  message: '',
+};
 
-interface TruckFormProps {
-  onSuccess: () => void;
-  onCancel: () => void;
+function SubmitButton({ isPending }: { isPending: boolean }) {
+  return (
+    <Button type="submit" disabled={isPending}>
+      {isPending ? <Spinner size="small" /> : 'Salvar Caminhão'}
+    </Button>
+  );
 }
 
-export function TruckForm({ onSuccess, onCancel }: TruckFormProps) {
+export function TruckForm({ onSave }: { onSave?: () => void }) {
+  const { accountId } = useAuth();
+  const [isPending, startTransition] = useTransition();
+  const [state, setState] = useState<any>(initialState);
+  const [status, setStatus] = useState<Truck['status']>('Disponível');
+  const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
-  const form = useForm<TruckFormValues>({
-    resolver: zodResolver(formSchema),
-  });
 
-  const onSubmit = async (values: TruckFormValues) => {
-    try {
-      // TODO: Implement API call to save the truck
-      console.log(values);
-      toast({
-        title: 'Caminhão Adicionado',
-        description: 'O novo caminhão foi adicionado com sucesso.',
-      });
-      onSuccess();
-    } catch (error) {
-        console.error(error);
-        toast({
-            title: 'Erro',
-            description: 'Não foi possível adicionar o caminhão.',
-            variant: 'destructive',
-        });
+  useEffect(() => {
+    if (state?.message === 'success') {
+      toast({ title: 'Sucesso', description: 'Caminhão cadastrado.' });
+      formRef.current?.reset();
+      setStatus('Disponível');
+      setState(initialState);
+      onSave?.();
+    } else if (state?.message === 'error' && state.error) {
+      toast({ title: 'Erro', description: state.error, variant: 'destructive' });
+      setState(prevState => ({...prevState, message: '', error: undefined }));
     }
+  }, [state, toast, onSave]);
+
+  const action = (formData: FormData) => {
+    startTransition(async () => {
+      if (!accountId) {
+        toast({ title: 'Erro', description: 'Conta não identificada.', variant: 'destructive' });
+        return;
+      }
+      const boundAction = createTruckAction.bind(null, accountId);
+      const result = await boundAction(state, formData);
+      setState(result);
+    });
   };
 
+  if (!accountId) {
+    return <div className="flex justify-center items-center"><Spinner /></div>;
+  }
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="model"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Modelo</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: Scania R450" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="licensePlate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Placa</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: BRA2E19" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="year"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ano</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="Ex: 2023" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tipo</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                        <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo do caminhão" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        <SelectItem value="Caminhão a vácuo">Caminhão a vácuo</SelectItem>
-                        <SelectItem value="Hidro-Vácuo combinado">Hidro-Vácuo combinado</SelectItem>
-                    </SelectContent>
-                </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="capacity"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Capacidade</FormLabel>
-              <FormControl>
-                <Input placeholder="Ex: 25 toneladas" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button type="submit">Salvar</Button>
-        </div>
-      </form>
-    </Form>
+    <form ref={formRef} action={action} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="model">Modelo/Identificador</Label>
+        <Input id="model" name="model" placeholder="Ex: Scania R450" required />
+        {state?.errors?.model && <p className="text-sm font-medium text-destructive">{state.errors.model[0]}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="licensePlate">Placa</Label>
+        <Input id="licensePlate" name="licensePlate" placeholder="Ex: BRA2E19" required />
+        {state?.errors?.licensePlate && <p className="text-sm font-medium text-destructive">{state.errors.licensePlate[0]}</p>}
+      </div>
+      <div className="space-y-2">
+          <Label htmlFor="year">Ano</Label>
+          <Input id="year" name="year" type="number" placeholder="Ex: 2023" required />
+          {state?.errors?.year && <p className="text-sm font-medium text-destructive">{state.errors.year[0]}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label>Status Inicial</Label>
+        <Select name="status" value={status} onValueChange={(value) => setStatus(value as Truck['status'])}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Disponível">Disponível</SelectItem>
+            <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
+          </SelectContent>
+        </Select>
+         {state?.errors?.status && <p className="text-sm font-medium text-destructive">{state.errors.status[0]}</p>}
+      </div>
+      <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">Cancelar</Button>
+          </DialogClose>
+          <SubmitButton isPending={isPending} />
+        </DialogFooter>
+    </form>
   );
 }
