@@ -17,7 +17,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
 import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Service, Truck, Operation } from './types';
-import { startOfToday } from 'date-fns';
+import { startOfToday, isAfter, parseISO, isToday } from 'date-fns';
 
 type Unsubscribe = () => void;
 
@@ -142,23 +142,24 @@ export async function fetchTrucks(accountId: string): Promise<Truck[]> {
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const today = startOfToday();
     const q = query(
         rentalsCollection, 
-        where("accountId", "==", accountId),
-        where("returnDate", ">=", Timestamp.fromDate(today))
+        where("accountId", "==", accountId)
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const rentals = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
-                returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
-            } as Rental;
-        });
+        const today = startOfToday();
+        const rentals = querySnapshot.docs
+            .map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
+                    returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
+                } as Rental;
+            })
+            .filter(rental => isAfter(parseISO(rental.returnDate), today) || isToday(parseISO(rental.returnDate)));
         callback(rentals);
     }, (error) => {
         console.error("Error fetching rentals:", error);
@@ -173,10 +174,10 @@ export async function getActiveRentalsForUser(accountId: string, id: string, fie
     
     const today = startOfToday();
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const qRentals = query(rentalsCollection, where(field, "==", id), where("returnDate", ">=", Timestamp.fromDate(today)));
+    const qRentals = query(rentalsCollection, where(field, "==", id));
     
     const operationsCollection = collection(db, `accounts/${accountId}/operations`);
-    const qOperations = query(operationsCollection, where(field, "==", id), where("returnDate", ">=", Timestamp.fromDate(today)));
+    const qOperations = query(operationsCollection, where(field, "==", id));
     
     const [rentalsSnapshot, operationsSnapshot] = await Promise.all([
         getDocs(qRentals),
@@ -186,7 +187,8 @@ export async function getActiveRentalsForUser(accountId: string, id: string, fie
     const rentals = rentalsSnapshot.docs.map(doc => doc.data() as Rental);
     const operations = operationsSnapshot.docs.map(doc => doc.data() as Rental);
 
-    const combined = [...rentals, ...operations];
+    const combined = [...rentals, ...operations]
+        .filter(os => isAfter(parseISO(os.returnDate), today) || isToday(parseISO(os.returnDate)));
 
     return combined.map(data => ({
         ...data,
@@ -250,7 +252,15 @@ export function getPopulatedRentals(
 
     const processSnapshot = async (snapshot: DocumentData, type: 'rental' | 'operation') => {
         if (!servicesMap) return; // Wait for services to be loaded
-        const promises = snapshot.docs.map((doc: DocumentData) => populateOS(doc, accountId, servicesMap!));
+        const today = startOfToday();
+
+        const activeDocs = snapshot.docs.filter((doc: DocumentData) => {
+            const data = doc.data();
+            const returnDate = data.returnDate?.toDate ? data.returnDate.toDate() : parseISO(data.returnDate);
+            return isAfter(returnDate, today) || isToday(returnDate);
+        });
+
+        const promises = activeDocs.map((doc: DocumentData) => populateOS(doc, accountId, servicesMap!));
         const populatedData = (await Promise.all(promises)).filter(Boolean) as PopulatedRental[];
 
         if (type === 'rental') {
@@ -261,16 +271,8 @@ export function getPopulatedRentals(
         updateCombinedResults();
     };
     
-    const today = startOfToday();
-
-    let rentalsQuery: Query<DocumentData> = query(
-        collection(db, `accounts/${accountId}/rentals`), 
-        where("returnDate", ">=", Timestamp.fromDate(today))
-    );
-    let operationsQuery: Query<DocumentData> = query(
-        collection(db, `accounts/${accountId}/operations`),
-        where("returnDate", ">=", Timestamp.fromDate(today))
-    );
+    let rentalsQuery: Query<DocumentData> = collection(db, `accounts/${accountId}/rentals`);
+    let operationsQuery: Query<DocumentData> = collection(db, `accounts/${accountId}/operations`);
 
     if (assignedToId) {
         rentalsQuery = query(rentalsQuery, where("assignedTo", "==", assignedToId));
