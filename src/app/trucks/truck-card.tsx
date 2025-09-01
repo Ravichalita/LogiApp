@@ -11,16 +11,14 @@ export interface Truck {
   licensePlate: string;
   year: number;
   capacity: string;
-  type: 'Caminhão a vácuo' | 'Hidro-Vácuo combinado';
+  type: string;
 }
 
 interface TruckCardProps {
   truck: Truck;
-  onEdit: () => void;
-  onDelete: () => void;
 }
 
-export function TruckCard({ truck, onEdit, onDelete }: TruckCardProps) {
+export function TruckCard({ truck }: TruckCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -30,19 +28,8 @@ export function TruckCard({ truck, onEdit, onDelete }: TruckCardProps) {
       <CardContent>
         <div className="text-lg font-bold">{truck.licensePlate}</div>
         <p className="text-xs text-muted-foreground">
-          Ano: {truck.year} - {truck.type}
+          Ano: {truck.year}
         </p>
-        <p className="text-xs text-muted-foreground">
-          Capacidade: {truck.capacity}
-        </p>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button variant="outline" size="sm" onClick={onEdit}>
-            Editar
-          </Button>
-          <Button variant="destructive" size="sm" onClick={onDelete}>
-            Excluir
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

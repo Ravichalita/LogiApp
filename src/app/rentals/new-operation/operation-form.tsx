@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Location, UserAccount, Service, Account, DirectionsResponse } from '@/lib/types';
+import type { Client, Location, UserAccount, Service, Account, DirectionsResponse, Dumpster } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -41,7 +41,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 interface OperationFormProps {
-  trucks: any[]; // Replace with actual Truck type
+  trucks: Dumpster[]; // Use Dumpster type for trucks
   clients: Client[];
   team: UserAccount[];
   services: Service[];
@@ -226,7 +226,9 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        if (selectedTruckId) formData.set('dumpsterId', selectedTruckId); // Repurposing dumpsterId for truckId
+        // Use 'dumpsterId' to store the truck's ID
+        if (selectedTruckId) formData.set('dumpsterId', selectedTruckId);
+        
         formData.set('osType', 'operation');
         formData.set('serviceIds', serviceIds.join(','));
         if (directions) {
@@ -268,7 +270,7 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
           <SelectContent>
             {trucks.map(t => (
               <SelectItem key={t.id} value={t.id}>
-                <span>{`${t.model} (${t.licensePlate})`}</span>
+                <span>{t.name}</span>
               </SelectItem>
             ))}
           </SelectContent>

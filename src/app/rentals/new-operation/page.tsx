@@ -15,50 +15,41 @@ import type { Client, Dumpster, Rental, UserAccount, Account, Service } from '@/
 
 export default function NewOperationPage() {
   const { accountId } = useAuth();
-  const [trucks, setTrucks] = useState<any[]>([]); // To be replaced with actual truck fetching logic
+  const [trucks, setTrucks] = useState<Dumpster[]>([]); // Use Dumpster type for trucks
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mock truck data for now
-  const initialTrucks: any[] = [
-    {
-      id: '1',
-      model: 'Scania R450',
-      licensePlate: 'BRA2E19',
-      year: 2023,
-      capacity: '25 toneladas',
-    },
-    {
-      id: '2',
-      model: 'Volvo FH 540',
-      licensePlate: 'PRL1A23',
-      year: 2022,
-      capacity: '27 toneladas',
-    },
-  ];
-
   useEffect(() => {
     if (accountId) {
       const fetchData = async () => {
         setLoading(true);
-        const userClients = await fetchClients(accountId);
+        
+        const [userClients, teamMembers] = await Promise.all([
+            fetchClients(accountId),
+            fetchTeamMembers(accountId),
+        ]);
+        
         setClients(userClients);
-
-        const teamMembers = await fetchTeamMembers(accountId);
         setTeam(teamMembers);
         
-        // TODO: Replace mock data with actual truck fetching logic
-        setTrucks(initialTrucks);
+        const unsubDumpsters = getDumpsters(accountId, (allDumpsters) => {
+            // Placeholder logic to identify trucks. A 'type' field in the dumpster doc would be better.
+            const filteredTrucks = allDumpsters.filter(
+                d => d.name.toLowerCase().includes('caminhão') || d.name.toLowerCase().includes('scania') || d.name.toLowerCase().includes('volvo')
+            );
+            setTrucks(filteredTrucks);
+        });
         
         const unsubAccount = getAccount(accountId, (acc) => {
             setAccount(acc);
-            setLoading(false);
+            setLoading(false); // Considered loaded when account info is present
         });
         
         return () => {
           unsubAccount();
+          unsubDumpsters();
         }
       };
       fetchData();
@@ -108,7 +99,7 @@ export default function NewOperationPage() {
               <TruckIcon className="h-4 w-4" />
               <AlertTitle>Faltam informações para criar uma Operação!</AlertTitle>
               <AlertDescription>
-                {trucks.length === 0 && <p>Não há caminhões cadastrados. <Link href="/trucks" className="font-bold underline">Gerencie sua frota</Link>.</p>}
+                {trucks.length === 0 && <p>Não há caminhões cadastrados. <Link href="/dumpsters" className="font-bold underline">Cadastre um caminhão</Link> (Dica: inclua "Caminhão" no nome).</p>}
                 {clients.length === 0 && <p>Não há clientes cadastrados. <Link href="/clients" className="font-bold underline">Cadastre um novo cliente</Link>.</p>}
                  {!account && <p>As configurações da conta não foram carregadas.</p>}
               </AlertDescription>
