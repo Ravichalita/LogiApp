@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account } from '@/lib/types';
-import { isAfter, isToday, parseISO, startOfDay, format, isWithinInterval, isBefore, endOfDay, subDays } from 'date-fns';
+import { isAfter, isToday, parseISO, startOfDay, format, isWithinInterval, isBefore, endOfDay } from 'date-fns';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
@@ -75,8 +75,14 @@ export default function NewRentalPage() {
             to: endOfDay(parseISO(r.returnDate)),
         }));
 
-        const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
-        const currentOrNextRental = sortedRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
+        const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
+        
+        // Find a rental that is currently active or is the next one up.
+        const currentOrNextRental = sortedRentals.find(r => {
+            const rentalStart = startOfDay(parseISO(r.rentalDate));
+            const rentalEnd = endOfDay(parseISO(r.returnDate));
+            return isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(rentalStart, today);
+        });
         
         let specialStatus: string | undefined = undefined;
 
@@ -95,9 +101,11 @@ export default function NewRentalPage() {
             }
         }
 
+        const isRentedNow = dumpsterRentals.some(r => isWithinInterval(today, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) }));
+
         return { 
             ...d, 
-            disabled: d.status === 'Em Manutenção',
+            disabled: d.status === 'Em Manutenção' || isRentedNow,
             specialStatus,
             disabledRanges,
         };

@@ -191,7 +191,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
           </SelectTrigger>
           <SelectContent>
             {dumpsters.map(d => (
-              <SelectItem key={d.id} value={d.id} disabled={d.status === 'Em Manutenção'}>
+              <SelectItem key={d.id} value={d.id} disabled={d.disabled}>
                 <div className="flex justify-between w-full">
                     <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
                     {d.specialStatus && (
