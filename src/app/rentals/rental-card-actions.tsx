@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
+import { Badge } from '@/components/ui/badge';
 
 import type { getRentalStatus } from '../page';
 import {
