@@ -72,8 +72,8 @@ export default function NewRentalPage() {
 
         const disabledRanges = dumpsterRentals.map(r => ({
             from: startOfDay(parseISO(r.rentalDate)),
-            to: subDays(endOfDay(parseISO(r.returnDate)), 1),
-        })).filter(range => range.to >= range.from);
+            to: endOfDay(parseISO(r.returnDate)),
+        }));
 
         const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
         const currentOrNextRental = sortedRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
