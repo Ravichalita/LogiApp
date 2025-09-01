@@ -21,6 +21,8 @@ import { TestNotificationMenuItem } from "./test-notification-menu-item";
 import { InstallPwaMenuItem } from "./install-pwa-menu-item";
 import { HeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
+import { useIsMobile } from "@/hooks/use-mobile";
+import React from "react";
 
 
 const navLinks = [
@@ -32,6 +34,13 @@ const navLinks = [
 export function Header() {
   const pathname = usePathname();
   const { user, userAccount, logout } = useAuth();
+  const isMobile = useIsMobile();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
   const permissions = userAccount?.permissions;
 
@@ -88,23 +97,27 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-               <DropdownMenuItem asChild>
-                 <Link href="/account">
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Sua Conta</span>
-                  </Link>
-              </DropdownMenuItem>
-              {(isAdmin || permissions?.canAccessSettings) && (
-                <DropdownMenuItem asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Configurações</span>
-                  </Link>
-                </DropdownMenuItem>
+              {isClient && !isMobile && (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/account">
+                        <UserIcon className="mr-2 h-4 w-4" />
+                        <span>Sua Conta</span>
+                      </Link>
+                  </DropdownMenuItem>
+                  {(isAdmin || permissions?.canAccessSettings) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Configurações</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <InstallPwaMenuItem />
+                  <TestNotificationMenuItem />
+                  <DropdownMenuSeparator />
+                </>
               )}
-              <InstallPwaMenuItem />
-              <TestNotificationMenuItem />
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sair</span>

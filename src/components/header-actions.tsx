@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone } from "lucide-react";
+import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone, User, Settings, Download, Bell } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -11,8 +11,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import React from "react";
+import { InstallPwaMenuItem } from "./install-pwa-menu-item";
+import { TestNotificationMenuItem } from "./test-notification-menu-item";
 
 export function HeaderActions() {
   const isMobile = useIsMobile();
@@ -25,7 +28,7 @@ export function HeaderActions() {
     setIsClient(true);
   }, []);
 
-  const actions = [
+  const navActions = [
     {
       href: "/admin/clients",
       icon: <ShieldCheck className="h-5 w-5" />,
@@ -52,15 +55,48 @@ export function HeaderActions() {
       shouldRender: isAdmin || permissions?.canAccessTeam,
     },
   ];
+  
+  const userActions = [
+     {
+      href: "/account",
+      icon: <User className="mr-2 h-4 w-4" />,
+      label: "Sua Conta",
+      component: Link,
+      shouldRender: true,
+    },
+    {
+      href: "/settings",
+      icon: <Settings className="mr-2 h-4 w-4" />,
+      label: "Configurações",
+      component: Link,
+      shouldRender: isAdmin || permissions?.canAccessSettings,
+    },
+    {
+      href: "#",
+      icon: <Download className="mr-2 h-4 w-4" />,
+      label: "Instalar App",
+      component: InstallPwaMenuItem,
+      shouldRender: true,
+    },
+     {
+      href: "#",
+      icon: <Bell className="mr-2 h-4 w-4" />,
+      label: "Testar Notificações",
+      component: TestNotificationMenuItem,
+      shouldRender: true,
+    },
+  ]
 
-  const visibleActions = actions.filter((action) => action.shouldRender);
+  const visibleNavActions = navActions.filter((action) => action.shouldRender);
+  const visibleUserActions = userActions.filter((action) => action.shouldRender);
+
 
   if (!isClient) {
     return null;
   }
 
   if (isMobile) {
-    if (visibleActions.length === 0) {
+    if (visibleNavActions.length === 0 && visibleUserActions.length === 0) {
         return null;
     }
     return (
@@ -72,7 +108,7 @@ export function HeaderActions() {
             </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-            {visibleActions.map((action) => (
+            {visibleNavActions.map((action) => (
             <DropdownMenuItem key={action.href} asChild>
                 <Link href={action.href}>
                 {action.icon}
@@ -80,6 +116,24 @@ export function HeaderActions() {
                 </Link>
             </DropdownMenuItem>
             ))}
+            {(visibleNavActions.length > 0 && visibleUserActions.length > 0) && <DropdownMenuSeparator />}
+            
+            {visibleUserActions.map((action) => {
+              const ActionComponent = action.component;
+              if (ActionComponent === Link) {
+                 return (
+                  <DropdownMenuItem key={action.href} asChild>
+                      <Link href={action.href}>
+                        {action.icon}
+                        <span>{action.label}</span>
+                      </Link>
+                  </DropdownMenuItem>
+                )
+              }
+              // For components like InstallPwaMenuItem, which is a DropdownMenuItem itself
+              return <ActionComponent key={action.label} />
+            })}
+
         </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -87,7 +141,7 @@ export function HeaderActions() {
 
   return (
     <>
-      {visibleActions.map((action) => (
+      {visibleNavActions.map((action) => (
         <Button key={action.href} variant="ghost" size="icon" asChild>
           <Link href={action.href}>
             {action.icon}
