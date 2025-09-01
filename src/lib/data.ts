@@ -228,69 +228,58 @@ export function getPopulatedRentals(
     onError: (error: Error) => void,
     assignedToId?: string
 ): Unsubscribe {
+    let servicesMap: Map<string, Service> | null = null;
+    let rentalsData: PopulatedRental[] = [];
+    let operationsData: PopulatedRental[] = [];
+    let rentalsUnsub: Unsubscribe | null = null;
+    let operationsUnsub: Unsubscribe | null = null;
 
-    let rentalsQuery: Query<DocumentData> = query(collection(db, `accounts/${accountId}/rentals`), where("accountId", "==", accountId));
-    let operationsQuery: Query<DocumentData> = query(collection(db, `accounts/${accountId}/operations`), where("accountId", "==", accountId));
+    const updateCombinedResults = () => {
+        const all = [...rentalsData, ...operationsData];
+        const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
+        onData(unique);
+    };
+
+    const processSnapshot = async (snapshot: DocumentData, type: 'rental' | 'operation') => {
+        if (!servicesMap) return; // Wait for services to be loaded
+        const promises = snapshot.docs.map((doc: DocumentData) => populateOS(doc, accountId, servicesMap!));
+        const populatedData = (await Promise.all(promises)).filter(Boolean) as PopulatedRental[];
+
+        if (type === 'rental') {
+            rentalsData = populatedData;
+        } else {
+            operationsData = populatedData;
+        }
+        updateCombinedResults();
+    };
+
+    let rentalsQuery: Query<DocumentData> = query(collection(db, `accounts/${accountId}/rentals`));
+    let operationsQuery: Query<DocumentData> = query(collection(db, `accounts/${accountId}/operations`));
 
     if (assignedToId) {
         rentalsQuery = query(rentalsQuery, where("assignedTo", "==", assignedToId));
         operationsQuery = query(operationsQuery, where("assignedTo", "==", assignedToId));
     }
 
-    let combinedResults: PopulatedRental[] = [];
-    let rentalsData: PopulatedRental[] = [];
-    let operationsData: PopulatedRental[] = [];
+    const accountUnsub = onSnapshot(doc(db, `accounts/${accountId}`), (accountDoc) => {
+        if (rentalsUnsub) rentalsUnsub(); // Unsubscribe from previous listeners if account data changes
+        if (operationsUnsub) operationsUnsub();
 
-    const updateCombinedResults = () => {
-        const all = [...rentalsData, ...operationsData];
-        // Deduplicate based on ID, just in case
-        const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
-        onData(unique);
-    };
+        if (accountDoc.exists()) {
+            const allServices = (accountDoc.data()?.services || []) as Service[];
+            servicesMap = new Map(allServices.map(s => [s.id, s]));
 
-    const processSnapshot = async (snapshot: DocumentData, type: 'rental' | 'operation', servicesMap: Map<string, Service>) => {
-        const promises = snapshot.docs.map((doc: DocumentData) => populateOS(doc, accountId, servicesMap));
-        const populatedData = await Promise.all(promises);
-
-        if (type === 'rental') {
-            rentalsData = populatedData.filter(item => item !== null) as PopulatedRental[];
+            rentalsUnsub = onSnapshot(rentalsQuery, (snap) => processSnapshot(snap, 'rental'), onError);
+            operationsUnsub = onSnapshot(operationsQuery, (snap) => processSnapshot(snap, 'operation'), onError);
         } else {
-            operationsData = populatedData.filter(item => item !== null) as PopulatedRental[];
-        }
-        updateCombinedResults();
-    };
-
-    let servicesMap: Map<string, Service> | null = null;
-    
-    // First, fetch the account to get the services list
-    const accountUnsub = onSnapshot(doc(db, `accounts/${accountId}`), async (accountDoc) => {
-        if (!accountDoc.exists()) {
             onError(new Error("Account not found"));
-            return;
         }
-        const allServices = (accountDoc.data()?.services || []) as Service[];
-        servicesMap = new Map(allServices.map(s => [s.id, s]));
-
-        // Once services are loaded, setup listeners for rentals and operations
-        const rentalsUnsub = onSnapshot(rentalsQuery, (snap) => processSnapshot(snap, 'rental', servicesMap!), onError);
-        const operationsUnsub = onSnapshot(operationsQuery, (snap) => processSnapshot(snap, 'operation', servicesMap!), onError);
-        
-        // This is complex. We return a function that unsubscribes from all listeners.
-        // We're already inside the account listener, so it will be part of the teardown.
-        userFacingUnsubscribe = () => {
-            rentalsUnsub();
-            operationsUnsub();
-        };
-
     }, onError);
 
-    let userFacingUnsubscribe = () => {
-        accountUnsub();
-        // The other unsubs will be attached here once the account loads
-    };
-
     return () => {
-        userFacingUnsubscribe();
+        accountUnsub();
+        if (rentalsUnsub) rentalsUnsub();
+        if (operationsUnsub) operationsUnsub();
     };
 }
 // #endregion
