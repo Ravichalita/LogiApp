@@ -19,6 +19,8 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { HeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
+import { useIsMobile } from "@/hooks/use-mobile";
+import React from "react";
 
 
 const navLinks = [
