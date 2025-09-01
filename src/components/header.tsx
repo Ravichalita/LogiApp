@@ -72,6 +72,7 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-2">
           {!isMobile && <HeaderActions />}
           <ThemeToggle />
+          {isMobile && <HeaderActions />}
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -105,7 +106,6 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {isMobile && <HeaderActions />}
         </div>
       </div>
     </header>
