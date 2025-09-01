@@ -7,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema, UpdateBaseAddressSchema, TruckSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema, UpdateBaseAddressSchema, TruckSchema, UpdateTruckSchema } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -439,6 +439,47 @@ export async function createTruckAction(accountId: string, prevState: any, formD
   }
 }
 
+
+export async function updateTruckAction(accountId: string, prevState: any, formData: FormData) {
+  const validatedFields = UpdateTruckSchema.safeParse({
+     ...Object.fromEntries(formData.entries()),
+      year: Number(formData.get('year')),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'error',
+    };
+  }
+
+  const { id, ...truckData } = validatedFields.data;
+
+  try {
+    const truckDoc = getFirestore(adminApp).doc(`accounts/${accountId}/trucks/${id}`);
+    await truckDoc.update({
+      ...truckData,
+      accountId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    revalidatePath('/trucks');
+    revalidatePath('/');
+    return { message: 'success' };
+  } catch (e) {
+    return { message: 'error', error: handleFirebaseError(e) };
+  }
+}
+
+export async function deleteTruckAction(accountId: string, truckId: string) {
+  try {
+    await getFirestore(adminApp).doc(`accounts/${accountId}/trucks/${truckId}`).delete();
+    revalidatePath('/trucks');
+    revalidatePath('/');
+    return { message: 'success' };
+  } catch (e) {
+    return { message: 'error', error: handleFirebaseError(e) };
+  }
+}
 // #endregion
 
 
@@ -480,8 +521,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     
     const rawValue = rawData.value as string;
     const numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
-
-    const validatedFields = RentalSchema.safeParse({
+    
+    const rawDistance = rawData.distance ? parseFloat(rawData.distance as string) : undefined;
+    const dataToValidate = {
         ...rawData,
         sequentialId: newSequentialId,
         value: numericValue,
@@ -489,8 +531,15 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         createdBy: createdBy,
         notificationsSent: { due: false, late: false },
         serviceIds: rawData.serviceIds ? (rawData.serviceIds as string).split(',') : [],
-        distance: rawData.distance ? parseFloat(rawData.distance as string) : undefined,
-    });
+        distance: rawDistance,
+    };
+    
+    // Remove distance if it's undefined to prevent Firestore error
+    if (dataToValidate.distance === undefined) {
+        delete dataToValidate.distance;
+    }
+
+    const validatedFields = RentalSchema.safeParse(dataToValidate);
     
     if (!validatedFields.success) {
       console.log(validatedFields.error.flatten().fieldErrors);
