@@ -1,41 +1,24 @@
 
-
 'use client';
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus, Replace, User } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NewItemDialog } from "./new-item-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { CacambaIcon } from "./icons/cacamba-icon";
+import { NewItemDialog } from "@/components/new-item-dialog";
 
 export function FloatingActionButton() {
     const { user, userAccount } = useAuth();
     const pathname = usePathname();
-    const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
+    const isAdmin = userAccount?.role === 'admin';
 
     if (!user) {
         return null;
     }
 
-    const pagesToHideFab = [
-        '/rentals/new', 
-        '/clients/new',
-        '/finance', 
-        '/settings', 
-        '/admin/clients', 
-        '/notifications-studio',
-        '/trucks',
-    ];
-
-    if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
+    // Don't show FAB on these pages
+    if (pathname.startsWith('/rentals/new') || pathname.startsWith('/finance') || pathname.startsWith('/settings') || pathname.startsWith('/admin/clients')) {
         return null;
     }
 
@@ -49,18 +32,6 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="dumpster" />;
                 }
                 return null;
-            case '/clients':
-                 if (isAdmin || permissions?.canEditClients) {
-                    return (
-                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                            <Link href="/clients/new">
-                                <User className="h-7 w-7" />
-                                <span className="sr-only">Novo Cliente</span>
-                            </Link>
-                        </Button>
-                    );
-                }
-                return null;
             case '/team':
                 if (isAdmin || permissions?.canAccessTeam) {
                     return <NewItemDialog itemType="team" />;
@@ -69,28 +40,12 @@ export function FloatingActionButton() {
             case '/':
             default:
                 return (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button className="h-16 w-16 rounded-full shadow-lg">
+                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                        <Link href="/rentals/new">
                             <Plus className="h-8 w-8" />
-                            <span className="sr-only">Gerar OS</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="mb-2">
-                        <DropdownMenuItem asChild>
-                          <Link href="/rentals/new">
-                            <CacambaIcon className="mr-2 h-4 w-4" />
-                            <span>Aluguel de Caçamba</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                           <Link href="/rentals/new-operation">
-                                <Replace className="mr-2 h-4 w-4" />
-                                <span>Nova Operação</span>
-                           </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            <span className="sr-only">Novo Aluguel</span>
+                        </Link>
+                    </Button>
                 );
         }
     }

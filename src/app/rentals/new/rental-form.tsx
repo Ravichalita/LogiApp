@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { createServiceOrderAction } from '@/lib/actions';
+import { createRental } from '@/lib/actions';
 import type { Client, Dumpster, Location, UserAccount, RentalPrice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -132,9 +131,8 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        formData.set('osType', 'rental');
 
-        const boundAction = createServiceOrderAction.bind(null, accountId, user.uid);
+        const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
 
         if (result?.errors) {
@@ -191,7 +189,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
           </SelectTrigger>
           <SelectContent>
             {dumpsters.map(d => (
-              <SelectItem key={d.id} value={d.id} disabled={d.disabled}>
+              <SelectItem key={d.id} value={d.id} disabled={d.status === 'Em Manutenção'}>
                 <div className="flex justify-between w-full">
                     <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
                     {d.specialStatus && (

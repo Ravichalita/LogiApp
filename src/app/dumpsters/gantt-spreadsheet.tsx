@@ -17,7 +17,7 @@ import { DUMPSTER_COLORS } from '@/lib/types';
 
 interface GanttSpreadsheetProps {
   dumpsters: Dumpster[];
-  rentals: (Rental & {id: string})[];
+  rentals: Rental[];
   clients: Client[];
 }
 
@@ -40,6 +40,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     const clientMap = new Map(clients.map(c => [c.id, c.name]));
 
     const data = dumpsters
+      .filter(d => d.status !== 'Em Manutenção')
       .sort((a,b) => a.name.localeCompare(b.name))
       .map(dumpster => {
         const dailyStatuses = dates.map(date => {
@@ -122,3 +123,5 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     </TooltipProvider>
   );
 }
+
+    

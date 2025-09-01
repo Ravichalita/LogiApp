@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { NewItemDialog } from '@/components/new-item-dialog';
 
 function ClientListSkeleton() {
     return (

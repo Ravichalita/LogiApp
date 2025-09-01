@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
 import { updateRentalAction } from '@/lib/actions';
-import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Service, Dumpster, Truck } from '@/lib/types';
+import type { Client, PopulatedRental, Location, UserAccount, RentalPrice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,26 +12,21 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, Clock, Milestone } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isBefore as isBeforeDate, parseISO, set } from 'date-fns';
+import { format, isBefore as isBeforeDate, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Check } from 'lucide-react';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
   clients: Client[];
   team: UserAccount[];
   rentalPrices?: RentalPrice[];
-  dumpsters: Dumpster[];
-  trucks: Truck[];
-  services: Service[];
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -48,93 +44,21 @@ const formatCurrencyForDisplay = (value: number): string => {
   }).format(value);
 };
 
-const generateTimeOptions = () => {
-    const options = [];
-    for (let i = 0; i < 24; i++) {
-        options.push(`${i.toString().padStart(2, '0')}:00`);
-        options.push(`${i.toString().padStart(2, '0')}:30`);
-    }
-    return options;
-};
-
-const MultiSelect = ({ name, placeholder, options, defaultValues, onSelectionChange }: { name: string; placeholder: string; options: { value: string, label: string, icon: React.ElementType }[], defaultValues: string[], onSelectionChange: (values: string[]) => void }) => {
-    const [open, setOpen] = useState(false);
-    const [selectedValues, setSelectedValues] = useState<string[]>(defaultValues);
-    
-    const toggleSelection = (value: string) => {
-      const newSelection = selectedValues.includes(value) 
-          ? selectedValues.filter(v => v !== value) 
-          : [...selectedValues, value];
-  
-      setSelectedValues(newSelection);
-      onSelectionChange(newSelection);
-    }
-  
-    return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <input type="hidden" name={name} value={selectedValues.join(',')} />
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
-          >
-            {selectedValues.length > 0
-              ? `${selectedValues.length} selecionado(s)`
-              : placeholder}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-          <Command>
-            <CommandInput placeholder="Buscar..." />
-            <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
-            <CommandList>
-              <CommandGroup>
-                {options.map(option => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={() => toggleSelection(option.value)}
-                  >
-                    <div className={cn(
-                      "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                      selectedValues.includes(option.value) ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
-                    )}>
-                      <Check className="h-4 w-4" />
-                    </div>
-                    <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <span>{option.label}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    );
-};
-
-export function EditRentalForm({ rental, clients, team, rentalPrices, dumpsters, trucks, services }: EditRentalFormProps) {
+export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRentalFormProps) {
   const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const isOperation = rental.osType === 'operation';
-  const timeOptions = generateTimeOptions();
-
   const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedToUser?.id);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
   const [rentalDate, setRentalDate] = useState<Date | undefined>(parseISO(rental.rentalDate));
   const [returnDate, setReturnDate] = useState<Date | undefined>(parseISO(rental.returnDate));
-  const [operationTime, setOperationTime] = useState<string>(format(parseISO(rental.rentalDate), 'HH:mm'));
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(
     rental.latitude && rental.longitude ? { lat: rental.latitude, lng: rental.longitude } : null
   );
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState(formatCurrencyForInput((rental.value * 100).toString()));
   const [priceId, setPriceId] = useState<string | undefined>();
-  const [serviceIds, setServiceIds] = useState<string[]>(rental.serviceIds || []);
   
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -154,30 +78,13 @@ export function EditRentalForm({ rental, clients, team, rentalPrices, dumpsters,
         
         formData.set('id', rental.id);
         formData.set('deliveryAddress', deliveryAddress);
-
-        if (isOperation) {
-            let combinedDate: Date | undefined = undefined;
-            if (rentalDate) {
-                const [hours, minutes] = operationTime.split(':').map(Number);
-                combinedDate = set(rentalDate, { hours, minutes });
-            }
-            if (combinedDate) {
-                formData.set('rentalDate', combinedDate.toISOString());
-                formData.set('returnDate', combinedDate.toISOString());
-            }
-        } else {
-            if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
-            if (returnDate) formData.set('returnDate', returnDate.toISOString());
-        }
-
+        if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
+        if (returnDate) formData.set('returnDate', returnDate.toISOString());
         if (location) {
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        formData.set('value', value);
-        if (isOperation) {
-            formData.set('serviceIds', serviceIds.join(','));
-        }
+        formData.set('value', value); // Send the formatted string, server action will parse it
 
         const boundAction = updateRentalAction.bind(null, accountId);
         const result = await boundAction(null, formData);
@@ -215,14 +122,11 @@ export function EditRentalForm({ rental, clients, team, rentalPrices, dumpsters,
     <form action={handleFormAction} className="space-y-6">
         {/* Hidden inputs to pass data not directly in a form field */}
         <input type="hidden" name="clientId" value={rental.clientId} />
-        {isOperation 
-            ? <input type="hidden" name="truckId" value={rental.truck?.id} />
-            : <input type="hidden" name="dumpsterId" value={rental.dumpster?.id} />
-        }
+        <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
 
       <div className="space-y-2">
-        <Label>{isOperation ? 'Caminhão' : 'Caçamba'}</Label>
-        <Input value={isOperation ? rental.truck?.model : rental.dumpster?.name} disabled />
+        <Label>Caçamba</Label>
+        <Input value={`${rental.dumpster?.name} (${rental.dumpster?.size}m³)`} disabled />
       </div>
 
       <div className="space-y-2">
@@ -257,7 +161,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices, dumpsters,
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>{isOperation ? 'Data da Operação' : 'Data de Entrega'}</Label>
+          <Label>Data de Entrega</Label>
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -283,73 +187,40 @@ export function EditRentalForm({ rental, clients, team, rentalPrices, dumpsters,
           </Popover>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
         </div>
-        
-        {isOperation ? (
-            <div className="space-y-2">
-                <Label>Hora da Operação</Label>
-                <Select value={operationTime} onValueChange={setOperationTime}>
-                    <SelectTrigger>
-                        <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <SelectValue />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {timeOptions.map(time => (
-                            <SelectItem key={time} value={time}>{time}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-        ) : (
-            <div className="space-y-2">
-            <Label>Data de Retirada (Prevista)</Label>
-            <Popover>
-                <PopoverTrigger asChild>
-                <Button
-                    variant={"outline"}
-                    className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !returnDate && "text-muted-foreground"
-                    )}
-                    disabled={!rentalDate}
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                <Calendar
-                    mode="single"
-                    selected={returnDate}
-                    onSelect={setReturnDate}
-                    disabled={(date) => rentalDate ? isBeforeDate(date, rentalDate) : true}
-                    initialFocus
-                    locale={ptBR}
-                />
-                </PopoverContent>
-            </Popover>
-            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
-            </div>
-        )}
+        <div className="space-y-2">
+          <Label>Data de Retirada (Prevista)</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !returnDate && "text-muted-foreground"
+                )}
+                disabled={!rentalDate}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={returnDate}
+                onSelect={setReturnDate}
+                disabled={(date) => rentalDate ? isBeforeDate(date, rentalDate) : true}
+                initialFocus
+                locale={ptBR}
+              />
+            </PopoverContent>
+          </Popover>
+           {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
+        </div>
       </div>
-
-       {isOperation && (
-          <div className="space-y-2">
-            <Label htmlFor="services">Serviços</Label>
-            <MultiSelect 
-                name="serviceIds"
-                placeholder="Selecione um ou mais serviços"
-                options={services.map(s => ({ value: s.id, label: s.name, icon: Milestone }))}
-                defaultValues={serviceIds}
-                onSelectionChange={setServiceIds}
-            />
-          </div>
-       )}
        
        <div className="space-y-2">
-        <Label htmlFor="value">{isOperation ? 'Valor Combinado (R$)' : 'Valor da Diária (R$)'}</Label>
-        {(!isOperation && rentalPrices && rentalPrices.length > 0) ? (
+        <Label htmlFor="value">Valor da Diária (R$)</Label>
+        {(rentalPrices && rentalPrices.length > 0) ? (
             <div className="flex gap-2">
                 <Select onValueChange={handlePriceSelection} value={priceId}>
                      <SelectTrigger>

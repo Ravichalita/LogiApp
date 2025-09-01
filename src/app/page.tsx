@@ -1,14 +1,22 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, fetchTeamMembers } from '@/lib/data';
-import type { PopulatedRental, UserAccount, Rental } from '@/lib/types';
+import type { PopulatedRental, UserAccount } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays } from 'date-fns';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Milestone } from 'lucide-react';
+import { RentalCardActions } from './rentals/rental-card-actions';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,28 +24,15 @@ import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
-import { RentalDetailsDialog } from './rentals/rental-details-dialog';
 
-type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje' | 'Em Andamento';
+type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type RentalStatusFilter = RentalStatus | 'Todas';
-type OsTypeFilter = 'all' | 'rental' | 'operation';
 
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning', order: number } {
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
-  
-  if (rental.osType === 'operation') {
-      if (isToday(rentalDate)) {
-        return { text: 'Em Andamento', variant: 'success', order: 1 };
-      }
-       if (isBefore(today, rentalDate)) {
-        return { text: 'Pendente', variant: 'secondary', order: 2 };
-      }
-      return { text: 'Em Atraso', variant: 'destructive', order: 3 }; // Or some other status for past operations
-  }
 
-  // Logic for 'rental' type
   if (isAfter(today, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
@@ -53,19 +48,12 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
 }
 
-const statusFilterOptions: { label: string, value: RentalStatusFilter }[] = [
+const filterOptions: { label: string, value: RentalStatusFilter }[] = [
     { label: "Todas", value: 'Todas' },
     { label: "Pendente", value: 'Pendente' },
     { label: "Ativo", value: 'Ativo' },
-    { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Em Atraso", value: 'Em Atraso' },
-];
-
-const osTypeFilterOptions: { label: string, value: OsTypeFilter }[] = [
-    { label: 'Todas as OS', value: 'all' },
-    { label: 'Aluguéis', value: 'rental' },
-    { label: 'Operações', value: 'operation' },
 ];
 
 
@@ -97,6 +85,13 @@ function RentalCardSkeleton() {
                                     <Skeleton className="h-5 w-3/4" />
                                 </div>
                             </div>
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-1/2" />
+                                </div>
+                            </div>
                         </div>
                         <div className="flex flex-col md:flex-row w-full gap-2 mt-4">
                             <Skeleton className="h-10 w-full" />
@@ -128,6 +123,13 @@ function RentalCardSkeleton() {
                                     <Skeleton className="h-5 w-3/4" />
                                 </div>
                             </div>
+                            <div className="flex items-start gap-3">
+                                <Skeleton className="h-5 w-5 rounded-full mt-1" />
+                                <div className="flex flex-col gap-2 w-full">
+                                    <Skeleton className="h-4 w-1/4" />
+                                    <Skeleton className="h-5 w-1/2" />
+                                </div>
+                            </div>
                         </div>
                         <div className="flex flex-col md:flex-row w-full gap-2 mt-4">
                             <Skeleton className="h-10 w-full" />
@@ -145,7 +147,6 @@ export default function HomePage() {
   const [localLoading, setLocalLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
-  const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
   const isAdmin = userAccount?.role === 'admin';
@@ -187,10 +188,6 @@ export default function HomePage() {
   const filteredAndSortedRentals = useMemo(() => {
     let filtered = rentals;
 
-    if (osTypeFilter !== 'all') {
-        filtered = filtered.filter(rental => rental.osType === osTypeFilter);
-    }
-
     if (statusFilter !== 'Todas') {
         filtered = filtered.filter(rental => {
             const status = getRentalStatus(rental);
@@ -202,11 +199,9 @@ export default function HomePage() {
         const lowercasedTerm = searchTerm.toLowerCase();
         filtered = filtered.filter(rental => 
             rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
-            (rental.osType === 'rental' && rental.dumpster?.name.toLowerCase().includes(lowercasedTerm)) ||
-            (rental.osType === 'operation' && rental.truck?.model.toLowerCase().includes(lowercasedTerm)) ||
-            (rental.osType === 'operation' && rental.services?.some(s => s.name.toLowerCase().includes(lowercasedTerm))) ||
+            rental.dumpster?.name.toLowerCase().includes(lowercasedTerm) ||
             rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
-            String(rental.sequentialId).toLowerCase().includes(lowercasedTerm)
+            String(rental.sequentialId).includes(lowercasedTerm)
         );
     }
 
@@ -218,7 +213,7 @@ export default function HomePage() {
         }
         return parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime();
     });
-  }, [rentals, statusFilter, osTypeFilter, searchTerm]);
+  }, [rentals, statusFilter, searchTerm]);
 
   if (authLoading || localLoading) {
     return (
@@ -282,31 +277,14 @@ export default function HomePage() {
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-                placeholder="Buscar por cliente, recurso, usuário ou nº da OS..."
+                placeholder="Buscar por cliente, caçamba, usuário ou nº da OS..."
                 className="pl-9 bg-card"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
             />
         </div>
-        <div className='flex flex-wrap gap-2'>
-            {osTypeFilterOptions.map(option => (
-                 <Button
-                    key={option.value}
-                    variant={osTypeFilter === option.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setOsTypeFilter(option.value)}
-                    className="text-xs h-7"
-                >
-                    {option.label}
-                </Button>
-            ))}
-        </div>
-        
         <div className="flex flex-wrap gap-2">
-            {statusFilterOptions.map(option => {
-                if (osTypeFilter === 'operation' && ['Ativo', 'Encerra hoje'].includes(option.label)) return null;
-                if (osTypeFilter === 'rental' && ['Em Andamento'].includes(option.label)) return null;
-                return (
+            {filterOptions.map(option => (
                 <Button
                     key={option.value}
                     variant={statusFilter === option.value ? "default" : "outline"}
@@ -316,74 +294,58 @@ export default function HomePage() {
                 >
                     {option.label}
                 </Button>
-            )}
-            )}
+            ))}
         </div>
       </div>
 
       <div className="space-y-4">
         {filteredAndSortedRentals.length > 0 ? filteredAndSortedRentals.map((rental) => {
-            // Add a guard clause to ensure essential data exists
-            if (!rental || !rental.client || !rental.assignedToUser) {
-                return null;
-            }
-            if(rental.osType === 'rental' && !rental.dumpster) return null;
-            if(rental.osType === 'operation' && !rental.truck) return null;
-
-
             const status = getRentalStatus(rental);
-            const isOperation = rental.osType === 'operation';
-            const title = isOperation 
-                ? (rental.services?.map(s => s.name).join(', ') || 'Operação')
-                : rental.dumpster?.name;
-            const icon = isOperation ? <Milestone className="h-5 w-5" /> : <Truck className="h-5 w-5" />;
-
             return (
-                <Card key={rental.id} className="relative flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                     <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
+            <Accordion type="single" collapsible className="w-full" key={rental.id}>
+                <AccordionItem value={rental.id} className="border-none">
+                <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                    <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
                         {rental.sequentialId}
                     </span>
                     <CardHeader className="pb-4">
-                        <div className="flex items-start justify-between">
-                            <CardTitle className="text-xl font-headline flex items-center gap-2">{icon}{title}</CardTitle>
-                             <div className="flex flex-col items-end gap-1 ml-2">
-                                <Badge variant={status.variant} className="text-center">{status.text}</Badge>
-                            </div>
+                    <div className="flex items-start justify-between">
+                        <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
+                        <div className="flex flex-col items-end gap-1 ml-2">
+                            <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                         </div>
-                        <p className="text-muted-foreground mt-2">
-                            Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
-                        </p>
-                        <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
-                             <div className="flex items-center gap-2">
-                                <User className="h-5 w-5" /> 
-                                {canEdit ? (
-                                    <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                        <span className="cursor-pointer hover:underline">{rental.assignedToUser?.name}</span>
-                                    </EditAssignedUserDialog>
-                                ) : (
-                                    <span>{rental.assignedToUser?.name}</span>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2 text-right">
-                                <Calendar className="h-5 w-5" />
-                                {isOperation ? (
-                                    <span>{format(parseISO(rental.rentalDate), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
-                                ) : (
-                                    <span>
-                                        {format(parseISO(rental.rentalDate), "dd/MM", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                                    </span>
-                                )}
-                            </div>
+                    </div>
+                    <p className="text-muted-foreground mt-2">
+                        Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
+                    </p>
+                    <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
+                        <div className="flex items-center gap-2">
+                            <User className="h-5 w-5" /> 
+                            {canEdit ? (
+                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                    <span className="cursor-pointer hover:underline">{rental.assignedToUser?.name}</span>
+                                </EditAssignedUserDialog>
+                            ) : (
+                                <span>{rental.assignedToUser?.name}</span>
+                            )}
                         </div>
+                        <div className="flex items-center gap-2 text-right">
+                            <Calendar className="h-5 w-5" />
+                            <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                        </div>
+                    </div>
                     </CardHeader>
-                    <CardContent className="mt-auto p-4 pt-0">
-                        <RentalDetailsDialog rental={rental}>
-                            <Button variant="outline" className="w-full">
-                                Ver Detalhes
-                            </Button>
-                        </RentalDetailsDialog>
+                    <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
+                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                           <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                        </AccordionTrigger>
+                        <AccordionContent className="p-4">
+                            <RentalCardActions rental={rental} status={status} />
+                        </AccordionContent>
                     </CardContent>
                 </Card>
+                </AccordionItem>
+            </Accordion>
             );
         }) : (
             <div className="text-center py-16 bg-card rounded-lg border">
@@ -394,5 +356,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

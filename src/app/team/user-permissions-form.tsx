@@ -13,7 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 const permissionLabels: Record<keyof Permissions, string> = {
   canAccessTeam: 'Acessar Equipe',
-  canAccessFinance: 'Acessar Histórico',
+  canAccessFinance: 'Acessar Estatísticas',
   canAccessSettings: 'Acessar Configurações',
   canEditClients: 'Editar e Excluir Clientes',
   canEditDumpsters: 'Editar e Excluir Caçambas',

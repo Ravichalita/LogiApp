@@ -36,6 +36,7 @@ interface AuthContextType {
   deferredPrompt: BeforeInstallPromptEvent | null;
   isPwaInstalled: boolean;
   handleInstall: () => void;
+  accountMissing: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -49,10 +50,11 @@ export const AuthContext = createContext<AuthContextType>({
   deferredPrompt: null,
   isPwaInstalled: false,
   handleInstall: () => {},
+  accountMissing: false,
 });
 
 const nonAuthRoutes = ['/login', '/signup'];
-const publicRoutes = [...nonAuthRoutes, '/verify-email'];
+const publicRoutes = [...nonAuthRoutes, '/verify-email', '/restore-from-backup'];
 
 // Define o email do Super Admin. Somente este usuário poderá criar novas contas de cliente.
 const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
@@ -90,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isPwaInstalled, setIsPwaInstalled] = useState(false);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [accountMissing, setAccountMissing] = useState(false);
   const sessionWorkPerformed = useRef(false); // Used for all once-per-session tasks
   const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
 
@@ -114,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccountId(null);
     setRole(null);
     setIsSuperAdmin(false);
+    setAccountMissing(false);
     sessionWorkPerformed.current = false; // Reset session work on logout
     fcmSetupPerformed.current = false; // Reset FCM setup on logout
     await signOut(auth);
@@ -171,6 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionWorkPerformed.current = false; // Reset on user change
       fcmSetupPerformed.current = false;
       setShowWelcomeDialog(false);
+      setAccountMissing(false);
+
       if (userDocUnsubscribe.current) userDocUnsubscribe.current();
       if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
 
@@ -275,9 +281,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (accountSnap.exists()) {
                 const accountData = { id: accountSnap.id, ...accountSnap.data() } as Account;
                 setAccount(accountData);
+                setAccountMissing(false); // Account found, reset the flag
             } else {
-                console.error("Account document not found after claims were confirmed. Logging out.");
-                logout();
+                console.error("Account document not found after claims were confirmed. Activating recovery mode.");
+                setAccountMissing(true);
+                setAccount(null); // Explicitly set account to null
+                setUserAccount(null); // Also clear userAccount as it depends on a valid account
+                setLoading(false); // Stop loading to show recovery UI
+                // Don't logout here. Let the UI handle the recovery flow.
             }
         }, async (error) => {
              console.error("Error listening to account document:", error);
@@ -317,6 +328,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
+    if (accountMissing) {
+        if (!pathname.startsWith('/restore-from-backup')) {
+            router.push('/restore-from-backup');
+        }
+        return;
+    }
+
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
     if (!user && !isPublicRoute) {
@@ -331,7 +349,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
          router.push('/');
       }
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname, router, accountMissing]);
   
   const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
   
@@ -354,6 +372,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     deferredPrompt,
     isPwaInstalled,
     handleInstall,
+    accountMissing,
   };
 
   return (

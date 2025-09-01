@@ -7,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, Service, ServiceSchema, UpdateBaseAddressSchema, TruckSchema, UpdateTruckSchema, OperationSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -129,18 +129,19 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
         const accountSnap = await accountRef.get();
         const ownerId = accountSnap.data()?.ownerId;
         if (!ownerId) {
-            throw new Error("Não foi possível encontrar o proprietário da conta para reatribuir as OS.");
+            throw new Error("Não foi possível encontrar o proprietário da conta para reatribuir os aluguéis.");
         }
         
-        // 3. Find and reassign active rentals and operations
-        const rentalsRef = db.collection(`accounts/${accountId}/rentals`).where('assignedTo', '==', userId);
-        const operationsRef = db.collection(`accounts/${accountId}/operations`).where('assignedTo', '==', userId);
+        // 3. Find and reassign active rentals
+        const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+        const rentalsQuery = rentalsRef.where('assignedTo', '==', userId);
+        const rentalsSnap = await rentalsQuery.get();
         
-        const [rentalsSnap, operationsSnap] = await Promise.all([rentalsRef.get(), operationsRef.get()]);
-        
-        rentalsSnap.forEach(doc => batch.update(doc.ref, { assignedTo: ownerId }));
-        operationsSnap.forEach(doc => batch.update(doc.ref, { assignedTo: ownerId }));
-
+        if (!rentalsSnap.empty) {
+            rentalsSnap.forEach(doc => {
+                batch.update(doc.ref, { assignedTo: ownerId });
+            });
+        }
 
         // 4. Remove user from account members list
         batch.update(accountRef, {
@@ -225,13 +226,16 @@ export async function deleteClientAction(accountId: string, clientId: string) {
   const batch = db.batch();
 
   try {
-    // Find and delete all rentals and operations associated with this client
-    const rentalsRef = db.collection(`accounts/${accountId}/rentals`).where('clientId', '==', clientId);
-    const operationsRef = db.collection(`accounts/${accountId}/operations`).where('clientId', '==', clientId);
-    const [rentalsSnap, operationsSnap] = await Promise.all([rentalsRef.get(), operationsRef.get()]);
+    // Find and delete all rentals associated with this client
+    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+    const rentalsQuery = rentalsRef.where('clientId', '==', clientId);
+    const rentalsSnap = await rentalsQuery.get();
 
-    rentalsSnap.forEach(doc => batch.delete(doc.ref));
-    operationsSnap.forEach(doc => batch.delete(doc.ref));
+    if (!rentalsSnap.empty) {
+      rentalsSnap.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+    }
 
     // Delete the client document
     const clientRef = db.doc(`accounts/${accountId}/clients/${clientId}`);
@@ -240,7 +244,7 @@ export async function deleteClientAction(accountId: string, clientId: string) {
     await batch.commit();
 
     revalidatePath('/clients');
-    revalidatePath('/'); // Also revalidate home page as OS are deleted
+    revalidatePath('/'); // Also revalidate home page as rentals are deleted
     return { message: 'success' };
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) };
@@ -317,13 +321,22 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
         }
         
         // Disassociate user from rentals instead of deleting them, to preserve history
-        const rentalsRef = db.collection(`accounts/${accountId}/rentals`).where('assignedTo', '==', userId);
-        const rentalsSnap = await rentalsRef.get();
-        rentalsSnap.forEach(doc => batch.update(doc.ref, { assignedTo: FieldValue.delete() }));
-
-        const operationsRef = db.collection(`accounts/${accountId}/operations`).where('assignedTo', '==', userId);
-        const operationsSnap = await operationsRef.get();
-        operationsSnap.forEach(doc => batch.update(doc.ref, { assignedTo: FieldValue.delete() }));
+        const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+        const assignedRentalsQuery = rentalsRef.where('assignedTo', '==', userId);
+        const assignedRentalsSnap = await assignedRentalsQuery.get();
+        if (!assignedRentalsSnap.empty) {
+            assignedRentalsSnap.forEach(doc => {
+                batch.update(doc.ref, { assignedTo: FieldValue.delete() });
+            });
+        }
+        
+        const createdRentalsQuery = rentalsRef.where('createdBy', '==', userId);
+        const createdRentalsSnap = await createdRentalsQuery.get();
+        if (!createdRentalsSnap.empty) {
+            createdRentalsSnap.forEach(doc => {
+                batch.update(doc.ref, { createdBy: FieldValue.delete() });
+            });
+        }
 
         const accountRef = db.doc(`accounts/${accountId}`);
         batch.update(accountRef, {
@@ -395,213 +408,120 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
     }
 }
 
+
 // #endregion
 
-// #region Truck Actions
+// #region Rental Actions
 
-export async function createTruckAction(accountId: string, prevState: any, formData: FormData) {
-  const validatedFields = TruckSchema.safeParse({
-      ...Object.fromEntries(formData.entries()),
-      year: Number(formData.get('year')),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'error',
-    };
-  }
-
-  try {
-    const trucksCollection = getFirestore(adminApp).collection(`accounts/${accountId}/trucks`);
-    await trucksCollection.add({
-      ...validatedFields.data,
-      accountId,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-    revalidatePath('/trucks');
-    return { message: 'success' };
-  } catch (e) {
-    return { message: 'error', error: handleFirebaseError(e) };
-  }
-}
-
-
-export async function updateTruckAction(accountId: string, prevState: any, formData: FormData) {
-  const validatedFields = UpdateTruckSchema.safeParse({
-     ...Object.fromEntries(formData.entries()),
-      year: Number(formData.get('year')),
-  });
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'error',
-    };
-  }
-
-  const { id, ...truckData } = validatedFields.data;
-
-  try {
-    const truckDoc = getFirestore(adminApp).doc(`accounts/${accountId}/trucks/${id}`);
-    await truckDoc.update({
-      ...truckData,
-      accountId,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    revalidatePath('/trucks');
-    revalidatePath('/');
-    return { message: 'success' };
-  } catch (e) {
-    return { message: 'error', error: handleFirebaseError(e) };
-  }
-}
-
-export async function deleteTruckAction(accountId: string, truckId: string) {
-  try {
-    await getFirestore(adminApp).doc(`accounts/${accountId}/trucks/${truckId}`).delete();
-    revalidatePath('/trucks');
-    revalidatePath('/');
-    return { message: 'success' };
-  } catch (e) {
-    return { message: 'error', error: handleFirebaseError(e) };
-  }
-}
-// #endregion
-
-
-// #region Service Order Actions (Common Logic)
-
-// This function now handles both Rentals and Operations
-export async function createServiceOrderAction(accountId: string, createdBy: string, prevState: any, formData: FormData) {
+export async function createRental(accountId: string, createdBy: string, prevState: any, formData: FormData) {
   const db = getFirestore(adminApp);
   const accountRef = db.doc(`accounts/${accountId}`);
   
-  const rawData = Object.fromEntries(formData.entries());
-  const osType = rawData.osType as 'rental' | 'operation';
-
   try {
-    // Determine which counter to use based on osType
-    const counterField = osType === 'rental' ? 'rentalCounter' : 'operationCounter';
-    const prefix = osType === 'rental' ? 'AL' : 'OP';
-
     const newSequentialId = await db.runTransaction(async (transaction) => {
         const accountSnap = await transaction.get(accountRef);
-        if (!accountSnap.exists) throw new Error("Conta não encontrada.");
-        
-        const currentCounter = accountSnap.data()?.[counterField] || 0;
+        if (!accountSnap.exists) {
+            throw new Error("Conta não encontrada.");
+        }
+        const currentCounter = accountSnap.data()?.rentalCounter || 0;
         const newCounter = currentCounter + 1;
-        transaction.update(accountRef, { [counterField]: newCounter });
-        return `${prefix}-${newCounter}`;
+        transaction.update(accountRef, { rentalCounter: newCounter });
+        return newCounter;
     });
-    
+
+    const rawData = Object.fromEntries(formData.entries());
     const rawValue = rawData.value as string;
     const numericValue = parseFloat(rawValue.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
-    
-    let validatedData;
-    let dataToSave;
 
-    const baseData = {
+    const validatedFields = RentalSchema.safeParse({
         ...rawData,
         sequentialId: newSequentialId,
         value: numericValue,
         status: 'Pendente',
         createdBy: createdBy,
-        accountId: accountId,
-        notificationsSent: { due: false, late: false },
-        createdAt: FieldValue.serverTimestamp(),
-    };
+        notificationsSent: { due: false, late: false }
+    });
+    
+    if (!validatedFields.success) {
+      console.log(validatedFields.error.flatten().fieldErrors);
+      return {
+        errors: validatedFields.error.flatten().fieldErrors,
+        message: 'error',
+      };
+    }
 
-    if (osType === 'rental') {
-        validatedData = RentalSchema.safeParse(baseData);
-        if (!validatedData.success) {
-            return { errors: validatedData.error.flatten().fieldErrors, message: 'error' };
+    const rentalData = validatedFields.data;
+
+    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
+    const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
+    const existingRentalsSnap = await q.get();
+
+    const newRentalStart = new Date(rentalData.rentalDate);
+    const newRentalEnd = new Date(rentalData.returnDate);
+
+    for (const doc of existingRentalsSnap.docs) {
+        const existingRental = doc.data() as Rental;
+        const existingStart = new Date(existingRental.rentalDate);
+        const existingEnd = new Date(existingRental.returnDate);
+        if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
+            return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
         }
-        dataToSave = validatedData.data;
-
-        // Conflict check for rentals
-        const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
-        const q = rentalsRef.where('dumpsterId', '==', dataToSave.dumpsterId);
-        const existingRentalsSnap = await q.get();
-        const newRentalStart = new Date(dataToSave.rentalDate);
-        const newRentalEnd = new Date(dataToSave.returnDate);
-
-        for (const doc of existingRentalsSnap.docs) {
-            const existingRental = doc.data() as Rental;
-            const existingStart = new Date(existingRental.rentalDate);
-            const existingEnd = new Date(existingRental.returnDate);
-            if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
-                return { message: `Conflito de agendamento. Esta caçamba já está reservada.` };
-            }
-        }
-
-        await rentalsRef.add(dataToSave);
-    } else { // osType === 'operation'
-        validatedData = OperationSchema.safeParse({
-            ...baseData,
-            serviceIds: rawData.serviceIds ? (rawData.serviceIds as string).split(',') : [],
-        });
-        if (!validatedData.success) {
-            return { errors: validatedData.error.flatten().fieldErrors, message: 'error' };
-        }
-        dataToSave = validatedData.data;
-        const operationsRef = db.collection(`accounts/${accountId}/operations`);
-        await operationsRef.add(dataToSave);
     }
     
-    // Send Notification
-    const resourceSnap = osType === 'rental' 
-      ? await db.doc(`accounts/${accountId}/dumpsters/${dataToSave.dumpsterId}`).get()
-      : await db.doc(`accounts/${accountId}/trucks/${dataToSave.truckId}`).get();
-    const resourceName = resourceSnap.data()?.name || resourceSnap.data()?.model || 'Recurso';
+    await rentalsRef.add({
+      ...rentalData,
+      accountId,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
+    const dumpsterName = dumpsterSnap.data()?.name || 'Caçamba';
     
     await sendNotification({
-        userId: dataToSave.assignedTo,
+        userId: rentalData.assignedTo,
         title: `Nova OS #${newSequentialId} Designada`,
-        body: `Você foi designado para a OS da ${resourceName}.`,
+        body: `Você foi designado para a OS da ${dumpsterName}.`,
     });
 
   } catch (e) {
-    return { message: handleFirebaseError(e) };
+    return { message: handleFirebaseError(e) as string };
   }
 
   revalidatePath('/');
   redirect('/');
 }
 
-
 export async function finishRentalAction(accountId: string, formData: FormData) {
     const rentalId = formData.get('rentalId') as string;
-    const osType = formData.get('osType') as 'rental' | 'operation';
-
-    if (!rentalId || !accountId || !osType) {
-        return { message: 'error', error: 'Dados da OS ou da conta estão ausentes.' };
+    if (!rentalId || !accountId) {
+        console.error("finishRentalAction called without rentalId or accountId.");
+        return { message: 'error', error: 'ID da OS ou da conta está ausente.' };
     }
     
     const db = getFirestore(adminApp);
     const batch = db.batch();
     
     try {
-        const collectionName = osType === 'rental' ? 'rentals' : 'operations';
-        const rentalRef = db.doc(`accounts/${accountId}/${collectionName}/${rentalId}`);
+        const rentalRef = db.doc(`accounts/${accountId}/rentals/${rentalId}`);
         const rentalSnap = await rentalRef.get();
         
-        if (!rentalSnap.exists) throw new Error('OS não encontrada.');
+        if (!rentalSnap.exists) {
+            throw new Error('OS não encontrada.');
+        }
         
-        const rentalData = rentalSnap.data() as Rental; // Using Rental type as it's a superset
+        const rentalData = rentalSnap.data() as Rental;
 
         // Fetch related data to store a complete snapshot
         const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
-        const dumpsterSnap = rentalData.dumpsterId ? await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get() : null;
-        const truckSnap = rentalData.truckId ? await db.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : null;
+        const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
 
         const rentalDate = new Date(rentalData.rentalDate);
         const returnDate = new Date(rentalData.returnDate);
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
-        const diffDays = osType === 'rental' ? Math.ceil(diffTime / (1000 * 60 * 60 * 24)) : 1;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const rentalDays = Math.max(diffDays, 1);
-        const totalValue = rentalData.osType === 'rental' ? rentalDays * rentalData.value : rentalData.value;
+        const totalValue = rentalDays * rentalData.value;
         
         const completedRentalData = {
             ...rentalData,
@@ -610,21 +530,22 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             rentalDays,
             totalValue,
             accountId,
-            client: clientSnap.exists() ? clientSnap.data() : null,
-            dumpster: dumpsterSnap?.exists() ? dumpsterSnap.data() : null,
-            truck: truckSnap?.exists() ? truckSnap.data() : null,
-            assignedToUser: assignedToSnap.exists() ? assignedToSnap.data() : null,
+            // Store denormalized data for historical integrity
+            client: clientSnap.exists ? clientSnap.data() : null,
+            dumpster: dumpsterSnap.exists ? dumpsterSnap.data() : null,
+            assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
         };
         
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, completedRentalData);
+
         batch.delete(rentalRef);
         
         await batch.commit();
 
     } catch(e) {
-         console.error("Failed to finish OS:", e);
-         throw e; 
+         console.error("Failed to finish rental:", e);
+         throw e; // Rethrow to be caught by Next.js form handling
     }
     
     revalidatePath('/');
@@ -632,27 +553,21 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
     redirect('/');
 }
 
-export async function deleteRentalAction(accountId: string, rentalId: string, osType: 'rental' | 'operation') {
-    if (!rentalId || !osType) {
-        return { message: 'error', error: 'ID ou tipo da OS estão ausentes.' };
+export async function deleteRentalAction(accountId: string, rentalId: string) {
+    if (!rentalId) {
+        return { message: 'error', error: 'Rental ID is missing.' };
     }
     try {
-        const collectionName = osType === 'rental' ? 'rentals' : 'operations';
-        await getFirestore(adminApp).doc(`accounts/${accountId}/${collectionName}/${rentalId}`).delete();
+        await getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${rentalId}`).delete();
         revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return { message: 'error', error: handleFirebaseError(e) as string };
     }
 }
 
 export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
-    const osType = rawData.osType as 'rental' | 'operation';
-
-    if (!osType) {
-        return { message: 'error', error: 'Tipo de OS não especificado.' };
-    }
 
     let numericValue: number | undefined = undefined;
     if (rawData.value) {
@@ -663,7 +578,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     const dataToValidate = {
         ...rawData,
         value: numericValue,
-        serviceIds: rawData.serviceIds ? (rawData.serviceIds as string).split(',') : undefined,
     };
 
     const validatedFields = UpdateRentalSchema.safeParse(dataToValidate);
@@ -684,8 +598,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     try {
-        const collectionName = osType === 'rental' ? 'rentals' : 'operations';
-        const rentalDoc = getFirestore(adminApp).doc(`accounts/${accountId}/${collectionName}/${id}`);
+        const rentalDoc = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
         
         const rentalBeforeUpdate = (await rentalDoc.get()).data() as Rental;
         
@@ -735,53 +648,6 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
         });
         revalidatePath('/settings');
         revalidatePath('/rentals/new');
-        return { message: 'success' };
-    } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function updateBaseAddressAction(accountId: string, prevState: any, formData: FormData) {
-    const validatedFields = UpdateBaseAddressSchema.safeParse(Object.fromEntries(formData.entries()));
-
-    if (!validatedFields.success) {
-        return { message: 'error', error: validatedFields.error.flatten().fieldErrors.baseAddress?.[0] };
-    }
-
-    try {
-        const { baseAddress, baseLatitude, baseLongitude } = validatedFields.data;
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
-        await accountRef.update({
-            baseAddress,
-            baseLocation: { lat: baseLatitude, lng: baseLongitude },
-        });
-        revalidatePath('/settings');
-        revalidatePath('/rentals/new-operation');
-        return { message: 'success' };
-    } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function updateServicesAction(accountId: string, services: Service[]) {
-    const validatedFields = z.array(ServiceSchema).safeParse(services);
-    
-    if (!validatedFields.success) {
-        const error = validatedFields.error.flatten().fieldErrors;
-        console.error("Service validation error:", error);
-        return {
-            message: 'error',
-            error: JSON.stringify(error),
-        };
-    }
-
-    try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
-        await accountRef.update({
-            services: validatedFields.data ?? []
-        });
-        revalidatePath('/settings');
-        revalidatePath('/rentals/new-operation');
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -841,7 +707,7 @@ export async function resetAllDataAction(accountId: string) {
     try {
         const db = getFirestore(adminApp);
         
-        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'operations', 'completed_rentals', 'trucks'];
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
         for (const collection of collectionsToDelete) {
             await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
         }
@@ -853,7 +719,6 @@ export async function resetAllDataAction(accountId: string) {
         await db.doc(`accounts/${accountId}`).update({
             rentalPrices: [],
             rentalCounter: 0,
-            operationCounter: 0,
         });
 
 
@@ -862,7 +727,6 @@ export async function resetAllDataAction(accountId: string) {
         revalidatePath('/dumpsters');
         revalidatePath('/finance');
         revalidatePath('/settings');
-        revalidatePath('/trucks');
         
         return { message: 'success' };
     } catch (e) {
@@ -945,7 +809,7 @@ export async function createFirestoreBackupAction(accountId: string, retentionDa
             });
         });
         
-        const subcollectionsToBackup = ['clients', 'dumpsters', 'rentals', 'operations', 'completed_rentals', 'trucks'];
+        const subcollectionsToBackup = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
         const accountDoc = await db.doc(`accounts/${accountId}`).get();
         
         if (accountDoc.exists) {
@@ -1017,7 +881,7 @@ export async function restoreFirestoreBackupAction(accountId: string, backupId: 
     }
 
     const db = adminDb;
-    const subcollections = ['clients', 'dumpsters', 'rentals', 'operations', 'completed_rentals', 'trucks'];
+    const subcollections = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
 
     try {
         for (const collection of subcollections) {
@@ -1105,8 +969,6 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
 
     for (const doc of rentalsSnap.docs) {
         const rental = { id: doc.id, ...doc.data() } as Rental;
-        if (rental.osType !== 'rental') continue; // Only send for rentals
-
         const returnDate = parseISO(rental.returnDate);
 
         if (isToday(addDays(returnDate, -1)) && !rental.notificationsSent?.due) {
@@ -1281,7 +1143,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
         const db = adminDb;
         const batch = db.batch();
 
-        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'operations', 'completed_rentals', 'trucks'];
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals'];
         for (const collection of collectionsToDelete) {
             await deleteCollection(db, `accounts/${accountId}/${collection}`, 50);
         }
@@ -1314,3 +1176,5 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
+    

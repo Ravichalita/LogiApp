@@ -12,12 +12,9 @@ import {
   Query,
   DocumentData,
   orderBy,
-  collectionGroup,
-  Timestamp,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Service, Truck, Operation } from './types';
-import { startOfToday, isAfter, parseISO, isToday } from 'date-fns';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup } from './types';
 
 type Unsubscribe = () => void;
 
@@ -110,51 +107,21 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
 }
 // #endregion
 
-// #region Truck Data
-export function getTrucks(accountId: string, callback: (trucks: Truck[]) => void): Unsubscribe {
-    const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
-    const q = query(trucksCollection, where("accountId", "==", accountId));
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const trucks = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        } as Truck));
-        callback(trucks);
-    }, (error) => {
-        console.error("Error fetching trucks:", error);
-        callback([]);
-    });
-
-    return unsubscribe;
-}
-
-export async function fetchTrucks(accountId: string): Promise<Truck[]> {
-    const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
-    const q = query(trucksCollection, where("accountId", "==", accountId));
-    const querySnapshot = await getDocs(q);
-    const trucks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Truck));
-    return trucks.sort((a, b) => a.model.localeCompare(b.model));
-}
-// #endregion
-
-
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const rentals = querySnapshot.docs
-            .map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
-                    returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
-                } as Rental;
-            });
+        const rentals = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
+                returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
+            } as Rental;
+        });
         callback(rentals);
     }, (error) => {
         console.error("Error fetching rentals:", error);
@@ -166,66 +133,20 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
 
 export async function getActiveRentalsForUser(accountId: string, id: string, field: 'assignedTo' | 'clientId' = 'assignedTo'): Promise<Rental[]> {
     if (!accountId || !id) return [];
-    
-    const today = startOfToday();
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const qRentals = query(rentalsCollection, where(field, "==", id));
-    
-    const operationsCollection = collection(db, `accounts/${accountId}/operations`);
-    const qOperations = query(operationsCollection, where(field, "==", id));
-    
-    const [rentalsSnapshot, operationsSnapshot] = await Promise.all([
-        getDocs(qRentals),
-        getDocs(qOperations)
-    ]);
-    
-    const rentals = rentalsSnapshot.docs.map(doc => doc.data() as Rental);
-    const operations = operationsSnapshot.docs.map(doc => doc.data() as Rental);
-
-    // This correctly includes overdue items for this specific check.
-    const combined = [...rentals, ...operations];
-
-    return combined.map(data => ({
-        ...data,
-        id: data.id,
-        rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
-        returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
-    }));
+    const q = query(rentalsCollection, where(field, "==", id));
+    const querySnapshot = await getDocs(q);
+    const rentals = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...data,
+            rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
+            returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
+        } as Rental;
+    });
+    return rentals;
 }
-
-
-const populateOS = async (docSnap: DocumentData, accountId: string, servicesMap: Map<string, Service>): Promise<PopulatedRental> => {
-    const osData = docSnap.data() as Rental; // Rental is a superset type
-
-    const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, osData.clientId));
-    const assignedToPromise = getDoc(doc(db, `users`, osData.assignedTo));
-    
-    let resourcePromise;
-    if (osData.osType === 'rental' && osData.dumpsterId) {
-        resourcePromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, osData.dumpsterId));
-    } else if (osData.osType === 'operation' && osData.truckId) {
-        resourcePromise = getDoc(doc(db, `accounts/${accountId}/trucks`, osData.truckId));
-    } else {
-        resourcePromise = Promise.resolve(null);
-    }
-
-    const [clientSnap, assignedToSnap, resourceSnap] = await Promise.all([clientPromise, assignedToPromise, resourcePromise]);
-
-    const selectedServices = (osData.serviceIds || []).map(id => servicesMap.get(id)).filter(Boolean) as Service[];
-
-    return {
-        ...osData,
-        id: docSnap.id,
-        rentalDate: osData.rentalDate?.toDate ? osData.rentalDate.toDate().toISOString() : osData.rentalDate,
-        returnDate: osData.returnDate?.toDate ? osData.returnDate.toDate().toISOString() : osData.returnDate,
-        dumpster: osData.osType === 'rental' && resourceSnap?.exists() ? { id: resourceSnap.id, ...resourceSnap.data() } as Dumpster : null,
-        truck: osData.osType === 'operation' && resourceSnap?.exists() ? { id: resourceSnap.id, ...resourceSnap.data() } as Truck : null,
-        client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-        assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
-        services: selectedServices,
-    };
-};
-
 
 export function getPopulatedRentals(
     accountId: string, 
@@ -233,63 +154,49 @@ export function getPopulatedRentals(
     onError: (error: Error) => void,
     assignedToId?: string
 ): Unsubscribe {
-    let servicesMap: Map<string, Service> | null = null;
-    let rentalsData: PopulatedRental[] = [];
-    let operationsData: PopulatedRental[] = [];
-    let rentalsUnsub: Unsubscribe | null = null;
-    let operationsUnsub: Unsubscribe | null = null;
-
-    const updateCombinedResults = () => {
-        const all = [...rentalsData, ...operationsData];
-        const unique = Array.from(new Map(all.map(item => [item.id, item])).values());
-        onData(unique);
-    };
-
-    const processSnapshot = async (snapshot: DocumentData, type: 'rental' | 'operation') => {
-        if (!servicesMap) return; // Wait for services to be loaded
-        
-        // No date filtering here. We fetch all active OS and let the UI sort and filter them.
-        const activeDocs = snapshot.docs;
-
-        const promises = activeDocs.map((doc: DocumentData) => populateOS(doc, accountId, servicesMap!));
-        const populatedData = (await Promise.all(promises)).filter(Boolean) as PopulatedRental[];
-
-        if (type === 'rental') {
-            rentalsData = populatedData;
-        } else {
-            operationsData = populatedData;
-        }
-        updateCombinedResults();
-    };
+    const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     
-    let rentalsQuery: Query<DocumentData> = collection(db, `accounts/${accountId}/rentals`);
-    let operationsQuery: Query<DocumentData> = collection(db, `accounts/${accountId}/operations`);
-
+    let q: Query<DocumentData> = query(rentalsCollection, where("accountId", "==", accountId));
+    
     if (assignedToId) {
-        rentalsQuery = query(rentalsQuery, where("assignedTo", "==", assignedToId));
-        operationsQuery = query(operationsQuery, where("assignedTo", "==", assignedToId));
+        q = query(q, where("assignedTo", "==", assignedToId));
     }
 
-    const accountUnsub = onSnapshot(doc(db, `accounts/${accountId}`), (accountDoc) => {
-        if (rentalsUnsub) rentalsUnsub(); // Unsubscribe from previous listeners if account data changes
-        if (operationsUnsub) operationsUnsub();
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        try {
+            const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
+                const rentalData = rentalDoc.data() as Omit<Rental, 'id'>;
 
-        if (accountDoc.exists()) {
-            const allServices = (accountDoc.data()?.services || []) as Service[];
-            servicesMap = new Map(allServices.map(s => [s.id, s]));
+                const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
+                const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
+                const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
 
-            rentalsUnsub = onSnapshot(rentalsQuery, (snap) => processSnapshot(snap, 'rental'), onError);
-            operationsUnsub = onSnapshot(operationsQuery, (snap) => processSnapshot(snap, 'operation'), onError);
-        } else {
-            onError(new Error("Account not found"));
+                const [dumpsterSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, clientPromise, assignedToPromise]);
+
+                return {
+                    id: rentalDoc.id,
+                    ...rentalData,
+                    rentalDate: rentalData.rentalDate?.toDate ? rentalData.rentalDate.toDate().toISOString() : rentalData.rentalDate,
+                    returnDate: rentalData.returnDate?.toDate ? rentalData.returnDate.toDate().toISOString() : rentalData.returnDate,
+                    dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
+                    client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
+                    assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
+                };
+            });
+
+            const populatedRentals = await Promise.all(rentalPromises);
+            onData(populatedRentals.filter(r => r.client && r.dumpster && r.assignedToUser));
+        } catch(e) {
+            console.error("Error processing populated rentals:", e)
+            if (e instanceof Error) {
+               onError(e);
+            }
         }
-    }, onError);
+    }, (error) => {
+        onError(error);
+    });
 
-    return () => {
-        accountUnsub();
-        if (rentalsUnsub) rentalsUnsub();
-        if (operationsUnsub) operationsUnsub();
-    };
+    return unsubscribe;
 }
 // #endregion
 

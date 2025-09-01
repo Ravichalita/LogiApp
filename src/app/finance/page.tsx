@@ -9,7 +9,7 @@ import { getCompletedRentals } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, History } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Paperclip } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -57,48 +57,48 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg w-[90vw] sm:w-full rounded-lg">
-                <DialogHeader className="px-6 pt-6">
+            <DialogContent className="max-w-md">
+                <DialogHeader>
                     <DialogTitle>Detalhes da OS #{rental.sequentialId}</DialogTitle>
                     <DialogDescription>Finalizada em {format(parseISO(rental.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 p-6 max-h-[70vh] overflow-y-auto">
-                     <div className="flex items-start gap-4">
+                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
+                     <div className="flex items-start gap-3">
                         <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Cliente</span>
                             <span className="font-medium">{rental.client?.name}</span>
                         </div>
                     </div>
-                     <div className="flex items-start gap-4">
+                     <div className="flex items-start gap-3">
                         <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Responsável</span>
                             <span className="font-medium">{rental.assignedToUser?.name ?? 'N/A'}</span>
                         </div>
                     </div>
-                     <div className="flex items-start gap-4">
+                     <div className="flex items-start gap-3">
                         <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Caçamba</span>
                             <span className="font-medium">{rental.dumpster?.name} ({rental.dumpster?.size}m³)</span>
                         </div>
                     </div>
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3">
                         <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Endereço</span>
                             <span className="font-medium">{rental.deliveryAddress}</span>
                         </div>
                     </div>
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3">
                         <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Período</span>
                             <span className="font-medium">{format(parseISO(rental.rentalDate), 'dd/MM/yy')} - {format(parseISO(rental.returnDate), 'dd/MM/yy')} ({rental.rentalDays} dias)</span>
                         </div>
                     </div>
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3">
                         <DollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Valor Total</span>
@@ -106,7 +106,7 @@ function CompletedRentalDetailsDialog({ rental, isOpen, onOpenChange }: { rental
                         </div>
                     </div>
                     {rental.observations && (
-                         <div className="flex items-start gap-4">
+                         <div className="flex items-start gap-3">
                             <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                             <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Observações</span>
@@ -209,7 +209,7 @@ export default function FinancePage() {
         <div className="container mx-auto py-8 px-4 md:px-6">
             <div className="mb-8">
                  <h1 className="text-3xl font-headline font-bold">Estatísticas</h1>
-                 <p className="text-muted-foreground mt-1">Estatísticas financeiras e histórico de ordens de serviço.</p>
+                 <p className="text-muted-foreground mt-1">Visualize as estatísticas e o desempenho do seu negócio.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">

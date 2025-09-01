@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,11 +8,9 @@ import { getAccount } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RentalPricesForm } from '@/app/finance/rental-prices-form';
-import { ServicesForm } from './services-form';
-import { BaseAddressForm } from './base-address-form';
 import { ResetAllDataButton, ResetFinancialDataButton } from '@/app/finance/reset-button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, TriangleAlert, Cog, Tag, HardDrive, Wrench, Home } from 'lucide-react';
+import { ShieldAlert, TriangleAlert, Cog, Tag, HardDrive } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BackupRestore } from './backup-restore';
 import { BackupSettingsForm } from './backup-settings-form';
@@ -67,23 +64,6 @@ export default function SettingsPage() {
                 </div>
 
                 <Accordion type="multiple" className="space-y-4">
-                    <AccordionItem value="base-address" className="border rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                            <div className="flex items-center gap-3">
-                                <Home className="h-6 w-6" />
-                                <div className="text-left">
-                                    <h3 className="font-headline text-lg font-semibold">Endereço da Base</h3>
-                                    <p className="text-sm text-muted-foreground font-normal">Defina o endereço principal da sua empresa.</p>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            <Separator />
-                            <div className="p-4">
-                                {isLoading || !account ? <Skeleton className="h-24 w-full" /> : <BaseAddressForm account={account} />}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
                     <AccordionItem value="prices" className="border rounded-lg bg-card">
                         <AccordionTrigger className="p-4 hover:no-underline">
                             <div className="flex items-center gap-3">
@@ -98,23 +78,6 @@ export default function SettingsPage() {
                             <Separator />
                             <div className="p-4">
                                 {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <RentalPricesForm account={account} />}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                     <AccordionItem value="services" className="border rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                            <div className="flex items-center gap-3">
-                                <Wrench className="h-6 w-6" />
-                                <div className="text-left">
-                                    <h3 className="font-headline text-lg font-semibold">Tabela de Serviços</h3>
-                                    <p className="text-sm text-muted-foreground font-normal">Gerencie os serviços oferecidos em operações.</p>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            <Separator />
-                            <div className="p-4">
-                                {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <ServicesForm account={account} />}
                             </div>
                         </AccordionContent>
                     </AccordionItem>

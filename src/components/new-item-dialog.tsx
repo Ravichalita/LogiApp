@@ -11,17 +11,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, UserPlus, Building, User, Truck } from 'lucide-react';
+import { Plus, UserPlus, Building, User } from 'lucide-react';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
-import { TruckForm } from '@/app/trucks/truck-form';
 import { InviteForm } from '@/app/team/invite-form';
 import { AdminInviteForm } from '@/app/team/admin-invite-form';
 import { ClientForm } from '@/app/clients/client-form';
 import { useRouter } from 'next/navigation';
-import { CacambaIcon } from './icons/cacamba-icon';
 
 interface NewItemDialogProps {
-  itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client' | 'truck';
+  itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client';
   onSuccess?: () => void;
 }
 
@@ -31,18 +29,16 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
 
   const titles = {
     dumpster: 'Nova Caçamba',
-    truck: 'Novo Caminhão',
     team: 'Adicionar membro à equipe',
     clientAdmin: 'Cadastrar Novo Cliente (Admin)',
-    client: 'Novo Cliente',
+    client: 'Novo Cliente'
   };
 
   const descriptions = {
     dumpster: 'Cadastre uma nova caçamba no seu inventário.',
-    truck: 'Cadastre um novo caminhão na sua frota.',
     team: 'Crie uma conta para um funcionário. Ele terá acesso aos dados da sua empresa com as permissões que você definir.',
     clientAdmin: 'Crie uma nova conta de administrador para seu cliente. Ele terá uma conta separada e isolada para gerenciar os próprios dados.',
-    client: 'Adicione um novo cliente à sua lista.',
+    client: 'Adicione um novo cliente à sua lista.'
   };
   
   const handleSave = () => {
@@ -54,21 +50,18 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     }
   }
 
-
   const formComponent = {
     dumpster: <DumpsterForm onSave={handleSave} />,
-    truck: <TruckForm onSave={handleSave} />,
     team: <InviteForm onSave={handleSave} />,
     clientAdmin: <AdminInviteForm onSave={handleSave} />,
     client: <ClientForm />,
   };
   
    const iconComponent = {
-    dumpster: <CacambaIcon className="h-8 w-8" />,
-    truck: <Truck className="h-8 w-8" />,
+    dumpster: <Plus className="h-8 w-8" />,
     team: <UserPlus className="h-7 w-7" />,
     clientAdmin: <Building className="h-7 w-7" />,
-    client: <User className="h-7 w-7" />,
+    client: <User className="h-7 w-7" />
    }
    
   return (

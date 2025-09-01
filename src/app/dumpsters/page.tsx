@@ -1,14 +1,13 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
-import { getPopulatedRentals, fetchClients, getDumpsters } from '@/lib/data';
+import { getDumpsters, getRentals, fetchClients } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DumpsterActions, MaintenanceCheckbox, DumpsterOptionsMenu } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor, Client, PopulatedRental } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor, Client } from '@/lib/types';
 import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,9 +72,9 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[]
 ];
 
 export default function DumpstersPage() {
-  const { accountId, userAccount } = useAuth();
-  const [allDumpsters, setAllDumpsters] = useState<Dumpster[]>([]);
-  const [allServiceOrders, setAllServiceOrders] = useState<PopulatedRental[]>([]);
+  const { accountId } = useAuth();
+  const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
+  const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -91,69 +90,43 @@ export default function DumpstersPage() {
 
   useEffect(() => {
     if (accountId) {
-      setLoading(true);
-      const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
-      const userIdToFilter = canViewAll ? undefined : userAccount?.id;
-
-      let dumpstersLoaded = false;
-      let serviceOrdersLoaded = false;
-
-      const checkAllDataLoaded = () => {
-          if(dumpstersLoaded && serviceOrdersLoaded) {
-              setLoading(false);
-          }
-      }
-
-      const unsubDumpsters = getDumpsters(accountId, (dumpsters) => {
-        setAllDumpsters(dumpsters);
-        dumpstersLoaded = true;
-        checkAllDataLoaded();
+      const unsubscribeDumpsters = getDumpsters(accountId, (data) => {
+        setDumpsters(data);
+        if(loading) setLoading(false);
       });
-
-      const unsubServiceOrders = getPopulatedRentals(
-        accountId,
-        (data) => {
-          setAllServiceOrders(data);
-          serviceOrdersLoaded = true;
-          checkAllDataLoaded();
-        },
-        (error) => {
-          console.error("Error fetching service orders:", error);
-          serviceOrdersLoaded = true;
-          checkAllDataLoaded();
-        },
-        userIdToFilter
-      );
+      const unsubscribeRentals = getRentals(accountId, (data) => {
+        setAllRentals(data);
+      });
       
+      // Fetch clients for the spreadsheet tooltips
       fetchClients(accountId).then(setClients);
 
       return () => {
-        unsubDumpsters();
-        unsubServiceOrders();
+        unsubscribeDumpsters();
+        unsubscribeRentals();
       }
     } else {
-        setAllDumpsters([]);
-        setAllServiceOrders([]);
+        setDumpsters([]);
+        setAllRentals([]);
         setClients([]);
         setLoading(false);
     }
-  }, [accountId, userAccount]);
+  }, [accountId, loading]);
 
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
-    const rentalServiceOrders = allServiceOrders.filter(os => os.osType === 'rental');
-
-    return allDumpsters.map(d => {
+    
+    return dumpsters.map(d => {
       if (d.status === 'Em Manutenção') {
         return { ...d, derivedStatus: 'Em Manutenção' };
       }
       
-      const dumpsterRentals = rentalServiceOrders.filter(r => r.dumpsterId === d.id);
+      const dumpsterRentals = allRentals.filter(r => r.dumpsterId === d.id);
       
       const activeRental = dumpsterRentals.find(r => {
           const rentalStart = parseISO(r.rentalDate);
           const rentalEnd = parseISO(r.returnDate);
-          return isWithinInterval(today, { start: rentalStart, end: rentalEnd });
+          return isToday(rentalStart) || isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
       });
 
       if(activeRental) {
@@ -176,7 +149,7 @@ export default function DumpstersPage() {
       return { ...d, derivedStatus: 'Disponível' };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-  }, [allDumpsters, allServiceOrders]);
+  }, [dumpsters, allRentals]);
 
   const filteredDumpsters = useMemo(() => {
     let result = dumpstersWithDerivedStatus;
@@ -226,9 +199,6 @@ export default function DumpstersPage() {
     });
   };
 
-  const rentalsForSpreadsheet = useMemo(() => {
-    return allServiceOrders.filter(os => os.osType === 'rental') as (Rental & {id: string})[];
-  }, [allServiceOrders]);
 
   return (
     <div className="container mx-auto py-8 px-4 md:px:6">
@@ -249,7 +219,7 @@ export default function DumpstersPage() {
             </CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                    {loading ? <Skeleton className="h-[200px] w-full" /> : <GanttSpreadsheet dumpsters={allDumpsters} rentals={rentalsForSpreadsheet} clients={clients} />}
+                    {loading ? <Skeleton className="h-[200px] w-full" /> : <GanttSpreadsheet dumpsters={dumpsters} rentals={allRentals} clients={clients} />}
                 </div>
             </CardContent>
         </Card>

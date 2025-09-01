@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account } from '@/lib/types';
-import { isAfter, isToday, parseISO, startOfDay, format, isWithinInterval, isBefore, endOfDay } from 'date-fns';
+import { isAfter, isToday, parseISO, startOfDay, format, isWithinInterval, isBefore, endOfDay, subDays } from 'date-fns';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
@@ -61,62 +61,61 @@ export default function NewRentalPage() {
   const dumpstersForForm = useMemo((): DumpsterForForm[] => {
     const today = startOfDay(new Date());
 
-    return dumpsters.map(d => {
+    return dumpsters
+      .map(d => {
         if (d.status === 'Em Manutenção') {
-            return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [] };
+          return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [] };
         }
-
+        
         const dumpsterRentals = allRentals
             .filter(r => r.dumpsterId === d.id)
             .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
 
-        const disabledRanges = dumpsterRentals.map(r => ({
-            from: startOfDay(parseISO(r.rentalDate)),
-            to: endOfDay(parseISO(r.returnDate)),
-        }));
-
-        const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
-        
-        // Find a rental that is currently active or is the next one up.
-        const currentOrNextRental = sortedRentals.find(r => {
+        const disabledRanges = dumpsterRentals.map(r => {
             const rentalStart = startOfDay(parseISO(r.rentalDate));
             const rentalEnd = endOfDay(parseISO(r.returnDate));
-            return isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(rentalStart, today);
-        });
-        
-        let specialStatus: string | undefined = undefined;
+            // A caçamba fica disponível no dia da retirada, então o bloqueio vai até o dia anterior.
+            return {
+                from: rentalStart,
+                to: subDays(rentalEnd, 1),
+            }
+        }).filter(range => range.to >= range.from); // Ensure range is valid
 
+        // Find the current or next rental to determine the specialStatus
+        const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
+        const currentOrNextRental = sortedRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
+
+        let specialStatus: string | undefined = undefined;
+        
         if (currentOrNextRental) {
             const rentalStart = startOfDay(parseISO(currentOrNextRental.rentalDate));
             const rentalEnd = endOfDay(parseISO(currentOrNextRental.returnDate));
 
             if (isWithinInterval(today, { start: rentalStart, end: rentalEnd })) {
-                if (isToday(rentalEnd)) {
+                 if (isToday(rentalEnd)) {
                     specialStatus = `Encerra hoje`;
-                } else {
+                 } else {
                     specialStatus = `Alugada até ${format(rentalEnd, 'dd/MM/yy')}`;
-                }
+                 }
             } else if (isBefore(today, rentalStart)) {
                 specialStatus = `Reservada para ${format(rentalStart, 'dd/MM/yy')}`;
             }
         }
-
-        const isRentedNow = dumpsterRentals.some(r => isWithinInterval(today, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) }));
-
+        
         return { 
-            ...d, 
-            disabled: d.status === 'Em Manutenção' || isRentedNow,
-            specialStatus,
-            disabledRanges,
+          ...d, 
+          disabled: d.status === 'Em Manutenção',
+          specialStatus,
+          disabledRanges,
         };
-    });
-}, [dumpsters, allRentals]);
+      });
+  }, [dumpsters, allRentals]);
 
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Novo Aluguel</CardTitle>
+          <CardTitle className="font-headline text-2xl">Gerar Ordem de Serviço</CardTitle>
           <CardDescription>Selecione a caçamba, o cliente e as datas para registrar um novo aluguel.</CardDescription>
         </CardHeader>
         <CardContent>
