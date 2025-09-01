@@ -96,7 +96,7 @@ export default function DumpstersPage() {
         if(loading) setLoading(false);
       });
       const unsubscribeRentals = getRentals(accountId, (data) => {
-        setAllRentals(data);
+        setAllRentals(data.filter(r => r.osType === 'rental'));
       });
       
       // Fetch clients for the spreadsheet tooltips
@@ -129,7 +129,6 @@ export default function DumpstersPage() {
           const rentalEnd = parseISO(r.returnDate);
           return isWithinInterval(today, { start: rentalStart, end: rentalEnd });
       });
-
 
       if(activeRental) {
         const returnDate = parseISO(activeRental.returnDate);

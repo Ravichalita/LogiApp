@@ -142,13 +142,9 @@ export async function fetchTrucks(accountId: string): Promise<Truck[]> {
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
-    const q = query(
-        rentalsCollection, 
-        where("accountId", "==", accountId)
-    );
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const today = startOfToday();
         const rentals = querySnapshot.docs
             .map(doc => {
                 const data = doc.data();
@@ -158,8 +154,7 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
                     rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
                     returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
                 } as Rental;
-            })
-            .filter(rental => isAfter(parseISO(rental.returnDate), today) || isToday(parseISO(rental.returnDate)));
+            });
         callback(rentals);
     }, (error) => {
         console.error("Error fetching rentals:", error);
