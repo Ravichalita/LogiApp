@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone, User, Settings, Download, Bell } from "lucide-react";
+import { BarChart, MoreVertical, ShieldCheck, Users, Megaphone, Settings, Download, Bell } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -57,13 +57,6 @@ export function HeaderActions() {
   ];
   
   const userActions = [
-     {
-      href: "/account",
-      icon: <User className="mr-2 h-4 w-4" />,
-      label: "Sua Conta",
-      component: Link,
-      shouldRender: true,
-    },
     {
       href: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,

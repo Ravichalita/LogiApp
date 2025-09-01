@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Settings } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -17,12 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { TestNotificationMenuItem } from "./test-notification-menu-item";
-import { InstallPwaMenuItem } from "./install-pwa-menu-item";
 import { HeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
-import { useIsMobile } from "@/hooks/use-mobile";
-import React from "react";
 
 
 const navLinks = [
@@ -40,9 +36,6 @@ export function Header() {
   React.useEffect(() => {
     setIsClient(true);
   }, []);
-
-  const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
-  const permissions = userAccount?.permissions;
 
   const renderNavLinks = () =>
     navLinks.map((link) => (
@@ -97,27 +90,13 @@ export function Header() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {isClient && !isMobile && (
-                <>
-                  <DropdownMenuItem asChild>
-                    <Link href="/account">
-                        <UserIcon className="mr-2 h-4 w-4" />
-                        <span>Sua Conta</span>
-                      </Link>
-                  </DropdownMenuItem>
-                  {(isAdmin || permissions?.canAccessSettings) && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Configurações</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <InstallPwaMenuItem />
-                  <TestNotificationMenuItem />
-                  <DropdownMenuSeparator />
-                </>
-              )}
+              <DropdownMenuItem asChild>
+                <Link href="/account">
+                  <UserIcon className="mr-2 h-4 w-4" />
+                  <span>Sua Conta</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sair</span>
