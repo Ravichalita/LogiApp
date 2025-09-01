@@ -6,7 +6,8 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { getBackupsAction, restoreFirestoreBackupAction } from '@/lib/actions';
+import { restoreFirestoreBackupAction } from '@/lib/actions';
+import { getBackupsAction } from '@/lib/data-server-actions';
 import type { Backup } from '@/lib/types';
 import { HardDrive, RotateCcw, List, TriangleAlert } from 'lucide-react';
 import {
@@ -139,4 +140,3 @@ export default function RestoreFromBackupPage() {
     </div>
   );
 }
-
