@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
@@ -126,8 +127,7 @@ export default function DumpstersPage() {
       const activeRental = dumpsterRentals.find(r => {
           const rentalStart = parseISO(r.rentalDate);
           const rentalEnd = parseISO(r.returnDate);
-          // An active rental is one where today is between the start and end dates (inclusive).
-          return isToday(rentalStart) || isToday(rentalEnd) || isWithinInterval(today, { start: rentalStart, end: rentalEnd });
+          return isWithinInterval(today, { start: rentalStart, end: rentalEnd });
       });
 
 
