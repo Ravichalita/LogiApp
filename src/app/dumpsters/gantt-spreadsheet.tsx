@@ -40,13 +40,11 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     const clientMap = new Map(clients.map(c => [c.id, c.name]));
 
     const data = dumpsters
-      .filter(d => d.status !== 'Em Manutenção')
       .sort((a,b) => a.name.localeCompare(b.name))
       .map(dumpster => {
         const dailyStatuses = dates.map(date => {
           const rentalOnDate = rentals.find(r =>
             r.dumpsterId === dumpster.id &&
-            r.osType === 'rental' &&
             isWithinInterval(date, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) })
           );
 

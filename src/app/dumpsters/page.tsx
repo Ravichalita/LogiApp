@@ -95,19 +95,32 @@ export default function DumpstersPage() {
       const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
       const userIdToFilter = canViewAll ? undefined : userAccount?.id;
 
+      let dumpstersLoaded = false;
+      let serviceOrdersLoaded = false;
+
+      const checkAllDataLoaded = () => {
+          if(dumpstersLoaded && serviceOrdersLoaded) {
+              setLoading(false);
+          }
+      }
+
       const unsubDumpsters = getDumpsters(accountId, (dumpsters) => {
         setAllDumpsters(dumpsters);
+        dumpstersLoaded = true;
+        checkAllDataLoaded();
       });
 
       const unsubServiceOrders = getPopulatedRentals(
         accountId,
         (data) => {
           setAllServiceOrders(data);
-          if(loading) setLoading(false);
+          serviceOrdersLoaded = true;
+          checkAllDataLoaded();
         },
         (error) => {
           console.error("Error fetching service orders:", error);
-          if(loading) setLoading(false);
+          serviceOrdersLoaded = true;
+          checkAllDataLoaded();
         },
         userIdToFilter
       );
@@ -124,7 +137,7 @@ export default function DumpstersPage() {
         setClients([]);
         setLoading(false);
     }
-  }, [accountId, userAccount, loading]);
+  }, [accountId, userAccount]);
 
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
@@ -236,7 +249,7 @@ export default function DumpstersPage() {
             </CardHeader>
             <CardContent className="p-0">
                 <div className="overflow-x-auto">
-                    {loading ? <Skeleton className="h-[200px] w-full" /> : <GanttSpreadsheet dumpsters={dumpstersWithDerivedStatus} rentals={rentalsForSpreadsheet} clients={clients} />}
+                    {loading ? <Skeleton className="h-[200px] w-full" /> : <GanttSpreadsheet dumpsters={allDumpsters} rentals={rentalsForSpreadsheet} clients={clients} />}
                 </div>
             </CardContent>
         </Card>
