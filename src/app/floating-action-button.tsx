@@ -1,12 +1,20 @@
 
+
 'use client';
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Replace } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NewItemDialog } from "./new-item-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CacambaIcon } from "./icons/cacamba-icon";
 
 export function FloatingActionButton() {
     const { user, userAccount } = useAuth();
@@ -16,6 +24,20 @@ export function FloatingActionButton() {
     if (!user) {
         return null;
     }
+
+    const pagesToHideFab = [
+        '/rentals/new', 
+        '/clients/new',
+        '/finance', 
+        '/settings', 
+        '/admin/clients', 
+        '/notifications-studio',
+    ];
+
+    if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
+        return null;
+    }
+
 
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
@@ -28,14 +50,7 @@ export function FloatingActionButton() {
                 return null;
             case '/clients':
                  if (isAdmin || permissions?.canEditClients) {
-                    return (
-                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                            <Link href="/clients/new">
-                                <Plus className="h-8 w-8" />
-                                <span className="sr-only">Novo Cliente</span>
-                            </Link>
-                        </Button>
-                    );
+                    return <NewItemDialog itemType="client" />;
                 }
                 return null;
             case '/team':
@@ -44,30 +59,35 @@ export function FloatingActionButton() {
                 }
                 return null;
             case '/trucks':
-                // For now, let's assume adding trucks is an admin/owner feature
                  if (isAdmin) {
                     return <NewItemDialog itemType="truck" />;
                 }
                 return null;
-            // Explicitly handle routes where no FAB should be shown
-            case '/finance':
-            case '/settings':
-            case '/admin/clients':
-            case '/notifications-studio':
-                return null;
-            // Hide on any new/edit page as well
-            case (pathname.match(/(\/new|\/edit)/) || {}).input:
-                return null;
-            // Default FAB for home and other pages
             case '/':
             default:
                 return (
-                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                        <Link href="/rentals/new">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className="h-16 w-16 rounded-full shadow-lg">
                             <Plus className="h-8 w-8" />
                             <span className="sr-only">Gerar OS</span>
-                        </Link>
-                    </Button>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="mb-2">
+                        <DropdownMenuItem asChild>
+                          <Link href="/rentals/new">
+                            <CacambaIcon className="mr-2 h-4 w-4" />
+                            <span>Aluguel de Caçamba</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                           <Link href="/rentals/new-operation">
+                                <Replace className="mr-2 h-4 w-4" />
+                                <span>Nova Operação</span>
+                           </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                 );
         }
     }
