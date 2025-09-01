@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { createRental } from '@/lib/actions';
+import { createServiceOrderAction } from '@/lib/actions';
 import type { Client, Dumpster, Location, UserAccount, RentalPrice } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -134,7 +134,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         }
         formData.set('osType', 'rental');
 
-        const boundAction = createRental.bind(null, accountId, user.uid);
+        const boundAction = createServiceOrderAction.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
 
         if (result?.errors) {

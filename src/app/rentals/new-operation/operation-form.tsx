@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useCallback } from 'react';
-import { createRental } from '@/lib/actions';
+import { createServiceOrderAction } from '@/lib/actions';
 import type { Client, Location, UserAccount, Service, Account, DirectionsResponse, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -233,7 +234,7 @@ export function OperationForm({ trucks, clients, team, services, account }: Oper
         }
 
 
-        const boundAction = createRental.bind(null, accountId, user.uid);
+        const boundAction = createServiceOrderAction.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
 
         if (result?.errors) {

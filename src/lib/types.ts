@@ -137,14 +137,11 @@ export const UpdateTruckSchema = TruckSchema.extend({
   id: z.string(),
 });
 
-
-export const RentalSchema = z.object({
+const BaseServiceOrderSchema = z.object({
   sequentialId: z.string(),
-  dumpsterId: z.string({ required_error: "Selecione uma caçamba." }).optional(),
-  truckId: z.string({ required_error: "Selecione um caminhão." }).optional(),
   clientId: z.string({ required_error: "Selecione um cliente." }),
-  rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
-  returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
+  rentalDate: z.string({ required_error: "A data é obrigatória." }),
+  returnDate: z.string({ required_error: "A data é obrigatória." }),
   deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
   latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
   longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
@@ -157,22 +154,29 @@ export const RentalSchema = z.object({
     due: z.boolean().default(false),
     late: z.boolean().default(false),
   }).optional(),
-  osType: z.enum(['rental', 'operation']).default('rental'),
+  osType: z.enum(['rental', 'operation']),
+});
+
+export const RentalSchema = BaseServiceOrderSchema.extend({
+  osType: z.literal('rental'),
+  dumpsterId: z.string({ required_error: "Selecione uma caçamba." }),
+});
+
+export const OperationSchema = BaseServiceOrderSchema.extend({
+  osType: z.literal('operation'),
+  truckId: z.string({ required_error: "Selecione um caminhão." }),
   serviceIds: z.array(z.string()).optional(),
   distance: z.number().optional(),
 });
 
-const UpdateRentalPeriodSchema = z.object({
-  id: z.string(),
-  rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
-  returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
-}).refine(data => new Date(data.returnDate) > new Date(data.rentalDate), {
-  message: "A data de retirada deve ser posterior à data de entrega.",
-  path: ["returnDate"],
-});
+// A generic "Rental" type for convenience, but specific schemas should be used for validation
+export type Rental = z.infer<typeof RentalSchema>;
+export type Operation = z.infer<typeof OperationSchema>;
+
 
 export const UpdateRentalSchema = z.object({
     id: z.string(),
+    osType: z.enum(['rental', 'operation']),
     rentalDate: z.string().optional(),
     returnDate: z.string().optional(),
     deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }).optional(),
@@ -181,8 +185,9 @@ export const UpdateRentalSchema = z.object({
     value: z.coerce.number().positive({ message: "O valor deve ser positivo." }).optional(),
     assignedTo: z.string().optional(),
     observations: z.string().optional(),
+    serviceIds: z.array(z.string()).optional(),
 }).refine(data => {
-    if (data.rentalDate && data.returnDate) {
+    if (data.osType === 'rental' && data.rentalDate && data.returnDate) {
         return new Date(data.returnDate) > new Date(data.rentalDate);
     }
     return true;
@@ -192,11 +197,15 @@ export const UpdateRentalSchema = z.object({
 });
 
 
-export const CompletedRentalSchema = RentalSchema.extend({
+export const CompletedRentalSchema = BaseServiceOrderSchema.extend({
     originalRentalId: z.string(),
     completedDate: z.custom<FieldValue>(),
     rentalDays: z.number().positive(),
     totalValue: z.number().positive(),
+    dumpsterId: z.string().optional(),
+    truckId: z.string().optional(),
+    serviceIds: z.array(z.string()).optional(),
+    distance: z.number().optional(),
 });
 
 
@@ -248,8 +257,7 @@ export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: str
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type Truck = z.infer<typeof TruckSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
-export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
-// Make completedDate a string to allow for serialization from server component
+
 export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
@@ -258,6 +266,7 @@ export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'compl
     dumpster?: Dumpster | null;
     truck?: Truck | null;
     assignedToUser?: UserAccount | null;
+    services?: Service[];
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
@@ -272,7 +281,9 @@ export type DirectionsResponse = {
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
 export type EnhancedDumpster = Dumpster & { derivedStatus: string };
-export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
+
+// This is the main type used in the UI, combining both Rental and Operation
+export type PopulatedRental = Omit<Rental & Operation, 'dumpsterId' | 'truckId' | 'clientId' | 'assignedTo'> & {
     id: string;
     dumpster: Dumpster | null;
     truck: Truck | null;
@@ -280,6 +291,7 @@ export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assigned
     assignedToUser: UserAccount | null;
     services: Service[];
 };
+
 export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'clientId'> & {
     id: string;
     dumpster: Dumpster | null;

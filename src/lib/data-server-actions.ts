@@ -3,7 +3,7 @@
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, DirectionsResponse } from './types';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, DirectionsResponse, Truck } from './types';
 import { adminDb } from './firebase-admin';
 
 // Helper to convert Timestamps to serializable format
@@ -154,7 +154,11 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
 
 export async function getPopulatedRentalById(accountId: string, rentalId: string): Promise<PopulatedRental | null> {
     try {
-        const rentalRef = adminDb.doc(`accounts/${accountId}/rentals/${rentalId}`);
+        // Determine if it's a rental or operation to check the correct collection
+        const isRental = rentalId.startsWith('AL-');
+        const collectionName = isRental ? 'rentals' : 'operations';
+        
+        const rentalRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${rentalId}`);
         const rentalDoc = await rentalRef.get();
 
         if (!rentalDoc.exists) {
@@ -165,16 +169,24 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
 
         // Fetch related documents
         const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
-        const dumpsterPromise = adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
+        const dumpsterPromise = rentalData.dumpsterId ? adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get() : Promise.resolve(null);
+        const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
+        const accountPromise = adminDb.doc(`accounts/${accountId}`).get();
 
-        const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise]);
+        const [clientSnap, dumpsterSnap, truckSnap, assignedToSnap, accountSnap] = await Promise.all([clientPromise, dumpsterPromise, truckPromise, assignedToPromise, accountPromise]);
+
+        const allServices = (accountSnap.data()?.services || []) as any[];
+        const servicesMap = new Map(allServices.map(s => [s.id, s]));
+        const selectedServices = (rentalData.serviceIds || []).map(id => servicesMap.get(id)).filter(Boolean);
 
         return {
             ...rentalData,
             client: docToSerializable(clientSnap) as Client | null,
             dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+            truck: docToSerializable(truckSnap) as Truck | null,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
+            services: selectedServices,
         };
     } catch (error) {
         console.error(`Error fetching populated rental by ID ${rentalId}:`, error);

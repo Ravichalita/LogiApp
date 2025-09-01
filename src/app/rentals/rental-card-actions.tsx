@@ -100,7 +100,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const handleDeleteAction = () => {
      startDeleteTransition(async () => {
         if (!accountId) return;
-        const result = await deleteRentalAction(accountId, rental.id);
+        const result = await deleteRentalAction(accountId, rental.id, rental.osType);
         if (result.message === 'error') {
             toast({ title: "Erro", description: result.error, variant: "destructive"});
         } else {
@@ -152,7 +152,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             </div>
         )}
 
-         {isOperation && rental.services.length > 0 && (
+         {isOperation && rental.services && rental.services.length > 0 && (
             <div className="flex items-start gap-3">
                 <Milestone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
@@ -288,6 +288,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             ) : (
                  <form action={boundFinishRentalAction} className="flex-grow">
                     <input type="hidden" name="rentalId" value={rental.id} />
+                    <input type="hidden" name="osType" value={rental.osType} />
                     <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                         {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                         Finalizar OS

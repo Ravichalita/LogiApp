@@ -48,8 +48,6 @@ export default function EditRentalPage() {
             }
             setRental(rentalData);
 
-            const isOperation = rentalData.osType === 'operation';
-
             const [clientData, teamData, accountData, allDumpsters, allTrucks] = await Promise.all([
                 fetchClients(accountId),
                 fetchTeamMembers(accountId),

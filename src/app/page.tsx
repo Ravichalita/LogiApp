@@ -208,7 +208,7 @@ export default function HomePage() {
     let filtered = rentals;
 
     if (osTypeFilter !== 'all') {
-        filtered = filtered.filter(rental => (rental.osType || 'rental') === osTypeFilter);
+        filtered = filtered.filter(rental => rental.osType === osTypeFilter);
     }
 
     if (statusFilter !== 'Todas') {
@@ -223,8 +223,8 @@ export default function HomePage() {
         filtered = filtered.filter(rental => 
             rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
             (rental.osType === 'rental' && rental.dumpster?.name.toLowerCase().includes(lowercasedTerm)) ||
-            (rental.osType === 'operation' && rental.services.some(s => s.name.toLowerCase().includes(lowercasedTerm))) ||
             (rental.osType === 'operation' && rental.truck?.model.toLowerCase().includes(lowercasedTerm)) ||
+            (rental.osType === 'operation' && rental.services?.some(s => s.name.toLowerCase().includes(lowercasedTerm))) ||
             rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
             String(rental.sequentialId).toLowerCase().includes(lowercasedTerm)
         );
@@ -302,7 +302,7 @@ export default function HomePage() {
         <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-                placeholder="Buscar por cliente, caçamba, usuário ou nº da OS..."
+                placeholder="Buscar por cliente, recurso, usuário ou nº da OS..."
                 className="pl-9 bg-card"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -347,6 +347,9 @@ export default function HomePage() {
             if (!rental || !rental.client || !rental.assignedToUser) {
                 return null;
             }
+            if(rental.osType === 'rental' && !rental.dumpster) return null;
+            if(rental.osType === 'operation' && !rental.truck) return null;
+
 
             const status = getRentalStatus(rental);
             const isOperation = rental.osType === 'operation';
