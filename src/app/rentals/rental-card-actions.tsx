@@ -83,10 +83,10 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
 
-  const isAdmin = userAccount?.role === 'admin';
-  const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
-  const canDelete = isAdmin || userAccount?.permissions?.canEditRentals;
-  const canSeeFinance = isAdmin || userAccount?.permissions?.canAccessFinance;
+  const permissions = userAccount?.permissions;
+  const canEdit = permissions?.canEditRentals;
+  const canDelete = permissions?.canEditRentals;
+  const canSeeFinance = userAccount?.role === 'admin' || userAccount?.role === 'owner' || permissions?.canAccessFinance;
 
   const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
   const isPendingStatus = status.text === 'Pendente';
@@ -166,7 +166,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         
         <div className="flex items-center justify-between">
             <a 
-                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}`} 
+                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}?text=Olá, ${rental.client?.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 hover:underline"
@@ -251,7 +251,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             <AlertDialogFooter>
                                 <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
                                 <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                    {isDeleting ? <Spinner size="small" /> : 'Sim, Cancelar'}
+                                    {isDeleting ? 'Removendo...' : 'Sim, Cancelar'}
                                 </AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>

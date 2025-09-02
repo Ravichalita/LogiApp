@@ -53,32 +53,23 @@ function StatCard({ title, value, icon: Icon, loading }: { title: string, value:
 function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: HistoricItem | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
     if (!item) return null;
 
-    const isRental = item.kind === 'rental';
-    const rental = isRental ? (item.data as CompletedRental) : null;
-    const operation = !isRental ? (item.data as PopulatedOperation) : null;
+    const isRental = item.type === 'rental';
+    const rental = isRental ? (item as CompletedRental) : null;
+    const operation = !isRental ? (item as PopulatedOperation) : null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
+                    <DialogTitle>Detalhes da OS #{item.sequentialId}</DialogTitle>
                     <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
-                     {item.operationTypeName && (
-                        <div className="flex items-start gap-3">
-                           <Workflow className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                           <div className="flex flex-col">
-                               <span className="text-sm text-muted-foreground">Tipo de Serviço</span>
-                               <span className="font-medium">{item.operationTypeName}</span>
-                           </div>
-                       </div>
-                     )}
+                <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
                      <div className="flex items-start gap-3">
                         <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">Cliente</span>
-                            <span className="font-medium">{item.clientName}</span>
+                            <span className="font-medium">{item.client?.name}</span>
                         </div>
                     </div>
                      <div className="flex items-start gap-3">
@@ -121,12 +112,12 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
                             <span className="font-medium">{formatCurrency(item.totalValue)}</span>
                         </div>
                     </div>
-                    {item.data.observations && (
+                    {item.observations && (
                          <div className="flex items-start gap-3">
                             <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                             <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Observações</span>
-                                <p className="font-medium whitespace-pre-wrap">{item.data.observations}</p>
+                                <p className="font-medium whitespace-pre-wrap">{item.observations}</p>
                             </div>
                         </div>
                     )}
@@ -137,12 +128,13 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
 }
 
 export default function FinancePage() {
-    const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
+    const { accountId, userAccount, loading: authLoading } = useAuth();
     const [historicItems, setHistoricItems] = useState<HistoricItem[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
 
-    const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessFinance;
+    const isAdmin = userAccount?.role === 'admin';
+    const canAccess = isAdmin || userAccount?.permissions?.canAccessFinance;
 
     useEffect(() => {
         if (authLoading || !accountId || !canAccess) {
@@ -157,28 +149,9 @@ export default function FinancePage() {
                 getCompletedOperations(accountId!)
             ]);
             
-            const combinedItems: HistoricItem[] = [
-                ...rentals.map(r => ({
-                    id: r.id,
-                    kind: 'rental' as const,
-                    prefix: 'AL',
-                    clientName: r.client?.name ?? 'N/A',
-                    completedDate: r.completedDate,
-                    totalValue: r.totalValue,
-                    sequentialId: r.sequentialId,
-                    data: r,
-                })),
-                ...operations.map(o => ({
-                    id: o.id,
-                    kind: 'operation' as const,
-                    prefix: 'OP',
-                    clientName: o.client?.name ?? 'N/A',
-                    completedDate: o.completedAt,
-                    totalValue: o.value ?? 0,
-                    sequentialId: o.sequentialId,
-                    operationTypeName: o.operationTypeName,
-                    data: o,
-                }))
+            const combinedItems = [
+                ...rentals.map(r => ({ ...r, type: 'rental' as const })),
+                ...operations.map(o => ({ ...o, type: 'operation' as const, totalValue: o.value ?? 0, completedDate: o.completedAt! }))
             ];
             
             combinedItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
@@ -216,8 +189,8 @@ export default function FinancePage() {
         }).length;
 
     const revenueByClientData = historicItems.reduce((acc, item) => {
-        if (!item.clientName) return acc;
-        const clientName = item.clientName;
+        if (!item.client) return acc;
+        const clientName = item.client.name;
         const value = item.totalValue || 0;
 
         if (!acc[clientName]) {
@@ -286,7 +259,6 @@ export default function FinancePage() {
                                     <TableRow>
                                         <TableHead>OS</TableHead>
                                         <TableHead>Tipo</TableHead>
-                                        <TableHead>Tipo de Serviço</TableHead>
                                         <TableHead>Cliente</TableHead>
                                         <TableHead className="text-right">Finalizado em</TableHead>
                                         <TableHead className="text-right">Valor</TableHead>
@@ -295,16 +267,15 @@ export default function FinancePage() {
                                 <TableBody>
                                     {historicItems.length > 0 ? historicItems.map(item => (
                                         <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer">
-                                            <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
-                                            <TableCell className="font-medium capitalize">{item.kind === 'rental' ? 'Aluguel' : 'Operação'}</TableCell>
-                                            <TableCell className="font-medium">{item.kind === 'operation' ? (item.operationTypeName || 'N/A') : 'N/A'}</TableCell>
-                                            <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
+                                            <TableCell className="font-mono text-xs font-bold">{item.type === 'rental' ? 'AL' : 'OP'}{item.sequentialId}</TableCell>
+                                            <TableCell className="font-medium capitalize">{item.type === 'rental' ? 'Aluguel' : 'Operação'}</TableCell>
+                                            <TableCell className="font-medium whitespace-nowrap">{item.client?.name ?? 'N/A'}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-24">Nenhum serviço finalizado ainda.</TableCell>
+                                            <TableCell colSpan={5} className="text-center h-24">Nenhum serviço finalizado ainda.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

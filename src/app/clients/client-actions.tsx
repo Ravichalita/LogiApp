@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useTransition } from 'react';
 import { deleteClientAction } from '@/lib/actions';
@@ -36,9 +37,9 @@ export function ClientActions({ client }: { client: Client }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const isAdmin = userAccount?.role === 'admin';
-  const canEdit = isAdmin || userAccount?.permissions?.canEditClients;
-  const canDelete = isAdmin || userAccount?.permissions?.canEditClients;
+  const permissions = userAccount?.permissions;
+  const canEdit = permissions?.canEditClients;
+  const canDelete = permissions?.canEditClients;
 
 
   const handleDelete = () => {

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -16,11 +17,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AdminClientActions } from './client-actions';
-import { ShieldAlert, Users, Plus, Minus, User, Mail, Shield } from 'lucide-react';
+import { ShieldAlert, Users, Plus, Minus, User, Mail, Shield, Settings, CheckCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewItemDialog } from '@/components/new-item-dialog';
 import { Separator } from '@/components/ui/separator';
+import { ClientPermissionsForm } from './client-permissions-form';
 
 const roleLabels: Record<UserAccount['role'], string> = {
     owner: 'Proprietário',
@@ -106,12 +108,14 @@ export default function AdminClientsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Contas Cadastradas</CardTitle>
-                    <CardDescription>Expanda cada conta para ver os membros da equipe.</CardDescription>
+                    <CardDescription>Expanda cada conta para ver os detalhes e gerenciar permissões.</CardDescription>
                 </CardHeader>
                  <CardContent>
                     {isLoading ? <AdminClientListSkeleton /> : (
                          <Accordion type="multiple" className="space-y-4">
-                            {clients.length > 0 ? clients.map(client => (
+                            {clients.length > 0 ? clients.map(client => {
+                                const owner = client.members.find(m => m.role === 'owner');
+                                return (
                                 <AccordionItem value={client.accountId} key={client.accountId} className="border rounded-lg shadow-sm bg-card">
                                      <div className="p-4">
                                         <div className="flex items-center justify-between">
@@ -121,47 +125,86 @@ export default function AdminClientsPage() {
                                             </div>
                                             <AdminClientActions client={client} />
                                         </div>
-                                        <div className="flex justify-between items-center mt-2">
-                                            <div className="text-xs text-muted-foreground">
+                                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mt-2 items-center">
+                                            <div className="text-left">
                                                 Cadastrado em {format(new Date(client.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                                             </div>
-                                             <Badge variant={client.ownerStatus === 'ativo' ? 'success' : 'destructive'}>
-                                                {client.ownerStatus === 'ativo' ? 'Ativo' : 'Inativo'}
-                                            </Badge>
+                                             <div className="flex justify-end items-center gap-2">
+                                                {client.hasSeenWelcome ? (
+                                                    <div className="flex items-center gap-1 text-green-600">
+                                                        <CheckCircle className="h-3 w-3" />
+                                                        <span>Primeiro Acesso OK</span>
+                                                    </div>
+                                                ) : (
+                                                     <div className="flex items-center gap-1 text-amber-600">
+                                                        <Clock className="h-3 w-3" />
+                                                        <span>Aguardando 1º Acesso</span>
+                                                    </div>
+                                                )}
+                                                <Badge variant={client.ownerStatus === 'ativo' ? 'success' : 'destructive'}>
+                                                    {client.ownerStatus === 'ativo' ? 'Ativo' : 'Inativo'}
+                                                </Badge>
+                                             </div>
                                         </div>
                                          <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-3 justify-start group" hideChevron>
                                              <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
                                              <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
-                                            Ver Equipe ({client.members.length})
+                                            Ver Detalhes
                                         </AccordionTrigger>
                                     </div>
                                     <AccordionContent>
                                         <Separator />
-                                        <div className="p-4 bg-muted/50">
-                                            {client.members.length > 0 ? (
-                                                 <ul className="space-y-3">
-                                                    {client.members.map(member => (
-                                                        <li key={member.id} className="flex items-start gap-3 text-sm">
-                                                            <User className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
-                                                            <div className="flex-grow">
-                                                                <div className="flex items-center justify-between">
-                                                                    <span className="font-medium">{member.name}</span>
-                                                                     <Badge variant={member.role === 'owner' ? 'default' : 'secondary'} className="text-xs">
-                                                                        {roleLabels[member.role]}
-                                                                    </Badge>
-                                                                </div>
-                                                                <p className="text-muted-foreground">{member.email}</p>
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                 </ul>
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground text-center">Nenhum membro na equipe.</p>
+                                         <Accordion type="single" collapsible className="w-full">
+                                            <AccordionItem value="team" className="border-b-0">
+                                                <AccordionTrigger className="px-4 py-3 hover:no-underline font-medium text-base">
+                                                    <div className="flex items-center gap-2">
+                                                        <Users className="h-5 w-5" />
+                                                        Equipe ({client.members.length})
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent>
+                                                     <div className="px-4 pb-4 bg-muted/50">
+                                                        {client.members.length > 0 ? (
+                                                            <ul className="space-y-3 pt-4">
+                                                                {client.members.map(member => (
+                                                                    <li key={member.id} className="flex items-start gap-3 text-sm">
+                                                                        <User className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                                                                        <div className="flex-grow">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <span className="font-medium">{member.name}</span>
+                                                                                <Badge variant={member.role === 'owner' ? 'default' : 'secondary'} className="text-xs">
+                                                                                    {roleLabels[member.role]}
+                                                                                </Badge>
+                                                                            </div>
+                                                                            <p className="text-muted-foreground">{member.email}</p>
+                                                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground text-center pt-4">Nenhum membro na equipe.</p>
+                                                        )}
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                            {owner && (
+                                                <AccordionItem value="permissions" className="border-b-0">
+                                                    <AccordionTrigger className="px-4 py-3 hover:no-underline font-medium text-base">
+                                                         <div className="flex items-center gap-2">
+                                                            <Settings className="h-5 w-5" />
+                                                            Permissões da Conta
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                     <AccordionContent>
+                                                        <ClientPermissionsForm client={owner} />
+                                                     </AccordionContent>
+                                                </AccordionItem>
                                             )}
-                                        </div>
+                                        </Accordion>
                                     </AccordionContent>
                                 </AccordionItem>
-                            )) : (
+                                )
+                            }) : (
                                  <div className="text-center py-16">
                                     <p className="text-muted-foreground">Nenhum cliente cadastrado ainda.</p>
                                 </div>

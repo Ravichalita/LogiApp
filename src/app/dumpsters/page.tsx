@@ -12,13 +12,15 @@ import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Search, GanttChartSquare } from 'lucide-react';
+import { Search, GanttChartSquare, ShieldAlert } from 'lucide-react';
 import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO, subDays, endOfDay, addDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { GanttSpreadsheet } from './gantt-spreadsheet';
+import { useRouter } from 'next/navigation';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 
 function ColorDisplay({ color }: { color: DumpsterColor }) {
@@ -72,7 +74,7 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[]
 ];
 
 export default function DumpstersPage() {
-  const { accountId } = useAuth();
+  const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -81,6 +83,9 @@ export default function DumpstersPage() {
   const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos'>('Todos');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
+
+  const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessRentals;
 
   const spreadsheetDateRange = useMemo(() => {
     const startDate = new Date();
@@ -89,6 +94,12 @@ export default function DumpstersPage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!canAccess) {
+      setLoading(false);
+      return;
+    }
+
     if (accountId) {
       const unsubscribeDumpsters = getDumpsters(accountId, (data) => {
         setDumpsters(data);
@@ -111,7 +122,7 @@ export default function DumpstersPage() {
         setClients([]);
         setLoading(false);
     }
-  }, [accountId, loading]);
+  }, [accountId, authLoading, canAccess, loading, router]);
 
   const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
@@ -198,6 +209,22 @@ export default function DumpstersPage() {
         }
     });
   };
+  
+  const isLoading = authLoading || (loading && canAccess);
+  
+  if (!isLoading && !canAccess) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Acesso Negado</AlertTitle>
+                <AlertDescription>
+                    Você não tem permissão para visualizar esta página.
+                </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
 
 
   return (
@@ -247,7 +274,7 @@ export default function DumpstersPage() {
             ))}
         </div>
         
-        {loading ? <DumpsterTableSkeleton /> : (
+        {isLoading ? <DumpsterTableSkeleton /> : (
             <>
                 {/* Table for larger screens */}
                 <div className="hidden md:block border rounded-md bg-card">

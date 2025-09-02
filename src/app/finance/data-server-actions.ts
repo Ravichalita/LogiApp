@@ -3,7 +3,7 @@
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Operation } from './types';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation } from './types';
 import { adminDb } from './firebase-admin';
 
 // Helper to convert Timestamps to serializable format
@@ -29,8 +29,8 @@ const toSerializableObject = (obj: any): any => {
 }
 
 // Helper function to safely convert a Firestore document snapshot to a serializable object
-const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot | null | undefined): any => {
-  if (!doc || !doc.exists) {
+const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot): any => {
+  if (!doc.exists) {
     return null;
   }
   return toSerializableObject({ id: doc.id, ...doc.data() });
@@ -58,14 +58,6 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
 
 export async function getCompletedOperations(accountId: string): Promise<PopulatedOperation[]> {
     try {
-        const accountSnap = await adminDb.doc(`accounts/${accountId}`).get();
-        if (!accountSnap.exists) {
-            console.error(`Account ${accountId} not found.`);
-            return [];
-        }
-        const operationTypes = accountSnap.data()?.operationTypes as OperationType[] || [];
-        const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
-
         const opsCol = adminDb.collection(`accounts/${accountId}/completed_operations`);
         const opsSnap = await opsCol.orderBy('completedAt', 'desc').get();
         
@@ -74,22 +66,17 @@ export async function getCompletedOperations(accountId: string): Promise<Populat
         }
 
         const populatedOpsPromises = opsSnap.docs.map(async doc => {
-            const opData = docToSerializable(doc) as CompletedOperation;
-            
+            const opData = toSerializableObject(doc.data()) as CompletedOperation;
+
             const [clientSnap, truckSnap, driverSnap] = await Promise.all([
                 opData.clientId ? adminDb.doc(`accounts/${accountId}/clients/${opData.clientId}`).get() : Promise.resolve(null),
                 opData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${opData.truckId}`).get() : Promise.resolve(null),
                 opData.driverId ? adminDb.doc(`users/${opData.driverId}`).get() : Promise.resolve(null),
             ]);
 
-            const operationTypeId = opData.type;
-            const operationTypeName = opTypeMap.get(operationTypeId) || operationTypeId;
-
             return {
                 ...opData,
                 id: doc.id,
-                operationTypeId: operationTypeId,
-                operationTypeName: operationTypeName,
                 client: clientSnap?.exists ? docToSerializable(clientSnap) : null,
                 truck: truckSnap?.exists ? docToSerializable(truckSnap) : null,
                 driver: driverSnap?.exists ? docToSerializable(driverSnap) : null,
@@ -153,7 +140,7 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
             const ownerSnap = await adminDb.doc(`users/${ownerId}`).get();
             if (!ownerSnap.exists) return null;
 
-            const ownerData = toSerializableObject(ownerSnap.data()) as UserAccount;
+            const ownerData = toSerializableObject(ownerSnap.data());
 
             // Fetch all members
             const memberIds = accountData.members || [];
@@ -172,7 +159,6 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
                 ownerName: ownerData.name,
                 ownerEmail: ownerData.email,
                 ownerStatus: ownerData.status ?? 'ativo',
-                hasSeenWelcome: ownerData.hasSeenWelcome ?? false,
                 createdAt: ownerData.createdAt,
                 members: members,
             };
@@ -221,51 +207,6 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
         console.error(`Error fetching populated rental by ID ${rentalId}:`, error);
         return null;
     }
-}
-
-
-export async function getPopulatedOperationById(accountId: string, operationId: string): Promise<PopulatedOperation | null> {
-  try {
-    const opRef = adminDb.doc(`accounts/${accountId}/operations/${operationId}`);
-    let operationDoc = await opRef.get();
-
-    // fallback: if not in active operations, try completed_operations
-    if (!operationDoc.exists) {
-      const completedRef = adminDb.doc(`accounts/${accountId}/completed_operations/${operationId}`);
-      const completedDoc = await completedRef.get();
-      if (!completedDoc.exists) {
-        return null;
-      }
-      operationDoc = completedDoc;
-    }
-
-    const opData = docToSerializable(operationDoc) as Operation;
-
-    const [clientSnap, truckSnap, driverSnap, accountSnap] = await Promise.all([
-        adminDb.doc(`accounts/${accountId}/clients/${opData.clientId}`).get(),
-        opData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${opData.truckId}`).get() : Promise.resolve(null),
-        opData.driverId ? adminDb.doc(`users/${opData.driverId}`).get() : Promise.resolve(null),
-        adminDb.doc(`accounts/${accountId}`).get(),
-    ]);
-
-    const operationTypes = accountSnap.exists ? (accountSnap.data()?.operationTypes as OperationType[] || []) : [];
-    const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
-    const operationTypeName = opTypeMap.get(opData.type) || opData.type;
-
-    return {
-        ...opData,
-        accountId: accountId,
-        operationTypeId: opData.type,
-        operationTypeName,
-        client: docToSerializable(clientSnap),
-        truck: docToSerializable(truckSnap),
-        driver: docToSerializable(driverSnap),
-    } as PopulatedOperation;
-
-  } catch (error) {
-    console.error(`Error fetching populated operation by ID ${operationId}:`, error);
-    return null;
-  }
 }
 
 

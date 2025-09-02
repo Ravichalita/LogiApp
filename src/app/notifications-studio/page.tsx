@@ -298,7 +298,7 @@ export default function NotificationsStudioPage() {
   }
   
   const userRole = getRoleForView();
-  const hasAccess = userRole && (isSuperAdmin || userAccount?.permissions?.canAccessNotificationsStudio);
+  const hasAccess = isSuperAdmin || userAccount?.permissions?.canAccessNotificationsStudio;
   
   useEffect(() => {
     if (!loading && hasAccess && user && userAccount) {

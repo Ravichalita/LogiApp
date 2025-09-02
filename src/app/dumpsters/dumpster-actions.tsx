@@ -45,8 +45,8 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
     isReservedOrRented: boolean;
 }) {
     const isMaintenance = dumpster.status === 'Em Manutenção';
-    const { userAccount } = useAuth();
-    const canEdit = userAccount?.role === 'admin' || userAccount?.permissions?.canEditDumpsters;
+    const { userAccount, isSuperAdmin } = useAuth();
+    const canEdit = isSuperAdmin || userAccount?.permissions?.canEditDumpsters;
 
 
     return (
@@ -72,7 +72,7 @@ export function MaintenanceCheckbox({ dumpster, isPending, handleToggleStatus, i
 }
 
 export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }) {
-  const { accountId, userAccount } = useAuth();
+  const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -81,9 +81,8 @@ export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
   const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
   
-  const isAdmin = userAccount?.role === 'admin';
-  const canEdit = isAdmin || userAccount?.permissions?.canEditDumpsters;
-  const canDelete = isAdmin || userAccount?.permissions?.canEditDumpsters;
+  const canEdit = isSuperAdmin || userAccount?.permissions?.canEditDumpsters;
+  const canDelete = isSuperAdmin || userAccount?.permissions?.canEditDumpsters;
 
   const handleDelete = () => {
     if (!accountId) return;

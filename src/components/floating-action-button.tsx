@@ -23,10 +23,13 @@ export function FloatingActionButton() {
         '/finance', 
         '/settings', 
         '/admin/clients', 
-        '/notifications-studio'
+        '/notifications-studio',
     ];
+    
+    // Specific pages that have their own FAB logic
+    const fabPages = ['/operations', '/fleet'];
 
-    if (pagesToHideFab.some(path => pathname.startsWith(path)) || pathname.includes('/edit')) {
+    if (pathname.startsWith('/edit') || (pagesToHideFab.some(path => pathname.startsWith(path)) && !fabPages.includes(pathname))) {
         return null;
     }
 
@@ -34,6 +37,17 @@ export function FloatingActionButton() {
         const permissions = userAccount?.permissions;
 
         switch (pathname) {
+            case '/operations':
+                 return (
+                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
+                        <Link href="/operations/new">
+                            <Plus className="h-8 w-8" />
+                            <span className="sr-only">Nova Operação</span>
+                        </Link>
+                    </Button>
+                );
+            case '/fleet':
+                return <NewItemDialog itemType="fleet" />
             case '/dumpsters':
                 if (isAdmin || permissions?.canEditDumpsters) {
                     return <NewItemDialog itemType="dumpster" />;
@@ -73,7 +87,7 @@ export function FloatingActionButton() {
     if (!content) return null;
 
     return (
-        <div className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50">
+        <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
             {content}
         </div>
     )

@@ -57,7 +57,8 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
     rental.latitude && rental.longitude ? { lat: rental.latitude, lng: rental.longitude } : null
   );
   const [errors, setErrors] = useState<any>({});
-  const [value, setValue] = useState(formatCurrencyForInput((rental.value * 100).toString()));
+  const [value, setValue] = useState(rental.value);
+  const [displayValue, setDisplayValue] = useState(formatCurrencyForInput((rental.value * 100).toString()));
   const [priceId, setPriceId] = useState<string | undefined>();
   
   const handleLocationSelect = (selectedLocation: Location) => {
@@ -84,7 +85,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
-        formData.set('value', value); // Send the formatted string, server action will parse it
+        formData.set('value', String(value));
 
         const boundAction = updateRentalAction.bind(null, accountId);
         const result = await boundAction(null, formData);
@@ -108,14 +109,16 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
     setPriceId(selectedPriceId);
     const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
     if(selectedPrice) {
-        const valueInCents = (selectedPrice.value * 100).toString();
-        setValue(formatCurrencyForInput(valueInCents));
+        setValue(selectedPrice.value);
+        setDisplayValue(formatCurrencyForInput((selectedPrice.value * 100).toString()));
     }
   }
   
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
-    setValue(formatCurrencyForInput(rawValue));
+    const cents = parseInt(rawValue, 10) || 0;
+    setValue(cents / 100);
+    setDisplayValue(formatCurrencyForInput(rawValue));
   }
 
   return (
@@ -151,7 +154,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         <Label htmlFor="address-input">Endereço de Entrega</Label>
         <AddressInput
             id="address-input"
-            initialValue={deliveryAddress}
+            value={deliveryAddress}
             onInputChange={handleAddressChange}
             onLocationSelect={handleLocationSelect}
             initialLocation={location}
@@ -236,8 +239,8 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
                 </Select>
                  <Input
                     id="value"
-                    name="value"
-                    value={value}
+                    name="value_display"
+                    value={displayValue}
                     onChange={handleValueChange}
                     placeholder="R$ 0,00"
                     required
@@ -246,9 +249,9 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
             </div>
         ) : (
             <Input
-            id="value"
-            name="value"
-            value={value}
+            id="value_display"
+            name="value_display"
+            value={displayValue}
             onChange={handleValueChange}
             placeholder="R$ 0,00"
             required

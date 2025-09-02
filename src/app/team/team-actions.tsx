@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -33,7 +34,7 @@ import { getActiveRentalsForUser } from '@/lib/data';
 import { Spinner } from '@/components/ui/spinner';
 
 export function TeamActions({ member }: { member: UserAccount }) {
-  const { accountId, user } = useAuth();
+  const { accountId, user, userAccount } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
   const [isCheckingRentals, setIsCheckingRentals] = useState(false);
@@ -43,11 +44,13 @@ export function TeamActions({ member }: { member: UserAccount }) {
 
   const isCurrentUser = user?.uid === member.id;
   const isOwner = member.role === 'owner';
+  const isInvokerOwner = userAccount?.role === 'owner';
 
   const handleRoleChange = (role: string) => {
-    if (!accountId || isCurrentUser || isOwner) return;
+    if (!accountId || isCurrentUser || isOwner || !user) return;
+    
     startTransition(async () => {
-      const result = await updateUserRoleAction(accountId, member.id, role as UserRole);
+      const result = await updateUserRoleAction(user.uid, accountId, member.id, role as UserRole);
       if (result?.message === 'error') {
         toast({ title: 'Erro', description: result.error, variant: 'destructive' });
       } else {
@@ -86,6 +89,11 @@ export function TeamActions({ member }: { member: UserAccount }) {
             <span>Proprietário</span>
         </div>
     )
+  }
+
+  // Only owners can manage team members' roles and remove them.
+  if (!isInvokerOwner) {
+      return null;
   }
 
   return (

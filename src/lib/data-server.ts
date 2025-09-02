@@ -90,13 +90,19 @@ export async function ensureUserDocument(
                 determinedAccountId = uid; // The first user's UID becomes the account ID
                 role = 'owner'; // The creator of the account is the owner
                 permissions = PermissionsSchema.parse({ // Owners get all permissions by default
+                    canAccessRentals: true,
+                    canAccessOperations: true,
+                    canAccessClients: true,
+                    canAccessDumpsters: true,
+                    canAccessFleet: true,
                     canAccessTeam: true,
                     canAccessFinance: true,
-                    canEditClients: true,
-                    canEditDumpsters: true,
-                    canEditRentals: true,
-                    canAccessSettings: true,
                     canAccessNotificationsStudio: true,
+                    canAccessSettings: true,
+                    canEditRentals: true,
+                    canEditOperations: true,
+                    canEditDumpsters: true,
+                    canEditFleet: true,
                 });
                 
                 const newAccountRef = firestore.doc(`accounts/${determinedAccountId}`);
@@ -105,6 +111,7 @@ export async function ensureUserDocument(
                     createdAt: FieldValue.serverTimestamp(),
                     members: [uid],
                     rentalCounter: 0,
+                    operationCounter: 0,
                 });
             }
 

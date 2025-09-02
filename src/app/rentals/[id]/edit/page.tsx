@@ -119,7 +119,7 @@ export default function EditRentalPage() {
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
         <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Editar Ordem de Serviço #{rental?.sequentialId}</CardTitle>
+                <CardTitle className="font-headline text-2xl">Editar Ordem de Serviço #AL{rental?.sequentialId}</CardTitle>
                 <CardDescription>Ajuste as informações da OS e salve as alterações.</CardDescription>
             </CardHeader>
             <CardContent>

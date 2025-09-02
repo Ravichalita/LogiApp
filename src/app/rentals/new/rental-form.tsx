@@ -71,13 +71,14 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
   
   const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
-  const [assignedToId, setAssignedToId] = useState<string | undefined>(user?.uid);
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(userAccount?.id);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [rentalDate, setRentalDate] = useState<Date | undefined>();
   const [returnDate, setReturnDate] = useState<Date | undefined>();
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [errors, setErrors] = useState<any>({});
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(0); // Store value as a number
+  const [displayValue, setDisplayValue] = useState(''); // Store formatted string for input
   const [priceId, setPriceId] = useState<string | undefined>();
 
   const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
@@ -88,8 +89,8 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
   useEffect(() => {
     // Initialize dates only on the client to avoid hydration mismatch
     setRentalDate(new Date());
-    setAssignedToId(user?.uid)
-  }, [user]);
+    setAssignedToId(userAccount?.id)
+  }, [userAccount]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -124,6 +125,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             return;
         }
         
+        if (selectedDumpsterId) formData.set('dumpsterId', selectedDumpsterId);
+        if (selectedClientId) formData.set('clientId', selectedClientId);
+        if (assignedToId) formData.set('assignedTo', assignedToId);
+        
         formData.set('deliveryAddress', deliveryAddress);
         if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
         if (returnDate) formData.set('returnDate', returnDate.toISOString());
@@ -131,6 +136,8 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
           formData.set('latitude', String(location.lat));
           formData.set('longitude', String(location.lng));
         }
+        
+        formData.set('value', String(value));
 
         const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
@@ -154,15 +161,16 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
     setPriceId(selectedPriceId);
     const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
     if(selectedPrice) {
-        // Here we format the value which is in Reais (e.g. 250.00) to cents string ("25000")
-        const valueInCents = (selectedPrice.value * 100).toString();
-        setValue(formatCurrencyForInput(valueInCents));
+        setValue(selectedPrice.value);
+        setDisplayValue(formatCurrencyForInput((selectedPrice.value * 100).toString()));
     }
   }
   
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
-    setValue(formatCurrencyForInput(rawValue));
+    const cents = parseInt(rawValue, 10) || 0;
+    setValue(cents / 100);
+    setDisplayValue(formatCurrencyForInput(rawValue));
   }
 
   const isDeliveryOnReturnDay = rentalDate && selectedDumpsterInfo?.disabledRanges.some(range => isSameDay(addDays(range.to, 1), rentalDate));
@@ -355,9 +363,9 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                     </SelectContent>
                 </Select>
                  <Input
-                    id="value"
-                    name="value"
-                    value={value}
+                    id="value_display"
+                    name="value_display"
+                    value={displayValue}
                     onChange={handleValueChange}
                     placeholder="R$ 0,00"
                     required
@@ -366,9 +374,9 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
             </div>
         ) : (
             <Input
-            id="value"
-            name="value"
-            value={value}
+            id="value_display"
+            name="value_display"
+            value={displayValue}
             onChange={handleValueChange}
             placeholder="R$ 0,00"
             required

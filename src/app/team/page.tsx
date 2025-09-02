@@ -40,12 +40,11 @@ const roleLabels: Record<UserAccount['role'], string> = {
 };
 
 export default function TeamPage() {
-    const { accountId, userAccount, loading: authLoading } = useAuth();
+    const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [team, setTeam] = useState<UserAccount[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
-    const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
-    const canAccess = isAdmin || userAccount?.permissions?.canAccessTeam;
+    const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessTeam;
 
     useEffect(() => {
         if (authLoading || !accountId || !canAccess) {

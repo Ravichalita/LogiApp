@@ -1,32 +1,43 @@
 
+
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Users } from 'lucide-react';
+import { Home, Container, Users, Truck, Workflow } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
 
-const navLinks = [
-  { href: '/', label: 'Painel', icon: Home },
-  { href: '/dumpsters', label: 'Caçambas', icon: LayoutGrid },
-  { href: '/clients', label: 'Clientes', icon: Users },
+const allNavLinks = [
+  { href: '/', label: 'Aluguéis', icon: Home, permission: 'canAccessRentals' as const },
+  { href: '/dumpsters', label: 'Caçambas', icon: Container, permission: 'canAccessRentals' as const },
+  { href: '/operations', label: 'Operações', icon: Workflow, permission: 'canAccessOperations' as const },
+  { href: '/fleet', label: 'Frota', icon: Truck, permission: 'canAccessFleet' as const },
+  { href: '/clients', label: 'Clientes', icon: Users, permission: 'canAccessClients' as const },
 ];
 
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, userAccount, isSuperAdmin } = useAuth();
 
   if (!user) {
     return null;
   }
 
+  const permissions = userAccount?.permissions;
+  
+  const visibleLinks = allNavLinks.filter(link => {
+    if (isSuperAdmin) return true;
+    if (!permissions) return false;
+    return permissions[link.permission];
+  });
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t">
-      <div className="grid h-16 grid-cols-3">
-        {navLinks.map(({ href, label, icon: Icon }) => (
+      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${visibleLinks.length > 0 ? visibleLinks.length : 1}, 1fr)`}}>
+        {visibleLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -37,7 +48,7 @@ export function BottomNav() {
                 : 'text-muted-foreground hover:text-primary'
             )}
           >
-            <Icon className="h-6 w-6" />
+            <Icon className="h-5 w-5" />
             <span className="text-[10px]">{label}</span>
           </Link>
         ))}

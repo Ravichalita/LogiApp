@@ -45,6 +45,8 @@ export function EditClientForm({ client }: { client: Client }) {
   
   const handleAddressChange = (newAddress: string) => {
     setAddress(newAddress);
+    // When address changes manually, we lose the specific lat/lng
+    setLocation(null);
   }
 
   const handleFormAction = (formData: FormData) => {
@@ -55,6 +57,9 @@ export function EditClientForm({ client }: { client: Client }) {
       if (location) {
         formData.set('latitude', String(location.lat));
         formData.set('longitude', String(location.lng));
+      } else {
+        formData.set('latitude', '');
+        formData.set('longitude', '');
       }
 
       const boundAction = updateClient.bind(null, accountId);
@@ -112,7 +117,7 @@ export function EditClientForm({ client }: { client: Client }) {
             <Label htmlFor="address-input">Endereço Principal</Label>
             <AddressInput
                 id="address-input"
-                initialValue={address}
+                value={address}
                 onLocationSelect={handleLocationSelect}
                 onInputChange={handleAddressChange}
                 initialLocation={location}

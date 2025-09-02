@@ -14,7 +14,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup } from './types';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType } from './types';
 
 type Unsubscribe = () => void;
 
@@ -200,6 +200,78 @@ export function getPopulatedRentals(
 }
 // #endregion
 
+// #region Operation Data
+export function getPopulatedOperations(
+    accountId: string,
+    onData: (operations: PopulatedOperation[]) => void,
+    onError: (error: Error) => void,
+    driverId?: string,
+): Unsubscribe {
+    const opsCollection = collection(db, `accounts/${accountId}/operations`);
+    let q: Query<DocumentData> = query(opsCollection, where("accountId", "==", accountId));
+
+    if (driverId) {
+        q = query(q, where("driverId", "==", driverId));
+    }
+    
+    // We also need account data to get operation type names
+    const accountRef = doc(db, `accounts/${accountId}`);
+
+    const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        try {
+            const accountSnap = await getDoc(accountRef);
+            const operationTypes: OperationType[] = accountSnap.exists() ? (accountSnap.data()?.operationTypes || []) : [];
+            const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
+
+            const opPromises = querySnapshot.docs.map(async (opDoc) => {
+                const opData = opDoc.data() as Omit<Operation, 'id'>;
+
+                const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, opData.clientId));
+                const truckPromise = opData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, opData.truckId)) : Promise.resolve(null);
+                const driverPromise = opData.driverId ? getDoc(doc(db, `users`, opData.driverId)) : Promise.resolve(null);
+
+                const [clientSnap, truckSnap, driverSnap] = await Promise.all([clientPromise, truckPromise, driverPromise]);
+
+                const serializedData = docToSerializable(opDoc) as Operation;
+                const operationTypeName = opTypeMap.get(opData.type) || opData.type;
+
+                return {
+                    ...serializedData,
+                    client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
+                    truck: truckSnap?.exists() ? { id: truckSnap.id, ...truckSnap.data() } as Truck : null,
+                    driver: driverSnap?.exists() ? { id: driverSnap.id, ...driverSnap.data() } as UserAccount : null,
+                    operationTypeName,
+                };
+            });
+
+            const populatedOps = await Promise.all(opPromises);
+            
+            // Sort on the client side
+            const sortedOps = populatedOps
+              .filter((op): op is PopulatedOperation => !!op.client)
+              .sort((a, b) => {
+                // Handle potential undefined createdAt by providing a fallback date.
+                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return dateB - dateA; // Sort descending
+            });
+
+            onData(sortedOps);
+        } catch(e) {
+            console.error("Error processing populated operations:", e)
+            if (e instanceof Error) {
+               onError(e);
+            }
+        }
+    }, (error) => {
+        onError(error);
+    });
+    
+    return unsubscribe;
+}
+// #endregion
+
+
 // #region Team Data
 export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
   if (!accountId) {
@@ -270,5 +342,25 @@ export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]
     console.error("Error fetching team members' documents:", error);
     return [];
   }
+}
+// #endregion
+
+// #region Fleet Data
+export function getTrucks(accountId: string, callback: (trucks: Truck[]) => void): Unsubscribe {
+  const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
+  const q = query(trucksCollection, where("accountId", "==", accountId));
+
+  const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const trucks = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    } as Truck));
+    callback(trucks.sort((a, b) => a.name.localeCompare(b.name)));
+  }, (error) => {
+    console.error("Error fetching trucks:", error);
+    callback([]);
+  });
+
+  return unsubscribe;
 }
 // #endregion

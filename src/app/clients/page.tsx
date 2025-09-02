@@ -10,7 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Mail, FileText, MapPin, Phone, Search, Fingerprint, Plus, Minus } from 'lucide-react';
+import { Mail, FileText, MapPin, Phone, Search, Fingerprint, Plus, Minus, ShieldAlert } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import type { Client } from '@/lib/types';
@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { NewItemDialog } from '@/components/new-item-dialog';
+import { useRouter } from 'next/navigation';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 function ClientListSkeleton() {
     return (
@@ -39,13 +41,22 @@ function ClientListSkeleton() {
 
 
 export default function ClientsPage() {
-  const { accountId } = useAuth();
+  const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const router = useRouter();
+
+  const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessClients;
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!canAccess) {
+      setLoading(false);
+      return;
+    }
+
     if (accountId) {
       const unsubscribe = getClients(accountId, (clients) => {
         setClients(clients);
@@ -56,7 +67,7 @@ export default function ClientsPage() {
       setClients([]);
       setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, authLoading, canAccess]);
 
   const filteredClients = useMemo(() => {
     if (!searchTerm) {
@@ -90,6 +101,21 @@ export default function ClientsPage() {
     setSearchTerm('');
   };
 
+  const isLoading = authLoading || (loading && canAccess);
+
+  if (!isLoading && !canAccess) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Acesso Negado</AlertTitle>
+                <AlertDescription>
+                    Você não tem permissão para visualizar esta página.
+                </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
@@ -104,7 +130,7 @@ export default function ClientsPage() {
             />
         </div>
         
-        {loading ? <ClientListSkeleton /> : (
+        {isLoading ? <ClientListSkeleton /> : (
             <Accordion type="multiple" className="space-y-4">
                 {filteredClients.length > 0 ? filteredClients.map(client => (
                 <AccordionItem value={client.id} key={client.id} className="border rounded-lg shadow-sm bg-card">

@@ -11,15 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, UserPlus, Building, User } from 'lucide-react';
+import { Plus, UserPlus, Building, User, Truck } from 'lucide-react';
 import { DumpsterForm } from '@/app/dumpsters/dumpster-form';
 import { InviteForm } from '@/app/team/invite-form';
 import { AdminInviteForm } from '@/app/team/admin-invite-form';
 import { ClientForm } from '@/app/clients/client-form';
 import { useRouter } from 'next/navigation';
+import { FleetForm } from '@/app/fleet/fleet-form';
 
 interface NewItemDialogProps {
-  itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client';
+  itemType: 'dumpster' | 'team' | 'clientAdmin' | 'client' | 'fleet';
   onSuccess?: () => void;
 }
 
@@ -31,14 +32,16 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     dumpster: 'Nova Caçamba',
     team: 'Adicionar membro à equipe',
     clientAdmin: 'Cadastrar Novo Cliente (Admin)',
-    client: 'Novo Cliente'
+    client: 'Novo Cliente',
+    fleet: 'Adicionar Caminhão'
   };
 
   const descriptions = {
     dumpster: 'Cadastre uma nova caçamba no seu inventário.',
     team: 'Crie uma conta para um funcionário. Ele terá acesso aos dados da sua empresa com as permissões que você definir.',
     clientAdmin: 'Crie uma nova conta de administrador para seu cliente. Ele terá uma conta separada e isolada para gerenciar os próprios dados.',
-    client: 'Adicione um novo cliente à sua lista.'
+    client: 'Adicione um novo cliente à sua lista.',
+    fleet: 'Preencha os dados do novo veículo da sua frota.'
   };
   
   const handleSave = () => {
@@ -55,13 +58,15 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
     team: <InviteForm onSave={handleSave} />,
     clientAdmin: <AdminInviteForm onSave={handleSave} />,
     client: <ClientForm />,
+    fleet: <FleetForm onSave={handleSave} />,
   };
   
    const iconComponent = {
     dumpster: <Plus className="h-8 w-8" />,
     team: <UserPlus className="h-7 w-7" />,
     clientAdmin: <Building className="h-7 w-7" />,
-    client: <User className="h-7 w-7" />
+    client: <User className="h-7 w-7" />,
+    fleet: <Plus className="h-8 w-8" />
    }
    
   return (

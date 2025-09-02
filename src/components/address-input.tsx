@@ -12,32 +12,30 @@ import { MapDialog } from './map-dialog';
 
 interface AddressInputProps {
   id?: string;
-  initialValue?: string;
   onInputChange?: (value: string) => void;
   onLocationSelect: (location: Location) => void;
-  initialLocation?: { lat: number; lng: number } | null;
+  onBlur?: () => void;
   className?: string;
   value?: string; // Controlled value from parent
 }
 
 export function AddressInput({
   id,
-  initialValue = '',
   onInputChange,
   onLocationSelect,
   value: controlledValue,
-  initialLocation,
+  onBlur,
 }: AddressInputProps) {
-  const [searchValue, setSearchValue] = useState(initialValue);
-  const [selectedAddress, setSelectedAddress] = useState(initialValue);
+  const [searchValue, setSearchValue] = useState(controlledValue ?? '');
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const value = controlledValue ?? initialValue;
-    setSearchValue(value);
-    setSelectedAddress(value);
-  }, [controlledValue, initialValue]);
+    // Keep the internal state in sync with the controlled value prop
+    if (controlledValue !== undefined) {
+      setSearchValue(controlledValue);
+    }
+  }, [controlledValue]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -63,10 +61,7 @@ export function AddressInput({
         };
         
         onLocationSelect(locationData);
-        onInputChange?.(locationData.address);
-
-        setSearchValue(locationData.address);
-        setSelectedAddress(locationData.address);
+        // The parent will update the `controlledValue` which triggers the useEffect
       }
     }
   };
@@ -74,15 +69,11 @@ export function AddressInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchValue(newValue);
-    if(newValue === '') {
-        setSelectedAddress('');
-        onInputChange?.('');
-    }
+    onInputChange?.(newValue);
   }
 
   const handleClear = () => {
       setSearchValue('');
-      setSelectedAddress('');
       onInputChange?.('');
       if(inputRef.current) {
           inputRef.current.focus();
@@ -94,42 +85,36 @@ export function AddressInput({
   }
 
   return (
-    <div className="space-y-2">
-       <div className="flex gap-2 items-center w-full">
-           <div className="flex-grow">
-                <StandaloneSearchBox
-                    onLoad={onLoad}
-                    onPlacesChanged={onPlacesChanged}
-                >
-                    <div className="relative w-full">
-                    <Input
-                        id={id}
-                        ref={inputRef}
-                        placeholder="Digite para buscar um endereço..."
-                        value={searchValue}
-                        onChange={handleInputChange}
-                        className="pr-8"
-                    />
-                    {searchValue && (
-                        <button
-                        type="button"
-                        onClick={handleClear}
-                        className="absolute inset-y-0 right-0 flex items-center pr-2"
-                        aria-label="Limpar endereço"
-                        >
-                        <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </button>
-                    )}
-                    </div>
-                </StandaloneSearchBox>
-           </div>
-            <MapDialog onLocationSelect={onLocationSelect} initialLocation={initialLocation} />
-      </div>
-      {selectedAddress && (
-        <div className="p-3 min-h-[60px] text-sm rounded-md border bg-muted">
-          {selectedAddress}
+    <div className="flex gap-2 items-center w-full">
+        <div className="flex-grow">
+            <StandaloneSearchBox
+                onLoad={onLoad}
+                onPlacesChanged={onPlacesChanged}
+            >
+                <div className="relative w-full">
+                <Input
+                    id={id}
+                    ref={inputRef}
+                    placeholder="Digite para buscar um endereço..."
+                    value={searchValue}
+                    onChange={handleInputChange}
+                    onBlur={onBlur}
+                    className="pr-8"
+                />
+                {searchValue && (
+                    <button
+                    type="button"
+                    onClick={handleClear}
+                    className="absolute inset-y-0 right-0 flex items-center pr-2"
+                    aria-label="Limpar endereço"
+                    >
+                    <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </button>
+                )}
+                </div>
+            </StandaloneSearchBox>
         </div>
-      )}
+        <MapDialog onLocationSelect={onLocationSelect} address={controlledValue} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Image from "next/image";
@@ -6,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Menu } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -21,17 +22,20 @@ import { HeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import React from "react";
+import { Home, Container, Users, Truck, Workflow } from 'lucide-react';
 
 
-const navLinks = [
-  { href: "/", label: "Ordens de Serviço" },
-  { href: "/dumpsters", label: "Caçambas" },
-  { href: "/clients", label: "Clientes" },
+const allNavLinks = [
+  { href: '/', label: 'Aluguéis', permission: 'canAccessRentals' as const },
+  { href: '/dumpsters', label: 'Caçambas', permission: 'canAccessRentals' as const },
+  { href: '/operations', label: 'Operações', permission: 'canAccessOperations' as const },
+  { href: '/fleet', label: 'Frota', permission: 'canAccessFleet' as const },
+  { href: '/clients', label: 'Clientes', permission: 'canAccessClients' as const },
 ];
 
 export function Header() {
   const pathname = usePathname();
-  const { user, userAccount, logout } = useAuth();
+  const { user, userAccount, logout, isSuperAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [isClient, setIsClient] = React.useState(false);
 
@@ -39,8 +43,16 @@ export function Header() {
     setIsClient(true);
   }, []);
 
+  const permissions = userAccount?.permissions;
+  
+  const visibleNavLinks = allNavLinks.filter(link => {
+    if (isSuperAdmin) return true;
+    if (!permissions) return false;
+    return permissions[link.permission];
+  });
+
   const renderNavLinks = () =>
-    navLinks.map((link) => (
+    visibleNavLinks.map((link) => (
       <Link
         key={link.href}
         href={link.href}
@@ -54,7 +66,7 @@ export function Header() {
     ));
 
   // Hide header on auth pages
-  if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email') || pathname.startsWith('/restore-from-backup')) {
+  if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email') || pathname.startsWith('/restore-from-backup') || pathname.startsWith('/access-denied')) {
     return null;
   }
 

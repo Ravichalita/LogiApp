@@ -30,9 +30,10 @@ const defaultCenter = {
 interface MapDialogProps {
   onLocationSelect: (location: Location) => void;
   initialLocation?: { lat: number; lng: number } | null;
+  address?: string; // Add address prop to geocode if no initialLocation
 }
 
-export function MapDialog({ onLocationSelect, initialLocation }: MapDialogProps) {
+export function MapDialog({ onLocationSelect, initialLocation, address }: MapDialogProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [center, setCenter] = useState(initialLocation || defaultCenter);
   const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | undefined>(initialLocation || undefined);
@@ -50,29 +51,51 @@ export function MapDialog({ onLocationSelect, initialLocation }: MapDialogProps)
     setMap(mapInstance);
   }, []);
 
-  useEffect(() => {
-    if (isOpen && !initialLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newCenter = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCenter(newCenter);
-          if (map) {
-            map.panTo(newCenter);
+  const geocodeAddress = useCallback((addressToGeocode: string) => {
+      if (!window.google) return;
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address: addressToGeocode }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+              const location = results[0].geometry.location;
+              const newCenter = { lat: location.lat(), lng: location.lng() };
+              setCenter(newCenter);
+              setSelectedPosition(newCenter);
+              if (map) {
+                  map.panTo(newCenter);
+              }
+          } else {
+              console.warn(`Geocode was not successful for the following reason: ${status}`);
           }
-        },
-        () => {
-          // Handle error or user denial
-          console.log("User denied Geolocation");
-        }
-      );
-    } else if (initialLocation) {
+      });
+  }, [map]);
+
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialLocation) {
         setCenter(initialLocation);
         setSelectedPosition(initialLocation);
+      } else if (address) {
+        geocodeAddress(address);
+      } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const newCenter = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            setCenter(newCenter);
+            if (map) {
+              map.panTo(newCenter);
+            }
+          },
+          () => {
+            console.log("User denied Geolocation");
+          }
+        );
+      }
     }
-  }, [isOpen, map, initialLocation]);
+  }, [isOpen, map, initialLocation, address, geocodeAddress]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (event.latLng) {
@@ -140,7 +163,7 @@ export function MapDialog({ onLocationSelect, initialLocation }: MapDialogProps)
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}
-        zoom={15}
+        zoom={initialLocation || address ? 17 : 10}
         onLoad={onMapLoad}
         onClick={handleMapClick}
       >

@@ -115,7 +115,7 @@ export default function NewRentalPage() {
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Gerar Ordem de Serviço</CardTitle>
+          <CardTitle className="font-headline text-2xl">Nova OS de aluguel</CardTitle>
           <CardDescription>Selecione a caçamba, o cliente e as datas para registrar um novo aluguel.</CardDescription>
         </CardHeader>
         <CardContent>

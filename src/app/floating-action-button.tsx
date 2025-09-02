@@ -43,7 +43,7 @@ export function FloatingActionButton() {
                     <Button asChild className="h-16 w-16 rounded-full shadow-lg">
                         <Link href="/rentals/new">
                             <Plus className="h-8 w-8" />
-                            <span className="sr-only">Novo Aluguel</span>
+                            <span className="sr-only">Nova OS de aluguel</span>
                         </Link>
                     </Button>
                 );

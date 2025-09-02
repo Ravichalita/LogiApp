@@ -21,7 +21,6 @@ export function HeaderActions() {
   const isMobile = useIsMobile();
   const [isClient, setIsClient] = React.useState(false);
   const { userAccount, isSuperAdmin } = useAuth();
-  const isAdmin = userAccount?.role === "admin" || userAccount?.role === "owner";
   const permissions = userAccount?.permissions;
 
   React.useEffect(() => {
@@ -39,20 +38,20 @@ export function HeaderActions() {
       href: "/finance",
       icon: <History className="h-5 w-5" />,
       label: "Histórico",
-      shouldRender: isAdmin || permissions?.canAccessFinance,
+      shouldRender: permissions?.canAccessFinance,
     },
     {
       href: "/notifications-studio",
       icon: <Megaphone className="h-5 w-5" />,
       label: "Notificações Personalizadas",
       shouldRender:
-        isSuperAdmin || (isAdmin || permissions?.canAccessNotificationsStudio),
+        isSuperAdmin || permissions?.canAccessNotificationsStudio,
     },
     {
       href: "/team",
       icon: <Users className="h-5 w-5" />,
       label: "Equipe",
-      shouldRender: isAdmin || permissions?.canAccessTeam,
+      shouldRender: permissions?.canAccessTeam,
     },
   ];
   
@@ -62,7 +61,7 @@ export function HeaderActions() {
       icon: <Settings className="mr-2 h-4 w-4" />,
       label: "Configurações",
       component: Link,
-      shouldRender: isAdmin || permissions?.canAccessSettings,
+      shouldRender: permissions?.canAccessSettings,
     },
     {
       href: "#",
@@ -143,7 +142,7 @@ export function HeaderActions() {
           </Link>
         </Button>
       ))}
-      {(isAdmin || permissions?.canAccessSettings) && (
+      {permissions?.canAccessSettings && (
            <Button variant="ghost" size="icon" asChild>
               <Link href="/settings">
                 <Settings className="h-5 w-5" />

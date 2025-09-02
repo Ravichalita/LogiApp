@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { Permissions, UserAccount } from '@/lib/types';
 import { updateUserPermissionsAction } from '@/lib/actions';
@@ -10,16 +11,31 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Shield } from 'lucide-react';
 
-const permissionLabels: Record<keyof Permissions, string> = {
-  canAccessTeam: 'Acessar Equipe',
-  canAccessFinance: 'Acessar Estatísticas',
-  canAccessSettings: 'Acessar Configurações',
-  canEditClients: 'Editar e Excluir Clientes',
-  canEditDumpsters: 'Editar e Excluir Caçambas',
-  canEditRentals: 'Editar e Excluir OS',
-  canAccessNotificationsStudio: 'Acessar Notificações Personalizadas',
+const screenPermissionLabels: Partial<Record<keyof Permissions, string>> = {
+  canAccessRentals: 'Aluguéis',
+  canAccessOperations: 'Operações',
+  canAccessClients: 'Clientes',
+  canAccessDumpsters: 'Caçambas',
+  canAccessFleet: 'Frota',
+  canAccessTeam: 'Equipe',
+  canAccessSettings: 'Configurações',
 };
+
+const featurePermissionLabels: Partial<Record<keyof Permissions, string>> = {
+  canAccessFinance: 'Acessar Histórico e Valores $',
+  canAccessNotificationsStudio: 'Notificações Personalizadas',
+};
+
+const actionsPermissionLabels: Partial<Record<keyof Permissions, string>> = {
+  canEditRentals: 'Editar/Excluir OS de Aluguel',
+  canEditOperations: 'Editar/Excluir OS de Operação',
+  canEditDumpsters: 'Editar/Excluir Caçambas',
+  canEditFleet: 'Editar/Excluir Caminhões',
+};
+
 
 interface UserPermissionsFormProps {
   member: UserAccount;
@@ -34,16 +50,26 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
   );
   
   const isCurrentUser = user?.uid === member.id;
-  const isTargetAdminOrOwner = member.role === 'admin' || member.role === 'owner';
+  const isTargetOwner = member.role === 'owner';
+  const isTargetAdmin = member.role === 'admin';
+  const isTargetViewer = member.role === 'viewer';
+
+
+  useEffect(() => {
+    setPermissions(member.permissions || {});
+  }, [member.permissions]);
 
   const handlePermissionChange = (
     permissionKey: keyof Permissions,
     checked: boolean
   ) => {
-    if (!accountId || isCurrentUser || isTargetAdminOrOwner || isPending) return;
+    if (!accountId || isCurrentUser || isTargetAdmin || isTargetOwner || isPending) return;
+
+    const previousPermissions = {...permissions}; 
 
     const newPermissions = { ...permissions, [permissionKey]: checked };
-    setPermissions(newPermissions); // Optimistic update
+    
+    setPermissions(newPermissions);
 
     startTransition(async () => {
       const result = await updateUserPermissionsAction(
@@ -52,57 +78,91 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
         newPermissions
       );
       if (result.message === 'error') {
-        // Revert optimistic update on error
-        setPermissions(permissions);
+        setPermissions(previousPermissions); // Revert on error
         toast({
           title: 'Erro ao atualizar permissão',
           description: result.error,
           variant: 'destructive',
         });
-      } else {
-        toast({
-          title: 'Sucesso',
-          description: `Permissão '${permissionLabels[permissionKey]}' atualizada para ${member.name}.`,
-        });
       }
     });
   };
+  
+  const renderPermissionGroup = (title: string, labels: Partial<Record<keyof Permissions, string>>) => (
+    <div className="space-y-3">
+        <h4 className="text-sm font-medium text-muted-foreground">{title}</h4>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            {(Object.keys(labels) as Array<keyof typeof labels>).map((key) => (
+                <div key={key} className="flex items-center space-x-2">
+                    <Checkbox
+                        id={`${member.id}-${key}`}
+                        checked={permissions[key] ?? false}
+                        onCheckedChange={(checked) => handlePermissionChange(key, !!checked)}
+                        disabled={isPending || isCurrentUser || isTargetOwner || isTargetAdmin}
+                    />
+                    <Label
+                        htmlFor={`${member.id}-${key}`}
+                        className="text-sm font-normal"
+                    >
+                        {labels[key]}
+                    </Label>
+                </div>
+            ))}
+        </div>
+    </div>
+  );
 
-  if (isTargetAdminOrOwner) {
+  if (isTargetOwner) {
      return (
         <div className="px-4 pb-4">
              <Separator />
-             <div className="pt-4 text-sm text-muted-foreground">
-                 {member.role === 'owner' ? 'Proprietários' : 'Administradores'} têm acesso a todas as permissões.
-             </div>
+             <Alert className="mt-4">
+                <Shield className="h-4 w-4" />
+                <AlertTitle>Proprietário</AlertTitle>
+                <AlertDescription>
+                    Proprietários têm acesso a todas as permissões.
+                </AlertDescription>
+            </Alert>
         </div>
     )
+  }
+  
+  if (isTargetAdmin) {
+     return (
+        <div className="px-4 pb-4">
+             <Separator />
+             <Alert className="mt-4">
+                <Shield className="h-4 w-4" />
+                <AlertTitle>Administrador</AlertTitle>
+                <AlertDescription>
+                    Administradores herdam todas as permissões do proprietário da conta.
+                </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
+
+  // Filter out permissions based on role
+  const filteredFeatureLabels = { ...featurePermissionLabels };
+  let filteredScreenLabels = { ...screenPermissionLabels };
+  if (isTargetViewer) {
+    delete filteredFeatureLabels.canAccessNotificationsStudio;
+    delete filteredScreenLabels.canAccessDumpsters;
+    delete filteredScreenLabels.canAccessFleet;
   }
 
   return (
     <div className="px-4 pb-4">
        <Separator />
-      <div className="grid gap-4 py-4 relative">
-        {(Object.keys(permissionLabels) as Array<keyof typeof permissionLabels>).map((key) => (
-          <div key={key} className="flex items-center space-x-2">
-            <Checkbox
-              id={`${member.id}-${key}`}
-              checked={permissions[key] || false}
-              onCheckedChange={(checked) =>
-                handlePermissionChange(key, !!checked)
-              }
-              disabled={isPending || isCurrentUser}
-            />
-            <Label
-              htmlFor={`${member.id}-${key}`}
-              className="text-sm font-normal"
-            >
-              {permissionLabels[key]}
-            </Label>
-          </div>
-        ))}
+      <div className="space-y-6 py-4 relative">
+        {renderPermissionGroup("Acesso às Telas", filteredScreenLabels)}
+        <Separator />
+        {renderPermissionGroup("Acesso a Funcionalidades", filteredFeatureLabels)}
+         <Separator />
+        {renderPermissionGroup("Permissões de Ações", actionsPermissionLabels)}
+        
          {isPending && (
-            <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-md">
                 <Spinner />
             </div>
         )}

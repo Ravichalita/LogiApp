@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo, useContext, useRef } from 'react';
@@ -24,6 +23,8 @@ import { ptBR } from 'date-fns/locale';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { EditAssignedUserDialog } from './rentals/edit-assigned-user-dialog';
+import { useRouter } from 'next/navigation';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type RentalStatusFilter = RentalStatus | 'Todas';
@@ -141,25 +142,32 @@ function RentalCardSkeleton() {
 }
 
 export default function HomePage() {
-  const { user, accountId, userAccount, loading: authLoading } = useAuth();
+  const { user, accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [teamMembers, setTeamMembers] = useState<UserAccount[]>([]);
   const [localLoading, setLocalLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const isAdmin = userAccount?.role === 'admin';
-  const canEdit = isAdmin || userAccount?.permissions?.canEditRentals;
+  const router = useRouter();
+
+  const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessRentals;
+  const canEdit = isSuperAdmin || userAccount?.permissions?.canEditRentals;
 
   useEffect(() => {
-    // Wait for the auth context to be ready and have an accountId
-    if (authLoading || !accountId) {
+    if (authLoading) return;
+    if (!canAccess) {
+      setLocalLoading(false);
+      return;
+    }
+    
+    if (!accountId) {
+      setLocalLoading(false);
       return;
     }
 
     setLocalLoading(true);
-    const canViewAll = userAccount?.role === 'admin' || userAccount?.permissions?.canEditRentals;
+    const canViewAll = canEdit;
     const userIdToFilter = canViewAll ? undefined : user?.uid;
 
     if (canEdit) {
@@ -182,7 +190,7 @@ export default function HomePage() {
     );
 
     return () => unsubscribe();
-  }, [authLoading, accountId, user, userAccount, canEdit]);
+  }, [authLoading, accountId, user, userAccount, canAccess, canEdit]);
 
 
   const filteredAndSortedRentals = useMemo(() => {
@@ -197,12 +205,14 @@ export default function HomePage() {
 
     if (searchTerm) {
         const lowercasedTerm = searchTerm.toLowerCase();
-        filtered = filtered.filter(rental => 
-            rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
-            rental.dumpster?.name.toLowerCase().includes(lowercasedTerm) ||
-            rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
-            String(rental.sequentialId).includes(lowercasedTerm)
-        );
+        filtered = filtered.filter(rental => {
+            const prefixedId = `AL${rental.sequentialId}`.toLowerCase();
+            return rental.client?.name.toLowerCase().includes(lowercasedTerm) ||
+                   rental.dumpster?.name.toLowerCase().includes(lowercasedTerm) ||
+                   rental.assignedToUser?.name.toLowerCase().includes(lowercasedTerm) ||
+                   String(rental.sequentialId).includes(lowercasedTerm) ||
+                   prefixedId.includes(lowercasedTerm);
+        });
     }
 
     return filtered.sort((a, b) => {
@@ -215,10 +225,10 @@ export default function HomePage() {
     });
   }, [rentals, statusFilter, searchTerm]);
 
-  if (authLoading || localLoading) {
+  if (authLoading || (localLoading && canAccess)) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
+            <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis de Caçambas</h1>
             <RentalCardSkeleton />
         </div>
     )
@@ -241,27 +251,33 @@ export default function HomePage() {
     )
   }
 
-  if (!accountId) {
+  if (!canAccess && !localLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
-        <h2 className="text-2xl font-bold font-headline mb-2">Sem conta vinculada.</h2>
-      </div>
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Acesso Negado</AlertTitle>
+                <AlertDescription>
+                    Você não tem permissão para visualizar esta página.
+                </AlertDescription>
+            </Alert>
+        </div>
     )
   }
 
-  if (rentals.length === 0) {
+  if (rentals.length === 0 && !localLoading) {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Truck className="h-10 w-10 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Nenhuma ordem de serviço encontrada</h2>
+            <h2 className="text-2xl font-bold font-headline mb-2">Nenhuma OS encontrada</h2>
             <p className="text-muted-foreground mb-6 max-w-md">
                 Você ainda não tem nenhuma OS agendada ou em andamento. Comece cadastrando uma nova.
             </p>
             <Button asChild>
                 <Link href="/rentals/new">
-                    Gerar OS
+                    Nova OS de aluguel
                 </Link>
             </Button>
         </div>
@@ -271,7 +287,7 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
+      <h1 className="text-3xl font-headline font-bold mb-8">Aluguéis de Caçambas</h1>
 
       <div className="space-y-4 mb-6">
         <div className="relative">
@@ -306,7 +322,7 @@ export default function HomePage() {
                 <AccordionItem value={rental.id} className="border-none">
                 <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
                     <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
-                        {rental.sequentialId}
+                        AL{rental.sequentialId}
                     </span>
                     <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">

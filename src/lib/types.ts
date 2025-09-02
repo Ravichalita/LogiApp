@@ -1,7 +1,6 @@
 
-
 import { z } from 'zod';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
 
@@ -30,14 +29,27 @@ export const RentalPriceSchema = z.object({
 
 export type RentalPrice = z.infer<typeof RentalPriceSchema>;
 
+export const OperationTypeSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: "O nome do tipo de operação é obrigatório." }),
+  value: z.coerce.number().min(0, "O valor deve ser zero ou maior."),
+});
+export type OperationType = z.infer<typeof OperationTypeSchema>;
+
 export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
     rentalCounter: z.number().int().optional().default(0),
+    operationCounter: z.number().int().optional().default(0),
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
+    operationTypes: z.array(OperationTypeSchema).optional().default([]),
     lastBackupDate: z.string().optional(),
     backupPeriodicityDays: z.number().int().min(1).optional().default(7),
     backupRetentionDays: z.number().int().min(1).optional().default(90),
+    baseAddress: z.string().optional(),
+    baseLatitude: z.number().optional(),
+    baseLongitude: z.number().optional(),
+    costPerKm: z.number().optional().default(0),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -46,19 +58,40 @@ export const UpdateBackupSettingsSchema = z.object({
   backupRetentionDays: z.coerce.number().int().min(1, "A retenção deve ser de no mínimo 1 dia."),
 });
 
+export const UpdateBaseAddressSchema = z.object({
+    baseAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
+    baseLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
+    baseLongitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+});
+
+export const UpdateCostSettingsSchema = z.object({
+  costPerKm: z.coerce.number().min(0, "O custo deve ser zero ou maior."),
+});
+
 
 // #endregion
 
 
 // #region Permissions
 export const PermissionsSchema = z.object({
+    // Main screen access
+    canAccessRentals: z.boolean().default(true),
+    canAccessOperations: z.boolean().default(false),
+    canAccessClients: z.boolean().default(true),
+    canAccessDumpsters: z.boolean().default(true),
+    canAccessFleet: z.boolean().default(false),
     canAccessTeam: z.boolean().default(false),
-    canAccessFinance: z.boolean().default(false),
     canAccessSettings: z.boolean().default(false),
-    canEditClients: z.boolean().default(false),
-    canEditDumpsters: z.boolean().default(false),
-    canEditRentals: z.boolean().default(false),
+    
+    // Feature Access
+    canAccessFinance: z.boolean().default(false),
     canAccessNotificationsStudio: z.boolean().default(false),
+    
+    // Actions Access
+    canEditRentals: z.boolean().default(true),
+    canEditOperations: z.boolean().default(false),
+    canEditDumpsters: z.boolean().default(false),
+    canEditFleet: z.boolean().default(false),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;
@@ -72,6 +105,97 @@ export const BackupSchema = z.object({
   status: z.enum(['in-progress', 'completed', 'failed']),
 });
 export type Backup = z.infer<typeof BackupSchema>;
+// #endregion
+
+// #region Truck Schema
+export const TruckSchema = z.object({
+  name: z.string().min(1, { message: "O nome/identificador é obrigatório." }),
+  plate: z.string().min(1, "A placa é obrigatória.").max(8, { message: "A placa deve ter no máximo 8 caracteres." }),
+  type: z.enum(["caminhão vácuo", "caminhão hidro vácuo", "poliguindaste"], { required_error: "O tipo de caminhão é obrigatório."}),
+  model: z.string().optional(),
+  year: z.preprocess(toNumOrUndef, z.number().optional()),
+  status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']).default('Disponível'),
+});
+export type Truck = z.infer<typeof TruckSchema> & { id: string, accountId: string };
+
+export const UpdateTruckSchema = TruckSchema.extend({
+  id: z.string(),
+});
+// #endregion
+
+// #region Operation Schema
+export const AdditionalCostSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    value: z.number(),
+});
+export type AdditionalCost = z.infer<typeof AdditionalCostSchema>;
+
+const BaseOperationSchema = z.object({
+  type: z.string({ required_error: "O tipo é obrigatório."}),
+  status: z.enum(['Pendente', 'Em Andamento', 'Concluído']),
+  startDate: z.string({ required_error: "A data de início é obrigatória." }),
+  endDate: z.string({ required_error: "A data de término é obrigatória." }),
+  clientId: z.string({ required_error: "O cliente é obrigatório." }),
+  truckId: z.string({ required_error: "O caminhão é obrigatório." }),
+  driverId: z.string({ required_error: "O responsável é obrigatório." }),
+  startAddress: z.string().min(5, { message: "O endereço de saída é obrigatório." }),
+  startLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
+  startLongitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+  destinationAddress: z.string().min(5, { message: "O endereço de destino é obrigatório." }),
+  destinationLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
+  destinationLongitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+  observations: z.string().optional(),
+  value: z.coerce.number().optional().nullable(),
+  additionalCosts: z.array(AdditionalCostSchema).optional(),
+  travelCost: z.number().optional(),
+  totalCost: z.number().optional(),
+  createdBy: z.string(),
+  accountId: z.string(),
+  createdAt: z.custom<FieldValue>().optional(),
+});
+
+export const OperationSchema = BaseOperationSchema.extend({
+  sequentialId: z.number().int().positive(),
+}).refine(data => {
+    if (data.startDate && data.endDate) {
+        return new Date(data.endDate) >= new Date(data.startDate);
+    }
+    return true;
+}, {
+    message: "A data de término deve ser posterior ou igual à data de início.",
+    path: ["endDate"],
+});
+
+export const UpdateOperationSchema = BaseOperationSchema
+  .omit({ 
+    createdBy: true, 
+    accountId: true, 
+    createdAt: true, 
+    status: true 
+  })
+  .extend({ id: z.string() })
+  .partial()
+  .refine(data => {
+    if (data.startDate && data.endDate) {
+        return new Date(data.endDate) >= new Date(data.startDate);
+    }
+    return true;
+  }, {
+    message: "A data de término deve ser posterior ou igual à data de início.",
+    path: ["endDate"],
+  });
+
+
+export type Operation = z.infer<typeof OperationSchema> & { id: string };
+
+export const CompletedOperationSchema = BaseOperationSchema.extend({
+    sequentialId: z.number().int().positive(),
+    completedAt: z.custom<FieldValue | Timestamp | string>(),
+});
+
+export type CompletedOperation = z.infer<typeof CompletedOperationSchema> & { id: string, completedAt: string, operationTypeId?: string };
+
 // #endregion
 
 
@@ -117,7 +241,10 @@ export const RentalSchema = z.object({
   deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
   latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
   longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
-  value: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
+  value: z.preprocess(
+    (val) => (typeof val === 'string' ? val.replace(',', '.') : val),
+    z.coerce.number({ required_error: "O valor é obrigatório." }).min(0, "O valor deve ser zero ou maior.")
+  ),
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
   assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
@@ -126,6 +253,14 @@ export const RentalSchema = z.object({
     due: z.boolean().default(false),
     late: z.boolean().default(false),
   }).optional(),
+  accountId: z.string(),
+});
+
+export const AttachmentSchema = z.object({
+    url: z.string().url(),
+    name: z.string(),
+    type: z.string(),
+    uploadedAt: z.string(),
 });
 
 const UpdateRentalPeriodSchema = z.object({
@@ -144,7 +279,10 @@ export const UpdateRentalSchema = z.object({
     deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }).optional(),
     latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
     longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
-    value: z.coerce.number().positive({ message: "O valor deve ser positivo." }).optional(),
+    value: z.preprocess(
+      (val) => (typeof val === 'string' ? val.replace(',', '.') : val),
+      z.coerce.number().min(0, "O valor deve ser zero ou maior.")
+    ).optional(),
     assignedTo: z.string().optional(),
     observations: z.string().optional(),
 }).refine(data => {
@@ -213,8 +351,7 @@ export const RentalPricesSchema = z.object({
 export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
-export type Rental = z.infer<typeof RentalSchema> & { id: string, accountId: string };
-// Make completedDate a string to allow for serialization from server component
+export type Rental = z.infer<typeof RentalSchema> & { id: string, attachments?: z.infer<typeof AttachmentSchema>[] };
 export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
@@ -222,6 +359,7 @@ export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'compl
     client?: Client | null;
     dumpster?: Dumpster | null;
     assignedToUser?: UserAccount | null;
+    attachments?: z.infer<typeof AttachmentSchema>[];
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
@@ -237,6 +375,15 @@ export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assigned
     client: Client | null;
     assignedToUser: UserAccount | null;
 };
+export type PopulatedOperation = Operation & {
+    operationTypeId: string;
+    operationTypeName: string | null;
+    client: Client | null;
+    truck: Truck | null;
+    driver: UserAccount | null;
+    createdAt?: Timestamp | string; // Allow string for serialized data
+    completedAt?: string; // Serialized ISO string for completed operations
+};
 export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'clientId'> & {
     id: string;
     dumpster: Dumpster | null;
@@ -248,7 +395,20 @@ export type AdminClientView = {
     ownerName: string;
     ownerEmail: string;
     ownerStatus: UserStatus;
+    hasSeenWelcome: boolean;
     createdAt: string;
     members: UserAccount[];
 }
+
+export type HistoricItem = {
+    id: string;
+    kind: 'rental' | 'operation';
+    prefix: 'AL' | 'OP';
+    clientName: string;
+    completedDate: string;
+    totalValue: number;
+    sequentialId: number;
+    operationTypeName?: string | null;
+    data: CompletedRental | PopulatedOperation;
+};
 // #endregion

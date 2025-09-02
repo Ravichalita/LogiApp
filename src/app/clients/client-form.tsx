@@ -44,6 +44,8 @@ export function ClientForm() {
 
   const handleAddressChange = (newAddress: string) => {
     setAddress(newAddress);
+    // When address changes manually, we lose the specific lat/lng
+    setLocation(null);
   }
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -113,9 +115,10 @@ export function ClientForm() {
           <Label htmlFor="address-input">Endereço Principal</Label>
           <AddressInput
               id="address-input"
-              initialValue={address}
+              value={address}
               onLocationSelect={handleLocationSelect}
               onInputChange={handleAddressChange}
+              initialLocation={location}
           />
           {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
       </div>

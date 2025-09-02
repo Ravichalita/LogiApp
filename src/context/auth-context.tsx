@@ -4,9 +4,9 @@
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { getFirebase, setupFcm, getFirebaseIdToken } from '@/lib/firebase-client';
-import type { UserAccount, UserRole, Account } from '@/lib/types';
+import type { UserAccount, UserRole, Account, Permissions } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
 import { createFirestoreBackupAction, checkAndSendDueNotificationsAction, sendFirstLoginNotificationToSuperAdminAction } from '@/lib/actions';
@@ -210,15 +210,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await ensureUserDocument({
                 name: firebaseUser.displayName || 'Super Admin',
                 email: firebaseUser.email!,
-                // Password is not needed here as auth user already exists.
-                // The server action will handle this case gracefully.
             });
-            // Force refresh the token to get the new claims.
             tokenResult = await getIdTokenResult(firebaseUser, true);
             claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
             if (!claimsAccountId) {
-                // If claims are still missing after recovery attempt, something is critically wrong.
                 console.error("Critical: Failed to set claims for super admin after recovery attempt. Logging out.");
                 await logout();
                 return;
@@ -239,23 +235,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
-        userDocUnsubscribe.current = onSnapshot(userDocRef, (userDocSnap) => {
+        userDocUnsubscribe.current = onSnapshot(userDocRef, async (userDocSnap) => {
             if (userDocSnap.exists()) {
-                 const userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
+                 let userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                  
-                 if (!userData.accountId || userData.accountId !== effectiveAccountId) {
-                    console.error("User doc accountId is missing or divergent from claims. Forcing logout for security.");
+                 if (userData.accountId !== effectiveAccountId) {
+                    console.error("User doc accountId is divergent from claims. Forcing logout for security.");
                     logout();
                     return; 
                  }
                  
+                // If user is admin, fetch owner's permissions to override
+                if (userData.role === 'admin') {
+                    const accountDoc = await getDoc(doc(db, 'accounts', userData.accountId));
+                    if (accountDoc.exists()) {
+                        const ownerId = accountDoc.data().ownerId;
+                        if (ownerId) {
+                            const ownerDoc = await getDoc(doc(db, 'users', ownerId));
+                            if (ownerDoc.exists()) {
+                                userData.permissions = ownerDoc.data().permissions as Permissions;
+                            }
+                        }
+                    }
+                }
+
                  setUserAccount(userData);
                  setRole(userData.role);
 
-                 // Check if it's the first time the user sees this
                  if (!userData.hasSeenWelcome) {
                      setShowWelcomeDialog(true);
-                     // Send install push notification on first welcome
                      sendNotification({
                          userId: userData.id,
                          title: "Bem-vindo ao LogiApp!",
@@ -281,14 +289,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (accountSnap.exists()) {
                 const accountData = { id: accountSnap.id, ...accountSnap.data() } as Account;
                 setAccount(accountData);
-                setAccountMissing(false); // Account found, reset the flag
+                setAccountMissing(false); 
             } else {
                 console.error("Account document not found after claims were confirmed. Activating recovery mode.");
                 setAccountMissing(true);
-                setAccount(null); // Explicitly set account to null
-                setUserAccount(null); // Also clear userAccount as it depends on a valid account
-                setLoading(false); // Stop loading to show recovery UI
-                // Don't logout here. Let the UI handle the recovery flow.
+                setAccount(null);
+                setUserAccount(null);
+                setLoading(false);
             }
         }, async (error) => {
              console.error("Error listening to account document:", error);
@@ -306,11 +313,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   useEffect(() => {
-    // This effect runs when all user and account data are loaded.
-    // It's the ideal place for "once-per-session" tasks.
     if (user && userAccount && account && !sessionWorkPerformed.current) {
         
-        // --- Perform all session tasks here ---
         checkAndTriggerAutoBackup(account.id, account);
         checkAndSendDueNotificationsAction(account.id);
         
@@ -319,8 +323,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fcmSetupPerformed.current = true;
         }
 
-        sessionWorkPerformed.current = true; // Mark as done for this session.
-        setLoading(false); // Now we are truly done loading.
+        sessionWorkPerformed.current = true; 
+        setLoading(false); 
     }
   }, [user, userAccount, account]);
 
