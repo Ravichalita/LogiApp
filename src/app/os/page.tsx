@@ -32,7 +32,9 @@ import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
-type RentalStatusFilter = RentalStatus | 'Todas' | 'Em Andamento';
+type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
+type StatusFilter = OsTypeFilter | RentalStatus | 'Em Andamento';
+
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning', order: number } {
@@ -260,8 +262,10 @@ function OSCardSkeleton() {
     )
 }
 
-const filterOptions: { label: string, value: RentalStatusFilter }[] = [
+const statusFilterOptions: { label: string; value: StatusFilter }[] = [
     { label: "Todas", value: 'Todas' },
+    { label: "Aluguéis", value: 'Aluguel' },
+    { label: "Operações", value: 'Operação' },
     { label: "Pendentes", value: 'Pendente' },
     { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerram Hoje", value: 'Encerra hoje' },
@@ -278,7 +282,7 @@ export default function OSPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
+  const [activeFilter, setActiveFilter] = useState<StatusFilter>('Todas');
   const router = useRouter();
 
   const permissions = userAccount?.permissions;
@@ -336,22 +340,28 @@ export default function OSPage() {
     const rentalItems = canAccessRentals ? rentals.map(r => ({ ...r, itemType: 'rental' as const, sortDate: r.rentalDate })) : [];
     const operationItems = canAccessOperations ? operations.map(o => ({ ...o, itemType: 'operation' as const, sortDate: o.startDate! })) : [];
     
-    const allItems = [...rentalItems, ...operationItems];
+    let allItems = [...rentalItems, ...operationItems];
 
-    let filtered = allItems;
-    
-    // Filter by status
-    if (statusFilter !== 'Todas') {
-        filtered = filtered.filter(item => {
+    // Filter by type first
+    if (activeFilter === 'Aluguel') {
+      allItems = allItems.filter(item => item.itemType === 'rental');
+    } else if (activeFilter === 'Operação') {
+      allItems = allItems.filter(item => item.itemType === 'operation');
+    }
+
+    // Then filter by status if it's a status filter
+    const statusFilters: StatusFilter[] = ['Pendente', 'Em Andamento', 'Encerra hoje', 'Em Atraso'];
+    if (statusFilters.includes(activeFilter)) {
+        allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const status = getRentalStatus(item).text;
-                if (statusFilter === 'Em Andamento') return status === 'Ativo';
-                return status === statusFilter;
+                if (activeFilter === 'Em Andamento') return status === 'Ativo';
+                return status === activeFilter;
             }
             if (item.itemType === 'operation') {
                 const status = getOperationStatus(item).text;
-                if (statusFilter === 'Em Andamento' || statusFilter === 'Pendente') {
-                    return status === statusFilter;
+                if (activeFilter === 'Em Andamento' || activeFilter === 'Pendente') {
+                    return status === activeFilter;
                 }
                 return false;
             }
@@ -361,7 +371,7 @@ export default function OSPage() {
 
     if (searchTerm) {
         const lowercasedTerm = searchTerm.toLowerCase();
-        filtered = filtered.filter(item => {
+        allItems = allItems.filter(item => {
             const clientName = item.client?.name?.toLowerCase() || '';
             const assignedName = (item.itemType === 'rental' ? item.assignedToUser?.name?.toLowerCase() : item.driver?.name?.toLowerCase()) || '';
             const id = (item.itemType === 'rental' ? `AL${item.sequentialId}` : `OP${item.sequentialId}`).toLowerCase();
@@ -369,9 +379,9 @@ export default function OSPage() {
         });
     }
 
-    return filtered.sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime());
+    return allItems.sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime());
 
-  }, [rentals, operations, searchTerm, statusFilter, canAccessRentals, canAccessOperations]);
+  }, [rentals, operations, searchTerm, activeFilter, canAccessRentals, canAccessOperations]);
 
   if (authLoading || (loading && (canAccessRentals || canAccessOperations))) {
     return (
@@ -413,7 +423,7 @@ export default function OSPage() {
     )
   }
 
-  if (combinedItems.length === 0 && !loading && !searchTerm && statusFilter === 'Todas') {
+  if (combinedItems.length === 0 && !loading && !searchTerm && activeFilter === 'Todas') {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -443,12 +453,12 @@ export default function OSPage() {
             />
         </div>
         <div className="flex flex-wrap gap-2">
-            {filterOptions.map(option => (
+            {statusFilterOptions.map(option => (
                 <Button
                     key={option.value}
-                    variant={statusFilter === option.value ? "default" : "outline"}
+                    variant={activeFilter === option.value ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setStatusFilter(option.value as RentalStatusFilter)}
+                    onClick={() => setActiveFilter(option.value as StatusFilter)}
                     className="text-xs h-7"
                 >
                     {option.label}
