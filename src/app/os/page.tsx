@@ -33,7 +33,7 @@ import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
-type StatusFilter = OsTypeFilter | RentalStatus | 'Em Andamento';
+type StatusFilter = RentalStatus | 'Em Andamento';
 
 
 // --- Helper Functions ---
@@ -262,10 +262,13 @@ function OSCardSkeleton() {
     )
 }
 
-const statusFilterOptions: { label: string; value: StatusFilter }[] = [
+const typeFilterOptions: { label: string; value: OsTypeFilter }[] = [
     { label: "Todas", value: 'Todas' },
     { label: "Aluguéis", value: 'Aluguel' },
     { label: "Operações", value: 'Operação' },
+];
+
+const statusFilterOptions: { label: string; value: StatusFilter }[] = [
     { label: "Pendentes", value: 'Pendente' },
     { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerram Hoje", value: 'Encerra hoje' },
@@ -282,7 +285,8 @@ export default function OSPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState<StatusFilter>('Todas');
+  const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter | 'Todas'>('Todas');
   const router = useRouter();
 
   const permissions = userAccount?.permissions;
@@ -299,14 +303,12 @@ export default function OSPage() {
     }
 
     setLoading(true);
-    // Admins, owners, and super admins should see all OS. Others see only their own.
     const isAdminView = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin';
     const userIdToFilter = isAdminView ? undefined : user?.uid;
 
     const unsubscribers: (() => void)[] = [];
 
     if (canAccessRentals) {
-      // Fetch team members only if the user has permission to edit/reassign rentals
       if (canEditRentals) {
          fetchTeamMembers(accountId).then(setTeamMembers);
       }
@@ -342,26 +344,23 @@ export default function OSPage() {
     
     let allItems = [...rentalItems, ...operationItems];
 
-    // Filter by type first
-    if (activeFilter === 'Aluguel') {
+    if (osTypeFilter === 'Aluguel') {
       allItems = allItems.filter(item => item.itemType === 'rental');
-    } else if (activeFilter === 'Operação') {
+    } else if (osTypeFilter === 'Operação') {
       allItems = allItems.filter(item => item.itemType === 'operation');
     }
-
-    // Then filter by status if it's a status filter
-    const statusFilters: StatusFilter[] = ['Pendente', 'Em Andamento', 'Encerra hoje', 'Em Atraso'];
-    if (statusFilters.includes(activeFilter)) {
+    
+    if (statusFilter !== 'Todas') {
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const status = getRentalStatus(item).text;
-                if (activeFilter === 'Em Andamento') return status === 'Ativo';
-                return status === activeFilter;
+                if (statusFilter === 'Em Andamento') return status === 'Ativo';
+                return status === statusFilter;
             }
             if (item.itemType === 'operation') {
                 const status = getOperationStatus(item).text;
-                if (activeFilter === 'Em Andamento' || activeFilter === 'Pendente') {
-                    return status === activeFilter;
+                if (statusFilter === 'Em Andamento' || statusFilter === 'Pendente') {
+                    return status === statusFilter;
                 }
                 return false;
             }
@@ -381,7 +380,12 @@ export default function OSPage() {
 
     return allItems.sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime());
 
-  }, [rentals, operations, searchTerm, activeFilter, canAccessRentals, canAccessOperations]);
+  }, [rentals, operations, searchTerm, osTypeFilter, statusFilter, canAccessRentals, canAccessOperations]);
+  
+  const handleTypeFilterChange = (type: OsTypeFilter) => {
+    setOsTypeFilter(type);
+    setStatusFilter('Todas'); // Reset status filter when type changes
+  };
 
   if (authLoading || (loading && (canAccessRentals || canAccessOperations))) {
     return (
@@ -423,7 +427,7 @@ export default function OSPage() {
     )
   }
 
-  if (combinedItems.length === 0 && !loading && !searchTerm && activeFilter === 'Todas') {
+  if (combinedItems.length === 0 && !loading && !searchTerm && osTypeFilter === 'Todas' && statusFilter === 'Todas') {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -452,18 +456,41 @@ export default function OSPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
             />
         </div>
-        <div className="flex flex-wrap gap-2">
-            {statusFilterOptions.map(option => (
+        <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+                {typeFilterOptions.map(option => (
+                    <Button
+                        key={option.value}
+                        variant={osTypeFilter === option.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleTypeFilterChange(option.value)}
+                        className="text-xs h-7"
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
+             <div className="flex flex-wrap gap-2">
                 <Button
-                    key={option.value}
-                    variant={activeFilter === option.value ? "default" : "outline"}
+                    variant={statusFilter === 'Todas' ? "secondary" : "outline"}
                     size="sm"
-                    onClick={() => setActiveFilter(option.value as StatusFilter)}
+                    onClick={() => setStatusFilter('Todas')}
                     className="text-xs h-7"
                 >
-                    {option.label}
+                    Todos Status
                 </Button>
-            ))}
+                {statusFilterOptions.map(option => (
+                    <Button
+                        key={option.value}
+                        variant={statusFilter === option.value ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setStatusFilter(option.value as StatusFilter)}
+                        className="text-xs h-7"
+                    >
+                        {option.label}
+                    </Button>
+                ))}
+            </div>
         </div>
       </div>
 
