@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { getPopulatedRentals, getPopulatedOperations } from '@/lib/data';
+import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, PopulatedOperation, UserAccount } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval } from 'date-fns';
 import {
@@ -284,13 +284,16 @@ export default function OSPage() {
     }
 
     setLoading(true);
-    const userIdToFilter = canEditRentals ? undefined : user?.uid;
+    // Admins, owners, and super admins should see all OS. Others see only their own.
+    const isAdminView = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin';
+    const userIdToFilter = isAdminView ? undefined : user?.uid;
 
     const unsubscribers: (() => void)[] = [];
 
     if (canAccessRentals) {
+      // Fetch team members only if the user has permission to edit/reassign rentals
       if (canEditRentals) {
-         // getTeamMembers(accountId, setTeamMembers); // Assuming you might need this
+         fetchTeamMembers(accountId).then(setTeamMembers);
       }
       const unsub = getPopulatedRentals(
         accountId,
@@ -315,7 +318,7 @@ export default function OSPage() {
     
     return () => unsubscribers.forEach(unsub => unsub());
 
-  }, [authLoading, accountId, user, userAccount, canAccessRentals, canAccessOperations, canEditRentals]);
+  }, [authLoading, accountId, user, userAccount, canAccessRentals, canAccessOperations, canEditRentals, isSuperAdmin]);
 
 
   const combinedItems = useMemo(() => {
