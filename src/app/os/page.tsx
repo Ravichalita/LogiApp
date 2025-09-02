@@ -387,7 +387,9 @@ export default function OSPage() {
     setStatusFilter('Todas'); // Reset status filter when type changes
   };
 
-  if (authLoading || (loading && (canAccessRentals || canAccessOperations))) {
+  const isLoading = authLoading || (loading && (canAccessRentals || canAccessOperations));
+
+  if (isLoading) {
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
@@ -689,3 +691,4 @@ export default function OSPage() {
     </div>
   );
 }
+
