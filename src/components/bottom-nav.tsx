@@ -4,17 +4,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Container, Users, Truck, Workflow } from 'lucide-react';
+import { Truck, Users, Cog, Container, Workflow } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
 
 const allNavLinks = [
-  { href: '/', label: 'Aluguéis', icon: Home, permission: 'canAccessRentals' as const },
-  { href: '/dumpsters', label: 'Caçambas', icon: Container, permission: 'canAccessRentals' as const },
-  { href: '/operations', label: 'Operações', icon: Workflow, permission: 'canAccessOperations' as const },
-  { href: '/fleet', label: 'Frota', icon: Truck, permission: 'canAccessFleet' as const },
-  { href: '/clients', label: 'Clientes', icon: Users, permission: 'canAccessClients' as const },
+  { href: '/os', label: 'OS', icon: Workflow, permission: ['canAccessRentals', 'canAccessOperations'] as const },
+  { href: '/dumpsters', label: 'Caçambas', icon: Container, permission: ['canAccessRentals'] as const },
+  { href: '/fleet', label: 'Frota', icon: Truck, permission: ['canAccessFleet'] as const },
+  { href: '/clients', label: 'Clientes', icon: Users, permission: ['canAccessClients'] as const },
 ];
 
 
@@ -31,7 +30,8 @@ export function BottomNav() {
   const visibleLinks = allNavLinks.filter(link => {
     if (isSuperAdmin) return true;
     if (!permissions) return false;
-    return permissions[link.permission];
+    // Link is visible if user has permission for at least one of the required permissions
+    return link.permission.some(p => permissions[p]);
   });
 
   return (

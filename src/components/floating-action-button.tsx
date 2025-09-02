@@ -1,12 +1,21 @@
 
+
 'use client';
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Workflow, Truck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NewItemDialog } from "./new-item-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function FloatingActionButton() {
     const { user, userAccount } = useAuth();
@@ -20,6 +29,7 @@ export function FloatingActionButton() {
     const pagesToHideFab = [
         '/rentals/new', 
         '/clients/new',
+        '/operations/new',
         '/finance', 
         '/settings', 
         '/admin/clients', 
@@ -27,7 +37,7 @@ export function FloatingActionButton() {
     ];
     
     // Specific pages that have their own FAB logic
-    const fabPages = ['/operations', '/fleet'];
+    const fabPages = ['/fleet'];
 
     if (pathname.startsWith('/edit') || (pagesToHideFab.some(path => pathname.startsWith(path)) && !fabPages.includes(pathname))) {
         return null;
@@ -37,15 +47,6 @@ export function FloatingActionButton() {
         const permissions = userAccount?.permissions;
 
         switch (pathname) {
-            case '/operations':
-                 return (
-                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                        <Link href="/operations/new">
-                            <Plus className="h-8 w-8" />
-                            <span className="sr-only">Nova Operação</span>
-                        </Link>
-                    </Button>
-                );
             case '/fleet':
                 return <NewItemDialog itemType="fleet" />
             case '/dumpsters':
@@ -70,15 +71,33 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="team" />;
                 }
                 return null;
-            case '/':
+            case '/os':
             default:
                 return (
-                    <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                        <Link href="/rentals/new">
-                            <Plus className="h-8 w-8" />
-                            <span className="sr-only">Gerar OS</span>
-                        </Link>
-                    </Button>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button className="h-16 w-16 rounded-full shadow-lg">
+                                <Plus className="h-8 w-8" />
+                                <span className="sr-only">Nova OS</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 mb-2">
+                             <DropdownMenuLabel>Criar Nova Ordem de Serviço</DropdownMenuLabel>
+                             <DropdownMenuSeparator />
+                             <DropdownMenuItem asChild>
+                                 <Link href="/rentals/new">
+                                    <Workflow className="mr-2 h-4 w-4" />
+                                    <span>OS de Aluguel</span>
+                                 </Link>
+                             </DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                 <Link href="/operations/new">
+                                    <Truck className="mr-2 h-4 w-4" />
+                                    <span>OS de Operação</span>
+                                 </Link>
+                             </DropdownMenuItem>
+                        </DropdownMenuContent>
+                     </DropdownMenu>
                 );
         }
     }

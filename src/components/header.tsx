@@ -26,11 +26,10 @@ import { Home, Container, Users, Truck, Workflow } from 'lucide-react';
 
 
 const allNavLinks = [
-  { href: '/', label: 'Aluguéis', permission: 'canAccessRentals' as const },
-  { href: '/dumpsters', label: 'Caçambas', permission: 'canAccessRentals' as const },
-  { href: '/operations', label: 'Operações', permission: 'canAccessOperations' as const },
-  { href: '/fleet', label: 'Frota', permission: 'canAccessFleet' as const },
-  { href: '/clients', label: 'Clientes', permission: 'canAccessClients' as const },
+  { href: '/os', label: 'OS', permission: ['canAccessRentals', 'canAccessOperations'] as const },
+  { href: '/dumpsters', label: 'Caçambas', permission: ['canAccessRentals'] as const },
+  { href: '/fleet', label: 'Frota', permission: ['canAccessFleet'] as const },
+  { href: '/clients', label: 'Clientes', permission: ['canAccessClients'] as const },
 ];
 
 export function Header() {
@@ -48,7 +47,7 @@ export function Header() {
   const visibleNavLinks = allNavLinks.filter(link => {
     if (isSuperAdmin) return true;
     if (!permissions) return false;
-    return permissions[link.permission];
+    return link.permission.some(p => permissions[p]);
   });
 
   const renderNavLinks = () =>
@@ -84,7 +83,19 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-2">
           {!isMobile && <HeaderActions />}
           <ThemeToggle />
-          {isMobile && <HeaderActions />}
+          
+           <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Abrir menu</span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <HeaderActions />
+            </DropdownMenuContent>
+           </DropdownMenu>
+
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
