@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -31,7 +32,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
-type RentalStatusFilter = RentalStatus | 'Todas';
+type RentalStatusFilter = RentalStatus | 'Todas' | 'Em Andamento';
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning', order: number } {
@@ -259,6 +260,15 @@ function OSCardSkeleton() {
     )
 }
 
+const filterOptions: { label: string, value: RentalStatusFilter }[] = [
+    { label: "Todas", value: 'Todas' },
+    { label: "Pendentes", value: 'Pendente' },
+    { label: "Em Andamento", value: 'Em Andamento' },
+    { label: "Encerram Hoje", value: 'Encerra hoje' },
+    { label: "Em Atraso", value: 'Em Atraso' },
+];
+
+
 // --- Main Page Component ---
 export default function OSPage() {
   const { user, accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
@@ -268,6 +278,7 @@ export default function OSPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<RentalStatusFilter>('Todas');
   const router = useRouter();
 
   const permissions = userAccount?.permissions;
@@ -329,6 +340,25 @@ export default function OSPage() {
 
     let filtered = allItems;
     
+    // Filter by status
+    if (statusFilter !== 'Todas') {
+        filtered = filtered.filter(item => {
+            if (item.itemType === 'rental') {
+                const status = getRentalStatus(item).text;
+                if (statusFilter === 'Em Andamento') return status === 'Ativo';
+                return status === statusFilter;
+            }
+            if (item.itemType === 'operation') {
+                const status = getOperationStatus(item).text;
+                if (statusFilter === 'Em Andamento' || statusFilter === 'Pendente') {
+                    return status === statusFilter;
+                }
+                return false;
+            }
+            return false;
+        });
+    }
+
     if (searchTerm) {
         const lowercasedTerm = searchTerm.toLowerCase();
         filtered = filtered.filter(item => {
@@ -341,7 +371,7 @@ export default function OSPage() {
 
     return filtered.sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime());
 
-  }, [rentals, operations, searchTerm, canAccessRentals, canAccessOperations]);
+  }, [rentals, operations, searchTerm, statusFilter, canAccessRentals, canAccessOperations]);
 
   if (authLoading || (loading && (canAccessRentals || canAccessOperations))) {
     return (
@@ -383,7 +413,7 @@ export default function OSPage() {
     )
   }
 
-  if (combinedItems.length === 0 && !loading && !searchTerm) {
+  if (combinedItems.length === 0 && !loading && !searchTerm && statusFilter === 'Todas') {
     return (
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
              <div className="p-4 bg-primary/10 rounded-full mb-4">
@@ -411,6 +441,19 @@ export default function OSPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
             />
+        </div>
+        <div className="flex flex-wrap gap-2">
+            {filterOptions.map(option => (
+                <Button
+                    key={option.value}
+                    variant={statusFilter === option.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter(option.value as RentalStatusFilter)}
+                    className="text-xs h-7"
+                >
+                    {option.label}
+                </Button>
+            ))}
         </div>
       </div>
 
