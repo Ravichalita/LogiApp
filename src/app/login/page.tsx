@@ -28,7 +28,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      router.push('/os');
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
       switch (error.code) {

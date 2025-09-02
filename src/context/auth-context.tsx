@@ -353,7 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             router.push('/verify-email');
          }
        } else if ((user.emailVerified || isSuperAdminUser) && nonAuthRoutes.includes(pathname)) {
-         router.push('/');
+         router.push('/os');
       }
     }
   }, [user, loading, pathname, router, accountMissing]);
