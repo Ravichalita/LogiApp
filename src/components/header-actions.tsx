@@ -56,6 +56,13 @@ export function HeaderActions() {
   ];
   
   const userActions = [
+     {
+      href: "/account",
+      icon: <User className="mr-2 h-4 w-4" />,
+      label: "Sua Conta",
+      component: Link,
+      shouldRender: true,
+    },
     {
       href: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
@@ -91,16 +98,12 @@ export function HeaderActions() {
         return null;
     }
 
+    const mobileNavActions = navActions.filter(a => a.shouldRender);
+    const mobileUserActions = userActions.filter(a => a.shouldRender);
+
     return (
-        <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Abrir menu</span>
-            </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-            {navActions.filter(a => a.shouldRender).map(action => (
+        <>
+            {mobileNavActions.map(action => (
                  <DropdownMenuItem key={action.href} asChild>
                     <Link href={action.href}>
                         {React.cloneElement(action.icon, {className: "mr-2 h-4 w-4"})}
@@ -109,9 +112,9 @@ export function HeaderActions() {
                 </DropdownMenuItem>
             ))}
             
-            {(navActions.filter(a => a.shouldRender).length > 0 && userActions.filter(a => a.shouldRender).length > 0) && <DropdownMenuSeparator />}
+            {(mobileNavActions.length > 0 && mobileUserActions.length > 0) && <DropdownMenuSeparator />}
             
-            {userActions.filter(a => a.shouldRender).map((action) => {
+            {mobileUserActions.map((action) => {
               const ActionComponent = action.component;
               if (ActionComponent === Link) {
                   return (
@@ -125,9 +128,7 @@ export function HeaderActions() {
               }
                return <ActionComponent key={action.label} />
             })}
-
-        </DropdownMenuContent>
-        </DropdownMenu>
+        </>
     );
   }
 
