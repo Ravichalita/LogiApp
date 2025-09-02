@@ -318,6 +318,7 @@ export const UserAccountSchema = z.object({
   createdAt: z.custom<FieldValue>().optional(),
   fcmTokens: z.array(z.string()).optional(),
   hasSeenWelcome: z.boolean().optional(),
+  firstAccessAt: z.string().optional(),
 });
 
 export const UpdateUserProfileSchema = z.object({
@@ -397,6 +398,7 @@ export type AdminClientView = {
     ownerStatus: UserStatus;
     hasSeenWelcome: boolean;
     createdAt: string;
+    firstAccessAt?: string;
     members: UserAccount[];
 }
 

@@ -164,7 +164,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleCloseWelcomeDialog = () => {
         if (!user) return;
         const userRef = doc(db, 'users', user.uid);
-        updateDoc(userRef, { hasSeenWelcome: true }).catch(console.error);
+        updateDoc(userRef, { 
+            hasSeenWelcome: true,
+            firstAccessAt: new Date().toISOString()
+        }).catch(console.error);
         setShowWelcomeDialog(false);
     }
 

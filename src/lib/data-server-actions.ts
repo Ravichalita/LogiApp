@@ -174,6 +174,7 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
                 ownerStatus: ownerData.status ?? 'ativo',
                 hasSeenWelcome: ownerData.hasSeenWelcome ?? false,
                 createdAt: ownerData.createdAt,
+                firstAccessAt: ownerData.firstAccessAt,
                 members: members,
             };
         });

@@ -128,6 +128,7 @@ export async function ensureUserDocument(
                 permissions: permissions,
                 createdAt: FieldValue.serverTimestamp(),
                 hasSeenWelcome: false, // Initialize the flag for the welcome dialog
+                firstAccessAt: null,
             };
             transaction.set(userDocRef, userAccountData);
 

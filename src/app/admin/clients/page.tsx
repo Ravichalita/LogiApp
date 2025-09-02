@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AdminClientActions } from './client-actions';
 import { ShieldAlert, Users, Plus, Minus, User, Mail, Shield, Settings, CheckCircle, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewItemDialog } from '@/components/new-item-dialog';
 import { Separator } from '@/components/ui/separator';
@@ -133,7 +133,7 @@ export default function AdminClientsPage() {
                                                 {client.hasSeenWelcome ? (
                                                     <div className="flex items-center gap-1 text-green-600">
                                                         <CheckCircle className="h-3 w-3" />
-                                                        <span>Primeiro Acesso OK</span>
+                                                        <span>1º acesso em {client.firstAccessAt ? format(parseISO(client.firstAccessAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR }) : 'OK'}</span>
                                                     </div>
                                                 ) : (
                                                      <div className="flex items-center gap-1 text-amber-600">
