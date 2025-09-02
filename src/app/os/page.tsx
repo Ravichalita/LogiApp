@@ -457,14 +457,13 @@ export default function OSPage() {
             />
         </div>
         <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-2">
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
                         variant={osTypeFilter === option.value ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleTypeFilterChange(option.value)}
-                        className="text-xs h-7"
                     >
                         {option.label}
                     </Button>
