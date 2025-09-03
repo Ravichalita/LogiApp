@@ -13,9 +13,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils";
 
 export function FloatingActionButton() {
-    const { user, userAccount } = useAuth();
+    const { user, userAccount, isSuperAdmin } = useAuth();
     const pathname = usePathname();
     const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
 
@@ -42,7 +43,7 @@ export function FloatingActionButton() {
 
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
-        const canAccessOps = permissions?.canAccessOperations;
+        const canAccessOps = isSuperAdmin || permissions?.canAccessOperations;
 
         switch (pathname) {
             case '/fleet':
@@ -86,8 +87,13 @@ export function FloatingActionButton() {
                                     <span>Novo Aluguel</span>
                                  </Link>
                              </DropdownMenuItem>
-                             <DropdownMenuItem asChild disabled={!canAccessOps}>
-                                 <Link href="/operations/new" aria-disabled={!canAccessOps} tabIndex={!canAccessOps ? -1 : undefined} className={!canAccessOps ? "pointer-events-none" : ""}>
+                             <DropdownMenuItem asChild>
+                                 <Link 
+                                    href="/operations/new"
+                                    aria-disabled={!canAccessOps} 
+                                    tabIndex={!canAccessOps ? -1 : undefined} 
+                                    className={cn(!canAccessOps && "pointer-events-none opacity-50")}
+                                >
                                     <Truck className="mr-2 h-4 w-4" />
                                     <span>Nova Operação</span>
                                  </Link>
