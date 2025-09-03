@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
-import type { PopulatedRental, PopulatedOperation, UserAccount } from '@/lib/types';
+import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval } from 'date-fns';
 import {
   Accordion,
@@ -473,16 +472,13 @@ export default function OSPage() {
                 ))}
             </div>
              <div className="flex flex-wrap gap-2">
-                {statusFilterOptions.map(option => (
+                {statusFilterOptions.map((option) => (
                     <Button
                         key={option.value}
-                        variant={statusFilter === option.value ? "secondary" : "outline"}
+                        variant={statusFilter === option.value ? 'secondary' : 'outline'}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
-                        className={cn(
-                            "text-xs h-7",
-                            statusFilter === option.value && "ring-1 ring-ring"
-                        )}
+                        className="h-7 text-xs"
                     >
                         {option.label}
                     </Button>
@@ -556,7 +552,7 @@ export default function OSPage() {
                                 </span>
                                 <CardHeader className="pb-4 pt-8">
                                      <div className="flex items-start justify-between mb-2">
-                                        <CardTitle className="text-lg">{op.operationTypeName || op.type}</CardTitle>
+                                        <CardTitle className="text-lg">{op.operationTypeName}</CardTitle>
                                          <Badge variant={status.variant}>{status.text}</Badge>
                                     </div>
                                      <CardDescription className="text-sm mt-4">

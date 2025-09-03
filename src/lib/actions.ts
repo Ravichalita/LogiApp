@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -763,12 +762,22 @@ export async function createOperationAction(accountId: string, createdBy: string
         }
     }
     
+    let typeIds: string[] = [];
+    if (rawData.typeIds && typeof rawData.typeIds === 'string') {
+        try {
+            typeIds = JSON.parse(rawData.typeIds);
+        } catch (e) {
+            console.error("Failed to parse typeIds JSON");
+        }
+    }
+
     const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
     const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + (cost?.value || 0), 0);
     const totalCost = travelCost + additionalCostsTotal;
 
     const dataToValidate = {
          ...rawData,
+         typeIds,
          sequentialId: newSequentialId,
          status: 'Pendente',
          createdBy: createdBy,
@@ -809,8 +818,8 @@ export async function createOperationAction(accountId: string, createdBy: string
     return { message: handleFirebaseError(e) as string };
   }
 
-  revalidatePath('/operations');
-  redirect('/operations');
+  revalidatePath('/os');
+  redirect('/os');
 }
 
 export async function updateOperationAction(accountId: string, prevState: any, formData: FormData) {

@@ -29,6 +29,7 @@ import {
 import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CostsDialog } from './costs-dialog';
+import { MultiSelect, type OptionType } from '@/components/ui/multi-select';
 
 interface OperationFormProps {
   clients: Client[];
@@ -82,7 +83,8 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
   const [destinationAddress, setDestinationAddress] = useState('');
   const [destinationLocation, setDestinationLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
-
+  
+  const [selectedOperationTypeIds, setSelectedOperationTypeIds] = useState<string[]>([]);
   const [baseValue, setBaseValue] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
   
@@ -94,6 +96,11 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
+
+  const operationTypeOptions: OptionType[] = operationTypes.map(type => ({
+      value: type.id,
+      label: `${type.name} (${formatCurrency(type.value)})`
+  }));
 
     const WeatherIcon = ({ condition }: { condition: string }) => {
         const lowerCaseCondition = condition.toLowerCase();
@@ -179,6 +186,15 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
 
     fetchRouteAndWeather();
   }, [startLocation, destinationLocation, startDate, account?.costPerKm]);
+  
+  useEffect(() => {
+    const newBaseValue = selectedOperationTypeIds.reduce((total, id) => {
+        const selectedType = operationTypes.find(t => t.id === id);
+        return total + (selectedType?.value || 0);
+    }, 0);
+    setBaseValue(newBaseValue);
+  }, [selectedOperationTypeIds, operationTypes]);
+
 
   const handleStartLocationSelect = (selectedLocation: Location) => {
     setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -198,19 +214,6 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
     setDestinationAddress(newAddress);
   }
 
-  const handleBaseValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value.replace(/\D/g, '');
-    const cents = parseInt(rawValue, 10) || 0;
-    setBaseValue(cents / 100);
-  }
-
-  const handleOperationTypeChange = (selectedTypeId: string) => {
-    const selectedType = operationTypes.find(t => t.id === selectedTypeId);
-    if (selectedType) {
-      setBaseValue(selectedType.value);
-    }
-  };
-
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
         if (!accountId || !user) {
@@ -229,6 +232,8 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
         
         if (finalStartDate) formData.set('startDate', finalStartDate);
         if (finalEndDate) formData.set('endDate', finalEndDate);
+        
+        formData.set('typeIds', JSON.stringify(selectedOperationTypeIds));
 
         formData.set('startAddress', startAddress);
         if (startLocation) {
@@ -269,22 +274,16 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
   return (
     <form action={handleFormAction} className="space-y-6">
       <input type="hidden" name="travelCost" value={travelCost || 0} />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="type">Tipo de Operação</Label>
-          <Select name="type" onValueChange={handleOperationTypeChange} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              {operationTypes.map(type => 
-                <SelectItem key={type.id} value={type.id}>
-                    {type.name} ({formatCurrency(type.value)})
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          {errors?.type && <p className="text-sm font-medium text-destructive">{errors.type[0]}</p>}
+           <MultiSelect
+                options={operationTypeOptions}
+                selected={selectedOperationTypeIds}
+                onChange={setSelectedOperationTypeIds}
+                placeholder="Selecione o(s) tipo(s)"
+            />
+          {errors?.typeIds && <p className="text-sm font-medium text-destructive">{errors.typeIds[0]}</p>}
         </div>
 
         <div className="space-y-2">
@@ -301,7 +300,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
             <Label htmlFor="driverId">Responsável</Label>
             <Select name="driverId" required>
@@ -332,7 +331,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
       <div className="p-4 border rounded-md space-y-4">
         <div className="space-y-2">
             <Label>Início da Operação</Label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Popover>
                 <PopoverTrigger asChild>
                     <Button
@@ -369,7 +368,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
                 <AccordionContent className="pt-4 mt-2">
                      <div className="space-y-2">
                         <Label>Término (Previsão)</Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -501,17 +500,12 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
             </div>
              <div className="grid gap-2">
                  <Label htmlFor="value" className="text-right">Valor do Serviço</Label>
-                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                    <Input
-                        id="value"
-                        name="value_display"
-                        value={formatCurrencyForInput((baseValue * 100).toString())}
-                        onChange={handleBaseValueChange}
-                        placeholder="0,00"
-                        className="pl-8 text-right font-bold"
-                    />
-                </div>
+                 <Input
+                    id="value"
+                    readOnly
+                    value={formatCurrency(baseValue)}
+                    className="pl-8 text-right font-bold bg-muted"
+                />
             </div>
         </div>
         {(totalOperationCost > 0 || baseValue > 0) && (

@@ -138,7 +138,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
 
   return (
     <form action={handleFormAction} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="type">Tipo de Operação</Label>
           <Select name="type" defaultValue={operation.operationTypeId} onValueChange={handleOperationTypeChange} required>
@@ -168,7 +168,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="driverId">Responsável</Label>
           <Select name="driverId" defaultValue={operation.driverId} required>
@@ -199,7 +199,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
       <div className="p-4 border rounded-md space-y-4">
         <div className="space-y-2">
           <Label>Início da Operação</Label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
@@ -218,7 +218,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
 
         <div className="space-y-2">
           <Label>Término (Previsão)</Label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>

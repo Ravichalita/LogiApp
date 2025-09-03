@@ -132,7 +132,7 @@ export const AdditionalCostSchema = z.object({
 export type AdditionalCost = z.infer<typeof AdditionalCostSchema>;
 
 const BaseOperationSchema = z.object({
-  type: z.string({ required_error: "O tipo é obrigatório."}),
+  typeIds: z.array(z.string()).min(1, "Pelo menos um tipo de operação deve ser selecionado."),
   status: z.enum(['Pendente', 'Em Andamento', 'Concluído']),
   startDate: z.string({ required_error: "A data de início é obrigatória." }),
   endDate: z.string({ required_error: "A data de término é obrigatória." }),
