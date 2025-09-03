@@ -416,7 +416,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
         </div>
 
         <Accordion type="single" collapsible className="w-full" defaultValue="">
-            <AccordionItem value="start-address" className="border-b-0">
+            <AccordionItem value="start-address" className="border-none">
                 <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
                     <span className="font-normal">Trocar endereço de partida</span>
                 </AccordionTrigger>
@@ -501,7 +501,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
                 </CostsDialog>
             </div>
              <div className="grid gap-2">
-                 <Label htmlFor="value" className="text-right">Valor do Serviço</Label>
+                 <Label htmlFor="value" className="text-left md:text-right">Valor do Serviço</Label>
                  <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                     <Input

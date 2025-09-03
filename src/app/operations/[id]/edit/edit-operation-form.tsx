@@ -260,7 +260,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
             </CostsDialog>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="value" className="text-right">Valor do Serviço</Label>
+            <Label htmlFor="value" className="md:text-right">Valor do Serviço</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
               <Input
