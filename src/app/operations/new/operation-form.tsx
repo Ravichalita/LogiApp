@@ -32,6 +32,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CostsDialog } from './costs-dialog';
 import { OperationTypeDialog } from './operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
+import { Separator } from '@/components/ui/separator';
 
 interface OperationFormProps {
   clients: Client[];
@@ -528,7 +529,24 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
               </div>
             </div>
         </div>
+        {additionalCosts.length > 0 && (
+            <div className="pt-2 space-y-1">
+                <Separator />
+                <h4 className="text-xs font-semibold text-muted-foreground pt-3">CUSTOS ADICIONAIS:</h4>
+                <ul className="text-sm">
+                    {additionalCosts.map(cost => (
+                        <li key={cost.id} className="flex justify-between">
+                            <span>{cost.name}</span>
+                            <span>{formatCurrency(cost.value)}</span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        )}
+
         {(totalOperationCost > 0 || baseValue > 0) && (
+            <>
+            <Separator />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm pt-2 gap-2 sm:gap-4">
                 <div className="flex items-center gap-2">
                     <TrendingDown className="h-4 w-4 text-destructive" />
@@ -549,6 +567,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
                     </span>
                 </div>
             </div>
+            </>
         )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
