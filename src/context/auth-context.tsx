@@ -206,7 +206,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let claimsAccountId = tokenResult.claims.accountId as string | undefined;
 
         // *** RECOVERY LOGIC ***
-        // If claims are missing, it might be a new super admin user who needs their account created.
         if (!claimsAccountId && isSuperAdminUser) {
             console.log("Super admin is missing claims. Attempting to ensure user document exists...");
             await ensureUserDocument({
@@ -227,7 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        const effectiveAccountId = claimsAccountId!;
+        const effectiveAccountId = isSuperAdminUser ? firebaseUser.uid : claimsAccountId!;
         
         setUser(firebaseUser);
         setAccountId(effectiveAccountId);
@@ -241,7 +240,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (userDocSnap.exists()) {
                  let userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                  
-                 if (userData.accountId !== effectiveAccountId) {
+                 // Divergent account ID security check
+                 if (!isSuperAdminUser && userData.accountId !== claimsAccountId) {
                     console.error("User doc accountId is divergent from claims. Forcing logout for security.");
                     logout();
                     return; 
