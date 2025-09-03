@@ -56,13 +56,6 @@ export function HeaderActions() {
   ];
   
   const userActions = [
-     {
-      href: "/account",
-      icon: <User className="mr-2 h-4 w-4" />,
-      label: "Sua Conta",
-      component: Link,
-      shouldRender: true,
-    },
     {
       href: "/settings",
       icon: <Settings className="mr-2 h-4 w-4" />,
