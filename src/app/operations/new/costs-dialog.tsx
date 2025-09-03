@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { AdditionalCost } from '@/lib/types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Plus } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 interface CostsDialogProps {
@@ -92,7 +92,7 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
           <DialogTitle>Custos Adicionais da Operação</DialogTitle>
         </DialogHeader>
         <div className="py-4 space-y-4 px-1">
-            <div className="max-h-64 overflow-y-auto space-y-2 pr-2 -mr-2">
+            <div className="max-h-64 overflow-y-auto space-y-2 pr-2 -mr-2 px-1">
                 {currentCosts.map((cost) => (
                     <div key={cost.id} className="flex items-center gap-2">
                         <Input
@@ -121,10 +121,12 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
                     </div>
                 ))}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={addCost}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Adicionar Custo
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="icon" onClick={addCost}>
+                    <Plus className="h-4 w-4" />
+                </Button>
+                <p className="text-sm text-muted-foreground">Adicionar novo custo</p>
+            </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
