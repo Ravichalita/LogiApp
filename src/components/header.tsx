@@ -73,7 +73,7 @@ export function Header() {
     <header className="sticky top-0 z-40 w-full border-b bg-card">
       <div className="container flex h-16 items-center">
         <div className="flex items-center">
-                     <Link href="/" className="mr-6 flex items-center space-x-2">
+                     <Link href="/os" className="mr-6 flex items-center space-x-2">
                      <Image src="/192x192.png" alt="LogiApp Logo" width={28} height={28} />
                 <span className="font-bold inline-block text-primary">LogiApp</span>
             </Link>

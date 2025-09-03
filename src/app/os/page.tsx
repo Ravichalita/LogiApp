@@ -33,7 +33,7 @@ import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
-type StatusFilter = RentalStatus | 'Em Andamento';
+type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento';
 
 
 // --- Helper Functions ---
@@ -269,6 +269,7 @@ const typeFilterOptions: { label: string; value: OsTypeFilter }[] = [
 ];
 
 const statusFilterOptions: { label: string; value: StatusFilter }[] = [
+    { label: "Todos Status", value: 'Todas' },
     { label: "Pendentes", value: 'Pendente' },
     { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerram Hoje", value: 'Encerra hoje' },
@@ -286,7 +287,7 @@ export default function OSPage() {
   const [error, setError] = useState<Error | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter | 'Todas'>('Todas');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
   const router = useRouter();
 
   const permissions = userAccount?.permissions;
@@ -373,7 +374,7 @@ export default function OSPage() {
         allItems = allItems.filter(item => {
             const clientName = item.client?.name?.toLowerCase() || '';
             const assignedName = (item.itemType === 'rental' ? item.assignedToUser?.name?.toLowerCase() : item.driver?.name?.toLowerCase()) || '';
-            const id = (item.itemType === 'rental' ? `AL${item.sequentialId}` : `OP${item.sequentialId}`).toLowerCase();
+            const id = (item.itemType === 'rental' ? `al${item.sequentialId}` : `op${item.sequentialId}`).toLowerCase();
             return clientName.includes(lowercasedTerm) || assignedName.includes(lowercasedTerm) || id.includes(lowercasedTerm);
         });
     }
@@ -472,21 +473,16 @@ export default function OSPage() {
                 ))}
             </div>
              <div className="flex flex-wrap gap-2">
-                <Button
-                    variant={statusFilter === 'Todas' ? "secondary" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter('Todas')}
-                    className="text-xs h-7"
-                >
-                    Todos Status
-                </Button>
                 {statusFilterOptions.map(option => (
                     <Button
                         key={option.value}
                         variant={statusFilter === option.value ? "secondary" : "outline"}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
-                        className="text-xs h-7"
+                        className={cn(
+                            "text-xs h-7",
+                            statusFilter === option.value && "ring-1 ring-ring"
+                        )}
                     >
                         {option.label}
                     </Button>
@@ -507,7 +503,7 @@ export default function OSPage() {
                                  <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
                                     AL{rental.sequentialId}
                                 </span>
-                                <CardHeader className="pb-4">
+                                <CardHeader className="pb-4 pt-8">
                                     <div className="flex items-start justify-between">
                                         <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
                                         <div className="flex flex-col items-end gap-1 ml-2">
@@ -558,37 +554,35 @@ export default function OSPage() {
                                 <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
                                     OP{op.sequentialId}
                                 </span>
-                                <CardHeader className="pb-4">
-                                     <div className="pt-3">
-                                        <div className="flex items-start justify-between mb-2">
-                                            <CardTitle className="text-lg">{op.operationTypeName || op.type}</CardTitle>
-                                             <Badge variant={status.variant}>{status.text}</Badge>
-                                        </div>
-                                         <CardDescription className="text-sm mt-4">
-                                            <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
-                                                <div className="space-y-1.5">
-                                                     <div className="flex items-center gap-1.5">
-                                                        <Building className="h-4 w-4"/> {op.client?.name}
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <User className="h-4 w-4"/> {op.driver?.name}
-                                                    </div>
+                                <CardHeader className="pb-4 pt-8">
+                                     <div className="flex items-start justify-between mb-2">
+                                        <CardTitle className="text-lg">{op.operationTypeName || op.type}</CardTitle>
+                                         <Badge variant={status.variant}>{status.text}</Badge>
+                                    </div>
+                                     <CardDescription className="text-sm mt-4">
+                                        <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
+                                            <div className="space-y-1.5">
+                                                 <div className="flex items-center gap-1.5">
+                                                    <Building className="h-4 w-4"/> {op.client?.name}
                                                 </div>
-                                                <div className="space-y-1.5 text-left md:text-right">
-                                                    {op.truck && (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Truck className="h-4 w-4" />
-                                                            <span>{op.truck.name} ({op.truck.plate})</span>
-                                                        </div>
-                                                    )}
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Calendar className="h-4 w-4"/>
-                                                        {formatDateRange(op.startDate, op.endDate)}
-                                                    </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <User className="h-4 w-4"/> {op.driver?.name}
                                                 </div>
                                             </div>
-                                        </CardDescription>
-                                    </div>
+                                            <div className="space-y-1.5 text-left md:text-right">
+                                                {op.truck && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Truck className="h-4 w-4" />
+                                                        <span>{op.truck.name} ({op.truck.plate})</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-1.5">
+                                                    <Calendar className="h-4 w-4"/>
+                                                    {formatDateRange(op.startDate, op.endDate)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardDescription>
                                 </CardHeader>
                                  <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
                                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
@@ -691,4 +685,3 @@ export default function OSPage() {
     </div>
   );
 }
-
