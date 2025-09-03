@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -17,6 +18,7 @@ interface AddressInputProps {
   onBlur?: () => void;
   className?: string;
   value?: string; // Controlled value from parent
+  initialLocation?: { lat: number; lng: number } | null;
 }
 
 export function AddressInput({
@@ -25,6 +27,7 @@ export function AddressInput({
   onLocationSelect,
   value: controlledValue,
   onBlur,
+  initialLocation,
 }: AddressInputProps) {
   const [searchValue, setSearchValue] = useState(controlledValue ?? '');
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
@@ -114,7 +117,6 @@ export function AddressInput({
                 </div>
             </StandaloneSearchBox>
         </div>
-        <MapDialog onLocationSelect={onLocationSelect} address={controlledValue} />
     </div>
   );
 }

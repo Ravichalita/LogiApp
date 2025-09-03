@@ -194,40 +194,42 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
   }
 
   return (
-    <div className="flex w-full items-center gap-2">
-        <Alert variant="info" className="flex-grow flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            {directions && (
-                <>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Route className="h-5 w-5" />
-                        <span className="font-bold">{directions.distance}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-5 w-5" />
-                        <span className="font-bold">{directions.duration}</span>
-                    </div>
-                </>
-            )}
-            {weather && (
-              <div className="text-center">
-                <div className="flex items-center gap-2 text-sm">
-                  <WeatherIcon condition={weather.condition} />
-                  <span className="font-bold">{weather.tempC}°C</span>
-                </div>
-                 <p className="text-xs mt-1 text-blue-800 dark:text-blue-300">Previsão do Tempo</p>
+    <div className="relative">
+      <Alert variant="info" className="flex-grow flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          {directions && (
+            <>
+              <div className="flex items-center gap-2 text-sm">
+                <Route className="h-5 w-5" />
+                <span className="font-bold">{directions.distance}</span>
               </div>
-            )}
-        </Alert>
-        <Button asChild variant="outline" size="sm" className="h-auto self-stretch">
-            <Link 
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="h-5 w-5" />
+                <span className="font-bold">{directions.duration}</span>
+              </div>
+            </>
+          )}
+          {weather && (
+            <div className="text-center">
+              <div className="flex items-center gap-2 text-sm">
+                <WeatherIcon condition={weather.condition} />
+                <span className="font-bold">{weather.tempC}°C</span>
+              </div>
+              <p className="text-xs mt-1 text-blue-800 dark:text-blue-300">Previsão do Tempo</p>
+            </div>
+          )}
+        </div>
+        <Button asChild variant="outline" size="sm" className="w-full mt-auto">
+            <Link
                 href={`https://www.google.com/maps/dir/?api=1&origin=${operation.startLatitude},${operation.startLongitude}&destination=${operation.destinationLatitude},${operation.destinationLongitude}`}
                 target="_blank"
-                className="flex flex-col items-center justify-center p-2 text-center"
+                className="flex items-center gap-2"
             >
                 <Map className="h-4 w-4" />
-                <span className="text-[10px] leading-tight mt-1">Trajeto no mapa</span>
+                <span>Ver trajeto no mapa</span>
             </Link>
         </Button>
+      </Alert>
     </div>
   );
 };
@@ -464,9 +466,11 @@ export default function OSPage() {
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
-                        variant={osTypeFilter === option.value ? "default" : "outline"}
+                        variant={osTypeFilter === option.value ? "cinza" : "outline"}
                         size="sm"
-                        onClick={() => handleTypeFilterChange(option.value)}
+                        onClick={() => handleTypeFilterChange(option.value)
+
+                        }
                     >
                         {option.label}
                     </Button>
@@ -497,7 +501,7 @@ export default function OSPage() {
                     <Accordion type="single" collapsible className="w-full" key={`rental-${rental.id}`}>
                          <AccordionItem value={rental.id} className="border-none">
                             <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                 <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
+                                 <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
                                     AL{rental.sequentialId}
                                 </span>
                                 <CardHeader className="pb-4 pt-8">
@@ -548,7 +552,7 @@ export default function OSPage() {
                      <Accordion type="single" collapsible className="w-full" key={`op-${op.id}`}>
                          <AccordionItem value={op.id} className="border-none">
                             <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                <span className="absolute top-2 left-3 text-xs font-mono font-bold text-muted-foreground/80">
+                                <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
                                     OP{op.sequentialId}
                                 </span>
                                 <CardHeader className="pb-4 pt-8">

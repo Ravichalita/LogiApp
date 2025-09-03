@@ -55,13 +55,13 @@ export default function NewOperationPage() {
 
 
   return (
-    <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
-      <Card>
+    <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6 bg-muted/30">
+      <Card className="border-0 shadow-none bg-transparent">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Nova Ordem de Operação</CardTitle>
+          <CardTitle className="font-headline text-2xl">Nova Operação</CardTitle>
           <CardDescription>Preencha os detalhes para criar uma nova operação.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
              <div className="space-y-6">
               {[...Array(5)].map((_, i) => (
