@@ -44,6 +44,7 @@ export function FloatingActionButton() {
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
         const canAccessOps = isSuperAdmin || permissions?.canAccessOperations;
+        const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
 
         switch (pathname) {
             case '/fleet':
@@ -82,7 +83,12 @@ export function FloatingActionButton() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="mb-2">
                              <DropdownMenuItem asChild>
-                                 <Link href="/rentals/new">
+                                 <Link 
+                                    href="/rentals/new"
+                                    aria-disabled={!canAccessRentals} 
+                                    tabIndex={!canAccessRentals ? -1 : undefined} 
+                                    className={cn(!canAccessRentals && "pointer-events-none opacity-50")}
+                                >
                                     <Workflow className="mr-2 h-4 w-4" />
                                     <span>Novo Aluguel</span>
                                  </Link>
