@@ -12,8 +12,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
@@ -85,7 +83,7 @@ export function FloatingActionButton() {
                              <DropdownMenuItem asChild>
                                  <Link href="/rentals/new">
                                     <Workflow className="mr-2 h-4 w-4" />
-                                    <span>OS de Aluguel</span>
+                                    <span>Novo Aluguel</span>
                                  </Link>
                              </DropdownMenuItem>
                              <DropdownMenuItem asChild>
