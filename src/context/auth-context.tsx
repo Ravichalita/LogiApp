@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
@@ -248,8 +247,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     return; 
                  }
                  
-                // If user is admin OR super admin, fetch owner's permissions to ensure they are correct
-                 if (userData.role === 'admin' || isSuperAdminUser) {
+                if (isSuperAdminUser) {
+                    userData.permissions = {
+                        canAccessRentals: true,
+                        canAccessOperations: true,
+                        canAccessClients: true,
+                        canAccessDumpsters: true,
+                        canAccessFleet: true,
+                        canAccessTeam: true,
+                        canAccessFinance: true,
+                        canAccessNotificationsStudio: true,
+                        canAccessSettings: true,
+                        canEditRentals: true,
+                        canEditOperations: true,
+                        canEditDumpsters: true,
+                        canEditFleet: true,
+                    };
+                } else if (userData.role === 'admin') {
+                    // If user is admin, fetch owner's permissions to ensure they are correct
                     const accountDoc = await getDoc(doc(db, 'accounts', userData.accountId));
                     if (accountDoc.exists()) {
                         const ownerId = accountDoc.data().ownerId;
