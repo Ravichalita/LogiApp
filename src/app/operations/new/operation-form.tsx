@@ -29,7 +29,7 @@ import {
 import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CostsDialog } from './costs-dialog';
-import { MultiSelect, type OptionType } from '@/components/ui/multi-select';
+import { OperationTypeDialog } from './operation-type-dialog';
 
 interface OperationFormProps {
   clients: Client[];
@@ -46,11 +46,6 @@ const formatCurrencyForInput = (valueInCents: string): string => {
     const centavos = (numericValue % 100).toString().padStart(2, '0');
     return `${reais.toLocaleString('pt-BR')},${centavos}`;
 };
-
-const parseCurrency = (value: string): number => {
-    if (!value) return 0;
-    return Number(value.replace('R$', '').replace(/\./g, '').replace(',', '.').trim());
-}
 
 const formatCurrency = (value: number | undefined | null) => {
     if (value === undefined || value === null) {
@@ -96,11 +91,6 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
-
-  const operationTypeOptions: OptionType[] = operationTypes.map(type => ({
-      value: type.id,
-      label: `${type.name} (${formatCurrency(type.value)})`
-  }));
 
     const WeatherIcon = ({ condition }: { condition: string }) => {
         const lowerCaseCondition = condition.toLowerCase();
@@ -283,12 +273,18 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="type">Tipo de Operação</Label>
-           <MultiSelect
-                options={operationTypeOptions}
-                selected={selectedOperationTypeIds}
-                onChange={setSelectedOperationTypeIds}
-                placeholder="Selecione o(s) tipo(s)"
-            />
+           <OperationTypeDialog
+                operationTypes={operationTypes}
+                selectedTypeIds={selectedOperationTypeIds}
+                onSave={setSelectedOperationTypeIds}
+            >
+                <Button type="button" variant="outline" className="w-full justify-between">
+                    {selectedOperationTypeIds.length > 0
+                        ? `${selectedOperationTypeIds.length} tipo(s) selecionado(s)`
+                        : "Selecione o(s) tipo(s)"}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+            </OperationTypeDialog>
           {errors?.typeIds && <p className="text-sm font-medium text-destructive">{errors.typeIds[0]}</p>}
         </div>
 

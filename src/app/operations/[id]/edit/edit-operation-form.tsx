@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, ChevronDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,6 +22,7 @@ import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, Ope
 import { updateOperationAction } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import { CostsDialog } from '../../new/costs-dialog';
+import { OperationTypeDialog } from '../../new/operation-type-dialog';
 
 interface EditOperationFormProps {
   operation: PopulatedOperation;
@@ -58,6 +59,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
       : null
   );
 
+  const [selectedOperationTypeIds, setSelectedOperationTypeIds] = useState<string[]>(operation.typeIds || []);
   const [baseValue, setBaseValue] = useState(operation.value || 0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>(operation.additionalCosts || []);
   const [travelCost, setTravelCost] = useState<number | null>(operation.travelCost || 0);
@@ -77,12 +79,14 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
     setBaseValue(cents / 100);
   }
 
-  const handleOperationTypeChange = (selectedTypeId: string) => {
-    const selectedType = operationTypes.find(t => t.id === selectedTypeId);
-    if (selectedType) {
-      setBaseValue(selectedType.value);
-    }
-  };
+  useEffect(() => {
+    const newBaseValue = selectedOperationTypeIds.reduce((total, id) => {
+        const selectedType = operationTypes.find(t => t.id === id);
+        return total + (selectedType?.value || 0);
+    }, 0);
+    setBaseValue(newBaseValue);
+  }, [selectedOperationTypeIds, operationTypes]);
+
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -111,6 +115,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
         formData.set('destinationLongitude', String(destinationLocation.lng));
       }
       
+      formData.set('typeIds', JSON.stringify(selectedOperationTypeIds));
       formData.set('value', String(baseValue));
       formData.set('additionalCosts', JSON.stringify(additionalCosts));
       if (travelCost !== null) {
@@ -141,17 +146,19 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="type">Tipo de Operação</Label>
-          <Select name="type" defaultValue={operation.operationTypeId} onValueChange={handleOperationTypeChange} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              {operationTypes.map(type => 
-                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-          {errors?.type && <p className="text-sm font-medium text-destructive">{errors.type[0]}</p>}
+          <OperationTypeDialog
+              operationTypes={operationTypes}
+              selectedTypeIds={selectedOperationTypeIds}
+              onSave={setSelectedOperationTypeIds}
+          >
+              <Button type="button" variant="outline" className="w-full justify-between">
+                  {selectedOperationTypeIds.length > 0
+                      ? `${selectedOperationTypeIds.length} tipo(s) selecionado(s)`
+                      : "Selecione o(s) tipo(s)"}
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+          </OperationTypeDialog>
+          {errors?.typeIds && <p className="text-sm font-medium text-destructive">{errors.typeIds[0]}</p>}
         </div>
 
         <div className="space-y-2">
@@ -243,7 +250,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
           <div className="grid gap-2">
             <Label>Custos Adicionais</Label>
             <CostsDialog costs={additionalCosts} onSave={setAdditionalCosts}>
