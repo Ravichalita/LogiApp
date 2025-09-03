@@ -633,30 +633,45 @@ export default function OSPage() {
 
                                         {canSeeFinance && (
                                             <>
-                                                <div className="flex items-center gap-2 pt-2">
-                                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                    <span className="font-medium">Valor do Serviço:</span>
-                                                    <span className="font-bold">{formatCurrency(op.value)}</span>
-                                                </div>
-
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
+                                                <div className="pt-2 space-y-2">
+                                                    {op.additionalCosts && op.additionalCosts.length > 0 && (
+                                                        <div className="text-xs">
+                                                            <h4 className="font-semibold text-muted-foreground mb-1">CUSTOS ADICIONAIS:</h4>
+                                                            <ul className="space-y-0.5">
+                                                                {op.additionalCosts.map(cost => (
+                                                                    <li key={cost.id} className="flex justify-between">
+                                                                        <span>{cost.name}</span>
+                                                                        <span>{formatCurrency(cost.value)}</span>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                            <Separator className="my-2" />
+                                                        </div>
+                                                    )}
                                                     <div className="flex items-center gap-2">
-                                                        <TrendingDown className="h-4 w-4 text-destructive" />
-                                                        <span className="font-medium">Custo Total:</span>
-                                                        <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
+                                                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                        <span className="font-medium">Valor do Serviço:</span>
+                                                        <span className="font-bold">{formatCurrency(op.value)}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {profit >= 0 ? 
-                                                            <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                                            <TrendingDown className="h-4 w-4 text-red-600" />
-                                                        }
-                                                        <span className="font-medium">Lucro:</span>
-                                                        <span className={cn(
-                                                            "font-bold",
-                                                            profit >= 0 ? "text-green-600" : "text-red-600"
-                                                        )}>
-                                                            {formatCurrency(profit)}
-                                                        </span>
+                                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <TrendingDown className="h-4 w-4 text-destructive" />
+                                                            <span className="font-medium">Custo Total:</span>
+                                                            <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {profit >= 0 ? 
+                                                                <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                                                                <TrendingDown className="h-4 w-4 text-red-600" />
+                                                            }
+                                                            <span className="font-medium">Lucro:</span>
+                                                            <span className={cn(
+                                                                "font-bold",
+                                                                profit >= 0 ? "text-green-600" : "text-red-600"
+                                                            )}>
+                                                                {formatCurrency(profit)}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </>
