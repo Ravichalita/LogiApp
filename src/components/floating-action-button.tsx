@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useAuth } from "@/context/auth-context";
@@ -89,7 +88,7 @@ export function FloatingActionButton() {
                              <DropdownMenuItem asChild>
                                  <Link href="/operations/new">
                                     <Truck className="mr-2 h-4 w-4" />
-                                    <span>OS de Operação</span>
+                                    <span>Nova Operação</span>
                                  </Link>
                              </DropdownMenuItem>
                         </DropdownMenuContent>
