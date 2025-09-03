@@ -289,7 +289,7 @@ export default function FinancePage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>OS</TableHead>
-                                        <TableHead>Tipo</TableHead>
+                                        <TableHead>Tipo de Serviço</TableHead>
                                         <TableHead>Cliente</TableHead>
                                         <TableHead className="text-right">Finalizado em</TableHead>
                                         <TableHead className="text-right">Valor</TableHead>
@@ -299,7 +299,9 @@ export default function FinancePage() {
                                     {historicItems.length > 0 ? historicItems.map(item => (
                                         <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer">
                                             <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
-                                            <TableCell className="font-medium capitalize">{item.kind === 'rental' ? 'Aluguel' : 'Operação'}</TableCell>
+                                            <TableCell className="font-medium capitalize">
+                                                {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                            </TableCell>
                                             <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
