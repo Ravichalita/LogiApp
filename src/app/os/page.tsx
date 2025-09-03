@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -552,7 +553,9 @@ export default function OSPage() {
                                 </span>
                                 <CardHeader className="pb-4 pt-8">
                                      <div className="flex items-start justify-between mb-2">
-                                        <CardTitle className="text-lg">{op.operationTypeName}</CardTitle>
+                                        <CardTitle className="text-lg">
+                                            {op.operationTypes.map(t => t.name).join(', ')}
+                                        </CardTitle>
                                          <Badge variant={status.variant}>{status.text}</Badge>
                                     </div>
                                      <CardDescription className="text-sm mt-4">

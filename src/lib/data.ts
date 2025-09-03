@@ -233,14 +233,18 @@ export function getPopulatedOperations(
                 const [clientSnap, truckSnap, driverSnap] = await Promise.all([clientPromise, truckPromise, driverPromise]);
 
                 const serializedData = docToSerializable(opDoc) as Operation;
-                const operationTypeName = opTypeMap.get(opData.type) || opData.type;
+                
+                const populatedTypes = (opData.typeIds || []).map(id => ({
+                    id,
+                    name: opTypeMap.get(id) || 'Tipo desconhecido'
+                }));
 
                 return {
                     ...serializedData,
                     client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
                     truck: truckSnap?.exists() ? { id: truckSnap.id, ...truckSnap.data() } as Truck : null,
                     driver: driverSnap?.exists() ? { id: driverSnap.id, ...driverSnap.data() } as UserAccount : null,
-                    operationTypeName,
+                    operationTypes: populatedTypes,
                 };
             });
 

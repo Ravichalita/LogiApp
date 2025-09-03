@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -56,6 +57,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
     const isRental = item.kind === 'rental';
     const rental = isRental ? (item.data as CompletedRental) : null;
     const operation = !isRental ? (item.data as PopulatedOperation) : null;
+    const operationTitle = operation?.operationTypes?.map(t => t.name).join(', ') || 'Operação';
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -65,12 +67,12 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
                     <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
-                     {item.operationTypeName && (
+                     {item.kind === 'operation' && (
                         <div className="flex items-start gap-3">
                            <Workflow className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                            <div className="flex flex-col">
                                <span className="text-sm text-muted-foreground">Tipo de Serviço</span>
-                               <span className="font-medium">{item.operationTypeName}</span>
+                               <span className="font-medium">{operationTitle}</span>
                            </div>
                        </div>
                      )}
@@ -176,7 +178,7 @@ export default function FinancePage() {
                     completedDate: o.completedAt,
                     totalValue: o.value ?? 0,
                     sequentialId: o.sequentialId,
-                    operationTypeName: o.operationTypeName,
+                    operationTypes: o.operationTypes,
                     data: o,
                 }))
             ];
@@ -285,7 +287,6 @@ export default function FinancePage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>OS</TableHead>
-                                        <TableHead>Tipo</TableHead>
                                         <TableHead>Tipo de Serviço</TableHead>
                                         <TableHead>Cliente</TableHead>
                                         <TableHead className="text-right">Finalizado em</TableHead>
@@ -296,15 +297,16 @@ export default function FinancePage() {
                                     {historicItems.length > 0 ? historicItems.map(item => (
                                         <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer">
                                             <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
-                                            <TableCell className="font-medium capitalize">{item.kind === 'rental' ? 'Aluguel' : 'Operação'}</TableCell>
-                                            <TableCell className="font-medium">{item.kind === 'operation' ? (item.operationTypeName || 'N/A') : 'N/A'}</TableCell>
+                                            <TableCell className="font-medium capitalize">
+                                                {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                            </TableCell>
                                             <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-24">Nenhum serviço finalizado ainda.</TableCell>
+                                            <TableCell colSpan={5} className="text-center h-24">Nenhum serviço finalizado ainda.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>

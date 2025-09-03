@@ -82,14 +82,15 @@ export async function getCompletedOperations(accountId: string): Promise<Populat
                 opData.driverId ? adminDb.doc(`users/${opData.driverId}`).get() : Promise.resolve(null),
             ]);
 
-            const operationTypeId = opData.type;
-            const operationTypeName = opTypeMap.get(operationTypeId) || operationTypeId;
+            const populatedTypes = (opData.typeIds || []).map(id => ({
+                id,
+                name: opTypeMap.get(id) || 'Tipo desconhecido'
+            }));
 
             return {
                 ...opData,
                 id: doc.id,
-                operationTypeId: operationTypeId,
-                operationTypeName: operationTypeName,
+                operationTypes: populatedTypes,
                 client: clientSnap?.exists ? docToSerializable(clientSnap) : null,
                 truck: truckSnap?.exists ? docToSerializable(truckSnap) : null,
                 driver: driverSnap?.exists ? docToSerializable(driverSnap) : null,
@@ -243,7 +244,7 @@ export async function getPopulatedOperationById(accountId: string, operationId: 
     const opData = docToSerializable(operationDoc) as Operation;
 
     const [clientSnap, truckSnap, driverSnap, accountSnap] = await Promise.all([
-        adminDb.doc(`accounts/${accountId}/clients/${opData.clientId}`).get(),
+        opData.clientId ? adminDb.doc(`accounts/${accountId}/clients/${opData.clientId}`).get() : Promise.resolve(null),
         opData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${opData.truckId}`).get() : Promise.resolve(null),
         opData.driverId ? adminDb.doc(`users/${opData.driverId}`).get() : Promise.resolve(null),
         adminDb.doc(`accounts/${accountId}`).get(),
@@ -251,13 +252,16 @@ export async function getPopulatedOperationById(accountId: string, operationId: 
 
     const operationTypes = accountSnap.exists ? (accountSnap.data()?.operationTypes as OperationType[] || []) : [];
     const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
-    const operationTypeName = opTypeMap.get(opData.type) || opData.type;
+    
+    const populatedTypes = (opData.typeIds || []).map(id => ({
+        id,
+        name: opTypeMap.get(id) || 'Tipo desconhecido'
+    }));
 
     return {
         ...opData,
         accountId: accountId,
-        operationTypeId: opData.type,
-        operationTypeName,
+        operationTypes: populatedTypes,
         client: docToSerializable(clientSnap),
         truck: docToSerializable(truckSnap),
         driver: docToSerializable(driverSnap),

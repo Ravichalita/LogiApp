@@ -137,7 +137,7 @@ const BaseOperationSchema = z.object({
   startDate: z.string({ required_error: "A data de início é obrigatória." }),
   endDate: z.string({ required_error: "A data de término é obrigatória." }),
   clientId: z.string({ required_error: "O cliente é obrigatório." }),
-  truckId: z.string({ required_error: "O caminhão é obrigatório." }),
+  truckId: z.string().optional(),
   driverId: z.string({ required_error: "O responsável é obrigatório." }),
   startAddress: z.string().min(5, { message: "O endereço de saída é obrigatório." }),
   startLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
@@ -194,7 +194,7 @@ export const CompletedOperationSchema = BaseOperationSchema.extend({
     completedAt: z.custom<FieldValue | Timestamp | string>(),
 });
 
-export type CompletedOperation = z.infer<typeof CompletedOperationSchema> & { id: string, completedAt: string, operationTypeId?: string };
+export type CompletedOperation = z.infer<typeof CompletedOperationSchema> & { id: string, completedAt: string };
 
 // #endregion
 
@@ -377,8 +377,7 @@ export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assigned
     assignedToUser: UserAccount | null;
 };
 export type PopulatedOperation = Operation & {
-    operationTypeId: string;
-    operationTypeName: string | null;
+    operationTypes: {id: string, name: string}[];
     client: Client | null;
     truck: Truck | null;
     driver: UserAccount | null;
@@ -410,7 +409,8 @@ export type HistoricItem = {
     completedDate: string;
     totalValue: number;
     sequentialId: number;
-    operationTypeName?: string | null;
+    operationTypeName?: string | null; // Keep for backward compatibility in historic items view
+    operationTypes?: {id: string, name: string}[]; // For new items
     data: CompletedRental | PopulatedOperation;
 };
 // #endregion
