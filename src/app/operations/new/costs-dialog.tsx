@@ -91,7 +91,7 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
         <DialogHeader>
           <DialogTitle>Custos Adicionais da Operação</DialogTitle>
         </DialogHeader>
-        <div className="py-4 space-y-4">
+        <div className="py-4 space-y-4 px-1">
             <div className="max-h-64 overflow-y-auto space-y-2 pr-2 -mr-2">
                 {currentCosts.map((cost) => (
                     <div key={cost.id} className="flex items-center gap-2">
