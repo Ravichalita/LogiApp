@@ -14,7 +14,7 @@ import { PlusCircle, Trash2, Save } from 'lucide-react';
 import { nanoid } from 'nanoid';
 
 const formatCurrencyForInput = (valueInCents: string): string => {
-    if (!valueInCents) return '0,00';
+    if (!valueInCents || valueInCents === '0') return '0,00';
     const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
     const reais = Math.floor(numericValue / 100);
     const centavos = (numericValue % 100).toString().padStart(2, '0');
@@ -87,11 +87,9 @@ export function RentalPricesForm({ account }: { account: Account }) {
     const removePrice = (id: string) => {
         const updatedPrices = prices.filter(p => p.id !== id);
         setPrices(updatedPrices);
-        setDisplayValues(prev => {
-            const newDisplayValues = {...prev};
-            delete newDisplayValues[id];
-            return newDisplayValues;
-        });
+        const newDisplayValues = {...displayValues};
+        delete newDisplayValues[id];
+        setDisplayValues(newDisplayValues);
 
         // Trigger save immediately on removal
         startTransition(async () => {

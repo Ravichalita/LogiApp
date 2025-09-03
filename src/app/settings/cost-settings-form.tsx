@@ -11,7 +11,7 @@ import { updateCostSettingsAction } from '@/lib/actions';
 import { Save } from 'lucide-react';
 
 const formatCurrencyForInput = (valueInCents: string): string => {
-    if (!valueInCents) return '0,00';
+    if (!valueInCents || valueInCents === '0') return '0,00';
     const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
     const reais = Math.floor(numericValue / 100);
     const centavos = (numericValue % 100).toString().padStart(2, '0');

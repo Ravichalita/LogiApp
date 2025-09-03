@@ -25,7 +25,7 @@ interface CostsDialogProps {
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
-    if (!valueInCents) return '0,00';
+    if (!valueInCents || valueInCents === '0') return '0,00';
     const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
     const reais = Math.floor(numericValue / 100);
     const centavos = (numericValue % 100).toString().padStart(2, '0');
@@ -35,17 +35,26 @@ const formatCurrencyForInput = (valueInCents: string): string => {
 export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [currentCosts, setCurrentCosts] = useState<AdditionalCost[]>([]);
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isOpen) {
       setCurrentCosts(initialCosts);
+      const initialDisplayValues: Record<string, string> = {};
+      initialCosts.forEach(c => {
+        initialDisplayValues[c.id] = (c.value * 100).toFixed(0);
+      });
+      setDisplayValues(initialDisplayValues);
     }
   }, [isOpen, initialCosts]);
 
   const handleValueChange = (id: string, value: string) => {
-    const cents = parseInt(value.replace(/\D/g, ''), 10) || 0;
+    const cents = value.replace(/\D/g, '');
+    setDisplayValues(prev => ({...prev, [id]: cents }));
+    
+    const numericValue = parseInt(cents, 10) || 0;
     setCurrentCosts(current =>
-      current.map(c => (c.id === id ? { ...c, value: cents / 100 } : c))
+      current.map(c => (c.id === id ? { ...c, value: numericValue / 100 } : c))
     );
   };
 
@@ -56,11 +65,16 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
   };
 
   const addCost = () => {
-    setCurrentCosts(current => [...current, { id: nanoid(5), name: '', value: 0 }]);
+    const newId = nanoid(5);
+    setCurrentCosts(current => [...current, { id: newId, name: '', value: 0 }]);
+    setDisplayValues(prev => ({...prev, [newId]: '0'}));
   };
 
   const removeCost = (id: string) => {
     setCurrentCosts(current => current.filter(c => c.id !== id));
+    const newDisplayValues = {...displayValues};
+    delete newDisplayValues[id];
+    setDisplayValues(newDisplayValues);
   };
 
   const handleConfirm = () => {
@@ -90,7 +104,7 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                             <Input
                                 placeholder="0,00"
-                                value={formatCurrencyForInput((cost.value * 100).toString())}
+                                value={formatCurrencyForInput(displayValues[cost.id] ?? '0')}
                                 onChange={e => handleValueChange(cost.id, e.target.value)}
                                 className="pl-8 text-right w-32"
                             />
