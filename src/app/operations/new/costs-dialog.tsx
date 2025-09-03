@@ -39,9 +39,10 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
 
   useEffect(() => {
     if (isOpen) {
-      setCurrentCosts(initialCosts);
+      const costsToSet = initialCosts.length > 0 ? initialCosts : [{ id: nanoid(5), name: '', value: 0 }];
+      setCurrentCosts(costsToSet);
       const initialDisplayValues: Record<string, string> = {};
-      initialCosts.forEach(c => {
+      costsToSet.forEach(c => {
         initialDisplayValues[c.id] = (c.value * 100).toFixed(0);
       });
       setDisplayValues(initialDisplayValues);
@@ -71,6 +72,8 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
   };
 
   const removeCost = (id: string) => {
+    // Prevent removing the last item if it's the only one
+    if (currentCosts.length === 1) return;
     setCurrentCosts(current => current.filter(c => c.id !== id));
     const newDisplayValues = {...displayValues};
     delete newDisplayValues[id];
@@ -93,8 +96,21 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
         </DialogHeader>
         <div className="py-4 space-y-4 px-1">
             <div className="max-h-64 overflow-y-auto space-y-2 pr-2 -mr-2 px-1">
-                {currentCosts.map((cost) => (
+                {currentCosts.map((cost, index) => (
                     <div key={cost.id} className="flex items-center gap-2">
+                         <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={index === currentCosts.length - 1 ? addCost : () => removeCost(cost.id)}
+                            aria-label={index === currentCosts.length - 1 ? "Adicionar Custo" : "Remover Custo"}
+                         >
+                            {index === currentCosts.length - 1 ? (
+                                <Plus className="h-4 w-4" />
+                            ) : (
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            )}
+                        </Button>
                         <Input
                             placeholder="Nome do Custo (Ex: Ajudante)"
                             value={cost.name}
@@ -109,23 +125,8 @@ export function CostsDialog({ costs: initialCosts, onSave, children }: CostsDial
                                 className="pl-8 text-right w-32"
                             />
                         </div>
-                         <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeCost(cost.id)}
-                            aria-label="Remover Custo"
-                         >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
                     </div>
                 ))}
-            </div>
-            <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="icon" onClick={addCost}>
-                    <Plus className="h-4 w-4" />
-                </Button>
-                <p className="text-sm text-muted-foreground">Adicionar novo custo</p>
             </div>
         </div>
         <DialogFooter>
