@@ -248,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  }
                  
                 if (isSuperAdminUser) {
+                    // ** CRITICAL FIX: Ensure super admin permissions are always fully loaded **
                     userData.permissions = {
                         canAccessRentals: true,
                         canAccessOperations: true,
