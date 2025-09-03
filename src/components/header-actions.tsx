@@ -38,7 +38,7 @@ export function HeaderActions() {
       href: "/finance",
       icon: <History className="h-5 w-5" />,
       label: "Histórico",
-      shouldRender: permissions?.canAccessFinance,
+      shouldRender: permissions?.canAccessFinance && !isMobile,
     },
     {
       href: "/notifications-studio",
@@ -80,7 +80,7 @@ export function HeaderActions() {
   ]
 
   const visibleDesktopActions = navActions.filter((action) => action.shouldRender);
-  const visibleMobileActions = [...navActions, ...userActions].filter((action) => action.shouldRender);
+  const visibleMobileActions = [...navActions, ...userActions].filter((action) => action.shouldRender && (action.href !== '/finance' || !isMobile));
 
   if (!isClient) {
     return null;
@@ -91,7 +91,7 @@ export function HeaderActions() {
         return null;
     }
 
-    const mobileNavActions = navActions.filter(a => a.shouldRender);
+    const mobileNavActions = navActions.filter(a => a.shouldRender && a.href !== '/finance');
     const mobileUserActions = userActions.filter(a => a.shouldRender);
 
     return (

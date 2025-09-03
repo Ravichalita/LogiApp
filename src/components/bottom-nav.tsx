@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Truck, Users, Cog, Container, Workflow } from 'lucide-react';
+import { Truck, Users, Cog, Container, Workflow, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
@@ -14,6 +14,7 @@ const allNavLinks = [
   { href: '/dumpsters', label: 'Caçambas', icon: Container, permission: ['canAccessRentals'] as const },
   { href: '/fleet', label: 'Frota', icon: Truck, permission: ['canAccessFleet'] as const },
   { href: '/clients', label: 'Clientes', icon: Users, permission: ['canAccessClients'] as const },
+  { href: '/finance', label: 'Histórico', icon: History, permission: ['canAccessFinance'] as const },
 ];
 
 
