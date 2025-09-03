@@ -1,39 +1,35 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is a member of an account
-    function isAccountMember(accountId) {
-      return request.auth.uid in get(/databases/$(database)/documents/accounts/$(accountId)).data.members;
-    }
     
-    // Helper function to check if the user is a super admin
+    // Helper function to check if the user is a super admin based on their email claim.
     function isSuperAdmin() {
       return request.auth.token.email == 'contato@econtrol.com.br';
     }
 
-    // Rules for 'users' collection
-    match /users/{userId} {
-      // Allow a user to read/write their own document
-      allow read, update: if request.auth.uid == userId;
-      // Allow super admin to do anything
-      allow read, write: if isSuperAdmin();
-      // Allow account owner to read members' data
-      allow read: if isAccountMember(get(/databases/$(database)/documents/users/$(userId)).data.accountId);
-    }
-    
-    // Rules for 'accounts' and their subcollections
-    match /accounts/{accountId}/{document=**} {
-      // Allow access if the user's accountId claim matches the document's accountId
-      // OR if the user is a super admin
-      allow read, write: if isSuperAdmin() || (request.auth.token.accountId == accountId && isAccountMember(accountId));
+    // Helper function to check if the user is a member of the specific account.
+    function isAccountMember(accountId) {
+      return request.auth.token.accountId == accountId;
     }
 
-    // Rules for 'backups' collection - only super admin access
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Allow read/write access if the user is the owner of the document or is a super admin.
+      allow read, write: if request.auth.uid == userId || isSuperAdmin();
+    }
+
+    // Rules for the 'accounts' collection and all its subcollections
+    match /accounts/{accountId}/{document=**} {
+      // Allow read/write access if the user is a member of the account or is a super admin.
+      allow read, write: if isAccountMember(accountId) || isSuperAdmin();
+    }
+
+    // Rules for the 'backups' collection.
+    // Backups contain sensitive data from all accounts.
     match /backups/{backupId}/{document=**} {
-        allow read, write: if isSuperAdmin();
+      // Only the super admin can read or write to the backups collection.
+      allow read, write: if isSuperAdmin();
     }
   }
 }
