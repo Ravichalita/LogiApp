@@ -139,92 +139,6 @@ const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId
 };
 
 
-const PermissionsSettings = ({ userRole, accountId, superAdminId }: { userRole: string; accountId: string; superAdminId: string; }) => {
-  const [data, setData] = useState<UserAccount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setLoading(true);
-    if (userRole === 'super') {
-      getAllClientAccountsAction(superAdminId).then(clients => {
-        const owners = clients.map(client => client.members.find(m => m.role === 'owner')).filter(Boolean) as UserAccount[];
-        setData(owners);
-        setLoading(false);
-      });
-    } else if (userRole === 'owner' && accountId) {
-      getTeamMembers(accountId, (team) => {
-        const admins = team.filter(member => member.role === 'admin');
-        setData(admins);
-        setLoading(false);
-      });
-    } else {
-        setLoading(false);
-    }
-  }, [userRole, accountId, superAdminId]);
-
-  const handlePermissionChange = (user: UserAccount, checked: boolean) => {
-    startTransition(async () => {
-        const newPermissions: Permissions = {
-            ...(user.permissions || {}),
-            canAccessNotificationsStudio: checked
-        };
-        const result = await updateUserPermissionsAction(user.accountId, user.id, newPermissions);
-
-        if (result.message === 'error') {
-            toast({ title: 'Erro', description: result.error, variant: 'destructive' });
-        } else {
-            toast({ title: 'Sucesso!', description: `Acesso de ${user.name} foi atualizado.` });
-        }
-    })
-  }
-
-  if (userRole !== "super" && userRole !== "owner") return null;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {userRole === "super" ? "Gerenciar Acesso dos Proprietários" : "Gerenciar Acesso dos Administradores"}
-        </CardTitle>
-        <CardDescription>
-          {userRole === "super" ? "Habilite ou desabilite o acesso dos proprietários de contas às Notificações Personalizadas." : "Habilite ou desabilite o acesso dos administradores da sua equipe às Notificações Personalizadas."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-            <div className="space-y-2">
-                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-        ) : (
-             <div className="space-y-2">
-                {data.length > 0 ? data.map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-2 rounded-md border">
-                        <div>
-                            <p className="font-medium">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                        </div>
-                         <div className="flex items-center gap-2">
-                            {isPending && <Spinner size="small" />}
-                            <Switch 
-                                checked={user.permissions?.canAccessNotificationsStudio || false}
-                                onCheckedChange={(checked) => handlePermissionChange(user, checked)}
-                                disabled={isPending}
-                            />
-                        </div>
-                    </div>
-                )) : (
-                    <p className="text-sm text-center text-muted-foreground py-4">Nenhum usuário para gerenciar.</p>
-                )}
-            </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-
 const MultiSelect = ({ name, placeholder, options, onSelectionChange }: { name: string; placeholder: string; options: { value: string, label: string, icon: React.ElementType }[], onSelectionChange: (values: string[]) => void }) => {
   const [open, setOpen] = useState(false);
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
@@ -364,7 +278,6 @@ export default function NotificationsStudioPage() {
                 superAdminId={user.uid}
                 accountId={userAccount.accountId}
             />
-            <PermissionsSettings userRole={userRole} accountId={userAccount.accountId} superAdminId={user!.uid} />
           </>
         )}
     </div>
