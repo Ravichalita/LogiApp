@@ -143,6 +143,7 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { travelCost } = operation;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -189,7 +190,7 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
     return <Alert variant="warning" className="text-xs"><AlertDescription>{error}</AlertDescription></Alert>
   }
   
-  if (!directions && !weather) {
+  if (!directions && !weather && (travelCost === null || travelCost === undefined)) {
       return null;
   }
 
@@ -218,8 +219,14 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
               <p className="text-xs mt-1 text-blue-800 dark:text-blue-300">Previsão do Tempo</p>
             </div>
           )}
+          {travelCost !== null && travelCost > 0 && (
+             <div className="flex items-center gap-2 text-sm">
+                <DollarSign className="h-5 w-5" />
+                <span className="font-bold">{formatCurrency(travelCost)} (ida/volta)</span>
+             </div>
+          )}
         </div>
-        <Button asChild variant="outline" size="sm" className="w-full mt-auto">
+         <Button asChild variant="outline" size="sm" className="w-full mt-auto">
             <Link
                 href={`https://www.google.com/maps/dir/?api=1&origin=${operation.startLatitude},${operation.startLongitude}&destination=${operation.destinationLatitude},${operation.destinationLongitude}`}
                 target="_blank"
@@ -466,7 +473,7 @@ export default function OSPage() {
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
-                        variant={osTypeFilter === option.value ? "cinza" : "outline"}
+                        variant={osTypeFilter === option.value ? "secondary" : "outline"}
                         size="sm"
                         onClick={() => handleTypeFilterChange(option.value)
 
@@ -688,3 +695,4 @@ export default function OSPage() {
     </div>
   );
 }
+
