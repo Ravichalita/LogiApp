@@ -82,8 +82,6 @@ export function FloatingActionButton() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 mb-2">
-                             <DropdownMenuLabel>Criar Nova Ordem de Serviço</DropdownMenuLabel>
-                             <DropdownMenuSeparator />
                              <DropdownMenuItem asChild>
                                  <Link href="/rentals/new">
                                     <Workflow className="mr-2 h-4 w-4" />
