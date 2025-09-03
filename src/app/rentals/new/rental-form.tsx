@@ -395,7 +395,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <SubmitButton isPending={isPending} />
         <Button asChild variant="outline" size="lg">
-            <Link href="/">Cancelar</Link>
+            <Link href="/os">Cancelar</Link>
         </Button>
       </div>
     </form>

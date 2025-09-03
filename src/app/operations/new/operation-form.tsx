@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -550,7 +549,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
           {isPending ? <Spinner size="small" /> : 'Salvar Operação'}
         </Button>
         <Button asChild variant="outline" size="lg">
-            <Link href="/operations">Cancelar</Link>
+            <Link href="/os">Cancelar</Link>
         </Button>
       </div>
     </form>
