@@ -834,12 +834,22 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         }
     }
     
+    let typeIds: string[] = [];
+    if (rawData.typeIds && typeof rawData.typeIds === 'string') {
+        try {
+            typeIds = JSON.parse(rawData.typeIds);
+        } catch (e) {
+            return { message: 'error', error: "Formato de tipos de operação inválido."}
+        }
+    }
+    
     const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
     const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
     const totalCost = travelCost + additionalCostsTotal;
     
     const dataToValidate = { 
         ...rawData,
+        typeIds,
         additionalCosts,
         travelCost,
         totalCost,
@@ -870,10 +880,11 @@ export async function updateOperationAction(accountId: string, prevState: any, f
             updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/operations');
+        revalidatePath('/os');
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
-    redirect('/operations');
+    redirect('/os');
 }
 
 
@@ -1639,4 +1650,3 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
-
