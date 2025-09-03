@@ -199,7 +199,7 @@ const MultiSelect = ({ name, placeholder, options, onSelectionChange }: { name: 
 
 
 export default function NotificationsStudioPage() {
-  const { user, userAccount, isSuperAdmin, loading } = useAuth();
+  const { user, userAccount, isSuperAdmin, loading, accountId } = useAuth();
   const [clients, setClients] = useState<AdminClientView[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -215,18 +215,19 @@ export default function NotificationsStudioPage() {
   const hasAccess = isSuperAdmin || userAccount?.permissions?.canAccessNotificationsStudio;
   
   useEffect(() => {
-    if (!loading && hasAccess && user && userAccount) {
+    if (!loading && hasAccess && user && accountId) {
         const fetchInitialData = async () => {
             setDataLoading(true);
             try {
                 if (userRole === 'super') {
                     const clientData = await getAllClientAccountsAction(user.uid);
                     setClients(clientData);
+                    // For super admin, fetch their own team
+                    getTeamMembers(accountId, setTeam);
+                } else if (userAccount?.accountId) {
+                    // For client admins/owners, fetch their team
+                    getTeamMembers(userAccount.accountId, setTeam);
                 }
-                
-                getTeamMembers(userAccount!.accountId, (teamData) => {
-                    setTeam(teamData);
-                });
 
             } catch (error) {
                 console.error("Error fetching data for notifications studio:", error);
@@ -238,7 +239,7 @@ export default function NotificationsStudioPage() {
     } else if (!loading) {
         setDataLoading(false);
     }
-  }, [loading, hasAccess, userRole, user, userAccount]);
+  }, [loading, hasAccess, userRole, user, userAccount, accountId]);
 
 
   if (loading || dataLoading) {
@@ -269,14 +270,14 @@ export default function NotificationsStudioPage() {
   return (
     <div className="container mx-auto p-4 space-y-8">
       <h1 className="text-3xl font-bold font-headline">Notificações Personalizadas</h1>
-        {userRole && user && userAccount && (
+        {userRole && user && accountId && (
           <>
             <NotificationComposer 
                 userRole={userRole} 
                 clients={clients} 
                 team={team} 
                 superAdminId={user.uid}
-                accountId={userAccount.accountId}
+                accountId={accountId}
             />
           </>
         )}
