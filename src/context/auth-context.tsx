@@ -248,8 +248,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     return; 
                  }
                  
-                // If user is admin, fetch owner's permissions to override
-                if (userData.role === 'admin') {
+                // If user is admin OR super admin (who is also an owner), fetch owner's permissions to ensure they are correct
+                if (userData.role === 'admin' || (isSuperAdminUser && userData.role === 'owner')) {
                     const accountDoc = await getDoc(doc(db, 'accounts', userData.accountId));
                     if (accountDoc.exists()) {
                         const ownerId = accountDoc.data().ownerId;
