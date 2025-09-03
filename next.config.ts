@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['firebase-admin'],
   },
+  // Redirect root to /os
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/os',
+        permanent: true,
+      },
+    ];
+  },
   // Allow the service worker to be served from the public directory
   async rewrites() {
     return [
