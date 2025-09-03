@@ -78,7 +78,7 @@ export function FloatingActionButton() {
                                 <span className="sr-only">Nova OS</span>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 mb-2">
+                        <DropdownMenuContent align="end" className="mb-2">
                              <DropdownMenuItem asChild>
                                  <Link href="/rentals/new">
                                     <Workflow className="mr-2 h-4 w-4" />
