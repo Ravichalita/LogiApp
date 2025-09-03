@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
@@ -252,7 +251,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
           <div className="grid gap-2">
-            <Label>Custos Adicionais</Label>
+            <Label className="hidden md:block">Custos Adicionais</Label>
             <CostsDialog costs={additionalCosts} onSave={setAdditionalCosts}>
               <Button type="button" variant="outline" className="w-full">
                 {additionalCosts.length > 0 ? `Editar Custos (${additionalCosts.length})` : 'Adicionar Custos'}
@@ -260,7 +259,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
             </CostsDialog>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="value" className="md:text-right">Valor do Serviço</Label>
+            <Label htmlFor="value" className="text-left md:text-right">Valor do Serviço</Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
               <Input

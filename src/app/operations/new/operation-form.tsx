@@ -492,7 +492,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
              <div className="grid gap-2">
-                <Label>Custos</Label>
+                <Label className="hidden md:block">Custos</Label>
                 <CostsDialog 
                     costs={additionalCosts} 
                     onSave={setAdditionalCosts} 
