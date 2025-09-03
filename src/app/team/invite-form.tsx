@@ -150,43 +150,45 @@ export function InviteForm({ onSave }: { onSave?: () => void }) {
 
   return (
     <>
-    <form ref={formRef} action={formAction} className="space-y-4">
-        <div className="space-y-2">
-            <Label htmlFor="name">Nome Completo</Label>
-            <Input id="name" name="name" type="text" placeholder="Nome do usuário" required />
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input id="email" name="email" type="email" placeholder="usuario@email.com" onBlur={handleEmailBlur} required />
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="password">Senha Temporária</Label>
-            <Input id="password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-            <Input id="confirmPassword" name="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
-        </div>
-
-        {showPasswordHint && (
-            <p className="text-xs text-muted-foreground">
-                Geramos uma sugestão de senha automaticamente para você. Mas você ainda pode mudar manualmente se quiser.
-            </p>
-        )}
-
-        {state.message && state.message !== 'success' && (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <p>{state.message}</p>
+    <div className="p-6">
+        <form ref={formRef} action={formAction} className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="name">Nome Completo</Label>
+                <Input id="name" name="name" type="text" placeholder="Nome do usuário" required />
             </div>
-        )}
-        <DialogFooter>
-            <DialogClose asChild>
-                <Button type="button" variant="outline">Cancelar</Button>
-            </DialogClose>
-            <SubmitButton />
-        </DialogFooter>
-    </form>
+            <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input id="email" name="email" type="email" placeholder="usuario@email.com" onBlur={handleEmailBlur} required />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="password">Senha Temporária</Label>
+                <Input id="password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                <Input id="confirmPassword" name="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+            </div>
+
+            {showPasswordHint && (
+                <p className="text-xs text-muted-foreground">
+                    Geramos uma sugestão de senha automaticamente para você. Mas você ainda pode mudar manualmente se quiser.
+                </p>
+            )}
+            
+            {state.message && state.message !== 'success' && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <p>{state.message}</p>
+                </div>
+            )}
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <SubmitButton />
+            </DialogFooter>
+        </form>
+    </div>
     <SuccessDialog
         isOpen={isSuccessDialogOpen}
         onOpenChange={setIsSuccessDialogOpen}

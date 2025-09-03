@@ -30,31 +30,27 @@ export function TeamOptionsDialog() {
   const formDialogs = {
     member: (
       <Dialog open={formType === 'member'} onOpenChange={(open) => !open && handleFormClose()}>
-        <DialogContent className="p-0">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Convidar Membro para a Equipe</DialogTitle>
             <DialogDescription>
               Crie uma conta para um funcionário. Ele terá acesso aos dados da sua empresa com as permissões que você definir.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto px-1 py-4">
-            <InviteForm onSave={handleSuccess} />
-          </div>
+          <InviteForm onSave={handleSuccess} />
         </DialogContent>
       </Dialog>
     ),
     client: (
        <Dialog open={formType === 'client'} onOpenChange={(open) => !open && handleFormClose()}>
-        <DialogContent className="p-0">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Cadastrar Novo Cliente (Admin)</DialogTitle>
             <DialogDescription>
              Crie uma nova conta de administrador para seu cliente. Ele terá uma conta separada e isolada para gerenciar os próprios dados.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto px-1 py-4">
-            <AdminInviteForm onSave={handleSuccess} />
-          </div>
+          <AdminInviteForm onSave={handleSuccess} />
         </DialogContent>
       </Dialog>
     ),

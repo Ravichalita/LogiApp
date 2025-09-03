@@ -74,61 +74,63 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
   };
 
   return (
-    <form ref={formRef} action={action} className="space-y-4">
-      {isEdit && <input type="hidden" name="id" value={truck.id} />}
-      <div className="space-y-2">
-        <Label htmlFor="name">Nome/Identificador</Label>
-        <Input id="name" name="name" placeholder="Ex: Caminhão 01" defaultValue={truck?.name} required />
-        {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="plate">Placa</Label>
-        <Input id="plate" name="plate" placeholder="ABC1D23" defaultValue={truck?.plate} required />
-        {state?.errors?.plate && <p className="text-sm font-medium text-destructive">{state.errors.plate[0]}</p>}
-      </div>
-       <div className="space-y-2">
-        <Label htmlFor="type">Tipo de Caminhão</Label>
-        <Select name="type" defaultValue={truck?.type}>
-            <SelectTrigger>
-                <SelectValue placeholder="Selecione um tipo" />
-            </SelectTrigger>
-            <SelectContent>
-                {truckTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
-        {state?.errors?.type && <p className="text-sm font-medium text-destructive">{state.errors.type[0]}</p>}
-      </div>
-       <div className="space-y-2">
-        <Label htmlFor="model">Modelo</Label>
-        <Input id="model" name="model" placeholder="Mercedes-Benz Atego" defaultValue={truck?.model} />
-      </div>
-       <div className="space-y-2">
-        <Label htmlFor="year">Ano</Label>
-        <Input id="year" name="year" type="number" placeholder="2022" defaultValue={truck?.year} />
-      </div>
-      {isEdit && (
-         <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select name="status" defaultValue={truck.status}>
+    <div className="p-6">
+        <form ref={formRef} action={action} className="space-y-4">
+        {isEdit && <input type="hidden" name="id" value={truck.id} />}
+        <div className="space-y-2">
+            <Label htmlFor="name">Nome/Identificador</Label>
+            <Input id="name" name="name" placeholder="Ex: Caminhão 01" defaultValue={truck?.name} required />
+            {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="plate">Placa</Label>
+            <Input id="plate" name="plate" placeholder="ABC1D23" defaultValue={truck?.plate} required />
+            {state?.errors?.plate && <p className="text-sm font-medium text-destructive">{state.errors.plate[0]}</p>}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="type">Tipo de Caminhão</Label>
+            <Select name="type" defaultValue={truck?.type}>
                 <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
+                    <SelectValue placeholder="Selecione um tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="Disponível">Disponível</SelectItem>
-                    <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
-                    <SelectItem value="Em Operação">Em Operação</SelectItem>
+                    {truckTypes.map(type => (
+                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
                 </SelectContent>
             </Select>
+            {state?.errors?.type && <p className="text-sm font-medium text-destructive">{state.errors.type[0]}</p>}
         </div>
-      )}
-      <DialogFooter>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
-          </DialogClose>
-          <SubmitButton isPending={isPending} isEdit={isEdit} />
-      </DialogFooter>
-    </form>
+        <div className="space-y-2">
+            <Label htmlFor="model">Modelo</Label>
+            <Input id="model" name="model" placeholder="Mercedes-Benz Atego" defaultValue={truck?.model} />
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="year">Ano</Label>
+            <Input id="year" name="year" type="number" placeholder="2022" defaultValue={truck?.year} />
+        </div>
+        {isEdit && (
+            <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select name="status" defaultValue={truck.status}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Disponível">Disponível</SelectItem>
+                        <SelectItem value="Em Manutenção">Em Manutenção</SelectItem>
+                        <SelectItem value="Em Operação">Em Operação</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <SubmitButton isPending={isPending} isEdit={isEdit} />
+        </DialogFooter>
+        </form>
+    </div>
   );
 }

@@ -105,14 +105,14 @@ export function TruckActions({ truck }: { truck: Truck }) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DialogContent className="p-0">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Caminhão</DialogTitle>
                <DialogDescription>
                 Ajuste as informações do veículo da sua frota.
               </DialogDescription>
             </DialogHeader>
-             <div className="flex-grow overflow-y-auto px-6 py-4">
+             <div className="flex-grow overflow-y-auto">
                 <FleetForm truck={truck} onSave={() => setIsEditDialogOpen(false)} />
             </div>
           </DialogContent>

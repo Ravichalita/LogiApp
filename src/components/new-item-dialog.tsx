@@ -77,16 +77,14 @@ export function NewItemDialog({ itemType, onSuccess }: NewItemDialogProps) {
             <span className="sr-only">{titles[itemType]}</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="p-0">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{titles[itemType]}</DialogTitle>
           <DialogDescription>
             {descriptions[itemType]}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-grow overflow-y-auto px-6 py-4">
-            {formComponent[itemType]}
-        </div>
+        {formComponent[itemType]}
       </DialogContent>
     </Dialog>
   );

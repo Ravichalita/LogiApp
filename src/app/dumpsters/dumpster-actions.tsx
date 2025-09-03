@@ -142,7 +142,7 @@ export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <DialogContent className="p-0">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Editar Caçamba</DialogTitle>
             </DialogHeader>
