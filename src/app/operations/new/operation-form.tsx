@@ -214,6 +214,12 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
     setDestinationAddress(newAddress);
   }
 
+  const handleBaseValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(rawValue, 10) || 0;
+    setBaseValue(cents / 100);
+  }
+
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
         if (!accountId || !user) {
@@ -488,7 +494,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
       )}
      
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
              <div className="grid gap-2">
                 <Label>Custos</Label>
                 <CostsDialog 
@@ -500,12 +506,17 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
             </div>
              <div className="grid gap-2">
                  <Label htmlFor="value" className="text-right">Valor do Serviço</Label>
-                 <Input
-                    id="value"
-                    readOnly
-                    value={formatCurrency(baseValue)}
-                    className="pl-8 text-right font-bold bg-muted"
-                />
+                 <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <Input
+                        id="value"
+                        name="value_display"
+                        value={formatCurrencyForInput((baseValue * 100).toString())}
+                        onChange={handleBaseValueChange}
+                        placeholder="0,00"
+                        className="pl-8 text-right font-bold"
+                    />
+                 </div>
             </div>
         </div>
         {(totalOperationCost > 0 || baseValue > 0) && (
