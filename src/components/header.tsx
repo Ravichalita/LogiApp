@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Image from "next/image";
@@ -115,13 +114,6 @@ export function Header() {
                   </p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-               <DropdownMenuItem asChild>
-                <Link href="/account">
-                  <UserIcon className="mr-2 h-4 w-4" />
-                  <span>Sua Conta</span>
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
