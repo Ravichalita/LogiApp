@@ -3,7 +3,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus, Workflow, Truck } from "lucide-react";
+import { Plus, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NewItemDialog } from "./new-item-dialog";
@@ -87,7 +87,7 @@ export function FloatingActionButton() {
                                     href="/rentals/new"
                                     aria-disabled={!canAccessRentals} 
                                     tabIndex={!canAccessRentals ? -1 : undefined} 
-                                    className={cn(!canAccessRentals && "pointer-events-none opacity-50")}
+                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAccessRentals && "pointer-events-none opacity-50")}
                                 >
                                     <Workflow className="mr-2 h-4 w-4" />
                                     <span>Novo Aluguel</span>
@@ -98,9 +98,9 @@ export function FloatingActionButton() {
                                     href="/operations/new"
                                     aria-disabled={!canAccessOps} 
                                     tabIndex={!canAccessOps ? -1 : undefined} 
-                                    className={cn(!canAccessOps && "pointer-events-none opacity-50")}
+                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAccessOps && "pointer-events-none opacity-50")}
                                 >
-                                    <Truck className="mr-2 h-4 w-4" />
+                                    <Workflow className="mr-2 h-4 w-4" />
                                     <span>Nova Operação</span>
                                  </Link>
                              </DropdownMenuItem>
