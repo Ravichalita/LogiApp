@@ -42,6 +42,7 @@ export function FloatingActionButton() {
 
     const getFabContent = () => {
         const permissions = userAccount?.permissions;
+        const canAccessOps = permissions?.canAccessOperations;
 
         switch (pathname) {
             case '/fleet':
@@ -85,8 +86,8 @@ export function FloatingActionButton() {
                                     <span>Novo Aluguel</span>
                                  </Link>
                              </DropdownMenuItem>
-                             <DropdownMenuItem asChild>
-                                 <Link href="/operations/new">
+                             <DropdownMenuItem asChild disabled={!canAccessOps}>
+                                 <Link href="/operations/new" aria-disabled={!canAccessOps} tabIndex={!canAccessOps ? -1 : undefined} className={!canAccessOps ? "pointer-events-none" : ""}>
                                     <Truck className="mr-2 h-4 w-4" />
                                     <span>Nova Operação</span>
                                  </Link>
