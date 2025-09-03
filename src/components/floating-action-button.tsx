@@ -82,7 +82,7 @@ export function FloatingActionButton() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="mb-2">
-                             <DropdownMenuItem asChild className="py-2">
+                             <DropdownMenuItem asChild className="py-3">
                                  <Link 
                                     href="/rentals/new"
                                     aria-disabled={!canAccessRentals} 
@@ -92,7 +92,7 @@ export function FloatingActionButton() {
                                     <span>Novo Aluguel</span>
                                  </Link>
                              </DropdownMenuItem>
-                             <DropdownMenuItem asChild className="py-2">
+                             <DropdownMenuItem asChild className="py-3">
                                  <Link 
                                     href="/operations/new"
                                     aria-disabled={!canAccessOps} 
