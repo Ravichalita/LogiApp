@@ -32,11 +32,10 @@ export function FloatingActionButton() {
         '/settings', 
         '/admin/clients', 
         '/notifications-studio',
-        '/admin/superadmins',
     ];
     
     // Check for pages where the FAB should be hidden entirely FIRST.
-    if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit')) {
+    if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit') || pathname.startsWith('/admin/superadmins')) {
         return null;
     }
 
@@ -117,7 +116,7 @@ export function FloatingActionButton() {
     if (!content) return null;
 
     return (
-        <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+        <div className="fab-container fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
             {content}
         </div>
     )
