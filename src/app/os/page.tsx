@@ -325,7 +325,7 @@ export default function OSPage() {
     const unsubscribers: (() => void)[] = [];
 
     if (canAccessRentals) {
-      if (canEditRentals) {
+      if (canEditRentals && teamMembers.length === 0) {
          fetchTeamMembers(accountId).then(setTeamMembers);
       }
       const unsub = getPopulatedRentals(
@@ -532,7 +532,9 @@ export default function OSPage() {
                                         <div className="flex items-center gap-2">
                                             <User className="h-5 w-5" /> 
                                             {canEditRentals && rental.assignedToUser ? (
-                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers} />
+                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                                    {rental.assignedToUser.name}
+                                                </EditAssignedUserDialog>
                                             ) : (
                                                 <span>{rental.assignedToUser?.name}</span>
                                             )}
@@ -583,7 +585,9 @@ export default function OSPage() {
                                                 <div className="flex items-center gap-1.5">
                                                     <User className="h-4 w-4"/> 
                                                     {canEditOperations && op.driver ? (
-                                                        <EditOperationAssignedUserDialog operation={op} teamMembers={teamMembers} />
+                                                        <EditOperationAssignedUserDialog operation={op} teamMembers={teamMembers}>
+                                                            {op.driver.name}
+                                                        </EditOperationAssignedUserDialog>
                                                     ) : (
                                                         <span>{op.driver?.name}</span>
                                                     )}

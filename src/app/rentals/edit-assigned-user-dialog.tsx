@@ -54,8 +54,8 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
           description: errorMessages,
           variant: 'destructive',
         });
-      } else if (result?.message === 'error') {
-         toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+      } else if (result?.message && result.message !== 'success') {
+         toast({ title: 'Erro', description: result.message, variant: 'destructive' });
       } else {
         toast({ title: 'Sucesso', description: 'Usuário designado atualizado.' });
         setIsOpen(false);
