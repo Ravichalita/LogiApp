@@ -2,24 +2,13 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Helper function to check if a user is signed in and has the necessary account ID claim.
-    function isSignedInAndHasAccount() {
-      return request.auth != null && request.auth.token.accountId != null;
-    }
-
-    // Match any file within any account's directory structure.
-    // e.g., accounts/{accountId}/rentals/{rentalId}/{fileName}
-    // or accounts/{accountId}/completed_rentals/{rentalId}/{fileName}
+    // Permite que qualquer usuário autenticado leia os arquivos de qualquer conta.
+    // Restrinja isso se os arquivos forem sensíveis.
     match /accounts/{accountId}/{allPaths=**} {
-      // Allow read and write access only if the user is authenticated
-      // and their account ID claim matches the account ID in the file path.
-      // This is the most secure and direct way to enforce multi-tenancy isolation.
-      allow read, write: if isSignedInAndHasAccount() && request.auth.token.accountId == accountId;
-    }
-
-    // Explicitly deny access to any other path to follow the principle of least privilege.
-    match /{path=**} {
-        allow read, write: if false;
+      allow read: if request.auth != null;
+      // Permite a escrita (upload, delete) apenas se o ID do usuário
+      // estiver na lista de 'members' do documento da conta correspondente no Firestore.
+      allow write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/accounts/$(accountId)).data.members;
     }
   }
 }
