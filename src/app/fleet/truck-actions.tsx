@@ -5,6 +5,8 @@ import { useState, useTransition } from 'react';
 import { deleteTruckAction } from '@/lib/actions';
 import { MoreVertical, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +37,39 @@ import { FleetForm } from './fleet-form';
 import type { Truck } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { cn } from '@/lib/utils';
+
+export function MaintenanceCheckbox({ truck, isPending, handleToggleStatus }: {
+    truck: Truck;
+    isPending: boolean;
+    handleToggleStatus: () => void;
+}) {
+    const isMaintenance = truck.status === 'Em Manutenção';
+    const isRented = truck.status === 'Em Operação';
+    const { userAccount, isSuperAdmin } = useAuth();
+    const canEdit = isSuperAdmin || userAccount?.permissions?.canEditFleet;
+
+    return (
+        <div className="flex items-center space-x-2">
+            <Checkbox 
+                id={`maintenance-${truck.id}`} 
+                checked={isMaintenance}
+                onCheckedChange={handleToggleStatus}
+                disabled={isPending || isRented || !canEdit}
+                aria-label="Marcar como em manutenção"
+            />
+            <Label 
+                htmlFor={`maintenance-${truck.id}`}
+                className={cn(
+                    "text-sm font-medium leading-none",
+                    (isPending || isRented || !canEdit) && "text-muted-foreground cursor-not-allowed"
+                )}
+            >
+                Em Manutenção
+            </Label>
+        </div>
+    )
+}
 
 export function TruckActions({ truck }: { truck: Truck }) {
   const { accountId, userAccount, isSuperAdmin } = useAuth();

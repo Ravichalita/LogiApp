@@ -1,18 +1,21 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/context/auth-context';
 import type { Truck } from '@/lib/types';
 import { getTrucks } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { TruckActions } from './truck-actions';
+import { TruckActions, MaintenanceCheckbox } from './truck-actions';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ShieldAlert } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { updateTruckStatusAction } from '@/lib/actions';
+import { Separator } from '@/components/ui/separator';
 
 const statusVariantMap: Record<Truck['status'], 'success' | 'secondary' | 'warning'> = {
   'Disponível': 'success',
@@ -48,8 +51,10 @@ export default function FleetPage() {
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const router = useRouter();
+  const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
 
-  const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessOperations;
+  const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessFleet;
 
   useEffect(() => {
     if (authLoading) return;
@@ -71,6 +76,20 @@ export default function FleetPage() {
 
     return () => unsubscribe();
   }, [accountId, authLoading, canAccess]);
+
+  const handleToggleStatus = (truck: Truck) => {
+    if (!accountId || truck.status === 'Em Operação' || isPending) return;
+
+    const newStatus = truck.status === 'Disponível' ? 'Em Manutenção' : 'Disponível';
+    startTransition(async () => {
+      const result = await updateTruckStatusAction(accountId, truck.id, newStatus);
+      if (result.message === 'error') {
+        toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+      } else {
+        toast({ title: 'Sucesso', description: `Status do caminhão alterado para ${newStatus}.` });
+      }
+    });
+  };
 
   const isLoading = authLoading || (loadingData && canAccess);
 
@@ -112,15 +131,23 @@ export default function FleetPage() {
                             </div>
                             <TruckActions truck={truck} />
                         </CardHeader>
-                        <CardContent className="flex items-center justify-between">
+                        <CardContent className="flex flex-col gap-4">
+                          <div className="flex items-center justify-between">
                             <div className="text-sm text-muted-foreground space-x-2">
-                                {truck.type && <span className="font-medium text-foreground">{truck.type}</span>}
+                                {truck.type && <span className="font-medium text-foreground capitalize">{truck.type}</span>}
                                 {truck.model && <span>{truck.model}</span>}
                                 {truck.year && <span>({truck.year})</span>}
                             </div>
                             <Badge variant={statusVariantMap[truck.status]}>
                                 {truck.status}
                             </Badge>
+                          </div>
+                          <Separator />
+                           <MaintenanceCheckbox
+                              truck={truck}
+                              isPending={isPending}
+                              handleToggleStatus={() => handleToggleStatus(truck)}
+                            />
                         </CardContent>
                     </Card>
                 ))}

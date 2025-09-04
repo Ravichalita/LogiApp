@@ -41,7 +41,9 @@ export default function NewOperationPage() {
         setOperationTypes(accountData?.operationTypes || []);
         
         const unsubTrucks = getTrucks(accountId, (truckData) => {
-          setTrucks(truckData);
+          // Filter trucks to only include available ones
+          const availableTrucks = truckData.filter(t => t.status === 'Disponível');
+          setTrucks(availableTrucks);
           setLoading(false);
         });
 

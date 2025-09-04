@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -801,10 +801,14 @@ export async function createOperationAction(accountId: string, createdBy: string
 
     const finalData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined));
 
-    await db.collection(`accounts/${accountId}/operations`).add({
+    const opDocRef = await db.collection(`accounts/${accountId}/operations`).add({
       ...finalData,
       createdAt: FieldValue.serverTimestamp(),
     });
+    
+    if (operationData.truckId) {
+        await db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`).update({ status: 'Em Operação' });
+    }
 
     if (validatedFields.data.driverId) {
         await sendNotification({
@@ -913,10 +917,17 @@ export async function finishOperationAction(accountId: string, operationId: stri
         batch.set(newCompletedRef, completedOpData);
         batch.delete(operationRef);
 
+        if (operationData.truckId) {
+            const truckRef = db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`);
+            batch.update(truckRef, { status: 'Disponível' });
+        }
+
         await batch.commit();
 
         revalidatePath('/operations');
         revalidatePath('/finance');
+        revalidatePath('/os');
+        revalidatePath('/fleet');
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -927,9 +938,21 @@ export async function deleteOperationAction(accountId: string, operationId: stri
     if (!accountId || !operationId) {
         return { message: 'error', error: 'ID da conta ou da operação está ausente.' };
     }
+    const db = adminDb;
     try {
-        await adminDb.doc(`accounts/${accountId}/operations/${operationId}`).delete();
+        const opRef = db.doc(`accounts/${accountId}/operations/${operationId}`);
+        const opSnap = await opRef.get();
+        if (opSnap.exists) {
+            const opData = opSnap.data() as Operation;
+            if (opData.truckId) {
+                const truckRef = db.doc(`accounts/${accountId}/trucks/${opData.truckId}`);
+                await truckRef.update({ status: 'Disponível' });
+            }
+        }
+        await opRef.delete();
         revalidatePath('/operations');
+        revalidatePath('/os');
+        revalidatePath('/fleet');
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -993,6 +1016,17 @@ export async function deleteTruckAction(accountId: string, truckId: string) {
   try {
     // Here you might want to check if the truck is in an active operation before deleting
     await adminDb.doc(`accounts/${accountId}/trucks/${truckId}`).delete();
+    revalidatePath('/fleet');
+    return { message: 'success' };
+  } catch (e) {
+    return { message: 'error', error: handleFirebaseError(e) };
+  }
+}
+
+export async function updateTruckStatusAction(accountId: string, truckId: string, newStatus: Truck['status']) {
+  try {
+    const truckRef = adminDb.doc(`accounts/${accountId}/trucks/${truckId}`);
+    await truckRef.update({ status: newStatus });
     revalidatePath('/fleet');
     return { message: 'success' };
   } catch (e) {
