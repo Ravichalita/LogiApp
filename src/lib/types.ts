@@ -126,6 +126,13 @@ export const UpdateTruckSchema = TruckSchema.extend({
 });
 // #endregion
 
+export const AttachmentSchema = z.object({
+    url: z.string().url(),
+    name: z.string(),
+    type: z.string(),
+    uploadedAt: z.string(),
+});
+
 // #region Operation Schema
 export const AdditionalCostSchema = z.object({
     id: z.string(),
@@ -156,6 +163,7 @@ const BaseOperationSchema = z.object({
   createdBy: z.string(),
   accountId: z.string(),
   createdAt: z.custom<FieldValue>().optional(),
+  attachments: z.array(AttachmentSchema).optional(),
 });
 
 export const OperationSchema = BaseOperationSchema.extend({
@@ -257,13 +265,7 @@ export const RentalSchema = z.object({
     late: z.boolean().default(false),
   }).optional(),
   accountId: z.string(),
-});
-
-export const AttachmentSchema = z.object({
-    url: z.string().url(),
-    name: z.string(),
-    type: z.string(),
-    uploadedAt: z.string(),
+  attachments: z.array(AttachmentSchema).optional(),
 });
 
 const UpdateRentalPeriodSchema = z.object({

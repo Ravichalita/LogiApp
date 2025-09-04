@@ -2,14 +2,14 @@
 
 'use client';
 
-import { useState, useTransition, useEffect, useMemo } from 'react';
+import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parse, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,7 +18,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
-import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation } from '@/lib/types';
+import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment } from '@/lib/types';
 import { createOperationAction } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,6 +34,9 @@ import { OperationTypeDialog } from './operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { parseISO } from 'date-fns';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getFirebase } from '@/lib/firebase-client';
+import { Progress } from '@/components/ui/progress';
 
 interface OperationFormProps {
   clients: Client[];
@@ -61,6 +64,105 @@ const formatCurrency = (value: number | undefined | null) => {
       currency: 'BRL',
     }).format(value);
 }
+
+const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: string; onAttachmentsChange: (attachments: Attachment[]) => void }) => {
+    const [files, setFiles] = useState<File[]>([]);
+    const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+    const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            setFiles(prev => [...prev, ...newFiles]);
+            uploadFiles(newFiles);
+        }
+    };
+
+    const uploadFiles = (filesToUpload: File[]) => {
+        const { storage } = getFirebase();
+        if (!storage) return;
+
+        filesToUpload.forEach(file => {
+            const storageRef = ref(storage, `accounts/${accountId}/operations/attachments/${Date.now()}_${file.name}`);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+                },
+                (error) => {
+                    console.error("Upload error:", error);
+                    // Handle error (e.g., show toast)
+                },
+                () => {
+                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                        const newAttachment: Attachment = {
+                            url: downloadURL,
+                            name: file.name,
+                            type: file.type,
+                            uploadedAt: new Date().toISOString(),
+                        };
+                        setUploadedAttachments(prev => {
+                            const updated = [...prev, newAttachment];
+                            onAttachmentsChange(updated);
+                            return updated;
+                        });
+                    });
+                }
+            );
+        });
+    };
+    
+    const removeAttachment = (attachmentToRemove: Attachment) => {
+        // Here you would also add logic to delete the file from Firebase Storage if needed
+        const newAttachments = uploadedAttachments.filter(att => att.url !== attachmentToRemove.url);
+        setUploadedAttachments(newAttachments);
+        onAttachmentsChange(newAttachments);
+    };
+
+    return (
+        <div className="space-y-4">
+             <input
+                type="file"
+                multiple
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+            />
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="mr-2 h-4 w-4" />
+                Adicionar Anexos
+            </Button>
+            <div className="space-y-2">
+                {files.map((file, index) => (
+                    <div key={index} className="text-sm">
+                        {uploadProgress[file.name] < 100 && (
+                            <div className="flex items-center gap-2">
+                                <FileIcon className="h-4 w-4 text-muted-foreground" />
+                                <span>{file.name}</span>
+                                <Progress value={uploadProgress[file.name]} className="w-1/2" />
+                            </div>
+                        )}
+                    </div>
+                ))}
+                {uploadedAttachments.map((att, index) => (
+                    <div key={index} className="flex items-center justify-between text-sm p-2 bg-muted rounded-md">
+                         <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
+                            <Paperclip className="h-4 w-4" />
+                            <span>{att.name}</span>
+                         </a>
+                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeAttachment(att)}>
+                             <X className="h-4 w-4" />
+                         </Button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 
 export function OperationForm({ clients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
   const { user, accountId } = useAuth();
@@ -94,6 +196,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [directionsError, setDirectionsError] = useState<string | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
@@ -287,6 +390,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         if (travelCost) {
             formData.set('travelCost', String(travelCost));
         }
+        formData.set('attachments', JSON.stringify(attachments));
 
         const boundAction = createOperationAction.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
@@ -611,6 +715,11 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
+
+       <div className="p-4 border rounded-md space-y-4 bg-card">
+         <Label className="text-muted-foreground">Anexos</Label>
+          {accountId && <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />}
+       </div>
 
        <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>

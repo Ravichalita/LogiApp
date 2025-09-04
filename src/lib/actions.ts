@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -776,6 +776,15 @@ export async function createOperationAction(accountId: string, createdBy: string
             console.error("Failed to parse typeIds JSON");
         }
     }
+    
+    let attachments: Attachment[] = [];
+    if (rawData.attachments && typeof rawData.attachments === 'string') {
+        try {
+            attachments = JSON.parse(rawData.attachments);
+        } catch (e) {
+            console.error("Failed to parse attachments JSON");
+        }
+    }
 
     const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
     const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + (cost?.value || 0), 0);
@@ -792,6 +801,7 @@ export async function createOperationAction(accountId: string, createdBy: string
          travelCost,
          totalCost,
          additionalCosts,
+         attachments,
     };
     
     const validatedFields = OperationSchema.safeParse(dataToValidate);
