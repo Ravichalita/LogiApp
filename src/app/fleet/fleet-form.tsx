@@ -64,11 +64,24 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
         return;
       }
       
+      const rawData = Object.fromEntries(formData.entries());
+      
+      // Remove empty optional fields so they don't get sent as `undefined` to Firestore
+      if (rawData.model === '') delete rawData.model;
+      if (rawData.year === '') delete rawData.year;
+      
+      const cleanFormData = new FormData();
+      Object.entries(rawData).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+              cleanFormData.set(key, value as string);
+          }
+      });
+      
       const boundAction = isEdit
         ? updateTruckAction.bind(null, accountId)
         : createTruckAction.bind(null, accountId);
         
-      const result = await boundAction(state, formData);
+      const result = await boundAction(state, cleanFormData);
       setState(result);
     });
   };

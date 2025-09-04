@@ -2,7 +2,7 @@
 import { z } from 'zod';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
-const toNumOrUndef = (v: unknown) => v === '' || v == null ? undefined : Number(v);
+const toNumOrNull = (v: unknown) => v === '' || v == null ? null : Number(v);
 
 export const DUMPSTER_COLORS = {
   'Amarelo': { value: '#FFC700', description: 'Metal em geral' },
@@ -60,8 +60,8 @@ export const UpdateBackupSettingsSchema = z.object({
 
 export const UpdateBaseAddressSchema = z.object({
     baseAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-    baseLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
-    baseLongitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+    baseLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+    baseLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
 });
 
 export const UpdateCostSettingsSchema = z.object({
@@ -114,7 +114,7 @@ export const TruckSchema = z.object({
   plate: z.string().min(1, "A placa é obrigatória.").max(8, { message: "A placa deve ter no máximo 8 caracteres." }),
   type: z.enum(["caminhão vácuo", "caminhão hidro vácuo", "poliguindaste"], { required_error: "O tipo de caminhão é obrigatório."}),
   model: z.string().optional().nullable(),
-  year: z.preprocess(toNumOrUndef, z.number().optional().nullable()),
+  year: z.preprocess(toNumOrNull, z.number().nullable()),
   status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']).default('Disponível'),
 });
 export type Truck = z.infer<typeof TruckSchema> & { id: string, accountId: string };
@@ -141,11 +141,11 @@ const BaseOperationSchema = z.object({
   truckId: z.string().optional(),
   driverId: z.string({ required_error: "O responsável é obrigatório." }),
   startAddress: z.string().min(5, { message: "O endereço de saída é obrigatório." }),
-  startLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
-  startLongitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+  startLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+  startLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   destinationAddress: z.string().min(5, { message: "O endereço de destino é obrigatório." }),
-  destinationLatitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
-  destinationLongitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+  destinationLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+  destinationLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   observations: z.string().optional(),
   value: z.coerce.number().optional().nullable(),
   additionalCosts: z.array(AdditionalCostSchema).optional(),
@@ -207,8 +207,8 @@ export const ClientSchema = z.object({
   cpfCnpj: z.string().optional(),
   email: z.string().email({ message: "Formato de e-mail inválido." }).optional().or(z.literal('')),
   address: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-  latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
-  longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+  latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+  longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   observations: z.string().optional(),
 });
 
@@ -240,8 +240,8 @@ export const RentalSchema = z.object({
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
   deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-  latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
-  longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+  latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+  longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   value: z.preprocess(
     (val) => (typeof val === 'string' ? val.replace(',', '.') : val),
     z.coerce.number({ required_error: "O valor é obrigatório." }).min(0, "O valor deve ser zero ou maior.")
@@ -278,8 +278,8 @@ export const UpdateRentalSchema = z.object({
     rentalDate: z.string().optional(),
     returnDate: z.string().optional(),
     deliveryAddress: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }).optional(),
-    latitude: z.preprocess(toNumOrUndef, z.number().min(-90).max(90)).optional(),
-    longitude: z.preprocess(toNumOrUndef, z.number().min(-180).max(180)).optional(),
+    latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+    longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
     value: z.preprocess(
       (val) => (typeof val === 'string' ? val.replace(',', '.') : val),
       z.coerce.number().min(0, "O valor deve ser zero ou maior.")
