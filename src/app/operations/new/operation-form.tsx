@@ -122,7 +122,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
     };
 
     return (
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
              <input
                 type="file"
                 multiple
@@ -130,36 +130,49 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                 onChange={handleFileSelect}
                 className="hidden"
             />
-            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="mr-2 h-4 w-4" />
-                Adicionar Anexos
-            </Button>
-            <div className="space-y-2">
+            <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground">Anexos</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Adicionar
+                </Button>
+            </div>
+             
+             {(files.length > 0 || uploadedAttachments.length > 0) && <Separator />}
+
+             <div className="space-y-2">
                 {files.map((file, index) => {
                     const isUploaded = uploadedAttachments.some(att => att.name === file.name);
+                    const progress = uploadProgress[file.name] ?? 0;
                     return !isUploaded && (
                          <div key={index} className="text-sm">
                             <div className="flex items-center gap-2">
                                 <FileIcon className="h-4 w-4 text-muted-foreground" />
-                                <span>{file.name}</span>
-                                <Progress value={uploadProgress[file.name]} className="w-1/2" />
+                                <span className="flex-grow truncate">{file.name}</span>
+                                {progress < 100 ? (
+                                    <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
+                                ) : (
+                                    <Spinner size="small" />
+                                )}
                             </div>
+                            <Progress value={progress} className="w-full h-1 mt-1" />
                         </div>
                     )
                 })}
             </div>
+            
              {uploadedAttachments.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {uploadedAttachments.map((att, index) => (
-                        <div key={index} className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center">
-                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 hover:underline">
+                        <div key={index} className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center aspect-square">
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 hover:underline h-full w-full">
                                 <Paperclip className="h-8 w-8 text-muted-foreground" />
                                 <span className="text-xs break-all line-clamp-2">{att.name}</span>
                             </a>
                             <Button
-                                variant="ghost"
+                                variant="destructive"
                                 size="icon"
-                                className="absolute top-0 right-0 h-6 w-6 opacity-50 group-hover:opacity-100"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                                 onClick={() => removeAttachment(att)}
                             >
                                 <X className="h-4 w-4" />
@@ -727,11 +740,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
       </div>
 
       <div className="p-4 border rounded-md space-y-2 bg-card">
-        <div className="flex items-center justify-between">
-          <Label className="text-muted-foreground">Anexos</Label>
-          {accountId && <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />}
-        </div>
-        
+        {accountId && <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />}
       </div>
 
        <div className="space-y-2">
