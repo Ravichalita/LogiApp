@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useRef } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Dumpster, Location, UserAccount, RentalPrice } from '@/lib/types';
+import type { Client, Dumpster, Location, UserAccount, RentalPrice, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, Upload, Paperclip, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AddressInput } from '@/components/address-input';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
 
 const initialState = {
   errors: {},
@@ -80,6 +81,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
   const [value, setValue] = useState(0); // Store value as a number
   const [displayValue, setDisplayValue] = useState(''); // Store formatted string for input
   const [priceId, setPriceId] = useState<string | undefined>();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
 
   const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
 
@@ -138,6 +140,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         }
         
         formData.set('value', String(value));
+        formData.set('attachments', JSON.stringify(attachments));
 
         const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
@@ -390,6 +393,16 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         <Label htmlFor="observations">Observações</Label>
         <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
+      </div>
+
+       <div className="p-4 border rounded-md space-y-2 bg-card">
+        {accountId && (
+            <AttachmentsUploader 
+                accountId={accountId} 
+                onAttachmentsChange={setAttachments} 
+                uploadPath={`accounts/${accountId}/rentals/attachments`}
+            />
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">

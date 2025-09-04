@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { updateRentalAction } from '@/lib/actions';
-import type { Client, PopulatedRental, Location, UserAccount, RentalPrice } from '@/lib/types';
+import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Upload, Paperclip, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isBefore as isBeforeDate, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,6 +21,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
@@ -60,6 +61,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
   const [value, setValue] = useState(rental.value);
   const [displayValue, setDisplayValue] = useState(formatCurrencyForInput((rental.value * 100).toString()));
   const [priceId, setPriceId] = useState<string | undefined>();
+  const [attachments, setAttachments] = useState<Attachment[]>(rental.attachments || []);
   
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -86,6 +88,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
           formData.set('longitude', String(location.lng));
         }
         formData.set('value', String(value));
+        formData.set('attachments', JSON.stringify(attachments));
 
         const boundAction = updateRentalAction.bind(null, accountId);
         const result = await boundAction(null, formData);
@@ -267,12 +270,23 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
       </div>
 
+       <div className="p-4 border rounded-md space-y-2 bg-card">
+        {accountId && (
+            <AttachmentsUploader 
+                accountId={accountId}
+                initialAttachments={attachments}
+                onAttachmentsChange={setAttachments}
+                uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+            />
+        )}
+      </div>
+
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <Button type="submit" disabled={isPending} size="lg">
           {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
         </Button>
         <Button asChild variant="outline" size="lg">
-            <Link href="/">Cancelar</Link>
+            <Link href="/os">Cancelar</Link>
         </Button>
       </div>
     </form>
