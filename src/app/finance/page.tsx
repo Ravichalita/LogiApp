@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { CompletedRental, HistoricItem, PopulatedOperation } from '@/lib/types';
+import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment } from '@/lib/types';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { addAttachmentToCompletedOperationAction, addAttachmentToCompletedRentalAction } from '@/lib/actions';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -51,13 +53,31 @@ function StatCard({ title, value, icon: Icon, loading }: { title: string, value:
     )
 }
 
-function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: HistoricItem | null, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUploaded }: { item: HistoricItem | null, isOpen: boolean, onOpenChange: (open: boolean) => void, onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void }) {
+    const { accountId } = useAuth();
+    
     if (!item) return null;
 
     const isRental = item.kind === 'rental';
     const rental = isRental ? (item.data as CompletedRental) : null;
     const operation = !isRental ? (item.data as PopulatedOperation) : null;
     const operationTitle = operation?.operationTypes?.map(t => t.name).join(', ') || 'Operação';
+    
+    const handleAttachmentAdded = async (newAttachment: Attachment) => {
+        if (!accountId) return;
+        
+        let result;
+        if(isRental) {
+            result = await addAttachmentToCompletedRentalAction(accountId, item.id, newAttachment);
+        } else {
+            result = await addAttachmentToCompletedOperationAction(accountId, item.id, newAttachment);
+        }
+
+        if (result.message === 'success') {
+            onAttachmentUploaded(item.id, newAttachment);
+        }
+    }
+
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -132,24 +152,28 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
                             </div>
                         </div>
                     )}
-                    {item.data.attachments && item.data.attachments.length > 0 && (
-                         <div className="flex items-start gap-3">
-                            <Paperclip className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                            <div className="flex flex-col">
-                                <span className="text-sm text-muted-foreground">Anexos</span>
-                                <ul className="space-y-1 mt-1">
-                                  {item.data.attachments.map((att, index) => (
-                                      <li key={index}>
-                                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
-                                              <FileText className="h-3 w-3" />
-                                              <span>{att.name}</span>
-                                          </a>
-                                      </li>
-                                  ))}
-                                </ul>
-                            </div>
-                        </div>
-                    )}
+                    <div className="space-y-2">
+                        <span className="text-sm text-muted-foreground">Anexos</span>
+                         {item.data.attachments && item.data.attachments.length > 0 && (
+                             <ul className="space-y-1">
+                               {item.data.attachments.map((att, index) => (
+                                   <li key={index}>
+                                       <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                                           <FileText className="h-3 w-3" />
+                                           <span>{att.name}</span>
+                                       </a>
+                                   </li>
+                               ))}
+                             </ul>
+                        )}
+                        {accountId && (
+                            <AttachmentsUploader 
+                                accountId={accountId} 
+                                onAttachmentUploaded={handleAttachmentAdded}
+                                uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
+                            />
+                        )}
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
@@ -211,6 +235,16 @@ export default function FinancePage() {
 
     }, [accountId, authLoading, canAccess]);
 
+    const handleAttachmentUploaded = (itemId: string, newAttachment: Attachment) => {
+        setHistoricItems(prevItems => prevItems.map(item => {
+            if (item.id === itemId) {
+                const updatedAttachments = [...(item.data.attachments || []), newAttachment];
+                return { ...item, data: { ...item.data, attachments: updatedAttachments }};
+            }
+            return item;
+        }));
+    };
+    
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -343,7 +377,12 @@ export default function FinancePage() {
                     </CardContent>
                 </Card>
              </div>
-             <HistoricItemDetailsDialog item={selectedItem} isOpen={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)} />
+             <HistoricItemDetailsDialog 
+                item={selectedItem} 
+                isOpen={!!selectedItem} 
+                onOpenChange={(open) => !open && setSelectedItem(null)}
+                onAttachmentUploaded={handleAttachmentUploaded}
+             />
         </div>
     );
 }

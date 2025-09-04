@@ -969,6 +969,21 @@ export async function deleteOperationAction(accountId: string, operationId: stri
     }
 }
 
+export async function addAttachmentToCompletedOperationAction(accountId: string, completedOperationId: string, attachment: z.infer<typeof AttachmentSchema>) {
+    if (!accountId || !completedOperationId) return { message: 'error', error: 'ID da conta ou da operação ausente.' };
+
+    try {
+        const operationRef = adminDb.doc(`accounts/${accountId}/completed_operations/${completedOperationId}`);
+        await operationRef.update({
+            attachments: FieldValue.arrayUnion(attachment)
+        });
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
 // #endregion
 
 
@@ -1730,4 +1745,5 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
 
