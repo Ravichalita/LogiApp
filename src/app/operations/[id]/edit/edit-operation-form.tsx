@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useTransition, useEffect, useMemo } from 'react';
+import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parseISO, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,7 +17,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
-import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation } from '@/lib/types';
+import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment } from '@/lib/types';
 import { updateOperationAction } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import {
@@ -32,6 +32,9 @@ import { CostsDialog } from '../../new/costs-dialog';
 import { OperationTypeDialog } from '../../new/operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getFirebase } from '@/lib/firebase-client';
+import { Progress } from '@/components/ui/progress';
 
 interface EditOperationFormProps {
   operation: PopulatedOperation;
@@ -75,6 +78,118 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
     return <Sun className="h-5 w-5" />;
 };
 
+const AttachmentsUploader = ({ accountId, initialAttachments, onAttachmentsChange }: { 
+    accountId: string; 
+    initialAttachments: Attachment[];
+    onAttachmentsChange: (attachments: Attachment[]) => void; 
+}) => {
+    const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+    const [isUploading, setIsUploading] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const file = e.target.files[0];
+            if (file) {
+                 uploadFile(file);
+            }
+        }
+    };
+
+    const uploadFile = (file: File) => {
+        const { storage } = getFirebase();
+        if (!storage) return;
+
+        setIsUploading(file.name);
+        const storageRef = ref(storage, `accounts/${accountId}/operations/attachments/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
+            },
+            (error) => {
+                console.error("Upload error:", error);
+                toast({ title: "Erro no Upload", description: `Não foi possível enviar o arquivo ${file.name}.`, variant: "destructive" });
+                setIsUploading(null);
+            },
+            () => {
+                getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                    const newAttachment: Attachment = {
+                        url: downloadURL,
+                        name: file.name,
+                        type: file.type,
+                        uploadedAt: new Date().toISOString(),
+                    };
+                    onAttachmentsChange([...initialAttachments, newAttachment]);
+                    toast({ title: "Sucesso!", description: `Arquivo ${file.name} enviado.` });
+                    setIsUploading(null);
+                });
+            }
+        );
+    };
+    
+    const removeAttachment = (attachmentToRemove: Attachment) => {
+        onAttachmentsChange(initialAttachments.filter(att => att.url !== attachmentToRemove.url));
+    };
+
+    return (
+        <div className="flex flex-col gap-4">
+             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" disabled={!!isUploading} />
+            <div className="flex items-center justify-between">
+                <Label className="text-muted-foreground">Anexos</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={!!isUploading}>
+                    {isUploading ? <Spinner size="small" className="mr-2" /> : <Upload className="mr-2 h-4 w-4" />}
+                    Adicionar
+                </Button>
+            </div>
+             
+            {isUploading && (
+                <div className="text-sm">
+                    <div className="flex items-center gap-2">
+                        <FileIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="flex-grow truncate">{isUploading}</span>
+                        <span className="text-xs text-muted-foreground">{Math.round(uploadProgress[isUploading] ?? 0)}%</span>
+                    </div>
+                    <Progress value={uploadProgress[isUploading]} className="w-full h-1 mt-1" />
+                </div>
+            )}
+             
+            {initialAttachments.length > 0 && <Separator />}
+
+            {initialAttachments.length > 0 && (
+                <div className="flex w-full overflow-x-auto gap-2 pb-2">
+                    {initialAttachments.map((att, index) => (
+                        <div key={index} className="relative group shrink-0">
+                             <a 
+                                href={att.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="relative group shrink-0 h-24 w-24 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                            >
+                                <Paperclip className="h-8 w-8 text-muted-foreground" />
+                                <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                            </a>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10"
+                                onClick={() => removeAttachment(att)}
+                            >
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Remover anexo</span>
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 export function EditOperationForm({ operation, clients, team, trucks, operations, operationTypes, account }: EditOperationFormProps) {
   const { accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
@@ -106,6 +221,8 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   const [baseValue, setBaseValue] = useState(operation.value || 0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>(operation.additionalCosts || []);
   const [travelCost, setTravelCost] = useState<number | null>(operation.travelCost || null);
+  const [attachments, setAttachments] = useState<Attachment[]>(operation.attachments || []);
+
 
   const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
   const [isFetchingDirections, setIsFetchingDirections] = useState(false);
@@ -252,6 +369,8 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
       if (travelCost !== null) {
           formData.set('travelCost', String(travelCost));
       }
+      formData.set('attachments', JSON.stringify(attachments));
+
 
       const boundAction = updateOperationAction.bind(null, accountId);
       const result = await boundAction(null, formData);
@@ -527,6 +646,16 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
             </>
         )}
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
+      </div>
+
+       <div className="p-4 border rounded-md space-y-2 bg-card">
+        {accountId && (
+            <AttachmentsUploader 
+                accountId={accountId} 
+                initialAttachments={attachments} 
+                onAttachmentsChange={setAttachments} 
+            />
+        )}
       </div>
 
       <div className="space-y-2">

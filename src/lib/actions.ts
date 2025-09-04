@@ -863,6 +863,14 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         }
     }
     
+    if (rawData.attachments && typeof rawData.attachments === 'string') {
+        try {
+            dataToValidate.attachments = JSON.parse(rawData.attachments);
+        } catch (e) {
+            return { message: 'error', error: "Formato de anexos inválido."}
+        }
+    }
+    
     if (rawData.value !== undefined) {
       dataToValidate.value = Number(rawData.value);
     }
@@ -882,7 +890,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 
     const { id, ...operationData } = validatedFields.data;
-    const updateData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined));
+    const updateData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined && v !== null));
 
     if (Object.keys(updateData).length === 0) {
         return { message: 'success', info: 'Nenhum campo para atualizar.' };
@@ -1785,6 +1793,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
 
 
 
