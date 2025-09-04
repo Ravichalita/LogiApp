@@ -472,7 +472,7 @@ export default function OSPage() {
             />
         </div>
         <div className="space-y-2">
-            <div className="grid grid-cols-3 gap-2">
+             <div className="grid grid-cols-3 gap-2">
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
