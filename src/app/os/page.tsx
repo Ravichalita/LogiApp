@@ -595,7 +595,7 @@ export default function OSPage() {
                                 </CardHeader>
                                  <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
                                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                </AccordionTrigger>
+                                 </AccordionTrigger>
                                 <AccordionContent className="p-4">
                                     <div className="space-y-4 text-sm">
                                         <Separator />
@@ -709,3 +709,4 @@ export default function OSPage() {
     </div>
   );
 }
+
