@@ -159,6 +159,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         }
     });
   };
+  
+  const handleAttachmentUploaded = (newAttachment: Attachment) => {
+    setAttachments(prev => [...prev, newAttachment]);
+  };
 
   const handlePriceSelection = (selectedPriceId: string) => {
     setPriceId(selectedPriceId);
@@ -399,7 +403,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         {accountId && (
             <AttachmentsUploader 
                 accountId={accountId} 
-                onAttachmentsChange={setAttachments} 
+                onAttachmentUploaded={handleAttachmentUploaded} 
                 uploadPath={`accounts/${accountId}/rentals/attachments`}
             />
         )}
