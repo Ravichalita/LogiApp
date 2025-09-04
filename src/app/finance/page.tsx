@@ -305,6 +305,10 @@ export default function FinancePage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>OS</TableHead>
+                                        <TableHead className="w-[20px] p-2 text-center">
+                                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                            <span className="sr-only">Anexos</span>
+                                        </TableHead>
                                         <TableHead>Tipo de Serviço</TableHead>
                                         <TableHead>Cliente</TableHead>
                                         <TableHead className="text-right">Finalizado em</TableHead>
@@ -315,6 +319,11 @@ export default function FinancePage() {
                                     {historicItems.length > 0 ? historicItems.map(item => (
                                         <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer">
                                             <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
+                                            <TableCell className="w-[20px] p-2 text-center">
+                                                {item.data.attachments && item.data.attachments.length > 0 && (
+                                                    <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
+                                                )}
+                                            </TableCell>
                                             <TableCell className="font-medium capitalize">
                                                 {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
                                             </TableCell>
@@ -324,7 +333,7 @@ export default function FinancePage() {
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center h-24">Nenhum serviço finalizado ainda.</TableCell>
+                                            <TableCell colSpan={6} className="text-center h-24">Nenhum serviço finalizado ainda.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
