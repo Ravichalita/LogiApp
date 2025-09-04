@@ -19,16 +19,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
+  AlertDialogDescription as AlertDialogDescriptionComponent,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialogTitle as AlertDialogTitleComponent,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
@@ -219,10 +220,10 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>Excluir Anexo?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
+                                                    <AlertDialogTitleComponent>Excluir Anexo?</AlertDialogTitleComponent>
+                                                    <AlertDialogDescriptionComponent>
                                                         Esta ação não pode ser desfeita. O arquivo "{att.name}" será removido permanentemente.
-                                                    </AlertDialogDescription>
+                                                    </AlertDialogDescriptionComponent>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
@@ -304,7 +305,7 @@ export default function FinancePage() {
         setHistoricItems(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
                 const updatedAttachments = [...(item.data.attachments || []), newAttachment];
-                const updatedItem = { ...item, data: { ...item, data: { ...item.data, attachments: updatedAttachments } }};
+                const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
                 if (selectedItem?.id === itemId) {
                     setSelectedItem(updatedItem);
                 }
