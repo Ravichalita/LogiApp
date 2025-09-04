@@ -48,7 +48,10 @@ export function FloatingActionButton() {
 
         switch (pathname) {
             case '/fleet':
-                return <NewItemDialog itemType="fleet" />
+                if (isAdmin || isSuperAdmin || permissions?.canEditFleet) {
+                    return <NewItemDialog itemType="fleet" />;
+                }
+                return null;
             case '/dumpsters':
                 if (isAdmin || permissions?.canEditDumpsters) {
                     return <NewItemDialog itemType="dumpster" />;
