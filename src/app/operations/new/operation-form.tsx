@@ -102,7 +102,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                 },
                 () => {
                     getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                        const newAttachment: Attachment = {
+                         const newAttachment: Attachment = {
                             url: downloadURL,
                             name: file.name,
                             type: file.type,
@@ -117,8 +117,8 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
     
     const removeAttachment = (attachmentToRemove: Attachment) => {
         // Here you would also add logic to delete the file from Firebase Storage if needed
-        const newAttachments = uploadedAttachments.filter(att => att.url !== attachmentToRemove.url);
-        setUploadedAttachments(newAttachments);
+        setUploadedAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+        setFiles(prev => prev.filter(f => f.name !== attachmentToRemove.name));
     };
 
     return (
@@ -130,22 +130,23 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                 onChange={handleFileSelect}
                 className="hidden"
             />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="mr-2 h-4 w-4" />
                 Adicionar Anexos
             </Button>
             <div className="space-y-2">
-                {files.map((file, index) => (
-                    <div key={index} className="text-sm">
-                        {uploadProgress[file.name] < 100 && (
+                {files.map((file, index) => {
+                    const isUploaded = uploadedAttachments.some(att => att.name === file.name);
+                    return !isUploaded && (
+                         <div key={index} className="text-sm">
                             <div className="flex items-center gap-2">
                                 <FileIcon className="h-4 w-4 text-muted-foreground" />
                                 <span>{file.name}</span>
                                 <Progress value={uploadProgress[file.name]} className="w-1/2" />
                             </div>
-                        )}
-                    </div>
-                ))}
+                        </div>
+                    )
+                })}
             </div>
              {uploadedAttachments.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -725,10 +726,13 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 
-       <div className="p-4 border rounded-md space-y-4 bg-card">
-         <Label className="text-muted-foreground">Anexos</Label>
+      <div className="p-4 border rounded-md space-y-2 bg-card">
+        <div className="flex items-center justify-between">
+          <Label className="text-muted-foreground">Anexos</Label>
           {accountId && <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />}
-       </div>
+        </div>
+        
+      </div>
 
        <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
