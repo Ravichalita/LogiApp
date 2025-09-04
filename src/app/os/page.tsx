@@ -361,28 +361,6 @@ export default function OSPage() {
   }, [authLoading, accountId, user, userAccount, canAccessRentals, canAccessOperations, canEditRentals, canEditOperations, isSuperAdmin, teamMembers.length]);
 
 
-  const handleAttachmentUploaded = async (itemId: string, itemType: 'rental' | 'operation', newAttachment: Attachment) => {
-    if (!accountId) return;
-
-    let result;
-    if (itemType === 'rental') {
-        result = await addAttachmentToRentalAction(accountId, itemId, newAttachment);
-        if (result.message === 'success') {
-            setRentals(prev => prev.map(r => r.id === itemId ? { ...r, attachments: [...(r.attachments || []), newAttachment] } : r));
-        }
-    } else {
-        result = await addAttachmentToOperationAction(accountId, itemId, newAttachment);
-        if (result.message === 'success') {
-            setOperations(prev => prev.map(op => op.id === itemId ? { ...op, attachments: [...(op.attachments || []), newAttachment] } : op));
-        }
-    }
-
-    if (result.message !== 'success') {
-        toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
-    }
-  };
-
-
   const combinedItems = useMemo(() => {
     const rentalItems = canAccessRentals ? rentals.map(r => ({ ...r, itemType: 'rental' as const, sortDate: r.rentalDate })) : [];
     const operationItems = canAccessOperations ? operations.map(o => ({ ...o, itemType: 'operation' as const, sortDate: o.startDate! })) : [];
@@ -582,37 +560,7 @@ export default function OSPage() {
                                        <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4">
-                                       <div className="space-y-4 text-sm">
-                                            <RentalCardActions rental={rental} status={status} />
-                                             <div className="space-y-2 pt-4">
-                                                <div className="flex items-center justify-between">
-                                                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
-                                                    {accountId && (
-                                                        <AttachmentsUploader
-                                                            accountId={accountId}
-                                                            uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
-                                                            onAttachmentUploaded={(att) => handleAttachmentUploaded(rental.id, 'rental', att)}
-                                                        />
-                                                    )}
-                                                </div>
-                                                {rental.attachments && rental.attachments.length > 0 && (
-                                                    <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                                                        {rental.attachments.map((att, index) => (
-                                                            <a 
-                                                                key={index}
-                                                                href={att.url} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
-                                                                className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                                            >
-                                                                <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                                                <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                       </div>
+                                       <RentalCardActions rental={rental} status={status} />
                                     </AccordionContent>
                                 </CardContent>
                             </Card>
@@ -761,7 +709,11 @@ export default function OSPage() {
                                                     <AttachmentsUploader
                                                         accountId={accountId}
                                                         uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                        onAttachmentUploaded={(att) => handleAttachmentUploaded(op.id, 'operation', att)}
+                                                        onAttachmentUploaded={(att) => {
+                                                            const newOps = operations.map(o => o.id === op.id ? {...o, attachments: [...(o.attachments || []), att]} : o);
+                                                            setOperations(newOps);
+                                                            toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
+                                                        }}
                                                     />
                                                  )}
                                             </div>
@@ -801,6 +753,7 @@ export default function OSPage() {
     </div>
   );
 }
+
 
 
 

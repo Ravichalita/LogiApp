@@ -4,16 +4,16 @@
 
 import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
-import type { PopulatedRental } from '@/lib/types';
+import type { PopulatedRental, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Paperclip } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 
-import type { getRentalStatus } from '../page';
+import type { getRentalStatus } from '../os/page';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +35,9 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { addAttachmentToRentalAction } from '@/lib/actions';
+
 
 interface RentalCardActionsProps {
     rental: PopulatedRental;
@@ -82,6 +85,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const [isFinishing, startFinishTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
+  const [currentAttachments, setCurrentAttachments] = useState<Attachment[]>(rental.attachments || []);
+
 
   const permissions = userAccount?.permissions;
   const canEdit = permissions?.canEditRentals;
@@ -93,6 +98,18 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
+  
+  const handleAttachmentUploaded = async (newAttachment: Attachment) => {
+    if (!accountId) return;
+
+    const result = await addAttachmentToRentalAction(accountId, rental.id, newAttachment);
+
+    if (result.message === 'success') {
+        setCurrentAttachments(prev => [...prev, newAttachment]);
+    } else {
+        toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
+    }
+  };
 
   const handleDeleteAction = () => {
      startDeleteTransition(async () => {
@@ -174,6 +191,35 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 <WhatsAppIcon className="h-6 w-6 fill-green-600" />
                 <span className="font-medium text-green-600">{rental.client?.phone}</span>
             </a>
+        </div>
+        
+        <div className="space-y-2 pt-4">
+            <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+                {accountId && (
+                    <AttachmentsUploader
+                        accountId={accountId}
+                        uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+                        onAttachmentUploaded={handleAttachmentUploaded}
+                    />
+                )}
+            </div>
+            {currentAttachments && currentAttachments.length > 0 && (
+                <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+                    {currentAttachments.map((att, index) => (
+                        <a 
+                            key={index}
+                            href={att.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                        >
+                            <Paperclip className="h-6 w-6 text-muted-foreground" />
+                             <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                        </a>
+                    ))}
+                </div>
+            )}
         </div>
 
 
