@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useRef } from 'react';
@@ -407,7 +408,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
         {accountId && (
             <AttachmentsUploader 
                 accountId={accountId} 
-                onAttachmentUploaded={handleAttachmentUploaded} 
+                onAttachmentUploaded={handleAttachmentUploaded}
                 uploadPath={`accounts/${accountId}/rentals/attachments`}
             />
         )}

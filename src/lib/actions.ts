@@ -513,6 +513,15 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     const rawData = Object.fromEntries(formData.entries());
     
+    let attachments: Attachment[] = [];
+    if (rawData.attachments && typeof rawData.attachments === 'string') {
+        try {
+            attachments = JSON.parse(rawData.attachments);
+        } catch (e) {
+            console.error("Failed to parse attachments JSON on createRental");
+        }
+    }
+    
     const dataToValidate = {
         ...rawData,
         value: Number(rawData.value), 
@@ -520,7 +529,8 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         sequentialId: newSequentialId,
         status: 'Pendente',
         createdBy: createdBy,
-        notificationsSent: { due: false, late: false }
+        notificationsSent: { due: false, late: false },
+        attachments,
     };
     
     const validatedFields = RentalSchema.safeParse(dataToValidate);
@@ -648,11 +658,18 @@ export async function deleteRentalAction(accountId: string, rentalId: string) {
 
 export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
-
     const dataToValidate: Record<string, any> = { ...rawData };
     
     if (rawData.value !== undefined) {
         dataToValidate.value = Number(rawData.value);
+    }
+
+    if (rawData.attachments && typeof rawData.attachments === 'string') {
+        try {
+            dataToValidate.attachments = JSON.parse(rawData.attachments);
+        } catch(e) {
+            return { message: 'error', error: 'Formato de anexo inválido.' };
+        }
     }
     
 
@@ -1793,6 +1810,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
 
 
 
