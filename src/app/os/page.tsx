@@ -314,6 +314,7 @@ export default function OSPage() {
   const canEditRentals = isSuperAdmin || permissions?.canEditRentals;
   const canEditOperations = isSuperAdmin || permissions?.canEditOperations;
   const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
+  const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
   
   useEffect(() => {
     if (authLoading) return;
@@ -409,6 +410,30 @@ export default function OSPage() {
     setOsTypeFilter(type);
     setStatusFilter('Todas'); // Reset status filter when type changes
   };
+
+  const handleAttachmentUploaded = async (item: PopulatedRental | PopulatedOperation, newAttachment: Attachment) => {
+    if (!accountId) return;
+
+    let result;
+    if (item.itemType === 'rental') {
+      result = await addAttachmentToRentalAction(accountId, item.id, newAttachment);
+      if (result.message === 'success') {
+          setRentals(prev => prev.map(r => r.id === item.id ? { ...r, attachments: [...(r.attachments || []), newAttachment] } : r));
+      }
+    } else {
+      result = await addAttachmentToOperationAction(accountId, item.id, newAttachment);
+       if (result.message === 'success') {
+          setOperations(prev => prev.map(o => o.id === item.id ? { ...o, attachments: [...(o.attachments || []), newAttachment] } : o));
+      }
+    }
+
+    if (result.message === 'success') {
+      toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
+    } else {
+      toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
+    }
+  };
+
 
   const isLoading = authLoading || (loading && (canAccessRentals || canAccessOperations));
 
@@ -702,38 +727,36 @@ export default function OSPage() {
                                                 </a>
                                             </div>
                                         )}
-                                        <div className="space-y-2 pt-4">
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
-                                                 {accountId && (
-                                                    <AttachmentsUploader
-                                                        accountId={accountId}
-                                                        uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                        onAttachmentUploaded={(att) => {
-                                                            const newOps = operations.map(o => o.id === op.id ? {...o, attachments: [...(o.attachments || []), att]} : o);
-                                                            setOperations(newOps);
-                                                            toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
-                                                        }}
-                                                    />
-                                                 )}
-                                            </div>
-                                            {op.attachments && op.attachments.length > 0 && (
-                                                <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                                                    {op.attachments.map((att, index) => (
-                                                        <a 
-                                                            key={index}
-                                                            href={att.url} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer" 
-                                                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                                        >
-                                                            <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                                             <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                                        {canUseAttachments && (
+                                          <div className="space-y-2 pt-4">
+                                              <div className="flex items-center justify-between">
+                                                  <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+                                                  {accountId && (
+                                                      <AttachmentsUploader
+                                                          accountId={accountId}
+                                                          uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
+                                                          onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
+                                                      />
+                                                  )}
+                                              </div>
+                                              {op.attachments && op.attachments.length > 0 && (
+                                                  <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+                                                      {op.attachments.map((att, index) => (
+                                                          <a 
+                                                              key={index}
+                                                              href={att.url} 
+                                                              target="_blank" 
+                                                              rel="noopener noreferrer" 
+                                                              className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                                          >
+                                                              <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                                              <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                                                          </a>
+                                                      ))}
+                                                  </div>
+                                              )}
+                                          </div>
+                                        )}
                                     </div>
                                     <div className="mt-4">
                                         <OperationCardActions operation={op} />
@@ -753,7 +776,3 @@ export default function OSPage() {
     </div>
   );
 }
-
-
-
-

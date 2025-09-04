@@ -87,6 +87,7 @@ export const PermissionsSchema = z.object({
     // Feature Access
     canAccessFinance: z.boolean().default(false),
     canAccessNotificationsStudio: z.boolean().default(false),
+    canUseAttachments: z.boolean().default(false),
     
     // Actions Access
     canEditRentals: z.boolean().default(false),
@@ -132,6 +133,7 @@ export const AttachmentSchema = z.object({
     type: z.string(),
     uploadedAt: z.string(),
 });
+export type Attachment = z.infer<typeof AttachmentSchema>;
 
 // #region Operation Schema
 export const AdditionalCostSchema = z.object({
@@ -168,7 +170,6 @@ const BaseOperationSchema = z.object({
 
 export const OperationSchema = BaseOperationSchema.extend({
   sequentialId: z.number().int().positive(),
-  attachments: z.array(AttachmentSchema).optional(),
 }).refine(data => {
     if (data.startDate && data.endDate) {
         return new Date(data.endDate) >= new Date(data.startDate);
@@ -426,4 +427,3 @@ export type HistoricItem = {
     data: CompletedRental | PopulatedOperation;
 };
 // #endregion
-

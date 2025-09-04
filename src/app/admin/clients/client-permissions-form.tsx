@@ -15,6 +15,7 @@ const permissionLabels: Partial<Record<keyof Permissions, string>> = {
   canAccessOperations: 'Operações',
   canAccessFinance: 'Acessar Histórico e Valores $',
   canAccessNotificationsStudio: 'Acessar Notificações Personalizadas',
+  canUseAttachments: 'Gerenciar Anexos',
 };
 
 interface ClientPermissionsFormProps {

@@ -188,7 +188,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
 
 
 export function OperationForm({ clients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
-  const { user, accountId } = useAuth();
+  const { user, accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
   const { toast } = useToast();
@@ -223,6 +223,8 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
+  const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
+
 
   const disabledDatesForSelectedTruck = useMemo(() => {
     if (!selectedTruckId) return [];
@@ -739,9 +741,12 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 
-      <div className="p-4 border rounded-md space-y-2 bg-card">
-        {accountId && <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />}
-      </div>
+       {canUseAttachments && accountId && (
+        <div className="p-4 border rounded-md space-y-2 bg-card">
+          <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />
+        </div>
+       )}
+
 
        <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
@@ -759,5 +764,3 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     </form>
   );
 }
-
-
