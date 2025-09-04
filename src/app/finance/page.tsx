@@ -239,7 +239,12 @@ export default function FinancePage() {
         setHistoricItems(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
                 const updatedAttachments = [...(item.data.attachments || []), newAttachment];
-                return { ...item, data: { ...item.data, attachments: updatedAttachments }};
+                const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments }};
+                // Also update the selected item if it's the one being changed
+                if (selectedItem?.id === itemId) {
+                    setSelectedItem(updatedItem);
+                }
+                return updatedItem;
             }
             return item;
         }));
