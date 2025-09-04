@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -57,18 +56,21 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
 }
 
-function getOperationStatus(op: PopulatedOperation): { text: 'Pendente' | 'Em Andamento'; variant: 'secondary' | 'success' } {
+function getOperationStatus(op: PopulatedOperation): { text: 'Pendente' | 'Em Andamento' | 'Em Atraso'; variant: 'secondary' | 'success' | 'destructive' } {
     if (!op.startDate || !op.endDate) {
         return { text: 'Pendente', variant: 'secondary' };
     }
-    const today = new Date();
+    const now = new Date();
     const startDate = parseISO(op.startDate);
     const endDate = parseISO(op.endDate);
 
+    if (isAfter(now, endDate)) {
+        return { text: 'Em Atraso', variant: 'destructive' };
+    }
     if (isFuture(startDate)) {
         return { text: 'Pendente', variant: 'secondary' };
     }
-    if (isWithinInterval(today, { start: startDate, end: endDate })) {
+    if (isWithinInterval(now, { start: startDate, end: endDate })) {
         return { text: 'Em Andamento', variant: 'success' };
     }
     
@@ -369,7 +371,7 @@ export default function OSPage() {
             }
             if (item.itemType === 'operation') {
                 const status = getOperationStatus(item).text;
-                if (statusFilter === 'Em Andamento' || statusFilter === 'Pendente') {
+                if (statusFilter === 'Em Andamento' || statusFilter === 'Pendente' || statusFilter === 'Em Atraso') {
                     return status === statusFilter;
                 }
                 return false;
@@ -474,9 +476,8 @@ export default function OSPage() {
                     <Button
                         key={option.value}
                         variant={osTypeFilter === option.value ? "default" : "outline"}
-                        size="sm"
-                        className="py-2"
                         onClick={() => handleTypeFilterChange(option.value)}
+                        className="py-2"
                     >
                         {option.label}
                     </Button>
@@ -486,10 +487,10 @@ export default function OSPage() {
                 {statusFilterOptions.map((option) => (
                     <Button
                         key={option.value}
-                        variant={statusFilter === option.value ? "default" : "outline"}
+                        variant={statusFilter === option.value ? 'default' : 'outline'}
                         size="sm"
-                        className="py-1 h-auto text-xs"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
+                        className="py-1 h-auto text-xs"
                     >
                         {option.label}
                     </Button>
@@ -709,4 +710,3 @@ export default function OSPage() {
     </div>
   );
 }
-
