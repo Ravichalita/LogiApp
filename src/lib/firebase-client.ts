@@ -4,7 +4,7 @@
 import { initializeApp, getApps, getApp, FirebaseOptions } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import { getAuth } from 'firebase/auth';
+import { getAuth, onIdTokenChanged } from 'firebase/auth';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
