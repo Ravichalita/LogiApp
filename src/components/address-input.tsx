@@ -63,8 +63,14 @@ export function AddressInput({
           address: place.formatted_address,
         };
         
+        // Update the input field value to reflect the selected address.
+        if (inputRef.current) {
+          inputRef.current.value = locationData.address;
+        }
+        // Update the internal state as well.
+        setSearchValue(locationData.address);
+        // Call the parent callback.
         onLocationSelect(locationData);
-        // The parent will update the `controlledValue` which triggers the useEffect
       }
     }
   };
