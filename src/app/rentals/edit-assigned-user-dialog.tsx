@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -78,7 +77,7 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
           {children}
         </button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Alterar Usuário Designado da OS</DialogTitle>
         </DialogHeader>

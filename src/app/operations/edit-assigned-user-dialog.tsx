@@ -23,9 +23,10 @@ import { Spinner } from '@/components/ui/spinner';
 interface EditAssignedUserDialogProps {
   operation: PopulatedOperation;
   teamMembers: UserAccount[];
+  children: React.ReactNode;
 }
 
-export function EditOperationAssignedUserDialog({ operation, teamMembers }: EditAssignedUserDialogProps) {
+export function EditOperationAssignedUserDialog({ operation, teamMembers, children }: EditAssignedUserDialogProps) {
   const { accountId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -68,10 +69,10 @@ export function EditOperationAssignedUserDialog({ operation, teamMembers }: Edit
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <button type="button" className="text-left bg-transparent p-0 h-auto hover:underline focus:outline-none focus:ring-1 focus:ring-ring rounded-sm px-0.5 -mx-0.5">
-          {operation.driver?.name}
+          {children}
         </button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Alterar Responsável da Operação</DialogTitle>
         </DialogHeader>
