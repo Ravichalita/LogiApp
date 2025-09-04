@@ -164,7 +164,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
              {uploadedAttachments.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {uploadedAttachments.map((att, index) => (
-                        <div key={index} className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center aspect-square">
+                        <div key={index} className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center aspect-square h-24">
                             <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 hover:underline h-full w-full">
                                 <Paperclip className="h-8 w-8 text-muted-foreground" />
                                 <span className="text-xs break-all line-clamp-2">{att.name}</span>
@@ -172,7 +172,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                             <Button
                                 variant="destructive"
                                 size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10"
                                 onClick={() => removeAttachment(att)}
                             >
                                 <X className="h-4 w-4" />
@@ -655,7 +655,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                     </div>
                 )}
                 </div>
-                 <Button asChild variant="outline" size="sm" className="w-full mt-4">
+                 <Button asChild variant="outline" size="sm" className="w-full mt-auto">
                     <Link
                         href={`https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${destinationLocation.lat},${destinationLocation.lng}`}
                         target="_blank"
@@ -759,4 +759,5 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     </form>
   );
 }
+
 

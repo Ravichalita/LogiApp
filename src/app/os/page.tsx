@@ -743,7 +743,7 @@ export default function OSPage() {
                                                             href={att.url} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer" 
-                                                            className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
                                                         >
                                                             <Paperclip className="h-6 w-6 text-muted-foreground" />
                                                              <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
@@ -771,4 +771,5 @@ export default function OSPage() {
     </div>
   );
 }
+
 
