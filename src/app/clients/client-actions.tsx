@@ -30,16 +30,16 @@ import { Spinner } from '@/components/ui/spinner';
 import Link from 'next/link';
 
 export function ClientActions({ client }: { client: Client }) {
-  const { accountId, userAccount } = useAuth();
+  const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCheckingRentals, setIsCheckingRentals] = useState(false);
   const [activeRentalsCount, setActiveRentalsCount] = useState(0);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const permissions = userAccount?.permissions;
-  const canEdit = permissions?.canEditClients;
-  const canDelete = permissions?.canEditClients;
+  const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
+  const canEdit = isSuperAdmin || isAdmin || userAccount?.permissions?.canEditClients;
+  const canDelete = isSuperAdmin || isAdmin || userAccount?.permissions?.canEditClients;
 
 
   const handleDelete = () => {
@@ -82,6 +82,10 @@ export function ClientActions({ client }: { client: Client }) {
     }
   }
 
+  // Hide actions if user has no permissions at all
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   return (
     <>
