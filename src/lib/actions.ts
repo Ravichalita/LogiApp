@@ -712,6 +712,7 @@ export async function addAttachmentToRentalAction(accountId: string, rentalId: s
             attachments: FieldValue.arrayUnion(attachment)
         });
         revalidatePath('/');
+        revalidatePath('/os');
         return { message: 'success' };
     } catch(e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -965,6 +966,21 @@ export async function deleteOperationAction(accountId: string, operationId: stri
         revalidatePath('/fleet');
         return { message: 'success' };
     } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function addAttachmentToOperationAction(accountId: string, operationId: string, attachment: z.infer<typeof AttachmentSchema>) {
+    if (!accountId || !operationId) return { message: 'error', error: 'ID da conta ou da operação ausente.' };
+
+    try {
+        const operationRef = adminDb.doc(`accounts/${accountId}/operations/${operationId}`);
+        await operationRef.update({
+            attachments: FieldValue.arrayUnion(attachment)
+        });
+        revalidatePath('/os');
+        return { message: 'success' };
+    } catch(e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
@@ -1769,6 +1785,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
 
 
 

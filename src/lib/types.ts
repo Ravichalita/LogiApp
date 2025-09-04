@@ -168,6 +168,7 @@ const BaseOperationSchema = z.object({
 
 export const OperationSchema = BaseOperationSchema.extend({
   sequentialId: z.number().int().positive(),
+  attachments: z.array(AttachmentSchema).optional(),
 }).refine(data => {
     if (data.startDate && data.endDate) {
         return new Date(data.endDate) >= new Date(data.startDate);

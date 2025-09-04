@@ -5,7 +5,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
-import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType } from '@/lib/types';
+import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
 import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval } from 'date-fns';
 import {
   Accordion,
@@ -31,6 +31,9 @@ import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { EditOperationAssignedUserDialog } from '@/app/operations/edit-assigned-user-dialog';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { addAttachmentToRentalAction, addAttachmentToOperationAction } from '@/lib/actions';
+import { useToast } from '@/hooks/use-toast';
 
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
@@ -303,6 +306,7 @@ export default function OSPage() {
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
   const router = useRouter();
+  const { toast } = useToast();
 
   const permissions = userAccount?.permissions;
   const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
@@ -355,6 +359,28 @@ export default function OSPage() {
     return () => unsubscribers.forEach(unsub => unsub());
 
   }, [authLoading, accountId, user, userAccount, canAccessRentals, canAccessOperations, canEditRentals, canEditOperations, isSuperAdmin, teamMembers.length]);
+
+
+  const handleAttachmentUploaded = async (itemId: string, itemType: 'rental' | 'operation', newAttachment: Attachment) => {
+    if (!accountId) return;
+
+    let result;
+    if (itemType === 'rental') {
+        result = await addAttachmentToRentalAction(accountId, itemId, newAttachment);
+        if (result.message === 'success') {
+            setRentals(prev => prev.map(r => r.id === itemId ? { ...r, attachments: [...(r.attachments || []), newAttachment] } : r));
+        }
+    } else {
+        result = await addAttachmentToOperationAction(accountId, itemId, newAttachment);
+        if (result.message === 'success') {
+            setOperations(prev => prev.map(op => op.id === itemId ? { ...op, attachments: [...(op.attachments || []), newAttachment] } : op));
+        }
+    }
+
+    if (result.message !== 'success') {
+        toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
+    }
+  };
 
 
   const combinedItems = useMemo(() => {
@@ -698,13 +724,18 @@ export default function OSPage() {
                                                 </a>
                                             </div>
                                         )}
-
-                                        {op.attachments && op.attachments.length > 0 && (
-                                            <div className="space-y-2 pt-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Paperclip className="h-4 w-4 text-muted-foreground" />
-                                                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
-                                                </div>
+                                        <div className="space-y-2 pt-4">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+                                                 {accountId && (
+                                                    <AttachmentsUploader
+                                                        accountId={accountId}
+                                                        uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
+                                                        onAttachmentUploaded={(att) => handleAttachmentUploaded(op.id, 'operation', att)}
+                                                    />
+                                                 )}
+                                            </div>
+                                            {op.attachments && op.attachments.length > 0 && (
                                                 <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
                                                     {op.attachments.map((att, index) => (
                                                         <a 
@@ -719,8 +750,8 @@ export default function OSPage() {
                                                         </a>
                                                     ))}
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="mt-4">
                                         <OperationCardActions operation={op} />
@@ -740,3 +771,4 @@ export default function OSPage() {
     </div>
   );
 }
+
