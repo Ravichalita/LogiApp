@@ -656,17 +656,16 @@ export default function OSPage() {
                                                     <Paperclip className="h-4 w-4 text-muted-foreground" />
                                                     <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
                                                 </div>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-2">
+                                                <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
                                                     {op.attachments.map((att, index) => (
                                                         <a 
                                                             key={index}
                                                             href={att.url} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer" 
-                                                            className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center aspect-square hover:bg-muted"
+                                                            className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
                                                         >
-                                                            <Paperclip className="h-8 w-8 text-muted-foreground" />
-                                                            <span className="text-xs break-all line-clamp-2 mt-2">{att.name}</span>
+                                                            <Paperclip className="h-6 w-6 text-muted-foreground" />
                                                         </a>
                                                     ))}
                                                 </div>

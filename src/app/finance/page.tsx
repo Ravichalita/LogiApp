@@ -153,25 +153,30 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                         </div>
                     )}
                     <div className="space-y-2">
-                        <span className="text-sm text-muted-foreground">Anexos</span>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Anexos</span>
+                            {accountId && (
+                                <AttachmentsUploader 
+                                    accountId={accountId} 
+                                    onAttachmentUploaded={handleAttachmentAdded}
+                                    uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
+                                />
+                            )}
+                        </div>
                          {item.data.attachments && item.data.attachments.length > 0 && (
-                             <ul className="space-y-1">
+                             <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
                                {item.data.attachments.map((att, index) => (
-                                   <li key={index}>
-                                       <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
-                                           <FileText className="h-3 w-3" />
-                                           <span>{att.name}</span>
-                                       </a>
-                                   </li>
+                                   <a 
+                                        key={index}
+                                        href={att.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                    >
+                                        <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                    </a>
                                ))}
-                             </ul>
-                        )}
-                        {accountId && (
-                            <AttachmentsUploader 
-                                accountId={accountId} 
-                                onAttachmentUploaded={handleAttachmentAdded}
-                                uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
-                            />
+                             </div>
                         )}
                     </div>
                 </div>
