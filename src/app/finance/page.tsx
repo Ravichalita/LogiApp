@@ -17,7 +17,6 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -26,6 +25,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -201,7 +201,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                          {item.data.attachments && item.data.attachments.length > 0 ? (
                             <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
                                 {item.data.attachments.map((att, index) => (
-                                    <div key={index} className="relative group shrink-0">
+                                     <div key={index} className="relative group shrink-0">
                                         <a
                                             href={att.url}
                                             target="_blank"
