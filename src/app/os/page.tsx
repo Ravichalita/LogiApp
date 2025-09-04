@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -32,7 +33,7 @@ import { Separator } from '@/components/ui/separator';
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
-type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento';
+type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em Atraso';
 
 
 // --- Helper Functions ---
@@ -490,7 +491,7 @@ export default function OSPage() {
                         variant={statusFilter === option.value ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
-                        className="py-1 h-auto text-xs"
+                        className="py-1 h-7 text-xs"
                     >
                         {option.label}
                     </Button>
@@ -710,3 +711,4 @@ export default function OSPage() {
     </div>
   );
 }
+

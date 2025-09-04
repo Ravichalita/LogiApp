@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -45,7 +46,7 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
       const boundAction = updateRentalAction.bind(null, accountId);
       const result = await boundAction(null, formData);
 
-      if (result.errors) {
+      if (result?.errors) {
         setErrors(result.errors);
         const errorMessages = Object.values(result.errors).flat().join(' ');
         toast({
@@ -53,7 +54,7 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
           description: errorMessages,
           variant: 'destructive',
         });
-      } else if (result.message === 'error') {
+      } else if (result?.message === 'error') {
          toast({ title: 'Erro', description: result.error, variant: 'destructive' });
       } else {
         toast({ title: 'Sucesso', description: 'Usuário designado atualizado.' });
@@ -108,3 +109,4 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
     </Dialog>
   );
 }
+
