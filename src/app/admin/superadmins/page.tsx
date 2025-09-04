@@ -84,11 +84,6 @@ export default function SuperAdminsPage() {
 
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
-            <style jsx global>{`
-                .fab-container {
-                    display: none !important;
-                }
-            `}</style>
             <div className="mb-8">
                 <h1 className="text-3xl font-headline font-bold">Gerenciar Super Admins</h1>
                 <p className="text-muted-foreground mt-1">
@@ -126,12 +121,12 @@ export default function SuperAdminsPage() {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-end mt-6">
+            <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
                  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Adicionar Super Admin
+                        <Button className="h-16 w-16 rounded-full shadow-lg">
+                            <PlusCircle className="h-8 w-8" />
+                            <span className="sr-only">Adicionar Super Admin</span>
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
