@@ -103,11 +103,11 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
         </div>
         <div className="space-y-2">
             <Label htmlFor="model">Modelo</Label>
-            <Input id="model" name="model" placeholder="Mercedes-Benz Atego" defaultValue={truck?.model} />
+            <Input id="model" name="model" placeholder="Mercedes-Benz Atego" defaultValue={truck?.model ?? ''} />
         </div>
         <div className="space-y-2">
             <Label htmlFor="year">Ano</Label>
-            <Input id="year" name="year" type="number" placeholder="2022" defaultValue={truck?.year} />
+            <Input id="year" name="year" type="number" placeholder="2022" defaultValue={truck?.year ?? ''} />
         </div>
         {isEdit && (
             <div className="space-y-2">

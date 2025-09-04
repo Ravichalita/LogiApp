@@ -113,8 +113,8 @@ export const TruckSchema = z.object({
   name: z.string().min(1, { message: "O nome/identificador é obrigatório." }),
   plate: z.string().min(1, "A placa é obrigatória.").max(8, { message: "A placa deve ter no máximo 8 caracteres." }),
   type: z.enum(["caminhão vácuo", "caminhão hidro vácuo", "poliguindaste"], { required_error: "O tipo de caminhão é obrigatório."}),
-  model: z.string().optional(),
-  year: z.preprocess(toNumOrUndef, z.number().optional()),
+  model: z.string().optional().nullable(),
+  year: z.preprocess(toNumOrUndef, z.number().optional().nullable()),
   status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']).default('Disponível'),
 });
 export type Truck = z.infer<typeof TruckSchema> & { id: string, accountId: string };
