@@ -363,7 +363,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                 <SelectValue placeholder="Selecione um caminhão" />
               </SelectTrigger>
               <SelectContent>
-                {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status !== 'Disponível'}>{t.name} ({t.plate})</SelectItem>)}
+                {trucks.map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.plate})</SelectItem>)}
               </SelectContent>
             </Select>
             {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}
