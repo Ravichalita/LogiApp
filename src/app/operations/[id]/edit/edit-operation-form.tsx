@@ -286,7 +286,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operationT
           {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
         </Button>
         <Button asChild variant="outline" size="lg">
-          <Link href="/operations">Cancelar</Link>
+          <Link href="/os">Cancelar</Link>
         </Button>
       </div>
     </form>
