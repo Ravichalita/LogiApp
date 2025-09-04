@@ -851,6 +851,14 @@ export async function updateOperationAction(accountId: string, prevState: any, f
             return { message: 'error', error: "Formato de tipos de operação inválido."}
         }
     }
+    
+    if (rawData.value) {
+        dataToValidate.value = Number(rawData.value);
+    }
+    
+    if (rawData.travelCost) {
+        dataToValidate.travelCost = Number(rawData.travelCost);
+    }
 
     const validatedFields = UpdateOperationSchema.safeParse(dataToValidate);
 
@@ -1676,3 +1684,4 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
