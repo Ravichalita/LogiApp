@@ -88,7 +88,7 @@ export const PermissionsSchema = z.object({
     canAccessNotificationsStudio: z.boolean().default(false),
     
     // Actions Access
-    canEditRentals: z.boolean().default(true),
+    canEditRentals: z.boolean().default(false),
     canEditOperations: z.boolean().default(false),
     canEditDumpsters: z.boolean().default(false),
     canEditFleet: z.boolean().default(false),
