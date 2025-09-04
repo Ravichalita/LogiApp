@@ -20,7 +20,7 @@ export function FloatingActionButton() {
     const pathname = usePathname();
     const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
 
-    if (!user) {
+    if (!user || pathname === '/admin/superadmins') {
         return null;
     }
 
@@ -35,7 +35,7 @@ export function FloatingActionButton() {
     ];
     
     // Check for pages where the FAB should be hidden entirely FIRST.
-    if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit') || pathname.startsWith('/admin/superadmins')) {
+    if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit')) {
         return null;
     }
 
