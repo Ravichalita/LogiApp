@@ -9,7 +9,7 @@ import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-a
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -129,6 +129,24 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
                             <div className="flex flex-col">
                                 <span className="text-sm text-muted-foreground">Observações</span>
                                 <p className="font-medium whitespace-pre-wrap">{item.data.observations}</p>
+                            </div>
+                        </div>
+                    )}
+                    {item.data.attachments && item.data.attachments.length > 0 && (
+                         <div className="flex items-start gap-3">
+                            <Paperclip className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Anexos</span>
+                                <ul className="space-y-1 mt-1">
+                                  {item.data.attachments.map((att, index) => (
+                                      <li key={index}>
+                                          <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                                              <FileText className="h-3 w-3" />
+                                              <span>{att.name}</span>
+                                          </a>
+                                      </li>
+                                  ))}
+                                </ul>
                             </div>
                         </div>
                     )}

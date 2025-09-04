@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from '@/app/rentals/rental-card-actions';
 import { OperationCardActions } from '@/app/operations/operation-card-actions';
-import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map } from 'lucide-react';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -649,49 +649,54 @@ export default function OSPage() {
                                                 <p className="whitespace-pre-wrap">{op.observations}</p>
                                             </div>
                                         )}
+
+                                        {op.attachments && op.attachments.length > 0 && (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+                                                </div>
+                                                <ul className="space-y-1 pl-6">
+                                                    {op.attachments.map((att, index) => (
+                                                        <li key={index}>
+                                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
+                                                                <FileText className="h-3 w-3" />
+                                                                <span>{att.name}</span>
+                                                            </a>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
                                         <Separator />
 
                                         {canSeeFinance && (
                                             <>
-                                                <div className="pt-2 space-y-2">
-                                                    {op.additionalCosts && op.additionalCosts.length > 0 && (
-                                                        <div className="text-xs">
-                                                            <h4 className="font-semibold text-muted-foreground mb-1">CUSTOS ADICIONAIS:</h4>
-                                                            <ul className="space-y-0.5">
-                                                                {op.additionalCosts.map(cost => (
-                                                                    <li key={cost.id} className="flex justify-between">
-                                                                        <span>{cost.name}</span>
-                                                                        <span>{formatCurrency(cost.value)}</span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                            <Separator className="my-2" />
-                                                        </div>
-                                                    )}
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="font-medium">Valor do Serviço:</span>
+                                                    <span className="font-bold">{formatCurrency(op.value)}</span>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
                                                     <div className="flex items-center gap-2">
-                                                        <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                        <span className="font-medium">Valor do Serviço:</span>
-                                                        <span className="font-bold">{formatCurrency(op.value)}</span>
+                                                        <TrendingDown className="h-4 w-4 text-destructive" />
+                                                        <span className="font-medium">Custo Total:</span>
+                                                        <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
                                                     </div>
-                                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <TrendingDown className="h-4 w-4 text-destructive" />
-                                                            <span className="font-medium">Custo Total:</span>
-                                                            <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            {profit >= 0 ? 
-                                                                <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                                                <TrendingDown className="h-4 w-4 text-red-600" />
-                                                            }
-                                                            <span className="font-medium">Lucro:</span>
-                                                            <span className={cn(
-                                                                "font-bold",
-                                                                profit >= 0 ? "text-green-600" : "text-red-600"
-                                                            )}>
-                                                                {formatCurrency(profit)}
-                                                            </span>
-                                                        </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {profit >= 0 ? 
+                                                            <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                                                            <TrendingDown className="h-4 w-4 text-red-600" />
+                                                        }
+                                                        <span className="font-medium">Lucro:</span>
+                                                        <span className={cn(
+                                                            "font-bold",
+                                                            profit >= 0 ? "text-green-600" : "text-red-600"
+                                                        )}>
+                                                            {formatCurrency(profit)}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </>
