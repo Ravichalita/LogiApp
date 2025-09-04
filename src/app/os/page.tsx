@@ -476,7 +476,7 @@ export default function OSPage() {
                         variant={'outline'}
                         size="sm"
                         onClick={() => handleTypeFilterChange(option.value)}
-                        className={cn(osTypeFilter === option.value && 'bg-gray-100 dark:bg-muted')}
+                        className={cn(osTypeFilter === option.value && 'bg-accent')}
                     >
                         {option.label}
                     </Button>
@@ -489,7 +489,7 @@ export default function OSPage() {
                         variant={'outline'}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
-                        className={cn("h-7 text-xs", statusFilter === option.value && 'bg-gray-100 dark:bg-muted')}
+                        className={cn("h-7 text-xs", statusFilter === option.value && 'bg-accent')}
                     >
                         {option.label}
                     </Button>
