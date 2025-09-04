@@ -164,6 +164,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
     setAttachments(prev => [...prev, newAttachment]);
   };
 
+  const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
+    setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+  };
+
   const handlePriceSelection = (selectedPriceId: string) => {
     setPriceId(selectedPriceId);
     const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
@@ -420,6 +424,16 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices }: RentalFor
                         <Paperclip className="h-8 w-8 text-muted-foreground" />
                         <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
                     </a>
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10"
+                        onClick={() => handleRemoveAttachment(att)}
+                    >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Remover anexo</span>
+                    </Button>
                 </div>
             ))}
           </div>
