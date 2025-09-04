@@ -35,10 +35,10 @@ export function FloatingActionButton() {
         '/admin/superadmins',
     ];
     
-    // Specific pages that have their own FAB logic
+    // Specific pages that have their own FAB logic, but should still be hidden if in the main list
     const fabPages = ['/fleet', '/clients'];
 
-    if (pathname.startsWith('/edit') || (pagesToHideFab.some(path => pathname.startsWith(path)) && !fabPages.includes(pathname))) {
+    if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit')) {
         return null;
     }
 
@@ -77,6 +77,9 @@ export function FloatingActionButton() {
                 return null;
             case '/os':
             default:
+                // Do not show the FAB on any page that is not explicitly handled above
+                if (pathname !== '/os') return null;
+
                 return (
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
