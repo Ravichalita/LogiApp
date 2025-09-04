@@ -34,6 +34,7 @@ const actionsPermissionLabels: Partial<Record<keyof Permissions, string>> = {
   canEditOperations: 'Editar/Excluir OS de Operação',
   canEditDumpsters: 'Editar/Excluir Caçambas',
   canEditFleet: 'Editar/Excluir Caminhões',
+  canEditClients: 'Editar/Excluir Clientes',
 };
 
 
