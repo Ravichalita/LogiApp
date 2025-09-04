@@ -34,7 +34,7 @@ import { getActiveRentalsForUser } from '@/lib/data';
 import { Spinner } from '@/components/ui/spinner';
 
 export function TeamActions({ member }: { member: UserAccount }) {
-  const { accountId, user, userAccount } = useAuth();
+  const { accountId, user, userAccount, isSuperAdmin } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubmitting, startTransition] = useTransition();
   const [isCheckingRentals, setIsCheckingRentals] = useState(false);
@@ -44,7 +44,11 @@ export function TeamActions({ member }: { member: UserAccount }) {
 
   const isCurrentUser = user?.uid === member.id;
   const isOwner = member.role === 'owner';
-  const isInvokerOwner = userAccount?.role === 'owner';
+  const isTargetSuperAdmin = member.role === 'superadmin';
+  const isInvokerOwner = userAccount?.role === 'owner' || isSuperAdmin;
+  
+  // A superadmin cannot remove another superadmin, but can remove themself.
+  const cannotRemove = isTargetSuperAdmin && !isCurrentUser;
 
   const handleRoleChange = (role: string) => {
     if (!accountId || isCurrentUser || isOwner || !user) return;
@@ -70,7 +74,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
   }
 
   const handleRemoveMember = () => {
-    if (!accountId || isCurrentUser || isOwner) return;
+    if (!accountId || cannotRemove) return;
     startTransition(async () => {
         const result = await removeTeamMemberAction(accountId, member.id);
          if (result?.message === 'error') {
@@ -91,7 +95,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
     )
   }
 
-  // Only owners can manage team members' roles and remove them.
+  // Only owners or superadmins can manage team members' roles and remove them.
   if (!isInvokerOwner) {
       return null;
   }
@@ -107,7 +111,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Gerenciar Função</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={member.role} onValueChange={handleRoleChange} disabled={isSubmitting}>
+            <DropdownMenuRadioGroup value={member.role} onValueChange={handleRoleChange} disabled={isSubmitting || isTargetSuperAdmin}>
                  <DropdownMenuRadioItem value="admin">
                     Admin
                 </DropdownMenuRadioItem>
@@ -123,7 +127,7 @@ export function TeamActions({ member }: { member: UserAccount }) {
                   e.preventDefault();
                   checkRentalsAndOpenAlert();
                 }}
-                disabled={isCheckingRentals}
+                disabled={isCheckingRentals || cannotRemove}
               >
                 {isCheckingRentals ? 'Verificando...' : <><Trash2 className="mr-2 h-4 w-4" /> Remover da Equipe</>}
               </DropdownMenuItem>

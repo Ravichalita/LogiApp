@@ -10,6 +10,8 @@ import { z } from "zod";
 
 const firestore = getFirestore();
 
+const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
+
 /**
  * Ensures a user document exists in Firestore, creating it and an account if necessary.
  * Also ensures the user has the correct custom claims in Firebase Auth.
@@ -17,12 +19,14 @@ const firestore = getFirestore();
  *
  * @param userPayload The user data. For new users, it includes a password. For existing auth users (recovery), it does not.
  * @param inviterAccountId Optional ID of an existing account to join (for invites).
+ * @param forceRole Optional role to assign, used for creating super admins.
  * @returns The ID of the account the user is associated with.
  * @throws An error if the transaction fails or if the auth user can't be cleaned up on failure.
  */
 export async function ensureUserDocument(
     userPayload: Omit<z.infer<typeof SignupSchema>, 'confirmPassword'>, 
-    inviterAccountId?: string | null
+    inviterAccountId?: string | null,
+    forceRole?: UserRole
 ): Promise<{ accountId: string; userId: string }> {
     
     let userRecord: UserRecord | null = null;
@@ -56,7 +60,7 @@ export async function ensureUserDocument(
         if (existingData && existingData.accountId) {
              console.log(`User document for ${userPayload.email} already exists. Skipping creation.`);
              // Ensure claims are set, as they might be missing in a recovery scenario
-             if (!userRecord.customClaims?.accountId || userRecord.customClaims.accountId !== existingData.accountId) {
+             if (!userRecord.customClaims?.accountId || userRecord.customClaims.accountId !== existingData.accountId || userRecord.customClaims.role !== existingData.role) {
                  await adminAuth.setCustomUserClaims(uid, { accountId: existingData.accountId, role: existingData.role });
              }
              return { accountId: existingData.accountId, userId: uid };
@@ -71,6 +75,8 @@ export async function ensureUserDocument(
             let determinedAccountId: string;
             let role: UserRole;
             let permissions: Permissions;
+            
+            const isSuperAdminCreation = forceRole === 'superadmin' || userPayload.email === SUPER_ADMIN_EMAIL;
 
             if (isInviteFlow) { // --- Invite Member Flow ---
                 const accountRef = firestore.doc(`accounts/${inviterAccountId}`);
@@ -79,17 +85,18 @@ export async function ensureUserDocument(
                     throw new Error(`A conta de convite ${inviterAccountId} não existe.`);
                 }
                 determinedAccountId = inviterAccountId;
-                role = 'viewer';
-                permissions = PermissionsSchema.parse({}); // Start with default (false) permissions
+                role = 'viewer'; // Users always start as viewers when invited
+                permissions = PermissionsSchema.parse({}); // Start with default (minimal) permissions
                 
                 transaction.update(accountRef, {
                     members: FieldValue.arrayUnion(uid)
                 });
 
-            } else { // --- New Client/Admin Account Flow ---
+            } else { // --- New Client Account or Super Admin Account Flow ---
                 determinedAccountId = uid; // The first user's UID becomes the account ID
-                role = 'owner'; // The creator of the account is the owner
-                permissions = PermissionsSchema.parse({ // Owners get all permissions by default
+                role = isSuperAdminCreation ? 'superadmin' : 'owner';
+                
+                permissions = PermissionsSchema.parse({
                     canAccessRentals: true,
                     canAccessOperations: true,
                     canAccessClients: true,
@@ -103,6 +110,8 @@ export async function ensureUserDocument(
                     canEditOperations: true,
                     canEditDumpsters: true,
                     canEditFleet: true,
+                    canAddClients: true,
+                    canEditClients: true,
                 });
                 
                 const newAccountRef = firestore.doc(`accounts/${determinedAccountId}`);

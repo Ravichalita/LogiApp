@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User, History } from "lucide-react";
+import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User, History, UserCog } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -28,6 +28,12 @@ export function HeaderActions() {
   }, []);
 
   const navActions = [
+     {
+      href: "/admin/superadmins",
+      icon: <UserCog className="h-5 w-5" />,
+      label: "Super Admins",
+      shouldRender: isSuperAdmin,
+    },
     {
       href: "/admin/clients",
       icon: <ShieldCheck className="h-5 w-5" />,

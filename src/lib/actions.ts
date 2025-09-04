@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -6,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -39,6 +40,17 @@ function handleFirebaseError(error: unknown): string {
 
 
 // #region Auth Actions
+export async function recoverSuperAdminAction() {
+    try {
+        await ensureUserDocument({
+            name: 'Super Admin',
+            email: 'contato@econtrol.com.br',
+        }, null, 'superadmin');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
 
 export async function signupAction(inviterAccountId: string | null, prevState: any, formData: FormData) {
   const isInvite = !!inviterAccountId;
@@ -80,15 +92,18 @@ export async function updateUserRoleAction(invokerId: string, accountId: string,
     try {
         const db = getFirestore(adminApp);
         
-        // Security check: Only owners can promote users to 'admin'.
-        if (newRole === 'admin') {
-            const invokerRef = db.doc(`users/${invokerId}`);
-            const invokerSnap = await invokerRef.get();
-            if (!invokerSnap.exists || invokerSnap.data()?.role !== 'owner') {
-                throw new Error("Apenas proprietários da conta podem designar outros usuários como administradores.");
-            }
+        const accountRef = db.doc(`accounts/${accountId}`);
+        const accountSnap = await accountRef.get();
+        if (!accountSnap.exists) {
+            throw new Error("Conta não encontrada.");
         }
+        const ownerId = accountSnap.data()?.ownerId;
         
+        // Ensure the person making the change is the owner of the account
+        if (invokerId !== ownerId) {
+            throw new Error("Apenas proprietários da conta podem alterar funções.");
+        }
+
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
@@ -96,28 +111,19 @@ export async function updateUserRoleAction(invokerId: string, accountId: string,
         }
         
         const updates: { role: UserRole, permissions?: Permissions } = { role: newRole };
+        
+        const ownerRef = db.doc(`users/${ownerId}`);
+        const ownerSnap = await ownerRef.get(); // Correctly await the promise
 
         if (newRole === 'admin') {
-            // Admin inherits permissions from the account owner
-            const accountRef = db.doc(`accounts/${accountId}`);
-            const accountSnap = await accountRef.get();
-            if (!accountSnap.exists) {
-                throw new Error("Conta não encontrada para herdar permissões.");
-            }
-            const ownerId = accountSnap.data()?.ownerId;
-            if (!ownerId) {
-                throw new Error("Proprietário da conta não encontrado.");
-            }
-            const ownerRef = db.doc(`users/${ownerId}`);
-            const ownerSnap = await ownerRef.get();
-            if (!ownerSnap.exists) {
+            if (ownerSnap.exists) { 
+                const ownerData = ownerSnap.data() as UserAccount;
+                updates.permissions = ownerData.permissions;
+            } else {
                  throw new Error("Documento do proprietário não encontrado para herdar permissões.");
             }
-            // Use the owner's permissions
-            updates.permissions = ownerSnap.data()?.permissions || PermissionsSchema.parse({});
-
         } else if (newRole === 'viewer') {
-            // Viewers have default (minimal) permissions.
+            // When demoting to viewer, reset permissions to default (all false)
             updates.permissions = PermissionsSchema.parse({});
         }
 
@@ -130,6 +136,8 @@ export async function updateUserRoleAction(invokerId: string, accountId: string,
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
+
+
 
 export async function updateUserPermissionsAction(accountId: string, userId: string, permissions: Permissions) {
     try {
@@ -145,30 +153,29 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
             throw new Error("Usuário não pertence a esta conta.");
         }
 
-        // --- Start of Dependency Logic ---
         const newPermissions = { ...permissions };
 
-        // If operations are enabled, fleet access must also be enabled.
+        // Cascade logic: if a main screen is disabled, related edit permissions should also be disabled
         if (newPermissions.canAccessOperations === true) {
             newPermissions.canAccessFleet = true;
         } else if (newPermissions.canAccessOperations === false) {
             newPermissions.canAccessFleet = false;
+            newPermissions.canEditOperations = false;
         }
         
-        // If rentals are enabled, dumpster access must also be enabled.
         if (newPermissions.canAccessRentals === true) {
             newPermissions.canAccessDumpsters = true;
         } else if (newPermissions.canAccessRentals === false) {
             newPermissions.canAccessDumpsters = false;
+            newPermissions.canEditRentals = false;
         }
-        // --- End of Dependency Logic ---
 
         const validatedPermissions = PermissionsSchema.parse(newPermissions);
         
         const batch = db.batch();
         batch.update(userRef, { permissions: validatedPermissions });
-
-        // If the updated user is an owner, cascade permissions to all admins in that account
+        
+        // If the user being updated is an owner, cascade permissions to their admins
         if (userData.role === 'owner') {
              const adminsSnap = await db.collection('users')
                 .where('accountId', '==', accountId)
@@ -184,7 +191,7 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
 
         revalidatePath('/team');
         revalidatePath('/admin/clients');
-        revalidatePath('/'); // Revalidate all pages that might depend on permissions
+        revalidatePath('/');
         revalidatePath('/settings');
         return { message: 'success' };
     } catch(e) {
@@ -197,14 +204,17 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
     const db = getFirestore(adminApp);
     const batch = db.batch();
     try {
-        // 1. Validate user
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists || userSnap.data()?.accountId !== accountId) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
 
-        // 2. Find account owner
+        // Prevent super admin from being removed from their own team list this way
+        if (userSnap.data()?.role === 'superadmin') {
+            throw new Error("Super Admins não podem ser removidos desta forma.");
+        }
+
         const accountRef = db.doc(`accounts/${accountId}`);
         const accountSnap = await accountRef.get();
         const ownerId = accountSnap.data()?.ownerId;
@@ -212,7 +222,6 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
             throw new Error("Não foi possível encontrar o proprietário da conta para reatribuir os aluguéis.");
         }
         
-        // 3. Find and reassign active rentals
         const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
         const rentalsQuery = rentalsRef.where('assignedTo', '==', userId);
         const rentalsSnap = await rentalsQuery.get();
@@ -223,21 +232,18 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
             });
         }
 
-        // 4. Remove user from account members list
         batch.update(accountRef, {
             members: FieldValue.arrayRemove(userId)
         });
 
-        // 5. Delete the user document itself
         batch.delete(userRef);
         
         await batch.commit();
         
-        // 6. Delete the auth user (separate from transaction)
         await adminAuth.deleteUser(userId);
 
         revalidatePath('/team');
-        revalidatePath('/'); // To update rentals list if any were reassigned
+        revalidatePath('/'); 
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -306,7 +312,6 @@ export async function deleteClientAction(accountId: string, clientId: string) {
   const batch = db.batch();
 
   try {
-    // Find and delete all rentals associated with this client
     const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
     const rentalsQuery = rentalsRef.where('clientId', '==', clientId);
     const rentalsSnap = await rentalsQuery.get();
@@ -317,14 +322,13 @@ export async function deleteClientAction(accountId: string, clientId: string) {
       });
     }
 
-    // Delete the client document
     const clientRef = db.doc(`accounts/${accountId}/clients/${clientId}`);
     batch.delete(clientRef);
     
     await batch.commit();
 
     revalidatePath('/clients');
-    revalidatePath('/'); // Also revalidate home page as rentals are deleted
+    revalidatePath('/'); 
     return { message: 'success' };
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) };
@@ -400,7 +404,6 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
              throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
         
-        // Disassociate user from rentals instead of deleting them, to preserve history
         const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
         const assignedRentalsQuery = rentalsRef.where('assignedTo', '==', userId);
         const assignedRentalsSnap = await assignedRentalsQuery.get();
@@ -428,7 +431,6 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
         
         await adminAuth.deleteUser(userId);
 
-        // No revalidation needed, user will be logged out.
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -511,11 +513,10 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     const rawData = Object.fromEntries(formData.entries());
     
-    // Ensure 'value' from formData is correctly parsed as a number for validation.
     const dataToValidate = {
         ...rawData,
-        value: Number(rawData.value), // Convert string value from form to number
-        accountId, // Add accountId to the object being validated
+        value: Number(rawData.value), 
+        accountId,
         sequentialId: newSequentialId,
         status: 'Pendente',
         createdBy: createdBy,
@@ -592,7 +593,6 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         
         const rentalData = rentalSnap.data() as Rental;
 
-        // Fetch related data to store a complete snapshot
         const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
         const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
@@ -611,10 +611,9 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             rentalDays,
             totalValue,
             accountId,
-            // Store denormalized data for historical integrity
             client: clientSnap.exists ? clientSnap.data() : null,
             dumpster: dumpsterSnap.exists ? dumpsterSnap.data() : null,
-            assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
+            assignedToUser: assignedToSnap.exists() ? assignedToSnap.data() : null,
         };
         
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
@@ -626,7 +625,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
 
     } catch(e) {
          console.error("Failed to finish rental:", e);
-         throw e; // Rethrow to be caught by Next.js form handling
+         throw e; 
     }
     
     revalidatePath('/');
@@ -650,10 +649,12 @@ export async function deleteRentalAction(accountId: string, rentalId: string) {
 export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
 
-    const dataToValidate = {
-        ...rawData,
-        value: rawData.value !== undefined ? Number(rawData.value) : undefined,
+    const dataToValidate: Record<string, any> = { ...rawData };
+    
+    if (rawData.value !== undefined) {
+        dataToValidate.value = Number(rawData.value);
     }
+    
 
     const validatedFields = UpdateRentalSchema.safeParse(dataToValidate);
 
@@ -755,7 +756,6 @@ export async function createOperationAction(accountId: string, createdBy: string
 
     const rawData = Object.fromEntries(formData.entries());
     
-    // Server-side calculation and validation
     const rawValue = rawData.value as string;
     const value = rawValue ? parseFloat(rawValue) : 0;
     
@@ -825,7 +825,7 @@ export async function createOperationAction(accountId: string, createdBy: string
     }
 
   } catch (e) {
-    return { message: handleFirebaseError(e) as string };
+    return { message: 'error', error: handleFirebaseError(e) as string };
   }
 
   revalidatePath('/os');
@@ -852,11 +852,11 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         }
     }
     
-    if (rawData.value) {
-        dataToValidate.value = Number(rawData.value);
+    if (rawData.value !== undefined) {
+      dataToValidate.value = Number(rawData.value);
     }
     
-    if (rawData.travelCost) {
+    if (rawData.travelCost !== undefined) {
         dataToValidate.travelCost = Number(rawData.travelCost);
     }
 
@@ -1014,7 +1014,6 @@ export async function updateTruckAction(accountId: string, prevState: any, formD
 
 export async function deleteTruckAction(accountId: string, truckId: string) {
   try {
-    // Here you might want to check if the truck is in an active operation before deleting
     await adminDb.doc(`accounts/${accountId}/trucks/${truckId}`).delete();
     revalidatePath('/fleet');
     return { message: 'success' };
@@ -1578,22 +1577,21 @@ export async function sendPushNotificationAction(formData: FormData) {
 }
 
 export async function sendFirstLoginNotificationToSuperAdminAction(newClientName: string) {
-    const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
-    if (!SUPER_ADMIN_EMAIL) {
-        console.error('SUPER_ADMIN_EMAIL is not set.');
-        return;
-    }
-
     try {
-        const superAdminUser = await adminAuth.getUserByEmail(SUPER_ADMIN_EMAIL);
-        
-        if (superAdminUser) {
-            await sendNotification({
-                userId: superAdminUser.uid,
-                title: 'Novo Cliente Ativado!',
-                body: `O cliente ${newClientName} acabou de fazer o primeiro acesso.`,
-            });
+        // Query for the superadmin user instead of relying on a hardcoded email
+        const superAdminQuery = await adminDb.collection('users').where('role', '==', 'superadmin').limit(1).get();
+        if (superAdminQuery.empty) {
+            console.error('No superadmin user found to send notification to.');
+            return;
         }
+        const superAdminUser = superAdminQuery.docs[0];
+        
+        await sendNotification({
+            userId: superAdminUser.id,
+            title: 'Novo Cliente Ativado!',
+            body: `O cliente ${newClientName} acabou de fazer o primeiro acesso.`,
+        });
+
     } catch (error) {
         console.error('Error sending first login notification to super admin:', error);
     }
@@ -1603,6 +1601,44 @@ export async function sendFirstLoginNotificationToSuperAdminAction(newClientName
 // #endregion
 
 // #region Super Admin Actions
+export async function createSuperAdminAction(invokerId: string | null, prevState: any, formData: FormData) {
+  if (!invokerId) return { message: 'Apenas Super Admins podem criar outros Super Admins.' };
+
+  const invokerUser = await adminAuth.getUser(invokerId);
+  if (invokerUser.customClaims?.role !== 'superadmin') {
+     return { message: 'Apenas Super Admins podem criar outros Super Admins.' };
+  }
+  
+  const validatedFields = SuperAdminCreationSchema.safeParse(Object.fromEntries(formData.entries()));
+
+  if (!validatedFields.success) {
+      return { message: 'Dados do formulário inválidos.' };
+  }
+  
+  const { name, email, password } = validatedFields.data;
+
+  try {
+      const { accountId, userId } = await ensureUserDocument({ name, email, password }, null, 'superadmin');
+      
+      revalidatePath('/admin/superadmins');
+      return { message: 'success', newUser: { name, email, password } };
+
+  } catch (e) {
+      return { message: handleFirebaseError(e) };
+  }
+}
+
+export async function deleteSuperAdminAction(userId: string) {
+    try {
+        await adminAuth.deleteUser(userId);
+        await adminDb.doc(`users/${userId}`).delete();
+        revalidatePath('/admin/superadmins');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
 
 export async function updateUserStatusAction(userId: string, disabled: boolean) {
     try {

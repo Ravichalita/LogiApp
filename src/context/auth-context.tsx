@@ -192,9 +192,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      const isSuperAdminUser = firebaseUser.email === SUPER_ADMIN_EMAIL;
+      const isInitialSuperAdminUser = firebaseUser.email === SUPER_ADMIN_EMAIL;
       
-      if (!firebaseUser.emailVerified && !isSuperAdminUser) {
+      if (!firebaseUser.emailVerified && !isInitialSuperAdminUser) {
           setUser(firebaseUser);
           setLoading(false);
           return;
@@ -204,34 +204,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await getFirebaseIdToken(); // Force refresh the token to get fresh claims.
         let tokenResult = await getIdTokenResult(firebaseUser);
         let claimsAccountId = tokenResult.claims.accountId as string | undefined;
+        let claimsRole = tokenResult.claims.role as UserRole | undefined;
 
         // *** RECOVERY LOGIC ***
-        if (!claimsAccountId && isSuperAdminUser) {
+        if (!claimsAccountId && isInitialSuperAdminUser) {
             console.log("Super admin is missing claims. Attempting to ensure user document exists...");
             await ensureUserDocument({
                 name: firebaseUser.displayName || 'Super Admin',
                 email: firebaseUser.email!,
-            });
+            }, null, 'superadmin'); // Pass role explicitly
             tokenResult = await getIdTokenResult(firebaseUser, true);
             claimsAccountId = tokenResult.claims.accountId as string | undefined;
+            claimsRole = tokenResult.claims.role as UserRole | undefined;
 
             if (!claimsAccountId) {
                 console.error("Critical: Failed to set claims for super admin after recovery attempt. Logging out.");
                 await logout();
                 return;
             }
-        } else if (!claimsAccountId && !isSuperAdminUser) {
+        } else if (!claimsAccountId && !isInitialSuperAdminUser) {
             console.error("Critical: accountId claim is missing for non-superadmin. Logging out.");
             await logout();
             return;
         }
 
-        const effectiveAccountId = isSuperAdminUser ? firebaseUser.uid : claimsAccountId!;
+        const effectiveAccountId = claimsAccountId!;
         
         setUser(firebaseUser);
         setAccountId(effectiveAccountId);
         
-        if (isSuperAdminUser) {
+        if (claimsRole === 'superadmin') {
             setIsSuperAdmin(true);
         }
         
@@ -241,13 +243,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                  let userData = { id: userDocSnap.id, ...userDocSnap.data() } as UserAccount;
                  
                  // Divergent account ID security check
-                 if (!isSuperAdminUser && userData.accountId !== claimsAccountId) {
+                 if (userData.role !== 'superadmin' && userData.accountId !== claimsAccountId) {
                     console.error("User doc accountId is divergent from claims. Forcing logout for security.");
                     logout();
                     return; 
                  }
                  
-                if (isSuperAdminUser) {
+                if (userData.role === 'superadmin') {
                     // ** CRITICAL FIX: Ensure super admin permissions are always fully loaded **
                     userData.permissions = {
                         canAccessRentals: true,
@@ -263,6 +265,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         canEditOperations: true,
                         canEditDumpsters: true,
                         canEditFleet: true,
+                        canAddClients: true,
+                        canEditClients: true,
                     };
                 } else if (userData.role === 'admin') {
                     // If user is admin, fetch owner's permissions to ensure they are correct
@@ -289,7 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                          body: "Instale o LogiApp na sua tela inicial para uma experiência melhor.",
                      });
 
-                     if (!isSuperAdminUser) {
+                     if (userData.role !== 'superadmin') {
                         sendFirstLoginNotificationToSuperAdminAction(userData.name);
                      }
                  }
@@ -363,7 +367,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user && !isPublicRoute) {
       router.push('/login');
     } else if (user) {
-       const isSuperAdminUser = user.email === SUPER_ADMIN_EMAIL;
+       const isSuperAdminUser = role === 'superadmin';
        if (!user.emailVerified && !isSuperAdminUser) {
          if (!pathname.startsWith('/verify-email')) {
             router.push('/verify-email');
@@ -372,7 +376,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
          router.push('/os');
       }
     }
-  }, [user, loading, pathname, router, accountMissing]);
+  }, [user, loading, pathname, router, accountMissing, role]);
   
   const isAuthPage = publicRoutes.some(route => pathname.startsWith(route));
   

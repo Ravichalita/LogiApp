@@ -13,6 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Spinner } from '@/components/ui/spinner';
+import { recoverSuperAdminAction } from "@/lib/actions";
+
+const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -26,6 +29,21 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    // Recovery logic specifically for the super admin
+    if (email === SUPER_ADMIN_EMAIL) {
+        try {
+            await recoverSuperAdminAction();
+            toast({ title: 'Tudo pronto!', description: 'Conta de Super Admin verificada. Tentando login...' });
+        } catch (recoveryError) {
+             toast({
+                title: 'Erro na Recuperação',
+                description: 'Não foi possível verificar a conta de Super Admin. O login pode falhar.',
+                variant: 'destructive',
+            });
+        }
+    }
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/os');

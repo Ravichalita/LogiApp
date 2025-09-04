@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -311,7 +312,7 @@ export const UserAccountSchema = z.object({
   accountId: z.string(),
   name: z.string(),
   email: z.string(),
-  role: z.enum(['owner', 'admin', 'viewer']),
+  role: z.enum(['superadmin', 'owner', 'admin', 'viewer']),
   status: z.enum(['ativo', 'inativo']),
   permissions: PermissionsSchema,
   phone: z.string().optional(),
@@ -330,18 +331,23 @@ export const UpdateUserProfileSchema = z.object({
     address: z.string().optional(),
 });
 
-
-export const SignupSchema = z
-  .object({
+const BaseSignupSchema = z.object({
     name: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
     email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
     password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+});
+
+export const SignupSchema = BaseSignupSchema
+  .extend({
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'As senhas não coincidem.',
     path: ['confirmPassword'],
   });
+
+export const SuperAdminCreationSchema = BaseSignupSchema;
+
 
 export const RentalPricesSchema = z.object({
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),

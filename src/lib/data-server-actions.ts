@@ -149,12 +149,15 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
             const accountData = toSerializableObject(accountDoc.data());
             const ownerId = accountData.ownerId;
             
-            if (!ownerId || ownerId === superAdminId) return null;
+            if (!ownerId) return null;
 
             const ownerSnap = await adminDb.doc(`users/${ownerId}`).get();
             if (!ownerSnap.exists) return null;
 
             const ownerData = toSerializableObject(ownerSnap.data()) as UserAccount;
+            
+            // Exclude the Super Admin's own account from the client list
+            if (ownerData.role === 'superadmin') return null;
 
             // Fetch all members
             const memberIds = accountData.members || [];
@@ -372,4 +375,23 @@ export async function getWeatherForecastAction(
     console.error('Failed to fetch weather forecast:', error);
     return null;
   }
+}
+
+export async function getSuperAdminsAction(): Promise<UserAccount[]> {
+    try {
+        const usersRef = adminDb.collection('users');
+        const q = usersRef.where('role', '==', 'superadmin');
+        const querySnapshot = await q.get();
+        
+        if (querySnapshot.empty) {
+            return [];
+        }
+
+        const superAdmins = querySnapshot.docs.map(doc => docToSerializable(doc) as UserAccount);
+        return superAdmins;
+
+    } catch (error) {
+        console.error("Error fetching super admins:", error);
+        return [];
+    }
 }

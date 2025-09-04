@@ -525,25 +525,31 @@ export default function OSPage() {
                                             <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                                         </div>
                                     </div>
-                                     <p className="text-muted-foreground mt-2">
-                                        Cliente: <span className="font-semibold text-foreground">{rental.client?.name}</span>
-                                    </p>
-                                    <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <User className="h-5 w-5" /> 
-                                            {canEditRentals && rental.assignedToUser ? (
-                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                    {rental.assignedToUser.name}
-                                                </EditAssignedUserDialog>
-                                            ) : (
-                                                <span>{rental.assignedToUser?.name}</span>
-                                            )}
+                                    <CardDescription className="text-sm mt-4">
+                                        <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Building className="h-4 w-4"/> {rental.client?.name}
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <User className="h-4 w-4"/>
+                                                     {canEditRentals && rental.assignedToUser ? (
+                                                        <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                                            {rental.assignedToUser.name}
+                                                        </EditAssignedUserDialog>
+                                                    ) : (
+                                                        <span>{rental.assignedToUser?.name}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 text-left md:text-right">
+                                                 <div className="flex items-center gap-1.5">
+                                                    <Calendar className="h-4 w-4"/>
+                                                    <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-right">
-                                            <Calendar className="h-5 w-5" />
-                                            <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
-                                        </div>
-                                    </div>
+                                    </CardDescription>
                                 </CardHeader>
                                  <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
                                     <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
@@ -571,7 +577,7 @@ export default function OSPage() {
                                 </span>
                                 <CardHeader className="pb-4 pt-8">
                                      <div className="flex items-start justify-between mb-2">
-                                        <CardTitle className="text-lg">
+                                        <CardTitle className="text-xl font-headline">
                                             {op.operationTypes.map(t => t.name).join(', ')}
                                         </CardTitle>
                                          <Badge variant={status.variant}>{status.text}</Badge>
