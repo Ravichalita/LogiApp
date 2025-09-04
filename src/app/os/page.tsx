@@ -527,9 +527,7 @@ export default function OSPage() {
                                             <User className="h-5 w-5" /> 
                                             {canEditRentals ? (
                                                 <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                    <button type="button" className="text-left bg-transparent p-0 h-auto hover:underline focus:outline-none focus:ring-1 focus:ring-ring rounded-sm px-0.5 -mx-0.5">
-                                                        {rental.assignedToUser?.name}
-                                                    </button>
+                                                    {rental.assignedToUser?.name}
                                                 </EditAssignedUserDialog>
                                             ) : (
                                                 <span>{rental.assignedToUser?.name}</span>

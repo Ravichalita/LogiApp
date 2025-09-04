@@ -74,7 +74,9 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        {children}
+        <button type="button" className="text-left bg-transparent p-0 h-auto hover:underline focus:outline-none focus:ring-1 focus:ring-ring rounded-sm px-0.5 -mx-0.5">
+          {children}
+        </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -109,4 +111,3 @@ export function EditAssignedUserDialog({ rental, teamMembers, children }: EditAs
     </Dialog>
   );
 }
-
