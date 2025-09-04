@@ -71,6 +71,10 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
     const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    useEffect(() => {
+        onAttachmentsChange(uploadedAttachments);
+    }, [uploadedAttachments, onAttachmentsChange]);
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const newFiles = Array.from(e.target.files);
@@ -104,11 +108,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                             type: file.type,
                             uploadedAt: new Date().toISOString(),
                         };
-                        setUploadedAttachments(prev => {
-                            const updated = [...prev, newAttachment];
-                            onAttachmentsChange(updated);
-                            return updated;
-                        });
+                        setUploadedAttachments(prev => [...prev, newAttachment]);
                     });
                 }
             );
@@ -119,7 +119,6 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
         // Here you would also add logic to delete the file from Firebase Storage if needed
         const newAttachments = uploadedAttachments.filter(att => att.url !== attachmentToRemove.url);
         setUploadedAttachments(newAttachments);
-        onAttachmentsChange(newAttachments);
     };
 
     return (
