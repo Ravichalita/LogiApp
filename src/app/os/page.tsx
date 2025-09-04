@@ -656,16 +656,20 @@ export default function OSPage() {
                                                     <Paperclip className="h-4 w-4 text-muted-foreground" />
                                                     <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
                                                 </div>
-                                                <ul className="space-y-1 pl-6">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-2">
                                                     {op.attachments.map((att, index) => (
-                                                        <li key={index}>
-                                                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs flex items-center gap-1">
-                                                                <FileText className="h-3 w-3" />
-                                                                <span>{att.name}</span>
-                                                            </a>
-                                                        </li>
+                                                        <a 
+                                                            key={index}
+                                                            href={att.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center aspect-square hover:bg-muted"
+                                                        >
+                                                            <Paperclip className="h-8 w-8 text-muted-foreground" />
+                                                            <span className="text-xs break-all line-clamp-2 mt-2">{att.name}</span>
+                                                        </a>
                                                     ))}
-                                                </ul>
+                                                </div>
                                             </div>
                                         )}
 
