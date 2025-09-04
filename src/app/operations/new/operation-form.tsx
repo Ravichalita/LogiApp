@@ -2,23 +2,23 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, set, parse, addHours } from 'date-fns';
+import { format, set, parse, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
-import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType } from '@/lib/types';
+import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation } from '@/lib/types';
 import { createOperationAction } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,11 +33,13 @@ import { CostsDialog } from './costs-dialog';
 import { OperationTypeDialog } from './operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
+import { parseISO } from 'date-fns';
 
 interface OperationFormProps {
   clients: Client[];
   team: UserAccount[];
   trucks: Truck[];
+  operations: PopulatedOperation[];
   operationTypes: OperationType[];
   account: Account | null;
 }
@@ -60,7 +62,7 @@ const formatCurrency = (value: number | undefined | null) => {
     }).format(value);
 }
 
-export function OperationForm({ clients, team, trucks, operationTypes, account }: OperationFormProps) {
+export function OperationForm({ clients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
   const { user, accountId } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
@@ -81,6 +83,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
   const [destinationAddress, setDestinationAddress] = useState('');
   const [destinationLocation, setDestinationLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
+  const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
   
   const [selectedOperationTypeIds, setSelectedOperationTypeIds] = useState<string[]>([]);
   const [baseValue, setBaseValue] = useState(0);
@@ -94,6 +97,17 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
+
+  const disabledDatesForSelectedTruck = useMemo(() => {
+    if (!selectedTruckId) return [];
+    return operations
+      .filter(op => op.truckId === selectedTruckId && op.startDate && op.endDate)
+      .map(op => ({
+        from: startOfDay(parseISO(op.startDate!)),
+        to: endOfDay(parseISO(op.endDate!))
+      }));
+  }, [selectedTruckId, operations]);
+
 
     const WeatherIcon = ({ condition }: { condition: string }) => {
         const lowerCaseCondition = condition.toLowerCase();
@@ -212,6 +226,28 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
     const cents = parseInt(rawValue, 10) || 0;
     setBaseValue(cents / 100);
   }
+  
+  const handleTruckChange = (truckId: string) => {
+    setSelectedTruckId(truckId);
+    // Reset dates if they are in a disabled range for the new truck
+    const truckDisabledRanges = operations
+        .filter(op => op.truckId === truckId && op.startDate && op.endDate)
+        .map(op => ({ from: startOfDay(parseISO(op.startDate!)), to: endOfDay(parseISO(op.endDate!)) }));
+    
+    if (startDate) {
+        const isStartDateDisabled = truckDisabledRanges.some(range => isWithinInterval(startDate, range));
+        if (isStartDateDisabled) {
+            setStartDate(undefined);
+            setEndDate(undefined);
+            toast({
+                title: "Data Reajustada",
+                description: "A data selecionada não está disponível para este caminhão e foi redefinida.",
+                variant: "destructive"
+            });
+        }
+    }
+  }
+
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -322,12 +358,12 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
 
           <div className="space-y-2">
             <Label htmlFor="truckId" className="text-muted-foreground">Caminhão</Label>
-            <Select name="truckId" required>
+            <Select name="truckId" onValueChange={handleTruckChange} required>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um caminhão" />
               </SelectTrigger>
               <SelectContent>
-                {trucks.map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.plate})</SelectItem>)}
+                {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status !== 'Disponível'}>{t.name} ({t.plate})</SelectItem>)}
               </SelectContent>
             </Select>
             {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}
@@ -347,6 +383,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
                         "w-full justify-start text-left font-normal",
                         !startDate && "text-muted-foreground"
                     )}
+                    disabled={!selectedTruckId}
                     >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {startDate ? format(startDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
@@ -357,13 +394,15 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
+                    disabled={disabledDatesForSelectedTruck}
                     initialFocus
                     locale={ptBR}
                     />
                 </PopoverContent>
                 </Popover>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-auto" />
+                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-auto" disabled={!selectedTruckId} />
             </div>
+            {!selectedTruckId && <p className="text-xs text-muted-foreground">Selecione um caminhão para habilitar a data.</p>}
             {errors?.startDate && <p className="text-sm font-medium text-destructive">{errors.startDate[0]}</p>}
         </div>
 
@@ -394,6 +433,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
                                 mode="single"
                                 selected={endDate}
                                 onSelect={setEndDate}
+                                disabled={disabledDatesForSelectedTruck}
                                 initialFocus
                                 locale={ptBR}
                                 />

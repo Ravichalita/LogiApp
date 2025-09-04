@@ -6,8 +6,8 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { OperationForm } from './operation-form';
 import { useAuth } from '@/context/auth-context';
-import type { Client, UserAccount, Truck, Account, OperationType } from '@/lib/types';
-import { fetchClients, fetchTeamMembers, getTrucks, getAccount } from '@/lib/data';
+import type { Client, UserAccount, Truck, Account, OperationType, PopulatedOperation } from '@/lib/types';
+import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'lucide-react';
@@ -17,6 +17,7 @@ export default function NewOperationPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [operations, setOperations] = useState<PopulatedOperation[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [operationTypes, setOperationTypes] = useState<OperationType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,13 +42,22 @@ export default function NewOperationPage() {
         setOperationTypes(accountData?.operationTypes || []);
         
         const unsubTrucks = getTrucks(accountId, (truckData) => {
-          // Filter trucks to only include available ones
-          const availableTrucks = truckData.filter(t => t.status === 'Disponível');
-          setTrucks(availableTrucks);
-          setLoading(false);
+          setTrucks(truckData);
         });
 
-        return () => unsubTrucks();
+        const unsubOps = getPopulatedOperations(accountId, (opsData) => {
+            setOperations(opsData);
+        }, (error) => {
+            console.error("Error fetching operations for new op page:", error);
+        });
+
+        // Set loading to false once all initial fetches are setup
+        setLoading(false);
+
+        return () => {
+            unsubTrucks();
+            unsubOps();
+        }
       };
       fetchData();
     } else {
@@ -78,6 +88,7 @@ export default function NewOperationPage() {
                 clients={clients} 
                 team={team} 
                 trucks={trucks} 
+                operations={operations}
                 operationTypes={operationTypes}
                 account={account}
             />
