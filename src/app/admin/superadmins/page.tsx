@@ -121,7 +121,7 @@ export default function SuperAdminsPage() {
                 </CardContent>
             </Card>
 
-            <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+            <div className="fixed bottom-20 right-4 z-[51] md:bottom-6 md:right-6">
                  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
                         <Button className="h-16 w-16 rounded-full shadow-lg">
