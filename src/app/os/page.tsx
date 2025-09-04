@@ -473,11 +473,10 @@ export default function OSPage() {
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
-                        variant={osTypeFilter === option.value ? "secondary" : "outline"}
+                        variant={'outline'}
                         size="sm"
-                        onClick={() => handleTypeFilterChange(option.value)
-
-                        }
+                        onClick={() => handleTypeFilterChange(option.value)}
+                        className={cn(osTypeFilter === option.value && 'bg-gray-100 dark:bg-gray-800')}
                     >
                         {option.label}
                     </Button>
@@ -487,10 +486,10 @@ export default function OSPage() {
                 {statusFilterOptions.map((option) => (
                     <Button
                         key={option.value}
-                        variant={statusFilter === option.value ? 'secondary' : 'outline'}
+                        variant={'outline'}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
-                        className="h-7 text-xs"
+                        className={cn("h-7 text-xs", statusFilter === option.value && 'bg-gray-100 dark:bg-gray-800')}
                     >
                         {option.label}
                     </Button>
@@ -710,3 +709,4 @@ export default function OSPage() {
     </div>
   );
 }
+
