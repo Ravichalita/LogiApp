@@ -456,7 +456,7 @@ export function OperationForm({ clients, team, trucks, operationTypes, account }
         </Alert>
       )}
       <div className="flex flex-col gap-2">
-        {(directions || weather) && startLocation && destinationLocation && (
+        {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && (
           <div className="relative">
              <Alert variant="info" className="flex-grow flex flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">

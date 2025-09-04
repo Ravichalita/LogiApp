@@ -219,7 +219,7 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
               <p className="text-xs mt-1 text-blue-800 dark:text-blue-300">Previsão do Tempo</p>
             </div>
           )}
-          {travelCost !== null && travelCost > 0 && (
+          {(travelCost !== null && travelCost > 0) && (
              <div className="flex items-center gap-2 text-sm">
                 <DollarSign className="h-5 w-5" />
                 <span className="font-bold">{formatCurrency(travelCost)} (ida/volta)</span>
@@ -710,4 +710,3 @@ export default function OSPage() {
     </div>
   );
 }
-
