@@ -580,7 +580,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   }
 
   revalidatePath('/');
-  redirect('/');
+  redirect('/os');
 }
 
 export async function finishRentalAction(accountId: string, formData: FormData) {
@@ -603,6 +603,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         
         const rentalData = rentalSnap.data() as Rental;
 
+        // Fetch related data to store a complete snapshot
         const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
         const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
@@ -621,9 +622,10 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
             rentalDays,
             totalValue,
             accountId,
+            // Store denormalized data for historical integrity
             client: clientSnap.exists ? clientSnap.data() : null,
             dumpster: dumpsterSnap.exists ? dumpsterSnap.data() : null,
-            assignedToUser: assignedToSnap.exists() ? assignedToSnap.data() : null,
+            assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
         };
         
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
@@ -640,7 +642,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
     
     revalidatePath('/');
     revalidatePath('/finance');
-    redirect('/');
+    redirect('/os');
 }
 
 export async function deleteRentalAction(accountId: string, rentalId: string) {
@@ -1817,3 +1819,6 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 
+
+
+    
