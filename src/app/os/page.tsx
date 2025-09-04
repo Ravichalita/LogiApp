@@ -650,28 +650,6 @@ export default function OSPage() {
                                             </div>
                                         )}
 
-                                        {op.attachments && op.attachments.length > 0 && (
-                                            <div className="space-y-2">
-                                                <div className="flex items-center gap-2">
-                                                    <Paperclip className="h-4 w-4 text-muted-foreground" />
-                                                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
-                                                </div>
-                                                <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                                                    {op.attachments.map((att, index) => (
-                                                        <a 
-                                                            key={index}
-                                                            href={att.url} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer" 
-                                                            className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                                        >
-                                                            <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
                                         <Separator />
 
                                         {canSeeFinance && (
@@ -702,11 +680,12 @@ export default function OSPage() {
                                                         </span>
                                                     </div>
                                                 </div>
+                                                <Separator />
                                             </>
                                         )}
                                         
                                         {op.client?.phone && (
-                                            <div className="pt-2 flex justify-start">
+                                            <div className="pt-4 flex justify-start">
                                                 <a 
                                                     href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}`}
                                                     target="_blank" 
@@ -717,6 +696,28 @@ export default function OSPage() {
                                                     <span className="font-medium">{op.client.phone}</span>
                                                     <span className="text-xs text-muted-foreground ml-1">(Contatar Cliente)</span>
                                                 </a>
+                                            </div>
+                                        )}
+
+                                        {op.attachments && op.attachments.length > 0 && (
+                                            <div className="space-y-2 pt-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+                                                </div>
+                                                <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+                                                    {op.attachments.map((att, index) => (
+                                                        <a 
+                                                            key={index}
+                                                            href={att.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                                        >
+                                                            <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                                        </a>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
