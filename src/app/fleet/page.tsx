@@ -1,21 +1,29 @@
 
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/context/auth-context';
-import type { Truck } from '@/lib/types';
-import { getTrucks } from '@/lib/data';
+import type { Truck, PopulatedOperation } from '@/lib/types';
+import { getTrucks, getPopulatedOperations } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { TruckActions, MaintenanceCheckbox } from './truck-actions';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Calendar, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateTruckStatusAction } from '@/lib/actions';
 import { Separator } from '@/components/ui/separator';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const statusVariantMap: Record<Truck['status'], 'success' | 'secondary' | 'warning'> = {
   'Disponível': 'success',
@@ -49,6 +57,7 @@ function FleetListSkeleton() {
 export default function FleetPage() {
   const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [operations, setOperations] = useState<PopulatedOperation[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -58,24 +67,43 @@ export default function FleetPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!canAccess) {
-      setLoadingData(false);
-      return;
-    }
-    
-    if (!accountId) {
+    if (!canAccess || !accountId) {
       setLoadingData(false);
       return;
     }
 
     setLoadingData(true);
-    const unsubscribe = getTrucks(accountId, (data) => {
+    const unsubTrucks = getTrucks(accountId, (data) => {
       setTrucks(data);
-      setLoadingData(false);
+      if(operations.length > 0 || data.length > 0) setLoadingData(false);
     });
 
-    return () => unsubscribe();
+    const unsubOps = getPopulatedOperations(accountId, (data) => {
+      setOperations(data);
+      if(trucks.length > 0 || data.length > 0) setLoadingData(false);
+    }, (error) => {
+      console.error("Error fetching operations:", error);
+      setLoadingData(false);
+    });
+    
+    // Initial loading state handler
+    const timer = setTimeout(() => setLoadingData(false), 2000);
+
+    return () => {
+      unsubTrucks();
+      unsubOps();
+      clearTimeout(timer);
+    };
   }, [accountId, authLoading, canAccess]);
+
+  const trucksWithSchedules = useMemo(() => {
+    return trucks.map(truck => {
+      const schedule = operations
+        .filter(op => op.truckId === truck.id)
+        .sort((a, b) => new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime());
+      return { ...truck, schedule };
+    });
+  }, [trucks, operations]);
 
   const handleToggleStatus = (truck: Truck) => {
     if (!accountId || truck.status === 'Em Operação' || isPending) return;
@@ -113,16 +141,16 @@ export default function FleetPage() {
             <div>
                 <h1 className="text-3xl font-headline font-bold">Frota de Caminhões</h1>
                 <p className="text-muted-foreground mt-1">
-                    Gerencie os veículos da sua frota.
+                    Gerencie os veículos da sua frota e seus agendamentos.
                 </p>
             </div>
         </div>
         
          {isLoading ? (
             <FleetListSkeleton />
-         ) : trucks.length > 0 ? (
+         ) : trucksWithSchedules.length > 0 ? (
             <div className="space-y-4">
-                {trucks.map((truck) => (
+                {trucksWithSchedules.map((truck) => (
                     <Card key={truck.id}>
                         <CardHeader className="flex flex-row items-start justify-between pb-4">
                            <div>
@@ -148,6 +176,27 @@ export default function FleetPage() {
                               isPending={isPending}
                               handleToggleStatus={() => handleToggleStatus(truck)}
                             />
+                            {truck.schedule.length > 0 && (
+                              <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value="schedule" className="border-b-0">
+                                  <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1">Ver Agendamentos ({truck.schedule.length})</AccordionTrigger>
+                                  <AccordionContent className="pt-2 space-y-2">
+                                    {truck.schedule.map(op => (
+                                      <div key={op.id} className="text-xs p-2 bg-muted/50 rounded-md">
+                                        <div className="flex items-center gap-2 font-medium">
+                                          <Calendar className="h-3 w-3" />
+                                          <span>{format(parseISO(op.startDate!), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-muted-foreground pl-1">
+                                           <User className="h-3 w-3" />
+                                          <span>{op.client?.name}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </AccordionContent>
+                                </AccordionItem>
+                              </Accordion>
+                            )}
                         </CardContent>
                     </Card>
                 ))}
@@ -165,3 +214,4 @@ export default function FleetPage() {
     </div>
   );
 }
+
