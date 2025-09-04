@@ -30,6 +30,8 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
+import { EditOperationAssignedUserDialog } from '@/app/operations/edit-assigned-user-dialog';
+
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
@@ -306,6 +308,7 @@ export default function OSPage() {
   const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
   const canAccessOperations = isSuperAdmin || permissions?.canAccessOperations;
   const canEditRentals = isSuperAdmin || permissions?.canEditRentals;
+  const canEditOperations = isSuperAdmin || permissions?.canEditOperations;
   const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
   
   useEffect(() => {
@@ -335,6 +338,9 @@ export default function OSPage() {
     }
     
     if (canAccessOperations) {
+        if(teamMembers.length === 0) {
+            fetchTeamMembers(accountId).then(setTeamMembers);
+        }
         const unsub = getPopulatedOperations(
             accountId,
             (data) => setOperations(data),
@@ -348,7 +354,7 @@ export default function OSPage() {
     
     return () => unsubscribers.forEach(unsub => unsub());
 
-  }, [authLoading, accountId, user, userAccount, canAccessRentals, canAccessOperations, canEditRentals, isSuperAdmin]);
+  }, [authLoading, accountId, user, userAccount, canAccessRentals, canAccessOperations, canEditRentals, canEditOperations, isSuperAdmin, teamMembers.length]);
 
 
   const combinedItems = useMemo(() => {
@@ -526,9 +532,7 @@ export default function OSPage() {
                                         <div className="flex items-center gap-2">
                                             <User className="h-5 w-5" /> 
                                             {canEditRentals && rental.assignedToUser ? (
-                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                    {rental.assignedToUser.name}
-                                                </EditAssignedUserDialog>
+                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers} />
                                             ) : (
                                                 <span>{rental.assignedToUser?.name}</span>
                                             )}
@@ -577,7 +581,12 @@ export default function OSPage() {
                                                     <Building className="h-4 w-4"/> {op.client?.name}
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
-                                                    <User className="h-4 w-4"/> {op.driver?.name}
+                                                    <User className="h-4 w-4"/> 
+                                                    {canEditOperations && op.driver ? (
+                                                        <EditOperationAssignedUserDialog operation={op} teamMembers={teamMembers} />
+                                                    ) : (
+                                                        <span>{op.driver?.name}</span>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5 text-left md:text-right">

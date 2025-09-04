@@ -650,7 +650,12 @@ export async function deleteRentalAction(accountId: string, rentalId: string) {
 export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
 
-    const validatedFields = UpdateRentalSchema.safeParse(rawData);
+    const dataToValidate = {
+        ...rawData,
+        value: rawData.value !== undefined ? Number(rawData.value) : undefined,
+    }
+
+    const validatedFields = UpdateRentalSchema.safeParse(dataToValidate);
 
     if (!validatedFields.success) {
         console.log("Update validation errors:", validatedFields.error.flatten().fieldErrors);
@@ -690,10 +695,11 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         }
         
         revalidatePath('/');
+        revalidatePath('/os');
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) as string };
     }
-    redirect('/');
+    redirect('/os');
 }
 
 export async function addAttachmentToRentalAction(accountId: string, rentalId: string, attachment: z.infer<typeof AttachmentSchema>) {
@@ -828,40 +834,28 @@ export async function createOperationAction(accountId: string, createdBy: string
 
 export async function updateOperationAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
-    
-    let additionalCosts: AdditionalCost[] = [];
+    const dataToValidate: Record<string, any> = { ...rawData };
+
     if (rawData.additionalCosts && typeof rawData.additionalCosts === 'string') {
         try {
-            additionalCosts = JSON.parse(rawData.additionalCosts);
+            dataToValidate.additionalCosts = JSON.parse(rawData.additionalCosts);
         } catch (e) {
             return { message: 'error', error: "Formato de custos adicionais inválido."}
         }
     }
     
-    let typeIds: string[] = [];
     if (rawData.typeIds && typeof rawData.typeIds === 'string') {
         try {
-            typeIds = JSON.parse(rawData.typeIds);
+            dataToValidate.typeIds = JSON.parse(rawData.typeIds);
         } catch (e) {
             return { message: 'error', error: "Formato de tipos de operação inválido."}
         }
     }
-    
-    const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
-    const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
-    const totalCost = travelCost + additionalCostsTotal;
-    
-    const dataToValidate = { 
-        ...rawData,
-        typeIds,
-        additionalCosts,
-        travelCost,
-        totalCost,
-    };
 
     const validatedFields = UpdateOperationSchema.safeParse(dataToValidate);
 
     if (!validatedFields.success) {
+        console.log('Update Op Validation Error:', validatedFields.error.flatten().fieldErrors);
         return {
             errors: validatedFields.error.flatten().fieldErrors,
             message: 'error',
@@ -869,13 +863,11 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 
     const { id, ...operationData } = validatedFields.data;
-    
-    // Ensure totalCost is included in the update
-    const updateData: { [key: string]: any } = { 
-        ...operationData,
-        totalCost 
-    };
+    const updateData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined));
 
+    if (Object.keys(updateData).length === 0) {
+        return { message: 'success', info: 'Nenhum campo para atualizar.' };
+    }
 
     try {
         const operationRef = adminDb.doc(`accounts/${accountId}/operations/${id}`);
