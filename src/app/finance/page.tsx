@@ -2,14 +2,14 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment } from '@/lib/types';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -21,8 +21,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToCompletedOperationAction, addAttachmentToCompletedRentalAction } from '@/lib/actions';
+import { addAttachmentToCompletedOperationAction, addAttachmentToCompletedRentalAction, deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/hooks/use-toast';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -53,8 +66,16 @@ function StatCard({ title, value, icon: Icon, loading }: { title: string, value:
     )
 }
 
-function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUploaded }: { item: HistoricItem | null, isOpen: boolean, onOpenChange: (open: boolean) => void, onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void }) {
+function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUploaded, onAttachmentDeleted }: { 
+    item: HistoricItem | null, 
+    isOpen: boolean, 
+    onOpenChange: (open: boolean) => void, 
+    onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void 
+    onAttachmentDeleted: (itemId: string, attachment: Attachment) => void;
+}) {
     const { accountId } = useAuth();
+    const { toast } = useToast();
+    const [isDeleting, startDeleteTransition] = useTransition();
     
     if (!item) return null;
 
@@ -76,6 +97,20 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
         if (result.message === 'success') {
             onAttachmentUploaded(item.id, newAttachment);
         }
+    }
+
+    const handleDeleteAttachment = (attachment: Attachment) => {
+        if (!accountId) return;
+
+        startDeleteTransition(async () => {
+            const result = await deleteAttachmentFromCompletedItemAction(accountId, item.id, item.kind, attachment);
+            if (result.message === 'success') {
+                toast({ title: 'Sucesso', description: 'Anexo removido.' });
+                onAttachmentDeleted(item.id, attachment);
+            } else {
+                toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+            }
+        });
     }
 
 
@@ -163,21 +198,45 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                 />
                             )}
                         </div>
-                         {item.data.attachments && item.data.attachments.length > 0 && (
+                         {item.data.attachments && item.data.attachments.length > 0 ? (
                             <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
                                 {item.data.attachments.map((att, index) => (
-                                    <a
-                                        key={index}
-                                        href={att.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                    >
-                                        <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                        <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                                    </a>
+                                    <div key={index} className="relative group shrink-0">
+                                        <a
+                                            href={att.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                        >
+                                            <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                            <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                                        </a>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full z-10">
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Excluir Anexo?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Esta ação não pode ser desfeita. O arquivo "{att.name}" será removido permanentemente.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteAttachment(att)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                                        {isDeleting ? <Spinner size="small" /> : 'Excluir'}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
                                 ))}
                             </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground text-center py-2">Nenhum anexo adicionado.</p>
                         )}
                     </div>
                 </div>
@@ -245,9 +304,24 @@ export default function FinancePage() {
         setHistoricItems(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
                 const updatedAttachments = [...(item.data.attachments || []), newAttachment];
-                const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments }};
-                // Also update the selected item if it's the one being changed
+                const updatedItem = { ...item, data: { ...item, data: { ...item.data, attachments: updatedAttachments } }};
                 if (selectedItem?.id === itemId) {
+                    setSelectedItem(updatedItem);
+                }
+                return updatedItem;
+            }
+            return item;
+        }));
+    };
+    
+    const handleAttachmentDeleted = (itemId: string, attachmentToDelete: Attachment) => {
+        setHistoricItems(prevItems => prevItems.map(item => {
+            if (item.id === itemId) {
+                const updatedAttachments = (item.data.attachments || []).filter(
+                    (att: Attachment) => att.url !== attachmentToDelete.url
+                );
+                 const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
+                 if (selectedItem?.id === itemId) {
                     setSelectedItem(updatedItem);
                 }
                 return updatedItem;
@@ -393,6 +467,7 @@ export default function FinancePage() {
                 isOpen={!!selectedItem} 
                 onOpenChange={(open) => !open && setSelectedItem(null)}
                 onAttachmentUploaded={handleAttachmentUploaded}
+                onAttachmentDeleted={handleAttachmentDeleted}
              />
         </div>
     );

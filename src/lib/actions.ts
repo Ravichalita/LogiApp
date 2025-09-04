@@ -984,8 +984,32 @@ export async function addAttachmentToCompletedOperationAction(accountId: string,
     }
 }
 
-// #endregion
+export async function deleteAttachmentFromCompletedItemAction(accountId: string, itemId: string, itemKind: 'rental' | 'operation', attachment: Attachment) {
+    if (!accountId || !itemId || !itemKind) return { message: 'error', error: 'Informações incompletas para excluir anexo.' };
+    
+    const collectionName = itemKind === 'rental' ? 'completed_rentals' : 'completed_operations';
 
+    try {
+        const itemRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${itemId}`);
+        await itemRef.update({
+            attachments: FieldValue.arrayRemove(attachment)
+        });
+
+        // Optionally, delete the file from Firebase Storage as well
+        // const storage = getStorage(adminApp);
+        // const fileRef = storage.refFromURL(attachment.url);
+        // await fileRef.delete();
+        
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch(e) {
+        console.error("Error deleting attachment:", e);
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+
+// #endregion
 
 // #region Fleet Actions
 export async function createTruckAction(accountId: string, prevState: any, formData: FormData) {
@@ -1745,5 +1769,6 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
 
 
