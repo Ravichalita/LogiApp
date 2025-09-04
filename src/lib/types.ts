@@ -291,6 +291,7 @@ export const UpdateRentalSchema = z.object({
     ).optional(),
     assignedTo: z.string().optional(),
     observations: z.string().optional(),
+    attachments: z.array(AttachmentSchema).optional(),
 }).refine(data => {
     if (data.rentalDate && data.returnDate) {
         return new Date(data.returnDate) > new Date(data.rentalDate);
@@ -363,7 +364,7 @@ export const RentalPricesSchema = z.object({
 export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
-export type Rental = z.infer<typeof RentalSchema> & { id: string, attachments?: z.infer<typeof AttachmentSchema>[] };
+export type Rental = z.infer<typeof RentalSchema> & { id: string };
 export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
@@ -425,3 +426,4 @@ export type HistoricItem = {
     data: CompletedRental | PopulatedOperation;
 };
 // #endregion
+

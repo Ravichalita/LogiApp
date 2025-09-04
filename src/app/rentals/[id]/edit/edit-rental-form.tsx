@@ -107,6 +107,15 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         }
     });
   };
+  
+  const handleAttachmentUploaded = (newAttachment: Attachment) => {
+    setAttachments(prev => [...prev, newAttachment]);
+  };
+  
+  const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
+    setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+  };
+
 
   const handlePriceSelection = (selectedPriceId: string) => {
     setPriceId(selectedPriceId);
@@ -274,10 +283,36 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         {accountId && (
             <AttachmentsUploader 
                 accountId={accountId}
-                initialAttachments={attachments}
-                onAttachmentsChange={setAttachments}
+                onAttachmentUploaded={handleAttachmentUploaded}
                 uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
             />
+        )}
+        {attachments.length > 0 && (
+          <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+            {attachments.map((att, index) => (
+                <div key={index} className="relative group shrink-0">
+                    <a 
+                        href={att.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="relative group shrink-0 h-24 w-24 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                    >
+                        <Paperclip className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                    </a>
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10"
+                        onClick={() => handleRemoveAttachment(att)}
+                    >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Remover anexo</span>
+                    </Button>
+                </div>
+            ))}
+          </div>
         )}
       </div>
 
