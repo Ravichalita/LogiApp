@@ -167,7 +167,7 @@ const AttachmentsUploader = ({ accountId, initialAttachments, onAttachmentsChang
                                 href={att.url} 
                                 target="_blank" 
                                 rel="noopener noreferrer" 
-                                className="relative group shrink-0 h-24 w-24 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                className="relative group shrink-0 h-20 w-24 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
                             >
                                 <Paperclip className="h-8 w-8 text-muted-foreground" />
                                 <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
