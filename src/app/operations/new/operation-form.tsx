@@ -146,18 +146,28 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                         )}
                     </div>
                 ))}
-                {uploadedAttachments.map((att, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm p-2 bg-muted rounded-md">
-                         <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:underline">
-                            <Paperclip className="h-4 w-4" />
-                            <span>{att.name}</span>
-                         </a>
-                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeAttachment(att)}>
-                             <X className="h-4 w-4" />
-                         </Button>
-                    </div>
-                ))}
             </div>
+             {uploadedAttachments.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {uploadedAttachments.map((att, index) => (
+                        <div key={index} className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center">
+                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 hover:underline">
+                                <Paperclip className="h-8 w-8 text-muted-foreground" />
+                                <span className="text-xs break-all line-clamp-2">{att.name}</span>
+                            </a>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-0 right-0 h-6 w-6 opacity-50 group-hover:opacity-100"
+                                onClick={() => removeAttachment(att)}
+                            >
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Remover anexo</span>
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -736,3 +746,4 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     </form>
   );
 }
+
