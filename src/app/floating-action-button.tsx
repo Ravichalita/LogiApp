@@ -35,9 +35,7 @@ export function FloatingActionButton() {
         '/admin/superadmins',
     ];
     
-    // Specific pages that have their own FAB logic, but should still be hidden if in the main list
-    const fabPages = ['/fleet', '/clients'];
-
+    // Check for pages where the FAB should be hidden entirely FIRST.
     if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit')) {
         return null;
     }
