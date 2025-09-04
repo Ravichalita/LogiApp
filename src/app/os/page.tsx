@@ -474,6 +474,8 @@ export default function OSPage() {
                     <Button
                         key={option.value}
                         variant={osTypeFilter === option.value ? "default" : "outline"}
+                        size="sm"
+                        className="py-2"
                         onClick={() => handleTypeFilterChange(option.value)}
                     >
                         {option.label}
@@ -486,6 +488,7 @@ export default function OSPage() {
                         key={option.value}
                         variant={statusFilter === option.value ? "default" : "outline"}
                         size="sm"
+                        className="py-1 h-auto text-xs"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
                     >
                         {option.label}
@@ -706,3 +709,4 @@ export default function OSPage() {
     </div>
   );
 }
+
