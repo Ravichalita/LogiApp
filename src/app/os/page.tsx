@@ -473,10 +473,10 @@ export default function OSPage() {
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
-                        variant={'outline'}
+                        variant={osTypeFilter === option.value ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleTypeFilterChange(option.value)}
-                        className={cn(osTypeFilter === option.value && 'bg-accent')}
+                        className="h-auto"
                     >
                         {option.label}
                     </Button>
@@ -486,10 +486,10 @@ export default function OSPage() {
                 {statusFilterOptions.map((option) => (
                     <Button
                         key={option.value}
-                        variant={'outline'}
+                        variant={statusFilter === option.value ? "default" : "outline"}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
-                        className={cn("h-7 text-xs", statusFilter === option.value && 'bg-accent')}
+                        className="h-7 text-xs"
                     >
                         {option.label}
                     </Button>
