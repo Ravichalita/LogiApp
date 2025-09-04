@@ -62,7 +62,7 @@ export function MaintenanceCheckbox({ truck, isPending, handleToggleStatus }: {
                 htmlFor={`maintenance-${truck.id}`}
                 className={cn(
                     "text-sm font-medium leading-none",
-                    (isPending || isRented || !canEdit) && "text-muted-foreground cursor-not-allowed"
+                    (isPending || isRented || !canEdit) && "cursor-not-allowed text-muted-foreground"
                 )}
             >
                 Em Manutenção
