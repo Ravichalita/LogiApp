@@ -35,7 +35,7 @@ export function FloatingActionButton() {
     ];
     
     // Specific pages that have their own FAB logic
-    const fabPages = ['/fleet'];
+    const fabPages = ['/fleet', '/clients'];
 
     if (pathname.startsWith('/edit') || (pagesToHideFab.some(path => pathname.startsWith(path)) && !fabPages.includes(pathname))) {
         return null;
@@ -55,7 +55,7 @@ export function FloatingActionButton() {
                 }
                 return null;
             case '/clients':
-                 if (isAdmin || permissions?.canEditClients) {
+                 if (isAdmin || permissions?.canAddClients) {
                     return (
                         <Button asChild className="h-16 w-16 rounded-full shadow-lg">
                             <Link href="/clients/new">
