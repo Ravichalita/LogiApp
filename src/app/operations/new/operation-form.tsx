@@ -172,7 +172,7 @@ const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: st
                             <Button
                                 variant="destructive"
                                 size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
                                 onClick={() => removeAttachment(att)}
                             >
                                 <X className="h-4 w-4" />
