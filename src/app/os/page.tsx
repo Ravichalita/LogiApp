@@ -525,9 +525,9 @@ export default function OSPage() {
                                     <div className="text-sm text-muted-foreground mt-2 flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
                                         <div className="flex items-center gap-2">
                                             <User className="h-5 w-5" /> 
-                                            {canEditRentals ? (
+                                            {canEditRentals && rental.assignedToUser ? (
                                                 <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                    {rental.assignedToUser?.name}
+                                                    {rental.assignedToUser.name}
                                                 </EditAssignedUserDialog>
                                             ) : (
                                                 <span>{rental.assignedToUser?.name}</span>
