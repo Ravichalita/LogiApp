@@ -1,14 +1,9 @@
 rules_version = '2';
-
 service firebase.storage {
   match /b/{bucket}/o {
-    // Permite que qualquer usuário autenticado leia os arquivos de qualquer conta.
-    // Restrinja isso se os arquivos forem sensíveis.
+    // Garante que usuários só possam acessar os diretórios de suas próprias contas.
     match /accounts/{accountId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      // Permite a escrita (upload, delete) apenas se o ID do usuário
-      // estiver na lista de 'members' do documento da conta correspondente no Firestore.
-      allow write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/accounts/$(accountId)).data.members;
+      allow read, write: if request.auth != null && request.auth.token.accountId == accountId;
     }
   }
 }
