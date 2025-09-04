@@ -1,10 +1,12 @@
 rules_version = '2';
+
+// Craft rules based on data in your Firestore database
+// allow write: if firestore.get(
+//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    // This rule denies all access to Firebase Storage.
-    // It's a temporary measure for debugging the simulation of security rules.
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth == null;
     }
   }
 }
