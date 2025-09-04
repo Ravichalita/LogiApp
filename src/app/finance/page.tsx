@@ -164,19 +164,20 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                             )}
                         </div>
                          {item.data.attachments && item.data.attachments.length > 0 && (
-                             <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                               {item.data.attachments.map((att, index) => (
-                                   <a 
+                            <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+                                {item.data.attachments.map((att, index) => (
+                                    <a
                                         key={index}
-                                        href={att.url} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
                                         className="relative group shrink-0 h-16 w-16 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
                                     >
                                         <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                        <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
                                     </a>
-                               ))}
-                             </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
