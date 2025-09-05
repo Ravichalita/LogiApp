@@ -758,6 +758,7 @@ export default function OSPage() {
                                                         onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
                                                         uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
                                                         showDeleteButton={false}
+                                                        showLabel={false}
                                                     />
                                                   </div>
                                               </AccordionContent>

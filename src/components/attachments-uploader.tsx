@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useRef, useTransition } from 'react';
@@ -22,6 +21,7 @@ interface AttachmentsUploaderProps {
   onAttachmentDeleted: (attachment: Attachment) => void;
   uploadPath: string; // e.g., 'accounts/{accountId}/operations/{opId}/attachments'
   showDeleteButton?: boolean;
+  showLabel?: boolean;
 }
 
 export const AttachmentsUploader = ({ 
@@ -30,7 +30,8 @@ export const AttachmentsUploader = ({
     onAttachmentUploaded,
     onAttachmentDeleted,
     uploadPath,
-    showDeleteButton = true
+    showDeleteButton = true,
+    showLabel = true
 }: AttachmentsUploaderProps) => {
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +103,7 @@ export const AttachmentsUploader = ({
 
     return (
         <div className="space-y-2">
+            {showLabel && <Label>Anexos</Label>}
             <input
                 type="file"
                 ref={fileInputRef}
