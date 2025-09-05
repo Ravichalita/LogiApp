@@ -32,7 +32,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { EditOperationAssignedUserDialog } from '@/app/operations/edit-assigned-user-dialog';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToRentalAction, addAttachmentToOperationAction } from '@/lib/actions';
+import { addAttachmentToRentalAction, addAttachmentToOperationAction, deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -433,6 +433,24 @@ export default function OSPage() {
       toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
     }
   };
+  
+  const handleAttachmentDeleted = async (item: PopulatedRental | PopulatedOperation, attachmentToDelete: Attachment) => {
+    if (!accountId) return;
+    
+    const collectionName = item.itemType === 'rental' ? 'rentals' : 'operations';
+    const result = await deleteAttachmentFromCompletedItemAction(accountId, item.id, collectionName as any, attachmentToDelete);
+
+    if (result.message === 'success') {
+        if (item.itemType === 'rental') {
+             setRentals(prev => prev.map(r => r.id === item.id ? { ...r, attachments: (r.attachments || []).filter(a => a.url !== attachmentToDelete.url) } : r));
+        } else {
+            setOperations(prev => prev.map(o => o.id === item.id ? { ...o, attachments: (o.attachments || []).filter(a => a.url !== attachmentToDelete.url) } : o));
+        }
+        toast({ title: 'Sucesso!', description: 'Anexo removido.' });
+    } else {
+        toast({ title: 'Erro ao remover anexo', description: result.error, variant: 'destructive' });
+    }
+  };
 
 
   const isLoading = authLoading || (loading && (canAccessRentals || canAccessOperations));
@@ -733,31 +751,13 @@ export default function OSPage() {
                                               <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1">Anexos</AccordionTrigger>
                                               <AccordionContent className="pt-4">
                                                  <div className="space-y-2">
-                                                      {accountId && (
-                                                          <AttachmentsUploader
-                                                              accountId={accountId}
-                                                              uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                              onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
-                                                          />
-                                                      )}
-                                                      {op.attachments && op.attachments.length > 0 ? (
-                                                          <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                                                              {op.attachments.map((att, index) => (
-                                                                  <a 
-                                                                      key={index}
-                                                                      href={att.url} 
-                                                                      target="_blank" 
-                                                                      rel="noopener noreferrer" 
-                                                                      className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                                                  >
-                                                                      <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                                                      <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                                                                  </a>
-                                                              ))}
-                                                          </div>
-                                                      ) : (
-                                                          <p className="text-xs text-muted-foreground text-center py-2">Nenhum anexo adicionado.</p>
-                                                      )}
+                                                    <AttachmentsUploader 
+                                                        accountId={accountId!}
+                                                        attachments={op.attachments || []}
+                                                        onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
+                                                        onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
+                                                        uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
+                                                    />
                                                   </div>
                                               </AccordionContent>
                                             </AccordionItem>

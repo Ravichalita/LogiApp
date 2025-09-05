@@ -552,7 +552,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
         <div className="p-4 border rounded-md space-y-2 bg-card">
           <AttachmentsUploader 
               accountId={accountId} 
-              attachments={attachments} 
+              attachments={attachments || []} 
               onAttachmentUploaded={handleAttachmentUploaded} 
               onAttachmentDeleted={handleRemoveAttachment}
               uploadPath={`accounts/${accountId}/operations/${operation.id}/attachments`}

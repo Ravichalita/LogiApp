@@ -115,6 +115,8 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
   };
   
   const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
+    // This requires a server action to be truly effective (delete from storage)
+    // For now, it just removes from the local state to be saved.
     setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
   };
 
@@ -285,7 +287,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         <div className="p-4 border rounded-md space-y-2 bg-card">
             <AttachmentsUploader 
                 accountId={accountId}
-                attachments={attachments}
+                attachments={attachments || []}
                 onAttachmentUploaded={handleAttachmentUploaded}
                 onAttachmentDeleted={handleRemoveAttachment}
                 uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
