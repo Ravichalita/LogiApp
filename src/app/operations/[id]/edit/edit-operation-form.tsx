@@ -174,13 +174,6 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
     fetchRouteAndWeather();
   }, [startLocation, destinationLocation, startDate, account?.costPerKm]);
   
-  useEffect(() => {
-    const newBaseValue = selectedOperationTypeIds.reduce((total, id) => {
-        const selectedType = operationTypes.find(t => t.id === id);
-        return total + (selectedType?.value || 0);
-    }, 0);
-    setBaseValue(newBaseValue);
-  }, [selectedOperationTypeIds, operationTypes]);
 
   const handleStartLocationSelect = (selectedLocation: Location) => {
     setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
