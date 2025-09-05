@@ -664,7 +664,7 @@ export default function OSPage() {
                                  <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
                                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                  </AccordionTrigger>
-                                <AccordionContent className="px-5 py-4">
+                                <AccordionContent className="px-1 py-4">
                                     <div className="space-y-4 text-sm">
                                         <Separator />
                                          <div className="mt-3 space-y-4">
@@ -731,8 +731,8 @@ export default function OSPage() {
                                             </>
                                         )}
                                         
-                                        {op.client?.phone && (
-                                            <div className="pt-4 flex justify-start">
+                                        <div className="pt-2 flex justify-between items-center w-full">
+                                            {op.client?.phone && (
                                                 <a 
                                                     href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}`}
                                                     target="_blank" 
@@ -741,30 +741,29 @@ export default function OSPage() {
                                                 >
                                                     <WhatsAppIcon className="h-4 w-4 fill-current" />
                                                     <span className="font-medium">{op.client.phone}</span>
-                                                
                                                 </a>
-                                            </div>
-                                        )}
-                                        {canUseAttachments && (
-                                           <Accordion type="single" collapsible className="w-full">
-                                            <AccordionItem value="attachments">
-                                              <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-center [&>svg]:ml-1">Anexos</AccordionTrigger>
-                                              <AccordionContent className="pt-4">
-                                                 <div className="space-y-2">
-                                                    <AttachmentsUploader 
-                                                        accountId={accountId!}
-                                                        attachments={op.attachments || []}
-                                                        onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
-                                                        onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
-                                                        uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                        showDeleteButton={false}
-                                                        showLabel={false}
-                                                    />
-                                                  </div>
-                                              </AccordionContent>
-                                            </AccordionItem>
-                                          </Accordion>
-                                        )}
+                                            )}
+                                            {canUseAttachments && (
+                                                <Accordion type="single" collapsible className="w-full">
+                                                    <AccordionItem value="attachments" className="border-none">
+                                                    <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                                                    <AccordionContent className="pt-4">
+                                                        <div className="space-y-2">
+                                                            <AttachmentsUploader 
+                                                                accountId={accountId!}
+                                                                attachments={op.attachments || []}
+                                                                onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
+                                                                onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
+                                                                uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
+                                                                showDeleteButton={false}
+                                                                showLabel={false}
+                                                            />
+                                                        </div>
+                                                    </AccordionContent>
+                                                    </AccordionItem>
+                                                </Accordion>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="mt-4">
                                         <OperationCardActions operation={op} />
