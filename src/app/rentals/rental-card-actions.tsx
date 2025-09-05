@@ -135,11 +135,13 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 <p className="font-medium">{rental.deliveryAddress}</p>
             </div>
             {!!rental.latitude && !!rental.longitude && (
-                <Button variant="link" size="sm" asChild className="p-0 h-auto text-primary">
-                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                        <span>Ver no Mapa</span>
-                    </Link>
-                </Button>
+                 <div className="flex justify-center">
+                    <Button variant="outline" size="sm" asChild className="border-primary text-primary hover:bg-primary/10 hover:text-primary">
+                        <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                            <span>Ver no Mapa</span>
+                        </Link>
+                    </Button>
+                </div>
             )}
         </div>
 
