@@ -113,10 +113,16 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
             <Input id="name" name="name" placeholder="Ex: Mercedes-Benz Atego" defaultValue={truck?.name} required />
             {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
         </div>
-        <div className="space-y-2">
-            <Label htmlFor="plate">Placa</Label>
-            <Input id="plate" name="plate" placeholder="ABC1D23" defaultValue={truck?.plate} required />
-            {state?.errors?.plate && <p className="text-sm font-medium text-destructive">{state.errors.plate[0]}</p>}
+        <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="plate">Placa</Label>
+                <Input id="plate" name="plate" placeholder="ABC1D23" defaultValue={truck?.plate} required />
+                {state?.errors?.plate && <p className="text-sm font-medium text-destructive">{state.errors.plate[0]}</p>}
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="year">Ano</Label>
+                <Input id="year" name="year" type="number" placeholder="2022" defaultValue={truck?.year ?? ''} />
+            </div>
         </div>
         <div className="space-y-2">
             <Label htmlFor="type">Tipo de Caminhão</Label>
@@ -135,10 +141,6 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
                 </SelectContent>
             </Select>
             {state?.errors?.type && <p className="text-sm font-medium text-destructive">{state.errors.type[0]}</p>}
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="year">Ano</Label>
-            <Input id="year" name="year" type="number" placeholder="2022" defaultValue={truck?.year ?? ''} />
         </div>
         {isEdit && (
             <div className="space-y-2">
