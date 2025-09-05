@@ -75,8 +75,6 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     onAttachmentDeleted: (itemId: string, attachment: Attachment) => void;
 }) {
     const { accountId } = useAuth();
-    const { toast } = useToast();
-    const [isDeleting, startDeleteTransition] = useTransition();
     
     if (!item) return null;
 
@@ -85,33 +83,12 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     const operation = !isRental ? (item.data as PopulatedOperation) : null;
     const operationTitle = operation?.operationTypes?.map(t => t.name).join(', ') || 'Operação';
     
-    const handleAttachmentAdded = async (newAttachment: Attachment) => {
-        if (!accountId) return;
-        
-        let result;
-        if(isRental) {
-            result = await addAttachmentToCompletedRentalAction(accountId, item.id, newAttachment);
-        } else {
-            result = await addAttachmentToCompletedOperationAction(accountId, item.id, newAttachment);
-        }
+    const handleAttachmentAdded = (newAttachment: Attachment) => {
+        onAttachmentUploaded(item.id, newAttachment);
+    };
 
-        if (result.message === 'success') {
-            onAttachmentUploaded(item.id, newAttachment);
-        }
-    }
-
-    const handleDeleteAttachment = (attachment: Attachment) => {
-        if (!accountId) return;
-
-        startDeleteTransition(async () => {
-            const result = await deleteAttachmentFromCompletedItemAction(accountId, item.id, item.kind, attachment);
-            if (result.message === 'success') {
-                toast({ title: 'Sucesso', description: 'Anexo removido.' });
-                onAttachmentDeleted(item.id, attachment);
-            } else {
-                toast({ title: 'Erro', description: result.error, variant: 'destructive' });
-            }
-        });
+    const handleAttachmentDeleted = (attachment: Attachment) => {
+        onAttachmentDeleted(item.id, attachment);
     }
 
 
@@ -189,55 +166,14 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                         </div>
                     )}
                     <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-muted-foreground">Anexos</span>
-                            {accountId && (
-                                <AttachmentsUploader 
-                                    accountId={accountId} 
-                                    onAttachmentUploaded={handleAttachmentAdded}
-                                    uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
-                                />
-                            )}
-                        </div>
-                         {item.data.attachments && item.data.attachments.length > 0 ? (
-                            <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                                {item.data.attachments.map((att, index) => (
-                                     <div key={index} className="relative group shrink-0">
-                                        <a
-                                            href={att.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                        >
-                                            <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                            <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                                        </a>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full z-10">
-                                                    <X className="h-3 w-3" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitleComponent>Excluir Anexo?</AlertDialogTitleComponent>
-                                                    <AlertDialogDescriptionComponent>
-                                                        Esta ação não pode ser desfeita. O arquivo "{att.name}" será removido permanentemente.
-                                                    </AlertDialogDescriptionComponent>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteAttachment(att)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                                        {isDeleting ? <Spinner size="small" /> : 'Excluir'}
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-xs text-muted-foreground text-center py-2">Nenhum anexo adicionado.</p>
+                        {accountId && (
+                            <AttachmentsUploader 
+                                accountId={accountId}
+                                attachments={item.data.attachments || []}
+                                onAttachmentUploaded={handleAttachmentAdded}
+                                onAttachmentDeleted={handleAttachmentDeleted}
+                                uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
+                            />
                         )}
                     </div>
                 </div>
@@ -315,7 +251,7 @@ export default function FinancePage() {
         }));
     };
     
-    const handleAttachmentDeleted = (itemId: string, attachmentToDelete: Attachment) => {
+     const handleAttachmentDeleted = (itemId: string, attachmentToDelete: Attachment) => {
         setHistoricItems(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
                 const updatedAttachments = (item.data.attachments || []).filter(

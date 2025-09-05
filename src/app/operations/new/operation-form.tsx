@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parse, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -34,9 +34,7 @@ import { OperationTypeDialog } from './operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { parseISO } from 'date-fns';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { getFirebase } from '@/lib/firebase-client';
-import { Progress } from '@/components/ui/progress';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
 
 interface OperationFormProps {
   clients: Client[];
@@ -64,128 +62,6 @@ const formatCurrency = (value: number | undefined | null) => {
       currency: 'BRL',
     }).format(value);
 }
-
-const AttachmentsUploader = ({ accountId, onAttachmentsChange }: { accountId: string; onAttachmentsChange: (attachments: Attachment[]) => void }) => {
-    const [files, setFiles] = useState<File[]>([]);
-    const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-    const [uploadedAttachments, setUploadedAttachments] = useState<Attachment[]>([]);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        onAttachmentsChange(uploadedAttachments);
-    }, [uploadedAttachments, onAttachmentsChange]);
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const newFiles = Array.from(e.target.files);
-            setFiles(prev => [...prev, ...newFiles]);
-            uploadFiles(newFiles);
-        }
-    };
-
-    const uploadFiles = (filesToUpload: File[]) => {
-        const { storage } = getFirebase();
-        if (!storage) return;
-
-        filesToUpload.forEach(file => {
-            const storageRef = ref(storage, `accounts/${accountId}/operations/attachments/${Date.now()}_${file.name}`);
-            const uploadTask = uploadBytesResumable(storageRef, file);
-
-            uploadTask.on('state_changed',
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    setUploadProgress(prev => ({ ...prev, [file.name]: progress }));
-                },
-                (error) => {
-                    console.error("Upload error:", error);
-                    // Handle error (e.g., show toast)
-                },
-                () => {
-                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                         const newAttachment: Attachment = {
-                            url: downloadURL,
-                            name: file.name,
-                            type: file.type,
-                            uploadedAt: new Date().toISOString(),
-                        };
-                        setUploadedAttachments(prev => [...prev, newAttachment]);
-                    });
-                }
-            );
-        });
-    };
-    
-    const removeAttachment = (attachmentToRemove: Attachment) => {
-        // Here you would also add logic to delete the file from Firebase Storage if needed
-        setUploadedAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
-        setFiles(prev => prev.filter(f => f.name !== attachmentToRemove.name));
-    };
-
-    return (
-        <div className="flex flex-col gap-4">
-             <input
-                type="file"
-                multiple
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                className="hidden"
-            />
-            <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">Anexos</Label>
-                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Adicionar
-                </Button>
-            </div>
-             
-             {(files.length > 0 || uploadedAttachments.length > 0) && <Separator />}
-
-             <div className="space-y-2">
-                {files.map((file, index) => {
-                    const isUploaded = uploadedAttachments.some(att => att.name === file.name);
-                    const progress = uploadProgress[file.name] ?? 0;
-                    return !isUploaded && (
-                         <div key={index} className="text-sm">
-                            <div className="flex items-center gap-2">
-                                <FileIcon className="h-4 w-4 text-muted-foreground" />
-                                <span className="flex-grow truncate">{file.name}</span>
-                                {progress < 100 ? (
-                                    <span className="text-xs text-muted-foreground">{Math.round(progress)}%</span>
-                                ) : (
-                                    <Spinner size="small" />
-                                )}
-                            </div>
-                            <Progress value={progress} className="w-full h-1 mt-1" />
-                        </div>
-                    )
-                })}
-            </div>
-            
-             {uploadedAttachments.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {uploadedAttachments.map((att, index) => (
-                        <div key={index} className="relative group bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center aspect-square h-24">
-                            <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center gap-2 hover:underline h-full w-full">
-                                <Paperclip className="h-8 w-8 text-muted-foreground" />
-                                <span className="text-xs break-all line-clamp-2">{att.name}</span>
-                            </a>
-                            <Button
-                                variant="destructive"
-                                size="icon"
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full z-10"
-                                onClick={() => removeAttachment(att)}
-                            >
-                                <X className="h-4 w-4" />
-                                <span className="sr-only">Remover anexo</span>
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 
 export function OperationForm({ clients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
   const { user, accountId, userAccount, isSuperAdmin } = useAuth();
@@ -375,6 +251,14 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         }
     }
   }
+
+  const handleAttachmentUploaded = (newAttachment: Attachment) => {
+    setAttachments(prev => [...prev, newAttachment]);
+  };
+
+  const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
+    setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+  };
 
 
   const handleFormAction = (formData: FormData) => {
@@ -743,7 +627,13 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
        {canUseAttachments && accountId && (
         <div className="p-4 border rounded-md space-y-2 bg-card">
-          <AttachmentsUploader accountId={accountId} onAttachmentsChange={setAttachments} />
+            <AttachmentsUploader 
+                accountId={accountId}
+                attachments={attachments}
+                onAttachmentUploaded={handleAttachmentUploaded}
+                onAttachmentDeleted={handleRemoveAttachment}
+                uploadPath={`accounts/${accountId}/operations/attachments`}
+            />
         </div>
        )}
 

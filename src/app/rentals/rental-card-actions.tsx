@@ -6,7 +6,7 @@ import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
 import type { PopulatedRental, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Paperclip } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -40,9 +40,7 @@ import {
 } from "@/components/ui/accordion"
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToRentalAction } from '@/lib/actions';
 
 
 interface RentalCardActionsProps {
@@ -91,7 +89,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const [isFinishing, startFinishTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
-  const [currentAttachments, setCurrentAttachments] = useState<Attachment[]>(rental.attachments || []);
+  const [attachments, setAttachments] = useState<Attachment[]>(rental.attachments || []);
 
 
   const permissions = userAccount?.permissions;
@@ -106,17 +104,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.value * rentalDays;
   
-  const handleAttachmentUploaded = async (newAttachment: Attachment) => {
-    if (!accountId) return;
-
-    const result = await addAttachmentToRentalAction(accountId, rental.id, newAttachment);
-
-    if (result.message === 'success') {
-        setCurrentAttachments(prev => [...prev, newAttachment]);
-    } else {
-        toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
-    }
+  const handleAttachmentUploaded = (newAttachment: Attachment) => {
+    setAttachments(prev => [...prev, newAttachment]);
   };
+
+  const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
+    setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+  };
+
 
   const handleDeleteAction = () => {
      startDeleteTransition(async () => {
@@ -205,33 +200,15 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             <AccordionItem value="attachments">
               <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1">Anexos</AccordionTrigger>
               <AccordionContent className="pt-4">
-                 <div className="space-y-2">
-                    {accountId && (
-                        <AttachmentsUploader
-                            accountId={accountId}
-                            uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
-                            onAttachmentUploaded={handleAttachmentUploaded}
-                        />
-                    )}
-                    {currentAttachments && currentAttachments.length > 0 ? (
-                        <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                            {currentAttachments.map((att, index) => (
-                                <a 
-                                    key={index}
-                                    href={att.url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                                >
-                                    <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                    <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                                </a>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-xs text-muted-foreground text-center py-2">Nenhum anexo adicionado.</p>
-                    )}
-                 </div>
+                  {accountId && (
+                      <AttachmentsUploader
+                          accountId={accountId}
+                          attachments={attachments}
+                          onAttachmentUploaded={handleAttachmentUploaded}
+                          onAttachmentDeleted={handleRemoveAttachment}
+                          uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+                      />
+                  )}
               </AccordionContent>
             </AccordionItem>
           </Accordion>
