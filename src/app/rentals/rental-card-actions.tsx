@@ -207,6 +207,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                           onAttachmentUploaded={handleAttachmentUploaded}
                           onAttachmentDeleted={handleRemoveAttachment}
                           uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+                          showDeleteButton={false}
                       />
                   )}
               </AccordionContent>

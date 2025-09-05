@@ -21,6 +21,7 @@ interface AttachmentsUploaderProps {
   onAttachmentUploaded: (attachment: Attachment) => void;
   onAttachmentDeleted: (attachment: Attachment) => void;
   uploadPath: string; // e.g., 'accounts/{accountId}/operations/{opId}/attachments'
+  showDeleteButton?: boolean;
 }
 
 export const AttachmentsUploader = ({ 
@@ -28,7 +29,8 @@ export const AttachmentsUploader = ({
     attachments,
     onAttachmentUploaded,
     onAttachmentDeleted,
-    uploadPath 
+    uploadPath,
+    showDeleteButton = true
 }: AttachmentsUploaderProps) => {
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,27 +122,29 @@ export const AttachmentsUploader = ({
                             <Paperclip className="h-6 w-6 text-muted-foreground" />
                             <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
                         </a>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full z-10">
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Excluir Anexo?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta ação não pode ser desfeita. O arquivo "{att.name}" será removido permanentemente.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteAttachment(att)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                        {isDeleting ? <Spinner size="small" /> : 'Excluir'}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                         {showDeleteButton && (
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon" className="absolute -top-2 -right-2 h-5 w-5 rounded-full z-10">
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Excluir Anexo?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta ação não pode ser desfeita. O arquivo "{att.name}" será removido permanentemente.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteAttachment(att)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                            {isDeleting ? <Spinner size="small" /> : 'Excluir'}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                         )}
                     </div>
                 ))}
                 <button
