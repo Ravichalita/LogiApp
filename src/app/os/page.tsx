@@ -748,7 +748,7 @@ export default function OSPage() {
                                         {canUseAttachments && (
                                            <Accordion type="single" collapsible className="w-full">
                                             <AccordionItem value="attachments">
-                                              <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1">Anexos</AccordionTrigger>
+                                              <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-center [&>svg]:ml-1">Anexos</AccordionTrigger>
                                               <AccordionContent className="pt-4">
                                                  <div className="space-y-2">
                                                     <AttachmentsUploader 
