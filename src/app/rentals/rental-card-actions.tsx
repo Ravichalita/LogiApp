@@ -32,6 +32,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -195,9 +201,11 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         )}
         
         {canUseAttachments && (
-            <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+           <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="attachments">
+              <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1">Anexos</AccordionTrigger>
+              <AccordionContent className="pt-4">
+                 <div className="space-y-2">
                     {accountId && (
                         <AttachmentsUploader
                             accountId={accountId}
@@ -205,24 +213,28 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             onAttachmentUploaded={handleAttachmentUploaded}
                         />
                     )}
-                </div>
-                {currentAttachments && currentAttachments.length > 0 && (
-                    <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                        {currentAttachments.map((att, index) => (
-                            <a 
-                                key={index}
-                                href={att.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                            >
-                                <Paperclip className="h-6 w-6 text-muted-foreground" />
-                                <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                            </a>
-                        ))}
-                    </div>
-                )}
-            </div>
+                    {currentAttachments && currentAttachments.length > 0 ? (
+                        <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+                            {currentAttachments.map((att, index) => (
+                                <a 
+                                    key={index}
+                                    href={att.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                                >
+                                    <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                    <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                                </a>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-xs text-muted-foreground text-center py-2">Nenhum anexo adicionado.</p>
+                    )}
+                 </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         )}
 
 
