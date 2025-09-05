@@ -130,31 +130,34 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
         <div className="space-y-2">
-            <div className="flex justify-between items-start gap-4">
+            <div>
                 <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                <span className="font-medium text-right">{rental.deliveryAddress}</span>
+                <p className="font-medium">{rental.deliveryAddress}</p>
             </div>
-            <div className="flex justify-between items-start gap-4">
+            {!!rental.latitude && !!rental.longitude && (
+                <Button variant="link" size="sm" asChild className="p-0 h-auto text-primary">
+                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                        <span>Ver no Mapa</span>
+                    </Link>
+                </Button>
+            )}
+        </div>
+
+        <div className="space-y-2">
+            <div>
                 <span className="text-sm text-muted-foreground">Período</span>
-                <p className="font-semibold text-base whitespace-nowrap text-right">
+                <p className="font-semibold text-base whitespace-nowrap">
                     {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
                 </p>
             </div>
         </div>
 
-        {!!rental.latitude && !!rental.longitude && (
-            <Button variant="outline" size="sm" asChild className="w-full border-primary/50">
-                <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    <span>Abrir no Mapa</span>
-                </Link>
-            </Button>
-        )}
-        
         {canSeeFinance && (
-            <div className="flex justify-between items-start gap-4">
-                <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
-                <span className="font-medium">{formatCurrency(totalValue)}</span>
+            <div className="space-y-2">
+                 <div>
+                    <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                    <p className="font-medium">{formatCurrency(totalValue)}</p>
+                </div>
             </div>
         )}
 
