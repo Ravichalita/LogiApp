@@ -609,7 +609,7 @@ export default function OSPage() {
                                         <CardTitle className="text-xl font-headline">
                                             {op.operationTypes.map(t => t.name).join(', ')}
                                         </CardTitle>
-                                         <Badge variant={status.variant}>{status.text}</Badge>
+                                         <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                                     </div>
                                      <CardDescription className="text-sm mt-4">
                                         <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
