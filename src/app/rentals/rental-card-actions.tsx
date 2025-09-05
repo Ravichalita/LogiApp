@@ -131,12 +131,9 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
         <div className="flex flex-col gap-2">
-            <div className="flex items-start gap-3 flex-grow">
-                <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                    <span className="font-medium">{rental.deliveryAddress}</span>
-                </div>
+            <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Local de Entrega</span>
+                <span className="font-medium">{rental.deliveryAddress}</span>
             </div>
              {!!rental.latitude && !!rental.longitude && (
                 <Button variant="outline" size="sm" asChild className="w-full border-primary/50">
