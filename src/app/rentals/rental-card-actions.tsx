@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
@@ -131,9 +130,17 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
         <div className="flex flex-col gap-2">
-            <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                <span className="font-medium">{rental.deliveryAddress}</span>
+             <div className="flex justify-between items-start gap-4">
+                <div className="flex flex-col">
+                    <span className="text-sm text-muted-foreground">Local de Entrega</span>
+                    <span className="font-medium">{rental.deliveryAddress}</span>
+                </div>
+                 <div className="flex flex-col text-right">
+                    <span className="text-sm text-muted-foreground">Período</span>
+                    <p className="font-semibold text-base whitespace-nowrap">
+                        {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+                    </p>
+                </div>
             </div>
              {!!rental.latitude && !!rental.longitude && (
                 <Button variant="outline" size="sm" asChild className="w-full border-primary/50">
@@ -143,12 +150,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </Link>
                 </Button>
             )}
-        </div>
-        <div className="flex flex-col">
-            <span className="text-sm text-muted-foreground">Período</span>
-              <p className="font-semibold text-base">
-                {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-            </p>
         </div>
         
         {canSeeFinance && (
