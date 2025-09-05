@@ -73,7 +73,12 @@ export function Header() {
       <div className="container flex h-16 items-center">
         <div className="flex items-center">
                      <Link href="/os" className="mr-6 flex items-center space-x-2">
-                     <Image src={isSuperAdmin ? "/super.svg" : "/192x192.png"} alt="LogiApp Logo" width={28} height={28} />
+                     <Image 
+                        src={isSuperAdmin ? "/super.svg" : "/192x192.png"} 
+                        alt="LogiApp Logo" 
+                        width={isSuperAdmin ? 40 : 28} 
+                        height={isSuperAdmin ? 40 : 28} 
+                     />
                 <span className="font-bold inline-block text-primary">LogiApp</span>
             </Link>
           <nav className="hidden md:flex items-center space-x-6">{renderNavLinks()}</nav>
