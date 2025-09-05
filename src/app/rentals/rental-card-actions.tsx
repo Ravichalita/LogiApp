@@ -129,31 +129,30 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        <div className="flex flex-col gap-2">
-             <div className="flex justify-between items-start gap-4">
-                <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                    <span className="font-medium">{rental.deliveryAddress}</span>
-                </div>
-                 <div className="flex flex-col text-right">
-                    <span className="text-sm text-muted-foreground">Período</span>
-                    <p className="font-semibold text-base whitespace-nowrap">
-                        {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                    </p>
-                </div>
+        <div className="space-y-2">
+            <div className="flex justify-between items-start gap-4">
+                <span className="text-sm text-muted-foreground">Local de Entrega</span>
+                <span className="font-medium text-right">{rental.deliveryAddress}</span>
             </div>
-             {!!rental.latitude && !!rental.longitude && (
-                <Button variant="outline" size="sm" asChild className="w-full border-primary/50">
-                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        <span>Abrir no Mapa</span>
-                    </Link>
-                </Button>
-            )}
+            <div className="flex justify-between items-start gap-4">
+                <span className="text-sm text-muted-foreground">Período</span>
+                <p className="font-semibold text-base whitespace-nowrap text-right">
+                    {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+                </p>
+            </div>
         </div>
+
+        {!!rental.latitude && !!rental.longitude && (
+            <Button variant="outline" size="sm" asChild className="w-full border-primary/50">
+                <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                    <MapPin className="h-4 w-4 mr-2" />
+                    <span>Abrir no Mapa</span>
+                </Link>
+            </Button>
+        )}
         
         {canSeeFinance && (
-            <div className="flex flex-col">
+            <div className="flex justify-between items-start gap-4">
                 <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
                 <span className="font-medium">{formatCurrency(totalValue)}</span>
             </div>
@@ -191,7 +190,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                   {accountId && (
                       <AttachmentsUploader
                           accountId={accountId}
-                          attachments={attachments}
+                          attachments={attachments || []}
                           onAttachmentUploaded={handleAttachmentUploaded}
                           onAttachmentDeleted={handleRemoveAttachment}
                           uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
