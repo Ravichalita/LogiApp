@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
@@ -172,12 +173,10 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </div>
             </div>
         )}
-
-        <Separator />
         
         <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="attachments">
-            <div className="flex justify-between items-center">
+          <AccordionItem value="attachments" className="border-none">
+             <div className="pt-2 flex justify-between items-center w-full">
                 {rental.client?.phone && (
                     <a 
                         href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}?text=Olá, ${rental.client.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
@@ -190,7 +189,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </a>
                 )}
                 {canUseAttachments && (
-                    <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                    <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
                 )}
             </div>
             {canUseAttachments && (

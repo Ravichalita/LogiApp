@@ -666,7 +666,6 @@ export default function OSPage() {
                                  </AccordionTrigger>
                                 <AccordionContent className="px-1 py-4">
                                     <div className="space-y-4 text-sm">
-                                        <Separator />
                                          <div className="mt-3 space-y-4">
                                             <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                  <span className="text-xs font-semibold uppercase text-muted-foreground">Destino:</span>
@@ -697,10 +696,9 @@ export default function OSPage() {
                                             </div>
                                         )}
 
-                                        <Separator />
-
                                         {canSeeFinance && (
                                             <>
+                                                <Separator />
                                                 <div className="flex items-center gap-2 pt-2">
                                                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                                                     <span className="font-medium">Valor do Serviço:</span>
@@ -727,7 +725,6 @@ export default function OSPage() {
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <Separator />
                                             </>
                                         )}
                                         
@@ -741,7 +738,7 @@ export default function OSPage() {
                                                             rel="noopener noreferrer"
                                                             className="inline-flex items-center gap-2 text-green-600 hover:underline"
                                                         >
-                                                            <WhatsAppIcon className="h-4 w-4 fill-current" />
+                                                            <WhatsAppIcon className="h-6 w-6 fill-current" />
                                                             <span className="font-medium">{op.client.phone}</span>
                                                         </a>
                                                     )}
