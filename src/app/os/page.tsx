@@ -601,7 +601,7 @@ export default function OSPage() {
                                  <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
                                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                  </AccordionTrigger>
-                                <AccordionContent className="px-1 py-4">
+                                <AccordionContent className="px-6 py-4">
                                     <RentalCardActions rental={rental} status={status} />
                                 </AccordionContent>
                             </Card>
@@ -662,7 +662,7 @@ export default function OSPage() {
                                  <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
                                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                  </AccordionTrigger>
-                                <AccordionContent className="px-1 py-4">
+                                <AccordionContent className="px-6 py-4">
                                     <div className="space-y-4 text-sm px-1">
                                          <div className="mt-3 space-y-4">
                                             <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">

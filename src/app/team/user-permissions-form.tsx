@@ -27,6 +27,7 @@ const screenPermissionLabels: Partial<Record<keyof Permissions, string>> = {
 const featurePermissionLabels: Partial<Record<keyof Permissions, string>> = {
   canAccessFinance: 'Acessar Histórico e Valores $',
   canAccessNotificationsStudio: 'Notificações Personalizadas',
+  canUseAttachments: 'Gerenciar Anexos',
 };
 
 const actionsPermissionLabels: Partial<Record<keyof Permissions, string>> = {
@@ -172,3 +173,5 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     </div>
   );
 }
+
+    
