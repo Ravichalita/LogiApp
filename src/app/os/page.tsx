@@ -731,39 +731,41 @@ export default function OSPage() {
                                             </>
                                         )}
                                         
-                                        <div className="pt-2 flex justify-between items-center w-full">
-                                            {op.client?.phone && (
-                                                <a 
-                                                    href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}`}
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 text-green-600 hover:underline"
-                                                >
-                                                    <WhatsAppIcon className="h-4 w-4 fill-current" />
-                                                    <span className="font-medium">{op.client.phone}</span>
-                                                </a>
-                                            )}
-                                            {canUseAttachments && (
-                                                <Accordion type="single" collapsible className="w-full">
-                                                    <AccordionItem value="attachments" className="border-none">
-                                                    <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
-                                                    <AccordionContent className="pt-4">
-                                                        <div className="space-y-2">
-                                                            <AttachmentsUploader 
-                                                                accountId={accountId!}
-                                                                attachments={op.attachments || []}
-                                                                onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
-                                                                onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
-                                                                uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                                showDeleteButton={false}
-                                                                showLabel={false}
-                                                            />
-                                                        </div>
-                                                    </AccordionContent>
-                                                    </AccordionItem>
-                                                </Accordion>
-                                            )}
-                                        </div>
+                                         <Accordion type="single" collapsible className="w-full">
+                                            <AccordionItem value="attachments" className="border-none">
+                                                <div className="pt-2 flex justify-between items-center w-full">
+                                                    {op.client?.phone && (
+                                                        <a 
+                                                            href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}`}
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-2 text-green-600 hover:underline"
+                                                        >
+                                                            <WhatsAppIcon className="h-4 w-4 fill-current" />
+                                                            <span className="font-medium">{op.client.phone}</span>
+                                                        </a>
+                                                    )}
+                                                    {canUseAttachments && (
+                                                        <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                                                    )}
+                                                </div>
+                                                {canUseAttachments && (
+                                                <AccordionContent className="pt-4">
+                                                    <div className="space-y-2">
+                                                        <AttachmentsUploader 
+                                                            accountId={accountId!}
+                                                            attachments={op.attachments || []}
+                                                            onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
+                                                            onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
+                                                            uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
+                                                            showDeleteButton={false}
+                                                            showLabel={false}
+                                                        />
+                                                    </div>
+                                                </AccordionContent>
+                                                )}
+                                            </AccordionItem>
+                                        </Accordion>
                                     </div>
                                     <div className="mt-4">
                                         <OperationCardActions operation={op} />
