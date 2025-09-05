@@ -130,35 +130,37 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
         <div className="space-y-2">
-            <div>
-                <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                <p className="font-medium">{rental.deliveryAddress}</p>
+          <div>
+            <span className="text-sm text-muted-foreground">Local de Entrega</span>
+            <p className="font-medium">{rental.deliveryAddress}</p>
+          </div>
+          {!!rental.latitude && !!rental.longitude && (
+            <div className="w-full flex justify-center">
+              <Button variant="outline" size="sm" asChild className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary">
+                  <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                      <span>Ver no Mapa</span>
+                  </Link>
+              </Button>
             </div>
-            {!!rental.latitude && !!rental.longitude && (
-                <Button variant="outline" size="sm" asChild className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary">
-                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                        <span>Ver no Mapa</span>
-                    </Link>
-                </Button>
-            )}
+          )}
         </div>
 
         <div className="space-y-2">
             <div>
-                <span className="text-sm text-muted-foreground">Período</span>
-                <p className="font-semibold text-base whitespace-nowrap">
-                    {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                </p>
+              <span className="text-sm text-muted-foreground">Período</span>
+              <p className="font-semibold text-base whitespace-nowrap">
+                  {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+              </p>
             </div>
         </div>
 
         {canSeeFinance && (
-            <div className="space-y-2">
-                 <div>
-                    <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
-                    <p className="font-medium">{formatCurrency(totalValue)}</p>
-                </div>
-            </div>
+          <div className="space-y-2">
+              <div>
+                <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                <p className="font-medium">{formatCurrency(totalValue)}</p>
+              </div>
+          </div>
         )}
 
         {rental.observations && (
@@ -173,22 +175,25 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
         <Separator />
         
-        {rental.client?.phone && (
-             <a 
-                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}?text=Olá, ${rental.client.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:underline"
-            >
-                <WhatsAppIcon className="h-6 w-6 fill-green-600" />
-                <span className="font-medium text-green-600">{rental.client.phone}</span>
-            </a>
-        )}
-        
-        {canUseAttachments && (
-           <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="attachments">
-              <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-center [&>svg]:ml-1">Anexos</AccordionTrigger>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="attachments">
+            <div className="flex justify-between items-center">
+                {rental.client?.phone && (
+                    <a 
+                        href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}?text=Olá, ${rental.client.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 hover:underline"
+                    >
+                        <WhatsAppIcon className="h-6 w-6 fill-green-600" />
+                        <span className="font-medium text-green-600">{rental.client.phone}</span>
+                    </a>
+                )}
+                {canUseAttachments && (
+                    <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                )}
+            </div>
+            {canUseAttachments && (
               <AccordionContent className="pt-4">
                   {accountId && (
                       <AttachmentsUploader
@@ -202,9 +207,9 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                       />
                   )}
               </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        )}
+            )}
+          </AccordionItem>
+        </Accordion>
 
 
       </div>
