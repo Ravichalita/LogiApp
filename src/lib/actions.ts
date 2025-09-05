@@ -7,8 +7,8 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -687,7 +687,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     
     const { id, ...rentalData } = validatedFields.data;
     
-    const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined));
+    const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined && v !== null));
 
     if (Object.keys(updateData).length === 0) {
         return { message: 'success', info: 'Nenhum campo para atualizar.' };
@@ -1168,6 +1168,24 @@ export async function updateOperationTypesAction(accountId: string, types: Opera
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
+
+export async function updateTruckTypesAction(accountId: string, types: TruckType[]) {
+    const validatedFields = z.array(TruckTypeSchema).safeParse(types);
+
+    if (!validatedFields.success) {
+        return { message: 'error', error: "Tipos de caminhão inválidos." };
+    }
+
+    try {
+        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        await accountRef.update({ truckTypes: validatedFields.data });
+        revalidatePath('/fleet');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
 
 export async function updateCostSettingsAction(accountId: string, formData: FormData) {
     const costPerKmString = formData.get('costPerKm') as string;

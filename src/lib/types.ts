@@ -37,6 +37,13 @@ export const OperationTypeSchema = z.object({
 });
 export type OperationType = z.infer<typeof OperationTypeSchema>;
 
+export const TruckTypeSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: "O nome do tipo de caminhão é obrigatório." }),
+});
+export type TruckType = z.infer<typeof TruckTypeSchema>;
+
+
 export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
@@ -44,6 +51,7 @@ export const AccountSchema = z.object({
     operationCounter: z.number().int().optional().default(0),
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
     operationTypes: z.array(OperationTypeSchema).optional().default([]),
+    truckTypes: z.array(TruckTypeSchema).optional().default([]),
     lastBackupDate: z.string().optional(),
     backupPeriodicityDays: z.number().int().min(1).optional().default(7),
     backupRetentionDays: z.number().int().min(1).optional().default(90),
@@ -115,7 +123,7 @@ export type Backup = z.infer<typeof BackupSchema>;
 export const TruckSchema = z.object({
   name: z.string().min(1, { message: "O nome/identificador é obrigatório." }),
   plate: z.string().min(1, "A placa é obrigatória.").max(8, { message: "A placa deve ter no máximo 8 caracteres." }),
-  type: z.enum(["caminhão vácuo", "caminhão hidro vácuo", "poliguindaste"], { required_error: "O tipo de caminhão é obrigatório."}),
+  type: z.string({ required_error: "O tipo de caminhão é obrigatório."}),
   model: z.string().optional().nullable(),
   year: z.preprocess(toNumOrNull, z.number().nullable()),
   status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']).default('Disponível'),

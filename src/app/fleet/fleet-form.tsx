@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -9,20 +10,17 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
-import { DialogClose, DialogFooter } from '@/components/ui/dialog';
-import type { Truck } from '@/lib/types';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import type { Truck, TruckType } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { TruckTypesForm } from './truck-types-form';
+import { getAccount } from '@/lib/data';
 
 const initialState = {
   errors: {},
   message: '',
 };
-
-const truckTypes = [
-    'caminhão vácuo',
-    'caminhão hidro vácuo',
-    'poliguindaste'
-];
 
 function SubmitButton({ isPending, isEdit }: { isPending: boolean, isEdit?: boolean }) {
   return (
@@ -45,6 +43,21 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
   const { toast } = useToast();
   const isEdit = !!truck;
 
+  const [truckTypes, setTruckTypes] = useState<TruckType[]>([]);
+  const [showManageTypes, setShowManageTypes] = useState(false);
+
+  useEffect(() => {
+    if (accountId) {
+      const unsub = getAccount(accountId, (account) => {
+        if (account?.truckTypes) {
+          setTruckTypes(account.truckTypes);
+        }
+      });
+      return () => unsub();
+    }
+  }, [accountId]);
+
+
   useEffect(() => {
     if (state?.message === 'success') {
       toast({ title: 'Sucesso', description: `Caminhão ${isEdit ? 'atualizado' : 'cadastrado'}.` });
@@ -66,7 +79,6 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
       
       const rawData = Object.fromEntries(formData.entries());
       
-      // Remove empty optional fields so they don't get sent as `undefined` to Firestore
       if (rawData.model === '') delete rawData.model;
       if (rawData.year === '') delete rawData.year;
       
@@ -85,8 +97,15 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
       setState(result);
     });
   };
+  
+  const handleTypeChange = (value: string) => {
+    if (value === 'manage') {
+      setShowManageTypes(true);
+    }
+  }
 
   return (
+    <>
     <div className="p-6">
         <form ref={formRef} action={action} className="space-y-4">
         {isEdit && <input type="hidden" name="id" value={truck.id} />}
@@ -102,14 +121,18 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
         </div>
         <div className="space-y-2">
             <Label htmlFor="type">Tipo de Caminhão</Label>
-            <Select name="type" defaultValue={truck?.type}>
+            <Select name="type" defaultValue={truck?.type} onValueChange={handleTypeChange}>
                 <SelectTrigger>
                     <SelectValue placeholder="Selecione um tipo" />
                 </SelectTrigger>
                 <SelectContent>
                     {truckTypes.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                        <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
                     ))}
+                    <Separator />
+                     <SelectItem value="manage">
+                        <span className="text-primary font-medium">Gerenciar Tipos...</span>
+                    </SelectItem>
                 </SelectContent>
             </Select>
             {state?.errors?.type && <p className="text-sm font-medium text-destructive">{state.errors.type[0]}</p>}
@@ -145,5 +168,20 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
         </DialogFooter>
         </form>
     </div>
+    <Dialog open={showManageTypes} onOpenChange={setShowManageTypes}>
+        <DialogContent>
+             <DialogHeader>
+                <DialogTitle>Gerenciar Tipos de Caminhão</DialogTitle>
+                <DialogDescription>
+                    Adicione, edite ou remova os tipos de caminhão disponíveis para seleção.
+                </DialogDescription>
+            </DialogHeader>
+            <TruckTypesForm 
+                currentTypes={truckTypes} 
+                onSave={() => setShowManageTypes(false)}
+            />
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
