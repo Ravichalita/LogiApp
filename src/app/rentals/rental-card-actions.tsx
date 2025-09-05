@@ -81,7 +81,7 @@ const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
-  const { accountId, userAccount } = useAuth();
+  const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
@@ -89,9 +89,10 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
 
   const permissions = userAccount?.permissions;
-  const canEdit = permissions?.canEditRentals;
-  const canDelete = permissions?.canEditRentals;
-  const canSeeFinance = userAccount?.role === 'admin' || userAccount?.role === 'owner' || permissions?.canAccessFinance;
+  const canEdit = isSuperAdmin || permissions?.canEditRentals;
+  const canDelete = isSuperAdmin || permissions?.canEditRentals;
+  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
+  const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
   const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
   const isPendingStatus = status.text === 'Pendente';
@@ -137,7 +138,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                 </div>
             </div>
              {!!rental.latitude && !!rental.longitude && (
-                <Button variant="outline" size="sm" asChild className="w-full">
+                <Button variant="outline" size="sm" asChild className="w-full border-primary/50">
                     <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
                         <MapPin className="h-4 w-4 mr-2" />
                         <span>Abrir no Mapa</span>
@@ -181,44 +182,48 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
         <Separator />
         
-         <a 
-            href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}?text=Olá, ${rental.client?.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 hover:underline"
-        >
-            <WhatsAppIcon className="h-6 w-6 fill-green-600" />
-            <span className="font-medium text-green-600">{rental.client?.phone}</span>
-        </a>
-
-        <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
-                {accountId && (
-                    <AttachmentsUploader
-                        accountId={accountId}
-                        uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
-                        onAttachmentUploaded={handleAttachmentUploaded}
-                    />
+        {rental.client?.phone && (
+             <a 
+                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}?text=Olá, ${rental.client.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:underline"
+            >
+                <WhatsAppIcon className="h-6 w-6 fill-green-600" />
+                <span className="font-medium text-green-600">{rental.client.phone}</span>
+            </a>
+        )}
+        
+        {canUseAttachments && (
+            <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
+                    {accountId && (
+                        <AttachmentsUploader
+                            accountId={accountId}
+                            uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+                            onAttachmentUploaded={handleAttachmentUploaded}
+                        />
+                    )}
+                </div>
+                {currentAttachments && currentAttachments.length > 0 && (
+                    <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
+                        {currentAttachments.map((att, index) => (
+                            <a 
+                                key={index}
+                                href={att.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                            >
+                                <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                            </a>
+                        ))}
+                    </div>
                 )}
             </div>
-            {currentAttachments && currentAttachments.length > 0 && (
-                <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                    {currentAttachments.map((att, index) => (
-                        <a 
-                            key={index}
-                            href={att.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
-                        >
-                            <Paperclip className="h-6 w-6 text-muted-foreground" />
-                             <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
-                        </a>
-                    ))}
-                </div>
-            )}
-        </div>
+        )}
 
 
       </div>
