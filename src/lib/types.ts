@@ -124,7 +124,6 @@ export const TruckSchema = z.object({
   name: z.string().min(1, { message: "O nome/identificador é obrigatório." }),
   plate: z.string().min(1, "A placa é obrigatória.").max(8, { message: "A placa deve ter no máximo 8 caracteres." }),
   type: z.string({ required_error: "O tipo de caminhão é obrigatório."}),
-  model: z.string().optional().nullable(),
   year: z.preprocess(toNumOrNull, z.number().nullable()),
   status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']).default('Disponível'),
 });

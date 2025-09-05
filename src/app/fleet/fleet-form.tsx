@@ -79,7 +79,6 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
       
       const rawData = Object.fromEntries(formData.entries());
       
-      if (rawData.model === '') delete rawData.model;
       if (rawData.year === '') delete rawData.year;
       
       const cleanFormData = new FormData();
@@ -136,10 +135,6 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
                 </SelectContent>
             </Select>
             {state?.errors?.type && <p className="text-sm font-medium text-destructive">{state.errors.type[0]}</p>}
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="model">Modelo</Label>
-            <Input id="model" name="model" placeholder="Mercedes-Benz Atego" defaultValue={truck?.model ?? ''} />
         </div>
         <div className="space-y-2">
             <Label htmlFor="year">Ano</Label>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
@@ -163,7 +164,6 @@ export default function FleetPage() {
                           <div className="flex items-center justify-between">
                             <div className="text-sm text-muted-foreground space-x-2">
                                 {truck.type && <span className="font-medium text-foreground capitalize">{truck.type}</span>}
-                                {truck.model && <span>{truck.model}</span>}
                                 {truck.year && <span>({truck.year})</span>}
                             </div>
                             <Badge variant={statusVariantMap[truck.status]}>
