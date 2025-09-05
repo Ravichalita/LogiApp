@@ -110,7 +110,7 @@ export function FleetForm({ truck, onSave }: FleetFormProps) {
         {isEdit && <input type="hidden" name="id" value={truck.id} />}
         <div className="space-y-2">
             <Label htmlFor="name">Modelo / Nome</Label>
-            <Input id="name" name="name" placeholder="Ex: Caminhão 01" defaultValue={truck?.name} required />
+            <Input id="name" name="name" placeholder="Ex: Mercedes-Benz Atego" defaultValue={truck?.name} required />
             {state?.errors?.name && <p className="text-sm font-medium text-destructive">{state.errors.name[0]}</p>}
         </div>
         <div className="space-y-2">
