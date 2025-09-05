@@ -598,14 +598,12 @@ export default function OSPage() {
                                         </div>
                                     </CardDescription>
                                 </CardHeader>
-                                 <CardContent className="flex-grow flex flex-col justify-between pt-0 pb-0">
-                                    <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
-                                       <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                    </AccordionTrigger>
-                                    <AccordionContent className="px-1 py-4">
-                                       <RentalCardActions rental={rental} status={status} />
-                                    </AccordionContent>
-                                </CardContent>
+                                 <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                 </AccordionTrigger>
+                                <AccordionContent className="px-1 py-4">
+                                    <RentalCardActions rental={rental} status={status} />
+                                </AccordionContent>
                             </Card>
                          </AccordionItem>
                     </Accordion>
@@ -665,7 +663,7 @@ export default function OSPage() {
                                     <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                  </AccordionTrigger>
                                 <AccordionContent className="px-1 py-4">
-                                    <div className="space-y-4 text-sm">
+                                    <div className="space-y-4 text-sm px-1">
                                          <div className="mt-3 space-y-4">
                                             <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                  <span className="text-xs font-semibold uppercase text-muted-foreground">Destino:</span>
@@ -698,7 +696,6 @@ export default function OSPage() {
 
                                         {canSeeFinance && (
                                             <>
-                                                <Separator />
                                                 <div className="flex items-center gap-2 pt-2">
                                                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                                                     <span className="font-medium">Valor do Serviço:</span>
@@ -728,7 +725,9 @@ export default function OSPage() {
                                             </>
                                         )}
                                         
-                                         <Accordion type="single" collapsible className="w-full">
+                                        <Separator />
+
+                                        <Accordion type="single" collapsible className="w-full">
                                             <AccordionItem value="attachments" className="border-none">
                                                 <div className="pt-2 flex justify-between items-center w-full">
                                                     {op.client?.phone && (

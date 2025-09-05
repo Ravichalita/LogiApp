@@ -128,7 +128,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const boundFinishRentalAction = finishRentalAction.bind(null, accountId!);
 
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className="flex flex-col gap-4 h-full px-1">
       <div className="space-y-4">
         <div className="space-y-2">
           <div>
@@ -174,6 +174,8 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             </div>
         )}
         
+        <Separator />
+
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="attachments" className="border-none">
              <div className="pt-2 flex justify-between items-center w-full">
