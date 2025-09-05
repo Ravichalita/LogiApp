@@ -128,7 +128,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       <div className="space-y-4">
-        <div className="flex items-stretch justify-between gap-2">
+        <div className="flex flex-col gap-2">
             <div className="flex items-start gap-3 flex-grow">
                 <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                 <div className="flex flex-col">
@@ -136,11 +136,11 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     <span className="font-medium">{rental.deliveryAddress}</span>
                 </div>
             </div>
-            {!!rental.latitude && !!rental.longitude && (
-                <Button variant="outline" size="sm" asChild className="bg-muted/50 flex flex-col items-center justify-center p-2 h-auto w-[65%] text-center md:flex-row md:w-auto md:h-auto md:p-2 md:text-sm">
+             {!!rental.latitude && !!rental.longitude && (
+                <Button variant="outline" size="sm" asChild className="w-full">
                     <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                        <MapPin className="h-5 w-5 mb-1 md:mb-0 md:mr-2" />
-                        <span className="leading-tight text-[10px] md:text-xs">Abrir no Mapa</span>
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>Abrir no Mapa</span>
                     </Link>
                 </Button>
             )}
@@ -181,19 +181,17 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
         <Separator />
         
-        <div className="flex items-center justify-between">
-            <a 
-                href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}?text=Olá, ${rental.client?.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:underline"
-            >
-                <WhatsAppIcon className="h-6 w-6 fill-green-600" />
-                <span className="font-medium text-green-600">{rental.client?.phone}</span>
-            </a>
-        </div>
-        
-        <div className="space-y-2 pt-4">
+         <a 
+            href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone ?? '')}?text=Olá, ${rental.client?.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:underline"
+        >
+            <WhatsAppIcon className="h-6 w-6 fill-green-600" />
+            <span className="font-medium text-green-600">{rental.client?.phone}</span>
+        </a>
+
+        <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-muted-foreground">Anexos:</h4>
                 {accountId && (
