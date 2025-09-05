@@ -566,7 +566,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                         <WeatherIcon condition={weather.condition} />
                         <span className="font-bold">{weather.tempC}°C</span>
                     </div>
-                    <p className="text-xs mt-1 text-orange-800 dark:text-orange-300">Previsão do Tempo</p>
+                    <p className="text-xs mt-1 text-primary/80">Previsão do Tempo</p>
                     </div>
                 )}
                 {(travelCost !== null && travelCost > 0) && (
@@ -576,7 +576,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                     </div>
                 )}
                 </div>
-                 <Button asChild variant="outline" size="sm" className="w-full mt-4">
+                 <Button asChild variant="outline" size="sm" className="w-full mt-4 border-primary/50">
                     <Link href={`https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${destinationLocation.lat},${destinationLocation.lng}`} target="_blank" className="flex items-center gap-2">
                         <Map className="h-4 w-4" />
                         <span>Ver Trajeto no Mapa</span>

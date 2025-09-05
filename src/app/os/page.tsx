@@ -224,7 +224,7 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
                 <WeatherIcon condition={weather.condition} />
                 <span className="font-bold">{weather.tempC}°C</span>
               </div>
-              <p className="text-xs mt-1 text-orange-800 dark:text-orange-300">Previsão do Tempo</p>
+              <p className="text-xs mt-1 text-primary/80">Previsão do Tempo</p>
             </div>
           )}
           {(travelCost !== null && travelCost > 0) && (
@@ -234,7 +234,7 @@ const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => 
              </div>
           )}
         </div>
-         <Button asChild variant="outline" size="sm" className="w-full mt-auto">
+         <Button asChild variant="outline" size="sm" className="w-full mt-auto border-primary/50">
             <Link
                 href={`https://www.google.com/maps/dir/?api=1&origin=${operation.startLatitude},${operation.startLongitude}&destination=${operation.destinationLatitude},${operation.destinationLongitude}`}
                 target="_blank"
