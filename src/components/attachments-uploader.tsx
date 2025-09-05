@@ -102,7 +102,6 @@ export const AttachmentsUploader = ({
 
     return (
         <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Anexos</Label>
             <input
                 type="file"
                 ref={fileInputRef}
