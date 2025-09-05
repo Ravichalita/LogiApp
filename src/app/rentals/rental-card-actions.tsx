@@ -145,14 +145,11 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             )}
         </div>
         <div className="flex items-center justify-between">
-            <div className="flex items-start gap-3">
-                <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                <div className="flex flex-col">
-                    <span className="text-sm text-muted-foreground">Período</span>
-                     <p className="font-semibold text-base">
-                        {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                    </p>
-                </div>
+            <div className="flex flex-col">
+                <span className="text-sm text-muted-foreground">Período</span>
+                 <p className="font-semibold text-base">
+                    {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+                </p>
             </div>
         </div>
         
