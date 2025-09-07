@@ -7,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -579,7 +579,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     return { message: handleFirebaseError(e) as string };
   }
 
-  revalidatePath('/');
+  revalidatePath('/os');
   redirect('/os');
 }
 
@@ -642,7 +642,6 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
     
     revalidatePath('/');
     revalidatePath('/finance');
-    redirect('/os');
 }
 
 export async function deleteRentalAction(accountId: string, rentalId: string) {
@@ -719,36 +718,62 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) as string };
     }
-    redirect('/os');
+
+    // Only redirect if coming from the edit page, not from a simple attachment update
+    const headersList = headers();
+    const referer = headersList.get('referer');
+    if (referer?.includes('/edit')) {
+        redirect('/os');
+    }
 }
 
-export async function addAttachmentToRentalAction(accountId: string, rentalId: string, attachment: z.infer<typeof AttachmentSchema>) {
+export async function addAttachmentToRentalAction(accountId: string, rentalId: string, attachment: z.infer<typeof AttachmentSchema>, collectionName: 'rentals' | 'completed_rentals') {
     if (!accountId || !rentalId) return { message: 'error', error: 'ID da conta ou do aluguel ausente.' };
 
     try {
-        const rentalRef = adminDb.doc(`accounts/${accountId}/rentals/${rentalId}`);
+        const rentalRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${rentalId}`);
         await rentalRef.update({
             attachments: FieldValue.arrayUnion(attachment)
         });
-        revalidatePath('/');
-        revalidatePath('/os');
+        revalidatePath(collectionName === 'rentals' ? '/os' : '/finance');
         return { message: 'success' };
     } catch(e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
 
-export async function addAttachmentToCompletedRentalAction(accountId: string, completedRentalId: string, attachment: z.infer<typeof AttachmentSchema>) {
-    if (!accountId || !completedRentalId) return { message: 'error', error: 'ID da conta ou do aluguel ausente.' };
-
+export async function addAttachmentToOperationAction(accountId: string, operationId: string, attachment: z.infer<typeof AttachmentSchema>, collectionName: 'operations' | 'completed_operations') {
+    if (!accountId || !operationId) return { message: 'error', error: 'ID da conta ou da operação ausente.' };
     try {
-        const rentalRef = adminDb.doc(`accounts/${accountId}/completed_rentals/${completedRentalId}`);
-        await rentalRef.update({
+        const opRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${operationId}`);
+        await opRef.update({
             attachments: FieldValue.arrayUnion(attachment)
         });
+        revalidatePath(collectionName === 'operations' ? '/os' : '/finance');
+        return { message: 'success' };
+    } catch(e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteAttachmentAction(accountId: string, itemId: string, itemKind: 'rentals' | 'operations' | 'completed_rentals' | 'completed_operations', attachment: Attachment) {
+    if (!accountId || !itemId || !itemKind) return { message: 'error', error: 'Informações incompletas para excluir anexo.' };
+    
+    try {
+        const itemRef = adminDb.doc(`accounts/${accountId}/${itemKind}/${itemId}`);
+        await itemRef.update({
+            attachments: FieldValue.arrayRemove(attachment)
+        });
+
+        // The file is deleted from storage on the client side before calling this action for better UX.
+        // If that fails, the user will be notified, and they can try again.
+        // We avoid deleting from here to prevent leaving orphan files if the DB update fails.
+        
+        revalidatePath('/os');
         revalidatePath('/finance');
         return { message: 'success' };
     } catch(e) {
+        console.error("Error deleting attachment reference from DB:", e);
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
@@ -993,60 +1018,6 @@ export async function deleteOperationAction(accountId: string, operationId: stri
         revalidatePath('/fleet');
         return { message: 'success' };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function addAttachmentToOperationAction(accountId: string, operationId: string, attachment: z.infer<typeof AttachmentSchema>) {
-    if (!accountId || !operationId) return { message: 'error', error: 'ID da conta ou da operação ausente.' };
-
-    try {
-        const operationRef = adminDb.doc(`accounts/${accountId}/operations/${operationId}`);
-        await operationRef.update({
-            attachments: FieldValue.arrayUnion(attachment)
-        });
-        revalidatePath('/os');
-        return { message: 'success' };
-    } catch(e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function addAttachmentToCompletedOperationAction(accountId: string, completedOperationId: string, attachment: z.infer<typeof AttachmentSchema>) {
-    if (!accountId || !completedOperationId) return { message: 'error', error: 'ID da conta ou da operação ausente.' };
-
-    try {
-        const operationRef = adminDb.doc(`accounts/${accountId}/completed_operations/${completedOperationId}`);
-        await operationRef.update({
-            attachments: FieldValue.arrayUnion(attachment)
-        });
-        revalidatePath('/finance');
-        return { message: 'success' };
-    } catch(e) {
-        return { message: 'error', error: handleFirebaseError(e) };
-    }
-}
-
-export async function deleteAttachmentFromCompletedItemAction(accountId: string, itemId: string, itemKind: 'rental' | 'operation', attachment: Attachment) {
-    if (!accountId || !itemId || !itemKind) return { message: 'error', error: 'Informações incompletas para excluir anexo.' };
-    
-    const collectionName = itemKind === 'rental' ? 'completed_rentals' : 'completed_operations';
-
-    try {
-        const itemRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${itemId}`);
-        await itemRef.update({
-            attachments: FieldValue.arrayRemove(attachment)
-        });
-
-        // Optionally, delete the file from Firebase Storage as well
-        // const storage = getStorage(adminApp);
-        // const fileRef = storage.refFromURL(attachment.url);
-        // await fileRef.delete();
-        
-        revalidatePath('/finance');
-        return { message: 'success' };
-    } catch(e) {
-        console.error("Error deleting attachment:", e);
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
@@ -1561,10 +1532,124 @@ export async function deleteFirestoreBackupAction(accountId: string, backupId: s
     }
 }
 
+export async function deleteStorageFileAction(pathOrUrl: string) {
+    try {
+        let objectPath = pathOrUrl.replace(/^\/+/, "");
+
+        if (/^https?:\/\//.test(objectPath)) {
+            const u = new URL(objectPath);
+            const afterO = u.pathname.split("/o/")[1] ?? "";
+            objectPath = decodeURIComponent(afterO.split("?")[0]);
+        }
+        
+        const bucket = getStorage(adminApp).bucket();
+        await bucket.file(objectPath).delete({ ignoreNotFound: true });
+        return { message: 'success' };
+    } catch (e: any) {
+        console.error("Error deleting storage file:", e);
+        if (e?.code === 404) {
+            return { message: "error", error: "Arquivo não encontrado no bucket (404)." };
+        }
+        return { message: "error", error: `Falha ao excluir: ${e?.message ?? e}` };
+    }
+}
+
 
 // #endregion
 
 // #region Notification Actions
+export async function uploadNotificationImageAction(formData: FormData) {
+  const file = formData.get('file') as File;
+  const accountId = formData.get('accountId') as string;
+  const uploadPath = formData.get('uploadPath') as string;
+
+  if (!file || !accountId || !uploadPath) {
+    return { message: 'error' as const, error: 'Dados insuficientes para o upload.' };
+  }
+
+  try {
+    const bucket = getStorage(adminApp).bucket();
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const uniqueFileName = `${Date.now()}_${file.name}`;
+    const fullPath = `${uploadPath}/${uniqueFileName}`;
+    
+    const fileRef = bucket.file(fullPath);
+    
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: file.type,
+      },
+    });
+
+    const [downloadURL] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: '03-09-2491',
+    });
+
+    const newImage: UploadedImage = {
+      url: downloadURL,
+      path: fullPath,
+    };
+    
+    await adminDb.doc(`accounts/${accountId}`).update({
+        notificationImages: FieldValue.arrayUnion(newImage)
+    });
+    
+    revalidatePath('/notifications-studio');
+    
+    return { message: 'success' as const, newImage };
+
+  } catch (e) {
+    console.error("Upload server action error:", e);
+    return { message: 'error' as const, error: handleFirebaseError(e) };
+  }
+}
+
+export async function deleteNotificationImageAction(accountId: string, imagePath: string) {
+    if (!accountId || !imagePath) {
+        return { message: 'error' as const, error: 'Informações incompletas.' };
+    }
+
+    try {
+        // First, delete the file from storage
+        await deleteStorageFileAction(imagePath);
+
+        // Then, remove the reference from the account document
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
+        const accountSnap = await accountRef.get();
+        if (accountSnap.exists) {
+            const currentImages: UploadedImage[] = accountSnap.data()?.notificationImages || [];
+            const updatedImages = currentImages.filter(img => img.path !== imagePath);
+            await accountRef.update({ notificationImages: updatedImages });
+        }
+
+        revalidatePath('/notifications-studio');
+        return { message: 'success' as const };
+    } catch (e) {
+        console.error('Error deleting notification image:', e);
+        return { message: 'error' as const, error: handleFirebaseError(e) };
+    }
+}
+
+
+export async function updateNotificationImagesAction(accountId: string, images: UploadedImage[]) {
+  if (!accountId) {
+    return { message: 'error', error: 'Conta não identificada.' };
+  }
+  const validatedImages = z.array(UploadedImageSchema).safeParse(images);
+  if (!validatedImages.success) {
+    return { message: 'error', error: 'Dados de imagem inválidos.' };
+  }
+  try {
+    const accountRef = adminDb.doc(`accounts/${accountId}`);
+    await accountRef.update({ notificationImages: validatedImages.data });
+    revalidatePath('/notifications-studio');
+    return { message: 'success' };
+  } catch (e) {
+    return { message: 'error', error: handleFirebaseError(e) };
+  }
+}
+
 export async function checkAndSendDueNotificationsAction(accountId: string) {
     if (!accountId) {
         console.error("checkAndSendDueNotificationsAction called without accountId");
@@ -1621,16 +1706,19 @@ export async function sendPushNotificationAction(formData: FormData) {
         message: z.string().min(1, 'A mensagem é obrigatória.'),
         targetType: z.enum(['all-company', 'specific-clients', 'specific-users', 'my-team', 'specific-members']),
         targetIds: z.string().optional(),
+        imageUrl: z.string().url('URL da imagem inválida.').optional().or(z.literal('')),
+        linkUrl: z.string().url('URL do link inválido.').optional().or(z.literal('')),
         senderAccountId: z.string(),
     });
 
     const parsed = NotificationSchema.safeParse(Object.fromEntries(formData.entries()));
 
     if (!parsed.success) {
-        return { message: 'error', error: 'Dados do formulário inválidos.' };
+        const firstError = Object.values(parsed.error.flatten().fieldErrors).flat()[0];
+        return { message: 'error', error: firstError || 'Dados do formulário inválidos.' };
     }
     
-    const { title, message, targetType, targetIds, senderAccountId } = parsed.data;
+    const { title, message, targetType, targetIds, imageUrl, linkUrl, senderAccountId } = parsed.data;
     
     try {
         let recipientIds: string[] = [];
@@ -1675,6 +1763,8 @@ export async function sendPushNotificationAction(formData: FormData) {
                 userId,
                 title,
                 body: message,
+                imageUrl: imageUrl || undefined,
+                linkUrl: linkUrl || undefined,
             })
         );
         
@@ -1840,3 +1930,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
+    
+
+

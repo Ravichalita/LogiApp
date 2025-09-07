@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getMessaging } from 'firebase-admin/messaging';
@@ -10,9 +9,11 @@ interface NotificationPayload {
     userId: string;
     title: string;
     body: string;
+    imageUrl?: string;
+    linkUrl?: string;
 }
 
-export async function sendNotification({ userId, title, body }: NotificationPayload) {
+export async function sendNotification({ userId, title, body, imageUrl, linkUrl }: NotificationPayload) {
     if (!userId) return;
 
     try {
@@ -29,27 +30,28 @@ export async function sendNotification({ userId, title, body }: NotificationPayl
             console.log(`User ${userId} has no FCM tokens. Skipping notification.`);
             return;
         }
+        
+        const finalBody = linkUrl ? `${body}\n${linkUrl}` : body;
 
-        // Send data payload for full control on the client
-        const message = {
-            data: {
+        const message ={
+            notification: {
                 title,
-                body,
+                body: finalBody,
+                image: imageUrl || undefined,
             },
+
             tokens,
         };
 
         const response = await getMessaging().sendEachForMulticast(message);
         console.log(`Successfully sent message to ${response.successCount} devices.`);
 
-        // Clean up invalid tokens
         if (response.failureCount > 0) {
             const tokensToRemove: string[] = [];
             response.responses.forEach((resp, idx) => {
                 if (!resp.success) {
                     const failedToken = tokens[idx];
                     console.error(`Failed to send to token: ${failedToken}`, resp.error);
-                    // Check for errors indicating an invalid or unregistered token
                     if (
                         resp.error.code === 'messaging/invalid-registration-token' ||
                         resp.error.code === 'messaging/registration-token-not-registered'

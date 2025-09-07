@@ -32,7 +32,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { EditOperationAssignedUserDialog } from '@/app/operations/edit-assigned-user-dialog';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToRentalAction, addAttachmentToOperationAction, deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
+import { addAttachmentToRentalAction, addAttachmentToOperationAction, deleteAttachmentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 
 
@@ -415,22 +415,32 @@ export default function OSPage() {
     if (!accountId) return;
 
     let result;
+    let collectionName: 'rentals' | 'operations';
+
     if (item.itemType === 'rental') {
-      result = await addAttachmentToRentalAction(accountId, item.id, newAttachment);
-      if (result.message === 'success') {
-          setRentals(prev => prev.map(r => r.id === item.id ? { ...r, attachments: [...(r.attachments || []), newAttachment] } : r));
-      }
+        collectionName = 'rentals';
+        result = await addAttachmentToRentalAction(accountId, item.id, newAttachment, collectionName);
     } else {
-      result = await addAttachmentToOperationAction(accountId, item.id, newAttachment);
-       if (result.message === 'success') {
-          setOperations(prev => prev.map(o => o.id === item.id ? { ...o, attachments: [...(o.attachments || []), newAttachment] } : o));
-      }
+        collectionName = 'operations';
+        result = await addAttachmentToOperationAction(accountId, item.id, newAttachment, collectionName);
     }
 
     if (result.message === 'success') {
-      toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
+        const updateState = (prevItems: any[]) => prevItems.map(i => 
+            i.id === item.id 
+            ? { ...i, attachments: [...(i.attachments || []), newAttachment] } 
+            : i
+        );
+        
+        if (item.itemType === 'rental') {
+            setRentals(updateState);
+        } else {
+            setOperations(updateState);
+        }
+
+        toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
     } else {
-      toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
+        toast({ title: 'Erro ao adicionar anexo', description: result.error, variant: 'destructive' });
     }
   };
   
@@ -438,14 +448,22 @@ export default function OSPage() {
     if (!accountId) return;
     
     const collectionName = item.itemType === 'rental' ? 'rentals' : 'operations';
-    const result = await deleteAttachmentFromCompletedItemAction(accountId, item.id, collectionName as any, attachmentToDelete);
+    const result = await deleteAttachmentAction(accountId, item.id, collectionName, attachmentToDelete);
 
     if (result.message === 'success') {
+        const updateState = (prevItems: any[]) => prevItems.map(i => {
+            if (i.id === item.id) {
+                return { ...i, attachments: (i.attachments || []).filter((att: Attachment) => att.url !== attachmentToDelete.url) };
+            }
+            return i;
+        });
+        
         if (item.itemType === 'rental') {
-             setRentals(prev => prev.map(r => r.id === item.id ? { ...r, attachments: (r.attachments || []).filter(a => a.url !== attachmentToDelete.url) } : r));
+            setRentals(updateState);
         } else {
-            setOperations(prev => prev.map(o => o.id === item.id ? { ...o, attachments: (o.attachments || []).filter(a => a.url !== attachmentToDelete.url) } : o));
+            setOperations(updateState);
         }
+
         toast({ title: 'Sucesso!', description: 'Anexo removido.' });
     } else {
         toast({ title: 'Erro ao remover anexo', description: result.error, variant: 'destructive' });
@@ -529,7 +547,7 @@ export default function OSPage() {
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
-                        variant={osTypeFilter === option.value ? "default" : "outline"}
+                        variant={osTypeFilter === option.value ? "selected" : "outline"}
                         onClick={() => handleTypeFilterChange(option.value)}
                         className="py-2"
                     >
@@ -541,7 +559,7 @@ export default function OSPage() {
                 {statusFilterOptions.map((option) => (
                     <Button
                         key={option.value}
-                        variant={statusFilter === option.value ? 'default' : 'outline'}
+                        variant={statusFilter === option.value ? 'selected' : 'outline'}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
                         className="py-1 h-7 text-xs"
@@ -781,3 +799,5 @@ export default function OSPage() {
     </div>
   );
 }
+
+    

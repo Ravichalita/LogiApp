@@ -1,51 +1,64 @@
+// public/firebase-messaging-sw.js
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    // sem payload — nada a fazer
+    return;
+  }
 
-// This file needs to be in the public directory
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (err) {
+    console.error('Push event: payload parse error', err);
+    return;
+  }
 
-// Scripts for Firebase
-importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
+  // suporte a várias formas (notification / data / flat)
+  const title =
+    (payload.notification && payload.notification.title) ||
+    (payload.data && payload.data.title) ||
+    payload.title ||
+    'Nova Notificação';
 
-// Get Firebase config from query string
-const urlParams = new URLSearchParams(self.location.search);
-const firebaseConfig = JSON.parse(urlParams.get('firebaseConfig'));
+  const body =
+    (payload.notification && payload.notification.body) ||
+    (payload.data && payload.data.body) ||
+    payload.body ||
+    '';
 
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+  const image =
+    (payload.notification && payload.notification.image) ||
+    (payload.webpush && payload.webpush.notification && payload.webpush.notification.image) ||
+    (payload.data && payload.data.imageUrl) ||
+    payload.imageUrl ||
+    undefined;
 
-// Handle incoming messages when the app is in the background
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  const notificationTitle = payload.data.title;
-  const notificationOptions = {
-    body: payload.data.body,
-    icon: '/192x192.png' // You can use a generic icon
+  const link =
+    (payload.webpush && payload.webpush.fcmOptions && payload.webpush.fcmOptions.link) ||
+    (payload.data && payload.data.link) ||
+    payload.link ||
+    '/';
+
+  const options = {
+    body,
+    icon: (payload.notification && payload.notification.icon) || (payload.data && payload.data.icon) || '/favicon.ico',
+    image, // undefined ok
+    data: { url: link },
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Optional: Handle notification click
 self.addEventListener('notificationclick', (event) => {
-    console.log('[firebase-messaging-sw.js] Notification click Received.', event);
-    event.notification.close();
-
-    // This looks for an existing window and focuses it.
-    // If no window is found, it opens a new one.
-    event.waitUntil(
-        clients.matchAll({
-            type: "window"
-        }).then((clientList) => {
-            for (let i = 0; i < clientList.length; i++) {
-                const client = clientList[i];
-                if (client.url == '/' && 'focus' in client) {
-                    return client.focus();
-                }
-            }
-            if (clients.openWindow) {
-                return clients.openWindow('/');
-            }
-        })
-    );
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        // foca na aba se já estiver aberta
+        if (client.url === url && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
 });

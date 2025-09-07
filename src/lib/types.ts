@@ -30,6 +30,12 @@ export const RentalPriceSchema = z.object({
 
 export type RentalPrice = z.infer<typeof RentalPriceSchema>;
 
+export const UploadedImageSchema = z.object({
+    url: z.string().url(),
+    path: z.string(),
+});
+export type UploadedImage = z.infer<typeof UploadedImageSchema>;
+
 export const OperationTypeSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: "O nome do tipo de operação é obrigatório." }),
@@ -52,6 +58,7 @@ export const AccountSchema = z.object({
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
     operationTypes: z.array(OperationTypeSchema).optional().default([]),
     truckTypes: z.array(TruckTypeSchema).optional().default([]),
+    notificationImages: z.array(UploadedImageSchema).optional().default([]),
     lastBackupDate: z.string().optional(),
     backupPeriodicityDays: z.number().int().min(1).optional().default(7),
     backupRetentionDays: z.number().int().min(1).optional().default(90),

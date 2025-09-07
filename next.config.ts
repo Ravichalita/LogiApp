@@ -2,6 +2,14 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+    ],
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
@@ -10,8 +18,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   // This is required for Server Actions to work with the Firebase Admin SDK
+  serverExternalPackages: ['firebase-admin'],
   experimental: {
-    serverComponentsExternalPackages: ['firebase-admin'],
+    
   },
   // Redirect root to /os
   async redirects() {

@@ -4,7 +4,7 @@
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { getAuth, onAuthStateChanged, User, signOut, getIdTokenResult } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
-import { getFirebase, setupFcm, getFirebaseIdToken } from '@/lib/firebase-client';
+import { getFirebase, setupFcm, getFirebaseIdToken, cleanupFcm } from '@/lib/firebase-client';
 import type { UserAccount, UserRole, Account, Permissions } from '@/lib/types';
 import { usePathname, useRouter } from 'next/navigation';
 import { Spinner } from '@/components/ui/spinner';
@@ -93,7 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [accountMissing, setAccountMissing] = useState(false);
   const sessionWorkPerformed = useRef(false); // Used for all once-per-session tasks
-  const fcmSetupPerformed = useRef(false); // Prevent multiple FCM setup calls
+  
+  const fcmUnsubscribe = useRef<() => void>(() => {});
 
   const { auth, db } = getFirebase();
   const router = useRouter();
@@ -118,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsSuperAdmin(false);
     setAccountMissing(false);
     sessionWorkPerformed.current = false; // Reset session work on logout
-    fcmSetupPerformed.current = false; // Reset FCM setup on logout
+    cleanupFcm(); // Clean up FCM listener on logout
     await signOut(auth);
     router.push('/login');
   }, [auth, router]);
@@ -175,12 +176,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setIsSuperAdmin(false);
       sessionWorkPerformed.current = false; // Reset on user change
-      fcmSetupPerformed.current = false;
       setShowWelcomeDialog(false);
       setAccountMissing(false);
 
       if (userDocUnsubscribe.current) userDocUnsubscribe.current();
       if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
+      cleanupFcm(); // Clean up previous FCM listener
 
       if (!firebaseUser) {
         setUser(null);
@@ -236,6 +237,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (claimsRole === 'superadmin') {
             setIsSuperAdmin(true);
         }
+
+        fcmUnsubscribe.current = await setupFcm(firebaseUser.uid);
         
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         userDocUnsubscribe.current = onSnapshot(userDocRef, async (userDocSnap) => {
@@ -331,7 +334,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribe();
+        if (fcmUnsubscribe.current) {
+            fcmUnsubscribe.current();
+        }
+    };
   }, [auth, db, logout]);
 
 
@@ -340,11 +348,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         checkAndTriggerAutoBackup(account.id, account);
         checkAndSendDueNotificationsAction(account.id);
-        
-        if (!fcmSetupPerformed.current) {
-            setupFcm(user.uid);
-            fcmSetupPerformed.current = true;
-        }
 
         sessionWorkPerformed.current = true; 
         setLoading(false); 

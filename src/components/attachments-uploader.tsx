@@ -13,6 +13,7 @@ import { Spinner } from './ui/spinner';
 import { deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Label } from './ui/label';
+import Image from 'next/image';
 
 interface AttachmentsUploaderProps {
   accountId: string;
@@ -112,16 +113,24 @@ export const AttachmentsUploader = ({
                 disabled={isUploading}
             />
              <div className="flex w-full overflow-x-auto gap-2 pt-2 pb-2">
-                {attachments.map((att, index) => (
+                {attachments.map((att, index) => {
+                    const isImage = att.type.startsWith('image/');
+                    return (
                     <div key={index} className="relative group shrink-0">
                         <a 
                             href={att.url} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-2 flex flex-col items-center justify-center text-center hover:bg-muted"
+                            className="relative group shrink-0 h-20 w-20 bg-muted/50 border rounded-md p-1 flex flex-col items-center justify-center text-center hover:bg-muted overflow-hidden"
                         >
-                            <Paperclip className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                            {isImage ? (
+                                <Image src={att.url} alt={att.name} layout="fill" objectFit="cover" />
+                            ) : (
+                                <>
+                                 <Paperclip className="h-6 w-6 text-muted-foreground" />
+                                 <span className="text-xs break-all line-clamp-2 mt-1">{att.name}</span>
+                                </>
+                            )}
                         </a>
                          {showDeleteButton && (
                              <AlertDialog>
@@ -147,7 +156,7 @@ export const AttachmentsUploader = ({
                             </AlertDialog>
                          )}
                     </div>
-                ))}
+                )})}
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}

@@ -125,7 +125,7 @@ export default function EditOperationPage() {
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6 bg-muted/30">
       <Card className="border-0 shadow-none bg-transparent">
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Editar Ordem de Operação #OP{operation?.sequentialId}</CardTitle>
+          <CardTitle className="font-headline text-2xl">Editar Operação #OP{operation?.sequentialId}</CardTitle>
           <CardDescription>Ajuste as informações da operação e salve as alterações.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">

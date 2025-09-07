@@ -7,24 +7,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/auth-context";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { ShieldAlert, Users, User, Building, Check } from "lucide-react";
+import { ShieldAlert, Users, User, Building, Check, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { UserAccount, AdminClientView, Permissions } from "@/lib/types";
+import type { UserAccount, AdminClientView, UploadedImage, Account } from "@/lib/types";
 import { getAllClientAccountsAction } from "@/lib/data-server-actions";
-import { getTeamMembers } from "@/lib/data";
-import { updateUserPermissionsAction, sendPushNotificationAction } from "@/lib/actions";
+import { getTeamMembers, getAccount } from "@/lib/data";
+import { sendPushNotificationAction, updateNotificationImagesAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Spinner } from "@/components/ui/spinner";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { ImageUploader } from "./image-uploader";
 
 
-const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId }: { userRole: string; clients: AdminClientView[], team: UserAccount[], superAdminId: string, accountId: string }) => {
+const NotificationComposer = ({ userRole, clients, team, accountId, account }: { userRole: string; clients: AdminClientView[], team: UserAccount[], accountId: string, account: Account | null }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -32,13 +33,29 @@ const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId
   // Form State
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [imageUrl, setImageUrl] = useState(''); // The currently selected image URL
+  const [linkUrl, setLinkUrl] = useState('');
   const [targetType, setTargetType] = useState(userRole === 'super' ? 'all-company' : 'my-team');
   const [targetIds, setTargetIds] = useState<string[]>([]);
+  
+  // State for the image gallery, initialized from the account data
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [isUpdatingImages, startImagesTransition] = useTransition();
+  
+  useEffect(() => {
+    // This effect synchronizes the local state with the account data from the database
+    if (account?.notificationImages) {
+        setUploadedImages(account.notificationImages);
+    }
+  }, [account]);
+
 
   const getFormData = (): FormData => {
     const formData = new FormData();
     formData.set('title', title);
     formData.set('message', message);
+    formData.set('imageUrl', imageUrl);
+    formData.set('linkUrl', linkUrl);
     formData.set('targetType', targetType);
     formData.set('targetIds', targetIds.join(','));
     formData.set('senderAccountId', accountId);
@@ -49,6 +66,8 @@ const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId
   const resetForm = () => {
       setTitle('');
       setMessage('');
+      setImageUrl('');
+      setLinkUrl('');
       setTargetIds([]);
       setTargetType(userRole === 'super' ? 'all-company' : 'my-team');
   }
@@ -70,6 +89,25 @@ const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId
     });
   }
   
+  const handleImageUploaded = (newImage: UploadedImage) => {
+    const newImageList = [...uploadedImages, newImage];
+    setUploadedImages(newImageList);
+    startImagesTransition(async () => {
+        await updateNotificationImagesAction(accountId, newImageList);
+    });
+  }
+  
+  const handleImageDeleted = (imagePath: string) => {
+      const newImageList = uploadedImages.filter(img => img.path !== imagePath);
+      setUploadedImages(newImageList);
+      if (imageUrl === uploadedImages.find(img => img.path === imagePath)?.url) {
+          setImageUrl(''); // Clear selection if the deleted image was selected
+      }
+      startImagesTransition(async () => {
+          await updateNotificationImagesAction(accountId, newImageList);
+      });
+  }
+  
   const allClientUsers = clients.flatMap(c => c.members);
   
   const targetOptions = {
@@ -84,7 +122,7 @@ const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId
     <Card>
       <CardHeader>
         <CardTitle>Criar Nova Notificação</CardTitle>
-        <CardDescription>Envie notificações em tempo real para sua equipe.</CardDescription>
+        <CardDescription>Envie notificações com imagem e link em tempo real.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -120,13 +158,31 @@ const NotificationComposer = ({ userRole, clients, team, superAdminId, accountId
                 </TabsContent>
             </Tabs>
             <div className="space-y-2">
-                <label htmlFor="title">Título</label>
+                <Label htmlFor="title">Título</Label>
                 <Input name="title" id="title" placeholder="Título da sua notificação" required value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div className="space-y-2">
-                <label htmlFor="message">Mensagem</label>
+                <Label htmlFor="message">Mensagem</Label>
                 <Textarea name="message" id="message" placeholder="Corpo da sua notificação" required value={message} onChange={(e) => setMessage(e.target.value)} />
             </div>
+            
+             <ImageUploader 
+                selectedImageUrl={imageUrl}
+                onImageSelect={setImageUrl}
+                uploadedImages={uploadedImages}
+                onImageUploaded={handleImageUploaded}
+                onImageDeleted={handleImageDeleted}
+                uploadPath={`accounts/${accountId}/notifications/images`}
+            />
+
+             <div className="space-y-2">
+                <Label htmlFor="linkUrl" className="flex items-center gap-2">
+                     <LinkIcon className="h-4 w-4" />
+                     URL do Link (Opcional)
+                </Label>
+                <Input name="linkUrl" id="linkUrl" placeholder="https://exemplo.com/pagina" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} />
+            </div>
+            
             <div className="flex space-x-2 pt-2">
                 <Button onClick={handleSendNow} disabled={isPending}>
                     {isPending ? <Spinner size="small" /> : "Enviar Agora"}
@@ -202,12 +258,12 @@ export default function NotificationsStudioPage() {
   const { user, userAccount, isSuperAdmin, loading, accountId } = useAuth();
   const [clients, setClients] = useState<AdminClientView[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
+  const [account, setAccount] = useState<Account | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
   const getRoleForView = () => {
     if (isSuperAdmin) return "super";
-    if (userAccount?.role === 'owner') return "owner";
-    if (userAccount?.role === 'admin') return "admin";
+    if (userAccount?.role === 'owner' || userAccount?.role === 'admin') return "admin";
     return null;
   }
   
@@ -216,18 +272,19 @@ export default function NotificationsStudioPage() {
   
   useEffect(() => {
     if (!loading && hasAccess && user && accountId) {
+        let unsubTeam = () => {};
+        let unsubAccount = () => {};
+
         const fetchInitialData = async () => {
             setDataLoading(true);
             try {
                 if (userRole === 'super') {
                     const clientData = await getAllClientAccountsAction(user.uid);
                     setClients(clientData);
-                    // For super admin, fetch their own team
-                    getTeamMembers(accountId, setTeam);
-                } else if (userAccount?.accountId) {
-                    // For client admins/owners, fetch their team
-                    getTeamMembers(userAccount.accountId, setTeam);
                 }
+                
+                unsubTeam = getTeamMembers(accountId, setTeam);
+                unsubAccount = getAccount(accountId, setAccount);
 
             } catch (error) {
                 console.error("Error fetching data for notifications studio:", error);
@@ -235,11 +292,18 @@ export default function NotificationsStudioPage() {
                 setDataLoading(false);
             }
         };
+
         fetchInitialData();
+        
+        return () => {
+            unsubTeam();
+            unsubAccount();
+        };
+
     } else if (!loading) {
         setDataLoading(false);
     }
-  }, [loading, hasAccess, userRole, user, userAccount, accountId]);
+  }, [loading, hasAccess, userRole, user, accountId]);
 
 
   if (loading || dataLoading) {
@@ -276,8 +340,8 @@ export default function NotificationsStudioPage() {
                 userRole={userRole} 
                 clients={clients} 
                 team={team} 
-                superAdminId={user.uid}
                 accountId={accountId}
+                account={account}
             />
           </>
         )}

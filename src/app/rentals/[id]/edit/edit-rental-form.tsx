@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { useRouter } from 'next/navigation';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
@@ -49,6 +50,7 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
   const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedToUser?.id);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
@@ -103,9 +105,11 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
                 description: errorMessages,
                 variant: "destructive"
              })
-        }
-        if (result?.message && result.message !== 'success' && !result.errors) {
+        } else if (result?.message && result.message !== 'success') {
             toast({ title: "Erro", description: result.message, variant: "destructive"});
+        } else {
+            toast({ title: "Sucesso!", description: "OS atualizada."});
+            router.push('/os');
         }
     });
   };

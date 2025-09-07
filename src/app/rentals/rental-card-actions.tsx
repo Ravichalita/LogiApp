@@ -3,7 +3,7 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { finishRentalAction, deleteRentalAction } from '@/lib/actions';
+import { finishRentalAction, deleteRentalAction, updateRentalAction } from '@/lib/actions';
 import type { PopulatedRental, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash } from 'lucide-react';
@@ -88,6 +88,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isFinishing, startFinishTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
+  const [isUpdatingAttachments, startAttachmentTransition] = useTransition();
   const { toast } = useToast();
   const [attachments, setAttachments] = useState<Attachment[]>(rental.attachments || []);
 
@@ -105,10 +106,30 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const totalValue = rental.value * rentalDays;
   
   const handleAttachmentUploaded = (newAttachment: Attachment) => {
-    setAttachments(prev => [...prev, newAttachment]);
+    const updatedAttachments = [...attachments, newAttachment];
+    setAttachments(updatedAttachments);
+    
+    // Create a FormData object and call the server action to save the new attachment list
+    const formData = new FormData();
+    formData.set('id', rental.id);
+    formData.set('attachments', JSON.stringify(updatedAttachments));
+    
+    startAttachmentTransition(async () => {
+        if (!accountId) return;
+        const result = await updateRentalAction(accountId, null, formData);
+        if (result?.message === 'error' || result?.errors) {
+            toast({ title: "Erro ao salvar anexo", description: result.error || 'Ocorreu um erro.', variant: "destructive"});
+            // Revert state on failure
+            setAttachments(attachments);
+        } else {
+            toast({ title: "Anexo salvo!" });
+        }
+    });
   };
 
   const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
+    // This requires a server action to be truly effective (delete from storage)
+    // For now, it just removes from the local state to be saved.
     setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
   };
 

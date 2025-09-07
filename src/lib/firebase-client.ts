@@ -7,7 +7,7 @@ import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getAuth, onIdTokenChanged } from 'firebase/auth';
 import { getFirestore, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, Unsubscribe } from 'firebase/messaging';
 import { toast } from '@/hooks/use-toast';
 
 const firebaseConfig: FirebaseOptions = {
@@ -60,21 +60,23 @@ export async function getFirebaseIdToken() {
     return await auth.currentUser.getIdToken(true); // Force refresh
 }
 
+let onMessageUnsubscribe: Unsubscribe | null = null;
+
 // Function to initialize FCM and get token
 export const setupFcm = async (userId: string) => {
     if (typeof window === 'undefined' || !process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY) {
         console.log("FCM setup skipped: Not in browser or VAPID key is missing.");
-        return;
+        return () => {}; // Return a no-op unsubscribe function
     }
 
     try {
         const { app, db } = getFirebase();
-        if (!app || !db) return;
+        if (!app || !db) return () => {};
         const messaging = getMessaging(app);
 
         // Register the service worker
         const swRegistration = await navigator.serviceWorker.register(
-            `/firebase-messaging-sw.js?firebaseConfig=${encodeURIComponent(JSON.stringify(firebaseConfig))}`
+            `/firebase-messaging-sw.js`
         );
 
         // Request permission
@@ -102,28 +104,38 @@ export const setupFcm = async (userId: string) => {
             console.log('Unable to get permission to notify.');
         }
 
-        // Handle foreground messages
-        onMessage(messaging, (payload) => {
-            console.log('Foreground message received. ', payload);
-            
-            const title = payload.data?.title;
-            const body = payload.data?.body;
+        // Unsubscribe from any previous onMessage listener
+        if (onMessageUnsubscribe) {
+            onMessageUnsubscribe();
+            onMessageUnsubscribe = null;
+        }
 
-            // Always show a system notification, even in foreground.
-             if (title && body) {
-                const notificationOptions = {
-                    body: body,
-                    icon: payload.data?.icon || '/favicon.ico',
-                    data: {
-                        link: payload.data?.link || '/'
-                    }
-                };
-                navigator.serviceWorker.getRegistration().then(reg => {
-                    reg?.showNotification(title, notificationOptions);
-                });
-            }
+        // Handle foreground messages.
+        // The service worker will handle displaying the notification.
+        onMessageUnsubscribe = onMessage(messaging, (payload) => {
+            console.log('Foreground message received. ', payload);
+            // The service worker (`push` event) is responsible for showing the notification.
+            // So we don't need to do anything here to avoid duplicate notifications.
         });
+
+        // Return the unsubscribe function to be called on cleanup
+        return () => {
+            if (onMessageUnsubscribe) {
+                onMessageUnsubscribe();
+                onMessageUnsubscribe = null;
+            }
+        };
+
     } catch (error) {
         console.error('An error occurred while setting up FCM.', error);
+        return () => {};
+    }
+};
+
+export const cleanupFcm = () => {
+    if (onMessageUnsubscribe) {
+        onMessageUnsubscribe();
+        onMessageUnsubscribe = null;
+        console.log('FCM onMessage listener cleaned up.');
     }
 };
