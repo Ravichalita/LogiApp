@@ -407,7 +407,6 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                     mode="single"
                     selected={startDate}
                     onSelect={setStartDate}
-                    disabled={disabledDatesForSelectedTruck}
                     initialFocus
                     locale={ptBR}
                     />
@@ -446,7 +445,6 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                                 mode="single"
                                 selected={endDate}
                                 onSelect={setEndDate}
-                                disabled={disabledDatesForSelectedTruck}
                                 initialFocus
                                 locale={ptBR}
                                 />
@@ -629,7 +627,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         <div className="p-4 border rounded-md space-y-2 bg-card">
             <AttachmentsUploader 
                 accountId={accountId}
-                attachments={attachments || []}
+                attachments={attachments}
                 onAttachmentUploaded={handleAttachmentUploaded}
                 onAttachmentDeleted={handleRemoveAttachment}
                 uploadPath={`accounts/${accountId}/operations/attachments`}

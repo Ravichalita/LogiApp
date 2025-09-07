@@ -23,6 +23,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/auth-context';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getFirebase } from '@/lib/firebase-client';
 
 
 interface ImageUploaderProps {
@@ -56,38 +58,65 @@ export const ImageUploader = ({
         }
     };
 
-    const uploadFile = async (file: File) => {
+    const uploadFile = (file: File) => {
         if (!accountId) {
             toast({ title: "Erro", description: "Conta não identificada.", variant: "destructive" });
             return;
         }
 
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('accountId', accountId);
-        formData.append('uploadPath', uploadPath);
+        const { storage } = getFirebase();
+        if (!storage) return;
 
-        try {
-            const result = await uploadNotificationImageAction(formData);
-            if (result.message === 'error' || !result.newImage) {
-                throw new Error(result.error || 'Falha no upload da imagem.');
+        setIsUploading(true);
+
+        const fullUploadPath = `${uploadPath}/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, fullUploadPath);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                // Optional: handle progress
+            },
+            (error) => {
+                console.error("Upload error:", error);
+                toast({
+                    title: "Erro no Upload",
+                    description: `Não foi possível enviar o arquivo ${file.name}.`,
+                    variant: "destructive",
+                });
+                setIsUploading(false);
+            },
+            async () => {
+                try {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    const newImage: UploadedImage = {
+                        url: downloadURL,
+                        path: fullUploadPath,
+                    };
+                    
+                    const result = await uploadNotificationImageAction(accountId, newImage);
+
+                    if (result.message === 'error' || !result.newImage) {
+                         throw new Error(result.error || 'Falha ao salvar a imagem no banco de dados.');
+                    }
+                    
+                    onImageUploaded(result.newImage);
+
+                    toast({
+                        title: "Sucesso!",
+                        description: "Imagem enviada.",
+                    });
+                } catch (error) {
+                     toast({
+                        title: "Erro no Upload",
+                        description: error instanceof Error ? error.message : "Não foi possível salvar a imagem.",
+                        variant: "destructive",
+                    });
+                } finally {
+                    setIsUploading(false);
+                }
             }
-            onImageUploaded(result.newImage);
-            toast({
-                title: "Sucesso!",
-                description: "Imagem enviada.",
-            });
-        } catch (error) {
-            console.error("Upload error:", error);
-            toast({
-                title: "Erro no Upload",
-                description: error instanceof Error ? error.message : "Não foi possível enviar a imagem.",
-                variant: "destructive",
-            });
-        } finally {
-            setIsUploading(false);
-        }
+        );
     };
 
     const handleDeleteImage = async (imagePath: string) => {

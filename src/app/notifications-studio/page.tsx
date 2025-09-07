@@ -175,13 +175,7 @@ const NotificationComposer = ({ userRole, clients, team, accountId, account }: {
                 uploadPath={`accounts/${accountId}/notifications/images`}
             />
 
-             <div className="space-y-2">
-                <Label htmlFor="linkUrl" className="flex items-center gap-2">
-                     <LinkIcon className="h-4 w-4" />
-                     URL do Link (Opcional)
-                </Label>
-                <Input name="linkUrl" id="linkUrl" placeholder="https://exemplo.com/pagina" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} />
-            </div>
+
             
             <div className="flex space-x-2 pt-2">
                 <Button onClick={handleSendNow} disabled={isPending}>

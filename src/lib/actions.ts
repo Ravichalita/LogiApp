@@ -1558,46 +1558,24 @@ export async function deleteStorageFileAction(pathOrUrl: string) {
 // #endregion
 
 // #region Notification Actions
-export async function uploadNotificationImageAction(formData: FormData) {
-  const file = formData.get('file') as File;
-  const accountId = formData.get('accountId') as string;
-  const uploadPath = formData.get('uploadPath') as string;
-
-  if (!file || !accountId || !uploadPath) {
+export async function uploadNotificationImageAction(accountId: string, image: UploadedImage) {
+  if (!accountId || !image) {
     return { message: 'error' as const, error: 'Dados insuficientes para o upload.' };
   }
 
+  const validatedImage = UploadedImageSchema.safeParse(image);
+  if (!validatedImage.success) {
+      return { message: 'error' as const, error: 'Objeto de imagem inválido.' };
+  }
+
   try {
-    const bucket = getStorage(adminApp).bucket();
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const uniqueFileName = `${Date.now()}_${file.name}`;
-    const fullPath = `${uploadPath}/${uniqueFileName}`;
-    
-    const fileRef = bucket.file(fullPath);
-    
-    await fileRef.save(buffer, {
-      metadata: {
-        contentType: file.type,
-      },
-    });
-
-    const [downloadURL] = await fileRef.getSignedUrl({
-      action: 'read',
-      expires: '03-09-2491',
-    });
-
-    const newImage: UploadedImage = {
-      url: downloadURL,
-      path: fullPath,
-    };
-    
     await adminDb.doc(`accounts/${accountId}`).update({
-        notificationImages: FieldValue.arrayUnion(newImage)
+        notificationImages: FieldValue.arrayUnion(validatedImage.data)
     });
     
     revalidatePath('/notifications-studio');
     
-    return { message: 'success' as const, newImage };
+    return { message: 'success' as const, newImage: validatedImage.data };
 
   } catch (e) {
     console.error("Upload server action error:", e);
