@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 const permissionLabels: Partial<Record<keyof Permissions, string>> = {
   canAccessRentals: 'Aluguéis',
   canAccessOperations: 'Operações',
+  canAccessRoutes: 'Rotas',
   canAccessFinance: 'Acessar Histórico e Valores $',
   canAccessNotificationsStudio: 'Acessar Notificações Personalizadas',
   canUseAttachments: 'Gerenciar Anexos',

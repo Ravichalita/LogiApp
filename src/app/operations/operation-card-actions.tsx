@@ -3,7 +3,7 @@
 
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Edit, Trash2, CheckCircle } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, CheckCircle, Share2, Download, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { PopulatedOperation } from '@/lib/types';
@@ -28,6 +28,9 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import Link from 'next/link';
 import { deleteOperationAction, finishOperationAction } from '@/lib/actions';
+import { OsPdfDocument } from '@/components/os-pdf-document';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface OperationCardActionsProps {
   operation: PopulatedOperation;
@@ -38,6 +41,8 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
   const [isFinishing, startFinishTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const { toast } = useToast();
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
 
   const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
   const isViewer = userAccount?.role === 'viewer';
@@ -72,9 +77,45 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
     });
   };
   
+  const handleGenerateAndDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    toast({ title: 'Gerando PDF...', description: 'Aguarde um momento.' });
+
+    const pdfContainer = document.getElementById(`pdf-op-${operation.id}`);
+    if (!pdfContainer) {
+        console.error("PDF container not found");
+        setIsGeneratingPdf(false);
+        toast({ title: "Erro", description: "Não foi possível encontrar o container para gerar o PDF.", variant: "destructive" });
+        return;
+    }
+
+    try {
+        const canvas = await html2canvas(pdfContainer, { scale: 2 });
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(canvas, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        
+        const osId = `OP${operation.sequentialId}`;
+        pdf.save(`OS_${osId}.pdf`);
+
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ title: "Erro ao gerar PDF", description: "Não foi possível gerar o arquivo.", variant: "destructive" });
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
+
   const acctForLink = operation.accountId || accountId;
 
   return (
+    <>
+    <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1 }}>
+        <div id={`pdf-op-${operation.id}`} style={{ width: '210mm', height: '297mm', backgroundColor: 'white' }}>
+            <OsPdfDocument item={operation} />
+        </div>
+    </div>
     <div className="flex w-full items-center gap-2 mt-auto">
       <AlertDialog>
         <DropdownMenu>
@@ -121,6 +162,11 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Button variant="outline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} className="px-2 md:px-4">
+          {isGeneratingPdf ? <Spinner size="small" /> : <Download className="h-4 w-4 md:mr-2" />}
+          <span className="hidden md:inline">Baixar PDF</span>
+      </Button>
 
       {canFinish && (
         <Button
@@ -133,5 +179,6 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
         </Button>
       )}
     </div>
+    </>
   );
 }

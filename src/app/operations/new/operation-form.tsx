@@ -96,6 +96,8 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [scheduleConflict, setScheduleConflict] = useState<string | null>(null);
+
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
@@ -205,6 +207,42 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     }, 0);
     setBaseValue(newBaseValue);
   }, [selectedOperationTypeIds, operationTypes]);
+  
+    useEffect(() => {
+    if (!selectedTruckId || !startDate || !startTime || !endDate || !endTime) {
+      setScheduleConflict(null);
+      return;
+    }
+
+    const combineDateTime = (date: Date, time: string): Date => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return set(date, { hours, minutes });
+    };
+
+    const currentStart = combineDateTime(startDate, startTime);
+    const currentEnd = combineDateTime(endDate, endTime);
+
+    const conflictingOp = operations.find(op => {
+      if (op.truckId !== selectedTruckId || !op.startDate || !op.endDate) {
+        return false;
+      }
+      const opStart = parseISO(op.startDate);
+      const opEnd = parseISO(op.endDate);
+
+      return currentStart < opEnd && currentEnd > opStart;
+    });
+
+    if (conflictingOp) {
+      setScheduleConflict(
+        `Este caminhão já está em uma operação de ${format(
+          parseISO(conflictingOp.startDate!),
+          "HH:mm"
+        )} até ${format(parseISO(conflictingOp.endDate!), "HH:mm")} neste período.`
+      );
+    } else {
+      setScheduleConflict(null);
+    }
+  }, [selectedTruckId, startDate, startTime, endDate, endTime, operations]);
 
 
   const handleStartLocationSelect = (selectedLocation: Location) => {
@@ -457,6 +495,13 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
+        {scheduleConflict && (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Conflito de Agendamento</AlertTitle>
+                <AlertDescription>{scheduleConflict}</AlertDescription>
+            </Alert>
+        )}
       </div>
 
       <div className="p-4 border rounded-md space-y-4 bg-card relative">
@@ -642,7 +687,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
       </div>
 
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
-        <Button type="submit" disabled={isPending} size="lg">
+        <Button type="submit" disabled={isPending || !!scheduleConflict} size="lg">
           {isPending ? <Spinner size="small" /> : 'Salvar Operação'}
         </Button>
         <Button asChild variant="outline" size="lg">

@@ -16,6 +16,8 @@ import { MapPin } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { Location } from '@/lib/types';
+import { geocodeAddress, geocodeLatLng } from '@/lib/maps-api';
+
 
 const containerStyle = {
   width: '100%',
@@ -30,7 +32,7 @@ const defaultCenter = {
 interface MapDialogProps {
   onLocationSelect: (location: Location) => void;
   initialLocation?: { lat: number; lng: number } | null;
-  address?: string; // Add address prop to geocode if no initialLocation
+  address?: string; 
 }
 
 export function MapDialog({ onLocationSelect, initialLocation, address }: MapDialogProps) {
@@ -51,32 +53,20 @@ export function MapDialog({ onLocationSelect, initialLocation, address }: MapDia
     setMap(mapInstance);
   }, []);
 
-  const geocodeAddress = useCallback((addressToGeocode: string) => {
-      if (!window.google) return;
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ address: addressToGeocode }, (results, status) => {
-          if (status === 'OK' && results && results[0]) {
-              const location = results[0].geometry.location;
-              const newCenter = { lat: location.lat(), lng: location.lng() };
-              setCenter(newCenter);
-              setSelectedPosition(newCenter);
-              if (map) {
-                  map.panTo(newCenter);
-              }
-          } else {
-              console.warn(`Geocode was not successful for the following reason: ${status}`);
-          }
-      });
-  }, [map]);
-
-
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isLoaded) {
       if (initialLocation) {
         setCenter(initialLocation);
         setSelectedPosition(initialLocation);
       } else if (address) {
-        geocodeAddress(address);
+        geocodeAddress(address).then(location => {
+            if (location) {
+                const newCenter = { lat: location.lat, lng: location.lng };
+                setCenter(newCenter);
+                setSelectedPosition(newCenter);
+                if (map) map.panTo(newCenter);
+            }
+        });
       } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -88,14 +78,11 @@ export function MapDialog({ onLocationSelect, initialLocation, address }: MapDia
             if (map) {
               map.panTo(newCenter);
             }
-          },
-          () => {
-            console.log("User denied Geolocation");
           }
         );
       }
     }
-  }, [isOpen, map, initialLocation, address, geocodeAddress]);
+  }, [isOpen, map, isLoaded, initialLocation, address]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (event.latLng) {
@@ -107,28 +94,12 @@ export function MapDialog({ onLocationSelect, initialLocation, address }: MapDia
   };
 
   const handleConfirm = async () => {
-    if (!selectedPosition || !window.google) return;
-
+    if (!selectedPosition) return;
     setIsGeocoding(true);
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: selectedPosition }, (results, status) => {
-      setIsGeocoding(false);
-      if (status === 'OK' && results && results[0]) {
-        onLocationSelect({
-          ...selectedPosition,
-          address: results[0].formatted_address,
-        });
-        setIsOpen(false);
-      } else {
-        console.error(`Geocode was not successful for the following reason: ${status}`);
-        // Fallback if geocoding fails
-        onLocationSelect({
-          ...selectedPosition,
-          address: `Coordenadas: ${selectedPosition.lat.toFixed(6)}, ${selectedPosition.lng.toFixed(6)}`,
-        });
-        setIsOpen(false);
-      }
-    });
+    const locationData = await geocodeLatLng(selectedPosition);
+    setIsGeocoding(false);
+    onLocationSelect(locationData);
+    setIsOpen(false);
   };
 
   const renderMap = () => {

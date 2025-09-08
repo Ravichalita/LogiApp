@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { HeaderActions, DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
+import { DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import React from "react";
@@ -26,7 +26,7 @@ import { Home, Container, Users, Truck, Workflow, Map } from 'lucide-react';
 
 const allNavLinks = [
   { href: '/os', label: 'OS', permission: ['canAccessRentals', 'canAccessOperations'] as const },
-  { href: '/route-planning', label: 'Rotas', icon: Map, permission: ['canAccessOperations'] as const },
+  { href: '/route-planning', label: 'Rotas', icon: Map, permission: ['canAccessRoutes'] as const },
   { href: '/dumpsters', label: 'Caçambas', permission: ['canAccessRentals'] as const },
   { href: '/fleet', label: 'Frota', permission: ['canAccessFleet'] as const },
   { href: '/clients', label: 'Clientes', permission: ['canAccessClients'] as const },

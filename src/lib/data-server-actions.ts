@@ -46,9 +46,25 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
             return [];
         }
 
-        const rentals = rentalsSnap.docs.map(doc => toSerializableObject({ id: doc.id, ...doc.data() }) as CompletedRental);
-        
-        return rentals;
+        const populatedRentalsPromises = rentalsSnap.docs.map(async (doc) => {
+             const rentalData = toSerializableObject({ id: doc.id, ...doc.data() }) as CompletedRental;
+
+             const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([
+                rentalData.clientId ? adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get() : Promise.resolve(null),
+                rentalData.dumpsterId ? adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get() : Promise.resolve(null),
+                rentalData.assignedTo ? adminDb.doc(`users/${rentalData.assignedTo}`).get() : Promise.resolve(null),
+            ]);
+            
+            return {
+                ...rentalData,
+                client: docToSerializable(clientSnap),
+                dumpster: docToSerializable(dumpsterSnap),
+                assignedToUser: docToSerializable(assignedToSnap),
+            };
+        });
+
+        const populatedRentals = await Promise.all(populatedRentalsPromises);
+        return populatedRentals as CompletedRental[];
 
     } catch (error) {
         console.error("Error fetching completed rentals:", error);
@@ -89,6 +105,7 @@ export async function getCompletedOperations(accountId: string): Promise<Populat
 
             return {
                 ...opData,
+                itemType: 'operation' as const,
                 id: doc.id,
                 operationTypes: populatedTypes,
                 client: clientSnap?.exists ? docToSerializable(clientSnap) : null,
@@ -218,6 +235,7 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
 
         return {
             ...rentalData,
+            itemType: 'rental',
             client: docToSerializable(clientSnap) as Client | null,
             dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
@@ -231,17 +249,16 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
 
 export async function getPopulatedOperationById(accountId: string, operationId: string): Promise<PopulatedOperation | null> {
   try {
-    const opRef = adminDb.doc(`accounts/${accountId}/operations/${operationId}`);
-    let operationDoc = await opRef.get();
+    let operationDoc = await adminDb.doc(`accounts/${accountId}/operations/${operationId}`).get();
 
-    // fallback: if not in active operations, try completed_operations
+    // Fallback: if not in active operations, try completed_operations
     if (!operationDoc.exists) {
-      const completedRef = adminDb.doc(`accounts/${accountId}/completed_operations/${operationId}`);
-      const completedDoc = await completedRef.get();
-      if (!completedDoc.exists) {
-        return null;
-      }
-      operationDoc = completedDoc;
+        const completedOpDoc = await adminDb.doc(`accounts/${accountId}/completed_operations/${operationId}`).get();
+        if (completedOpDoc.exists) {
+            operationDoc = completedOpDoc;
+        } else {
+            return null; // Not found in either collection
+        }
     }
 
     const opData = docToSerializable(operationDoc) as Operation;
@@ -261,14 +278,15 @@ export async function getPopulatedOperationById(accountId: string, operationId: 
         name: opTypeMap.get(id) || 'Tipo desconhecido'
     }));
 
-    return {
+    return toSerializableObject({
         ...opData,
+        itemType: 'operation',
         accountId: accountId,
         operationTypes: populatedTypes,
         client: docToSerializable(clientSnap),
         truck: docToSerializable(truckSnap),
         driver: docToSerializable(driverSnap),
-    } as PopulatedOperation;
+    }) as PopulatedOperation;
 
   } catch (error) {
     console.error(`Error fetching populated operation by ID ${operationId}:`, error);
@@ -395,3 +413,40 @@ export async function getSuperAdminsAction(): Promise<UserAccount[]> {
         return [];
     }
 }
+
+
+export async function geocodeAddress(address: string): Promise<Location | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+        console.error("Google Maps API key is not configured.");
+        return null;
+    }
+
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.append('address', address);
+    url.searchParams.append('key', apiKey);
+    url.searchParams.append('language', 'pt-BR');
+
+  try {
+    const response = await fetch(url.toString());
+    const data = await response.json();
+
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        console.error('Geocode API error:', data.status, data.error_message);
+        return null;
+    }
+    
+    const { lat, lng } = data.results[0].geometry.location;
+    return {
+        lat,
+        lng,
+        address: data.results[0].formatted_address
+    };
+
+  } catch (error) {
+    console.error(`Geocode was not successful for the following reason: ${error}`);
+    return null;
+  }
+}
+
+    

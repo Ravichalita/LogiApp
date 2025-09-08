@@ -54,6 +54,15 @@ export function getAccount(accountId: string, callback: (account: Account | null
     });
     return unsubscribe;
 }
+
+export async function fetchAccount(accountId: string): Promise<Account | null> {
+    const accountRef = doc(db, `accounts/${accountId}`);
+    const docSnap = await getDoc(accountRef);
+    if (docSnap.exists()) {
+        return docToSerializable(docSnap) as Account;
+    }
+    return null;
+}
 // #endregion
 
 // #region Client Data
@@ -62,10 +71,7 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
   const q = query(clientsCollection, where("accountId", "==", accountId));
   
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
-    const clients = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Client));
+    const clients = querySnapshot.docs.map(doc => docToSerializable(doc) as Client);
     const sortedClients = clients.sort((a, b) => a.name.localeCompare(b.name));
     callback(sortedClients);
   }, (error) => {
@@ -80,7 +86,7 @@ export async function fetchClients(accountId: string): Promise<Client[]> {
     const clientsCollection = collection(db, `accounts/${accountId}/clients`);
     const q = query(clientsCollection, where("accountId", "==", accountId));
     const querySnapshot = await getDocs(q);
-    const clients = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+    const clients = querySnapshot.docs.map(doc => docToSerializable(doc) as Client);
     return clients.sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -93,10 +99,7 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
     const q = query(dumpstersCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const dumpsters = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-        } as Dumpster));
+        const dumpsters = querySnapshot.docs.map(doc => docToSerializable(doc) as Dumpster);
         callback(dumpsters);
     }, (error) => {
         console.error("Error fetching dumpsters:", error);
@@ -113,15 +116,7 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
     const q = query(rentalsCollection, where("accountId", "==", accountId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const rentals = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
-                returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
-            } as Rental;
-        });
+        const rentals = querySnapshot.docs.map(doc => docToSerializable(doc) as Rental);
         callback(rentals);
     }, (error) => {
         console.error("Error fetching rentals:", error);
@@ -136,15 +131,7 @@ export async function getActiveRentalsForUser(accountId: string, id: string, fie
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     const q = query(rentalsCollection, where(field, "==", id));
     const querySnapshot = await getDocs(q);
-    const rentals = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            ...data,
-            rentalDate: data.rentalDate?.toDate ? data.rentalDate.toDate().toISOString() : data.rentalDate,
-            returnDate: data.returnDate?.toDate ? data.returnDate.toDate().toISOString() : data.returnDate,
-        } as Rental;
-    });
+    const rentals = querySnapshot.docs.map(doc => docToSerializable(doc) as Rental);
     return rentals;
 }
 
@@ -165,7 +152,7 @@ export function getPopulatedRentals(
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         try {
             const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
-                const rentalData = rentalDoc.data() as Omit<Rental, 'id'>;
+                const rentalData = docToSerializable(rentalDoc) as Omit<Rental, 'id'>;
 
                 const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
@@ -176,11 +163,9 @@ export function getPopulatedRentals(
                 return {
                     id: rentalDoc.id,
                     ...rentalData,
-                    rentalDate: rentalData.rentalDate?.toDate ? rentalData.rentalDate.toDate().toISOString() : rentalData.rentalDate,
-                    returnDate: rentalData.returnDate?.toDate ? rentalData.returnDate.toDate().toISOString() : rentalData.returnDate,
-                    dumpster: dumpsterSnap.exists() ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as Dumpster : null,
-                    client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-                    assignedToUser: assignedToSnap.exists() ? { id: assignedToSnap.id, ...assignedToSnap.data() } as UserAccount : null,
+                    dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+                    client: docToSerializable(clientSnap) as Client | null,
+                    assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
                 };
             });
 
@@ -224,7 +209,7 @@ export function getPopulatedOperations(
             const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
 
             const opPromises = querySnapshot.docs.map(async (opDoc) => {
-                const opData = opDoc.data() as Omit<Operation, 'id'>;
+                const opData = docToSerializable(opDoc) as Omit<Operation, 'id'>;
 
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, opData.clientId));
                 const truckPromise = opData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, opData.truckId)) : Promise.resolve(null);
@@ -241,9 +226,9 @@ export function getPopulatedOperations(
 
                 return {
                     ...serializedData,
-                    client: clientSnap.exists() ? { id: clientSnap.id, ...clientSnap.data() } as Client : null,
-                    truck: truckSnap?.exists() ? { id: truckSnap.id, ...truckSnap.data() } as Truck : null,
-                    driver: driverSnap?.exists() ? { id: driverSnap.id, ...driverSnap.data() } as UserAccount : null,
+                    client: docToSerializable(clientSnap) as Client | null,
+                    truck: docToSerializable(truckSnap) as Truck | null,
+                    driver: docToSerializable(driverSnap) as UserAccount | null,
                     operationTypes: populatedTypes,
                 };
             });
@@ -255,9 +240,9 @@ export function getPopulatedOperations(
               .filter((op): op is PopulatedOperation => !!op.client)
               .sort((a, b) => {
                 // Handle potential undefined createdAt by providing a fallback date.
-                const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                return dateB - dateA; // Sort descending
+                const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+                const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+                return dateA - dateB; // Sort ascending by start time
             });
 
             onData(sortedOps);
@@ -304,13 +289,7 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
       
       const users = memberDocSnaps
         .filter(docSnap => docSnap.exists())
-        .map(docSnap => {
-          const data = docSnap.data();
-          return {
-            id: docSnap.id,
-            ...data
-          } as UserAccount
-        });
+        .map(docSnap => docToSerializable(docSnap) as UserAccount);
         
       const sortedUsers = users.sort((a, b) => a.name.localeCompare(b.name));
       callback(sortedUsers);
@@ -340,7 +319,7 @@ export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]
     const memberDocSnaps = await Promise.all(memberPromises);
     const users = memberDocSnaps
       .filter(docSnap => docSnap.exists())
-      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as UserAccount));
+      .map(docSnap => docToSerializable(docSnap) as UserAccount);
     return users.sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
     console.error("Error fetching team members' documents:", error);
@@ -355,10 +334,7 @@ export function getTrucks(accountId: string, callback: (trucks: Truck[]) => void
   const q = query(trucksCollection, where("accountId", "==", accountId));
 
   const unsubscribe = onSnapshot(q, (querySnapshot) => {
-    const trucks = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    } as Truck));
+    const trucks = querySnapshot.docs.map(doc => docToSerializable(doc) as Truck);
     callback(trucks.sort((a, b) => a.name.localeCompare(b.name)));
   }, (error) => {
     console.error("Error fetching trucks:", error);

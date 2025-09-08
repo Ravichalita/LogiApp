@@ -11,6 +11,7 @@ import { useAuth } from '@/context/auth-context';
 
 const allNavLinks = [
   { href: '/os', label: 'OS', icon: Workflow, permission: ['canAccessRentals', 'canAccessOperations'] as const },
+  { href: '/route-planning', label: 'Rotas', icon: Map, permission: ['canAccessRoutes'] as const },
   { href: '/dumpsters', label: 'Caçambas', icon: Container, permission: ['canAccessRentals'] as const },
   { href: '/fleet', label: 'Frota', icon: Truck, permission: ['canAccessFleet'] as const },
   { href: '/clients', label: 'Clientes', icon: Users, permission: ['canAccessClients'] as const },

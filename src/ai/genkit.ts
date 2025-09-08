@@ -1,15 +1,11 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-import {firebase} from '@genkit-ai/firebase';
-import { getFirebase } from '@/lib/firebase-client';
+import {enableFirebaseTelemetry} from '@genkit-ai/firebase';
 
-// Ensure Firebase is initialized before Genkit uses it
-getFirebase();
+// A inicialização do Firebase Admin é gerenciada em firebase-admin.ts e não precisa ser chamada aqui.
 
 export const ai = genkit({
   plugins: [
     googleAI(),
-    firebase(),
     ],
-  model: 'googleai/gemini-2.0-flash',
 });

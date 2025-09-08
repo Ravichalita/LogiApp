@@ -127,7 +127,7 @@ const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
         className="cls-1"
         {...props}
     >
-      <path d="M10.01,0C4.5,0,.02,4.44.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z"/>
+      <path d="M10.01,0C4.5,0,.02,4.44,.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z"/>
       <path d="M5.39,9.36c-.71-1.36-.65-2.83.51-3.83.46-.44,1.36-.4,1.62.16l.8,1.92c.1.21.09.42-.06.63-.19.22-.37.44-.56.66-.15.17-.22.31-.08.48.76,1.28,1.86,2.32,3.42,2.98.23.09.39.07.55-.12.24-.29.48-.59.72-.88.2-.26.39-.29.68-.17.66.31,1.98.94,1.98.94.49.37-.19,1.8-.79,2.16-.87.51-1.46.43-2.37.25-2.97-.59-5.28-3.13-6.43-5.18h0Z"/>
     </svg>
 );
@@ -311,10 +311,11 @@ export default function OSPage() {
   const permissions = userAccount?.permissions;
   const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
   const canAccessOperations = isSuperAdmin || permissions?.canAccessOperations;
+  const canAccessRoutes = isSuperAdmin || permissions?.canAccessRoutes;
   const canEditRentals = isSuperAdmin || permissions?.canEditRentals;
   const canEditOperations = isSuperAdmin || permissions?.canEditOperations;
   const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
-  const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
+  const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
   
   useEffect(() => {
     if (authLoading) return;
@@ -530,7 +531,31 @@ export default function OSPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
-      <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
+       <div className="flex items-center justify-between mb-8">
+            <div>
+                <h1 className="text-3xl font-headline font-bold">Ordens de Serviço</h1>
+                <p className="text-muted-foreground mt-1">
+                    Gerencie suas ordens de aluguel e operações.
+                </p>
+            </div>
+             {canAccessRoutes && (
+                <>
+                 <Button asChild variant="outline" className="hidden md:inline-flex">
+                    <Link href="/route-planning">
+                        <Map className="mr-2 h-4 w-4" />
+                        Planejar Rota
+                    </Link>
+                </Button>
+                <Button asChild variant="default" className="md:hidden flex-col h-auto p-2">
+                    <Link href="/route-planning">
+                        <Map className="h-5 w-5" />
+                        <span className="text-xs mt-1">Rota</span>
+                    </Link>
+                </Button>
+                </>
+            )}
+        </div>
+
 
       <div className="space-y-4 mb-6">
         <div className="relative">
@@ -750,13 +775,13 @@ export default function OSPage() {
                                                 <div className="pt-2 flex justify-between items-center w-full">
                                                     {op.client?.phone && (
                                                         <a 
-                                                            href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}`}
+                                                            href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}?text=Olá, ${op.client.name}! Somos da equipe LogiApp, sobre a OS OP${op.sequentialId}.`}
                                                             target="_blank" 
                                                             rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-2 text-green-600 hover:underline"
+                                                            className="inline-flex items-center gap-2 hover:underline"
                                                         >
-                                                            <WhatsAppIcon className="h-6 w-6 fill-current" />
-                                                            <span className="font-medium">{op.client.phone}</span>
+                                                            <WhatsAppIcon className="h-6 w-6 fill-green-600" />
+                                                            <span className="font-medium text-green-600">{op.client.phone}</span>
                                                         </a>
                                                     )}
                                                     {canUseAttachments && (
@@ -799,5 +824,3 @@ export default function OSPage() {
     </div>
   );
 }
-
-    

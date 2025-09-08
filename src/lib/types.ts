@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -93,6 +92,7 @@ export const PermissionsSchema = z.object({
     // Main screen access
     canAccessRentals: z.boolean().default(true),
     canAccessOperations: z.boolean().default(false),
+    canAccessRoutes: z.boolean().default(false),
     canAccessClients: z.boolean().default(true),
     canAccessDumpsters: z.boolean().default(true),
     canAccessFleet: z.boolean().default(false),
@@ -399,11 +399,13 @@ export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção
 export type EnhancedDumpster = Dumpster & { derivedStatus: string };
 export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
     id: string;
+    itemType: 'rental';
     dumpster: Dumpster | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
 };
 export type PopulatedOperation = Operation & {
+    itemType: 'operation';
     operationTypes: {id: string, name: string}[];
     client: Client | null;
     truck: Truck | null;

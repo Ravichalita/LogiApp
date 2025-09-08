@@ -4,12 +4,12 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment } from '@/lib/types';
+import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment, PopulatedRental } from '@/lib/types';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X, Download } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -37,6 +38,9 @@ import { addAttachmentToCompletedOperationAction, addAttachmentToCompletedRental
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
+import { OsPdfDocument } from '@/components/os-pdf-document';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -75,6 +79,8 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     onAttachmentDeleted: (itemId: string, attachment: Attachment) => void;
 }) {
     const { accountId } = useAuth();
+    const { toast } = useToast();
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     
     if (!item) return null;
 
@@ -90,11 +96,50 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     const handleAttachmentDeleted = (attachment: Attachment) => {
         onAttachmentDeleted(item.id, attachment);
     }
+    
+    const handleGenerateAndDownloadPdf = async () => {
+        setIsGeneratingPdf(true);
+        toast({ title: 'Gerando PDF...', description: 'Aguarde um momento.' });
+    
+        const pdfContainer = document.getElementById(`pdf-${item.id}`);
+        if (!pdfContainer) {
+            console.error("PDF container not found");
+            setIsGeneratingPdf(false);
+            toast({ title: "Erro", description: "Não foi possível encontrar o container para gerar o PDF.", variant: "destructive" });
+            return;
+        }
+    
+        try {
+            const canvas = await html2canvas(pdfContainer, { scale: 2 });
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(canvas, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            
+            const osId = `${item.prefix}${item.sequentialId}`;
+            pdf.save(`OS_${osId}_${item.clientName}.pdf`);
+    
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            toast({ title: "Erro ao gerar PDF", description: "Não foi possível gerar o arquivo.", variant: "destructive" });
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
 
+    const itemForPdf = {
+        ...item.data,
+        itemType: item.kind,
+    } as PopulatedRental | PopulatedOperation;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md">
+                 <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1 }}>
+                    <div id={`pdf-${item.id}`} style={{ width: '210mm', height: '297mm', backgroundColor: 'white' }}>
+                        <OsPdfDocument item={itemForPdf} />
+                    </div>
+                </div>
                 <DialogHeader>
                     <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
                     <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
@@ -177,6 +222,12 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                         )}
                     </div>
                 </div>
+                 <DialogFooter>
+                    <Button onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf}>
+                        {isGeneratingPdf ? <Spinner size="small" /> : <Download className="mr-2 h-4 w-4" />}
+                        Baixar PDF
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

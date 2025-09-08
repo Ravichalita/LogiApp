@@ -124,17 +124,6 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
 
-  const disabledDatesForSelectedTruck = useMemo(() => {
-    if (!selectedTruckId) return [];
-    // Exclude current operation from disabled dates check
-    return operations
-      .filter(op => op.id !== operation.id && op.truckId === selectedTruckId && op.startDate && op.endDate)
-      .map(op => ({
-        from: startOfDay(parseISO(op.startDate!)),
-        to: endOfDay(parseISO(op.endDate!))
-      }));
-  }, [selectedTruckId, operations, operation.id]);
-
   useEffect(() => {
     const fetchRouteAndWeather = async () => {
       if (startLocation && destinationLocation && startDate) {
@@ -201,18 +190,6 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
 
   const handleTruckChange = (truckId: string) => {
     setSelectedTruckId(truckId);
-    if (startDate) {
-        const isStartDateDisabled = disabledDatesForSelectedTruck.some(range => isWithinInterval(startDate, range));
-        if (isStartDateDisabled) {
-            setStartDate(undefined);
-            setEndDate(undefined);
-            toast({
-                title: "Data Reajustada",
-                description: "A data selecionada não está disponível para este caminhão e foi redefinida.",
-                variant: "destructive"
-            });
-        }
-    }
   };
 
   const handleAttachmentUploaded = (newAttachment: Attachment) => {
@@ -360,7 +337,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={startDate} onSelect={setStartDate} disabled={disabledDatesForSelectedTruck} initialFocus locale={ptBR} />
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={ptBR} />
               </PopoverContent>
             </Popover>
             <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-auto" disabled={!selectedTruckId}/>
@@ -386,7 +363,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
-                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={disabledDatesForSelectedTruck} initialFocus locale={ptBR} />
+                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={ptBR} />
                             </PopoverContent>
                             </Popover>
                             <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-auto" />

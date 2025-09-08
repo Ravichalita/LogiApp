@@ -1,18 +1,16 @@
 
-
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
 import { finishRentalAction, deleteRentalAction, updateRentalAction } from '@/lib/actions';
 import type { PopulatedRental, Attachment } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, Download, MessageSquare } from 'lucide-react';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
-
 import type { getRentalStatus } from '../os/page';
 import {
   DropdownMenu,
@@ -41,6 +39,9 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { OsPdfDocument } from '@/components/os-pdf-document';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 
 interface RentalCardActionsProps {
@@ -91,13 +92,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const [isUpdatingAttachments, startAttachmentTransition] = useTransition();
   const { toast } = useToast();
   const [attachments, setAttachments] = useState<Attachment[]>(rental.attachments || []);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
 
   const permissions = userAccount?.permissions;
   const canEdit = isSuperAdmin || permissions?.canEditRentals;
   const canDelete = isSuperAdmin || permissions?.canEditRentals;
   const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
-  const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
+  const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
 
   const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
   const isPendingStatus = status.text === 'Pendente';
@@ -145,185 +147,226 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         }
      });
   }
+  
+  const handleGenerateAndDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
+    toast({ title: 'Gerando PDF...', description: 'Aguarde um momento.' });
+
+    const pdfContainer = document.getElementById(`pdf-al-${rental.id}`);
+    if (!pdfContainer) {
+        console.error("PDF container not found");
+        setIsGeneratingPdf(false);
+        toast({ title: "Erro", description: "Não foi possível encontrar o container para gerar o PDF.", variant: "destructive" });
+        return;
+    }
+
+    try {
+        const canvas = await html2canvas(pdfContainer, { scale: 2 });
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(canvas, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        
+        const osId = `AL${rental.sequentialId}`;
+        pdf.save(`OS_Aluguel_${osId}.pdf`);
+
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ title: "Erro ao gerar PDF", description: "Não foi possível gerar o arquivo.", variant: "destructive" });
+    } finally {
+        setIsGeneratingPdf(false);
+    }
+  };
 
   const boundFinishRentalAction = finishRentalAction.bind(null, accountId!);
 
   return (
-    <div className="flex flex-col gap-4 h-full px-1">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <div>
-            <span className="text-sm text-muted-foreground">Local de Entrega</span>
-            <p className="font-medium">{rental.deliveryAddress}</p>
-          </div>
-          {!!rental.latitude && !!rental.longitude && (
-            <div className="w-full flex justify-center">
-              <Button variant="outline" size="sm" asChild className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary">
-                  <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
-                      <span>Ver no Mapa</span>
-                  </Link>
-              </Button>
-            </div>
-          )}
+    <>
+     <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1 }}>
+        <div id={`pdf-al-${rental.id}`} style={{ width: '210mm', height: '297mm', backgroundColor: 'white' }}>
+            <OsPdfDocument item={rental} />
         </div>
-
-        <div className="space-y-2">
+      </div>
+      <div className="flex flex-col gap-4 h-full px-1">
+        <div className="space-y-4">
+          <div className="space-y-2">
             <div>
-              <span className="text-sm text-muted-foreground">Período</span>
-              <p className="font-semibold text-base whitespace-nowrap">
-                  {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-              </p>
+              <span className="text-sm text-muted-foreground">Local de Entrega</span>
+              <p className="font-medium">{rental.deliveryAddress}</p>
             </div>
-        </div>
+            {!!rental.latitude && !!rental.longitude && (
+              <div className="w-full flex justify-center">
+                <Button variant="outline" size="sm" asChild className="w-full border-primary text-primary hover:bg-primary/10 hover:text-primary">
+                    <Link href={`https://www.google.com/maps?q=${rental.latitude},${rental.longitude}`} target="_blank">
+                        <span>Ver no Mapa</span>
+                    </Link>
+                </Button>
+              </div>
+            )}
+          </div>
 
-        {canSeeFinance && (
           <div className="space-y-2">
               <div>
-                <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
-                <p className="font-medium">{formatCurrency(totalValue)}</p>
+                <span className="text-sm text-muted-foreground">Período</span>
+                <p className="font-semibold text-base whitespace-nowrap">
+                    {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
+                </p>
               </div>
           </div>
-        )}
 
-        {rental.observations && (
-            <div className="flex items-start gap-3">
-                <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Observações</span>
-                <p className="font-medium whitespace-pre-wrap">{rental.observations}</p>
+          {canSeeFinance && (
+            <div className="space-y-2">
+                <div>
+                  <span className="text-sm text-muted-foreground">Valor Total Previsto ({rentalDays} {rentalDays > 1 ? 'dias' : 'dia'})</span>
+                  <p className="font-medium">{formatCurrency(totalValue)}</p>
                 </div>
             </div>
-        )}
-        
-        <Separator />
+          )}
 
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="attachments" className="border-none">
-             <div className="pt-2 flex justify-between items-center w-full">
-                {rental.client?.phone && (
-                    <a 
-                        href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}?text=Olá, ${rental.client.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 hover:underline"
-                    >
-                        <WhatsAppIcon className="h-6 w-6 fill-green-600" />
-                        <span className="font-medium text-green-600">{rental.client.phone}</span>
-                    </a>
-                )}
-                {canUseAttachments && (
-                    <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
-                )}
-            </div>
-            {canUseAttachments && (
-              <AccordionContent className="pt-4">
-                  {accountId && (
-                      <AttachmentsUploader
-                          accountId={accountId}
-                          attachments={attachments || []}
-                          onAttachmentUploaded={handleAttachmentUploaded}
-                          onAttachmentDeleted={handleRemoveAttachment}
-                          uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
-                          showDeleteButton={false}
-                          showLabel={false}
-                      />
+          {rental.observations && (
+              <div className="flex items-start gap-3">
+                  <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                  <div className="flex flex-col">
+                  <span className="text-sm text-muted-foreground">Observações</span>
+                  <p className="font-medium whitespace-pre-wrap">{rental.observations}</p>
+                  </div>
+              </div>
+          )}
+          
+          <Separator />
+
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="attachments" className="border-none">
+               <div className="pt-2 flex justify-between items-center w-full">
+                  {rental.client?.phone && (
+                      <a 
+                          href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client.phone)}?text=Olá, ${rental.client.name}! Somos da equipe LogiApp, sobre a OS AL${rental.sequentialId}.`}
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 hover:underline"
+                      >
+                          <WhatsAppIcon className="h-6 w-6 fill-green-600" />
+                          <span className="font-medium text-green-600">{rental.client.phone}</span>
+                      </a>
                   )}
-              </AccordionContent>
-            )}
-          </AccordionItem>
-        </Accordion>
+                  {canUseAttachments && (
+                      <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                  )}
+              </div>
+              {canUseAttachments && (
+                <AccordionContent className="pt-4">
+                    {accountId && (
+                        <AttachmentsUploader
+                            accountId={accountId}
+                            attachments={attachments || []}
+                            onAttachmentUploaded={handleAttachmentUploaded}
+                            onAttachmentDeleted={handleRemoveAttachment}
+                            uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+                            showDeleteButton={false}
+                            showLabel={false}
+                        />
+                    )}
+                </AccordionContent>
+              )}
+            </AccordionItem>
+          </Accordion>
 
 
-      </div>
-       <div className="flex w-full items-center gap-2 mt-auto">
-            <div className="flex-grow-0">
-                <AlertDialog>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                            {canEdit && (
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/rentals/${rental.id}/edit`}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                        Editar OS
-                                    </Link>
-                                </DropdownMenuItem>
-                            )}
-                            {canDelete && !isPendingStatus && (
-                                <>
-                                <DropdownMenuSeparator />
-                                 <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                                         <Trash2 className="mr-2 h-4 w-4" />
-                                         Excluir OS
-                                    </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                     <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2">
-                                <TriangleAlert className="h-6 w-6 text-destructive" />
-                                Você tem certeza?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
-            {isPendingStatus ? (
-                canDelete && (
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancelar Agendamento
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle className="flex items-center gap-2">
-                                    <TriangleAlert className="h-6 w-6 text-destructive" />
-                                    Cancelar Agendamento?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                    {isDeleting ? 'Removendo...' : 'Sim, Cancelar'}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )
-            ) : (
-                 <form action={boundFinishRentalAction} className="flex-grow">
-                    <input type="hidden" name="rentalId" value={rental.id} />
-                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                        {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                        Finalizar OS
-                    </Button>
-                </form>
-            )}
         </div>
-    </div>
+        <div className="flex w-full items-center gap-2 mt-auto">
+              <div className="flex-grow-0">
+                  <AlertDialog>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                              {canEdit && (
+                                  <DropdownMenuItem asChild>
+                                      <Link href={`/rentals/${rental.id}/edit`}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          Editar OS
+                                      </Link>
+                                  </DropdownMenuItem>
+                              )}
+                              {canDelete && !isPendingStatus && (
+                                  <>
+                                  <DropdownMenuSeparator />
+                                  <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Excluir OS
+                                      </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  </>
+                              )}
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle className="flex items-center gap-2">
+                                  <TriangleAlert className="h-6 w-6 text-destructive" />
+                                  Você tem certeza?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                  Esta ação não pode ser desfeita. Isso irá excluir permanentemente o registro desta Ordem de Serviço.
+                              </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                  {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
+                              </AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+              </div>
+               <Button variant="outline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} className="px-2 md:px-4">
+                    {isGeneratingPdf ? <Spinner size="small" /> : <Download className="h-4 w-4 md:mr-2" />}
+                    <span className="hidden md:inline">Baixar PDF</span>
+                </Button>
+              {isPendingStatus ? (
+                  canDelete && (
+                      <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                              <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  Cancelar Agendamento
+                              </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle className="flex items-center gap-2">
+                                      <TriangleAlert className="h-6 w-6 text-destructive" />
+                                      Cancelar Agendamento?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
+                                  </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                      {isDeleting ? 'Removendo...' : 'Sim, Cancelar'}
+                                  </AlertDialogAction>
+                              </AlertDialogFooter>
+                          </AlertDialogContent>
+                      </AlertDialog>
+                  )
+              ) : (
+                  <form action={boundFinishRentalAction} className="flex-grow">
+                      <input type="hidden" name="rentalId" value={rental.id} />
+                      <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                          {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                          Finalizar OS
+                      </Button>
+                  </form>
+              )}
+          </div>
+      </div>
+    </>
   );
 }
