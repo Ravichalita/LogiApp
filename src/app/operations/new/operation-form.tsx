@@ -108,7 +108,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [scheduleConflict, setScheduleConflict] = useState<string | null>(null);
 
-  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
+  const [directions, setDirections] = useState<{ distanceMeters: number; distance: string, duration: string } | null>(null);
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);

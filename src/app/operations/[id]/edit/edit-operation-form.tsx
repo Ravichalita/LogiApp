@@ -114,7 +114,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   const selectedBase = account?.bases?.find(b => b.address === startAddress);
   const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(selectedBase?.id);
 
-  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
+  const [directions, setDirections] = useState<{ distanceMeters: number; distance: string, duration: string } | null>(null);
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
