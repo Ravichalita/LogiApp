@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from '@/app/rentals/rental-card-actions';
 import { OperationCardActions } from '@/app/operations/operation-card-actions';
-import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip } from 'lucide-react';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -423,14 +423,14 @@ export default function OSPage() {
                 <>
                  <Button asChild variant="outline" className="hidden md:inline-flex">
                     <Link href="/route-planning">
-                        <Map className="mr-2 h-4 w-4" />
-                        Planejar Rota
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Planejar Rota com IA
                     </Link>
                 </Button>
                 <Button asChild variant="default" className="md:hidden flex-col h-auto p-2">
                     <Link href="/route-planning">
-                        <Map className="h-5 w-5" />
-                        <span className="text-xs mt-1">Rota</span>
+                        <Sparkles className="h-5 w-5" />
+                        <span className="text-xs mt-1">Rota IA</span>
                     </Link>
                 </Button>
                 </>

@@ -376,9 +376,9 @@ export default function RoutePlanningPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
         <div className="mb-8">
-            <h1 className="text-3xl font-headline font-bold">Planejamento de Rota</h1>
+            <h1 className="text-3xl font-headline font-bold">Planejamento de Rota IA</h1>
             <p className="text-muted-foreground mt-1">
-                Otimize a sequência das suas ordens de serviço para o dia selecionado.
+                Deixe a Inteligência Artificial sugerir a rota mais eficiênte no mapa.
             </p>
         </div>
 
