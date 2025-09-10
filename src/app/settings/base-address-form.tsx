@@ -21,44 +21,48 @@ export function BaseAddressForm({ account }: { account: Account }) {
   const { toast } = useToast();
   
   const [bases, setBases] = useState<Base[]>(account.bases || []);
-  const [debouncedBases] = useDebounce(bases, 1000); // Debounce state changes by 1 second
+  const [debouncedBases] = useDebounce(bases, 1000); // Debounce state changes for typing
 
-  // Ref to track if it's the initial load
   const isInitialLoad = useRef(true);
+  const isSaving = useRef(false);
 
   useEffect(() => {
-    if (!account.bases || account.bases.length === 0) {
-      setBases([{ id: nanoid(5), name: 'Principal', address: '' }]);
-    } else {
-      setBases(account.bases);
+    if (isInitialLoad.current) {
+        if (!account.bases || account.bases.length === 0) {
+            setBases([{ id: nanoid(5), name: 'Principal', address: '' }]);
+        } else {
+            setBases(account.bases);
+        }
+        isInitialLoad.current = false;
     }
   }, [account.bases]);
   
-  // This effect will run when debouncedBases changes, triggering a save.
+  // This effect will run when debouncedBases changes, triggering a save for typed input
   useEffect(() => {
-    // Skip the very first render
-    if (isInitialLoad.current) {
-        isInitialLoad.current = false;
+    // Skip the very first render and if a save is in progress
+    if (isInitialLoad.current || isSaving.current) {
         return;
     }
-    handleSave();
+    handleSave(bases);
   }, [debouncedBases]);
   
-  const handleSave = () => {
-    if (isPending) return;
-
+  const handleSave = (currentBases: Base[]) => {
+    if (isPending || isSaving.current) return;
+    
+    isSaving.current = true;
     startTransition(async () => {
-      if (!accountId) return;
+      if (!accountId) {
+          isSaving.current = false;
+          return;
+      }
 
-      const validBases = bases.filter(b => b.name.trim() !== '' && b.address.trim() !== '');
+      const validBases = currentBases.filter(b => b.name.trim() !== '' && b.address.trim() !== '');
 
       const result = await updateBasesAction(accountId, validBases);
       if (result.message === 'error') {
          toast({ title: 'Erro ao Salvar', description: result.error, variant: 'destructive' });
-      } else {
-         // The toast on save is a bit noisy, so we can comment it out or make it more subtle
-         // toast({ title: 'Salvo!', description: 'Endereços das bases atualizados.' });
       }
+      isSaving.current = false;
     });
   };
   
@@ -69,13 +73,14 @@ export function BaseAddressForm({ account }: { account: Account }) {
   };
   
   const handleLocationSelect = (id: string, location: Location) => {
-    setBases(currentBases =>
-      currentBases.map(b =>
+    const newBases = bases.map(b =>
         b.id === id
           ? { ...b, address: location.address, latitude: location.lat, longitude: location.lng }
           : b
-      )
-    );
+      );
+    setBases(newBases);
+    // Trigger save immediately on location select
+    handleSave(newBases);
   };
 
   const addBase = () => {
@@ -83,17 +88,22 @@ export function BaseAddressForm({ account }: { account: Account }) {
   }
   
   const removeBase = (id: string) => {
-      setBases(prev => prev.filter(b => b.id !== id));
+      const newBases = bases.filter(b => b.id !== id);
+      setBases(newBases);
+      // Trigger save immediately on removal
+      handleSave(newBases);
   }
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
         e.preventDefault();
+        // Blur to trigger onBlur save logic if needed
+        e.currentTarget.blur();
     }
   };
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-4">
+    <form onSubmit={(e) => { e.preventDefault(); handleSave(bases); }} className="space-y-4">
         <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
             {bases.map((base, index) => (
                 <div key={base.id} className="p-3 border rounded-lg space-y-3 relative bg-muted/50">
