@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -140,6 +141,7 @@ export default function NewRentalPage() {
                 clients={clients} 
                 team={team} 
                 rentalPrices={account?.rentalPrices}
+                account={account}
              />
           ) : (
             <Alert>

@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -7,8 +6,8 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBaseAddressSchema, UpdateCostSettingsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBasesSchema, OperationalCostSchema, UpdateOperationalCostsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType, OperationalCost } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -521,16 +520,29 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             console.error("Failed to parse attachments JSON on createRental");
         }
     }
+
+    let additionalCosts: AdditionalCost[] = [];
+    if (rawData.additionalCosts && typeof rawData.additionalCosts === 'string') {
+        try {
+            additionalCosts = JSON.parse(rawData.additionalCosts);
+        } catch (e) {
+            console.error("Failed to parse additionalCosts JSON");
+        }
+    }
     
     const dataToValidate = {
         ...rawData,
-        value: Number(rawData.value), 
+        value: Number(rawData.value),
+        lumpSumValue: Number(rawData.lumpSumValue),
+        travelCost: Number(rawData.travelCost),
+        totalCost: Number(rawData.totalCost),
         accountId,
         sequentialId: newSequentialId,
         status: 'Pendente',
         createdBy: createdBy,
         notificationsSent: { due: false, late: false },
         attachments,
+        additionalCosts,
     };
     
     const validatedFields = RentalSchema.safeParse(dataToValidate);
@@ -613,7 +625,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const rentalDays = Math.max(diffDays, 1);
-        const totalValue = rentalDays * rentalData.value;
+        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays;
         
         const completedRentalData = {
             ...rentalData,
@@ -673,6 +685,13 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         }
     }
     
+    if (rawData.additionalCosts && typeof rawData.additionalCosts === 'string') {
+        try {
+            dataToValidate.additionalCosts = JSON.parse(rawData.additionalCosts);
+        } catch (e) {
+            return { message: 'error', error: "Formato de custos adicionais inválido."}
+        }
+    }
 
     const validatedFields = UpdateRentalSchema.safeParse(dataToValidate);
 
@@ -1099,28 +1118,30 @@ export async function updateTruckStatusAction(accountId: string, truckId: string
 
 // #region Settings & Reset Actions
 
-export async function updateBaseAddressAction(accountId: string, prevState: any, formData: FormData) {
-    const validatedFields = UpdateBaseAddressSchema.safeParse(Object.fromEntries(formData.entries()));
+export async function updateBasesAction(accountId: string, bases: any[]) {
+    const validatedFields = UpdateBasesSchema.safeParse({ bases });
 
     if (!validatedFields.success) {
+        console.error("Base validation error:", validatedFields.error.flatten().fieldErrors);
         return {
-            errors: validatedFields.error.flatten().fieldErrors,
-            message: 'error',
+            message: 'error' as const,
+            error: JSON.stringify(validatedFields.error.flatten().fieldErrors),
         };
     }
-
+    
     try {
-        const accountRef = adminDb.doc(`accounts/${accountId}`);
+        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
         await accountRef.update({
-            ...validatedFields.data,
-            updatedAt: FieldValue.serverTimestamp()
+            bases: validatedFields.data.bases ?? []
         });
         revalidatePath('/settings');
-        return { message: 'success' };
+        revalidatePath('/operations/new');
+        return { message: 'success' as const };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return { message: 'error' as const, error: handleFirebaseError(e) };
     }
 }
+
 
 export async function updateOperationTypesAction(accountId: string, types: OperationType[]) {
     const validatedFields = z.array(OperationTypeSchema).safeParse(types);
@@ -1158,29 +1179,25 @@ export async function updateTruckTypesAction(accountId: string, types: TruckType
 }
 
 
-export async function updateCostSettingsAction(accountId: string, formData: FormData) {
-    const costPerKmString = formData.get('costPerKm') as string;
-    const costPerKmInCents = parseInt(costPerKmString.replace(/\D/g, ''), 10) || 0;
-    const costPerKm = costPerKmInCents / 100;
-    
-    const validatedFields = UpdateCostSettingsSchema.safeParse({ costPerKm });
+export async function updateOperationalCostsAction(accountId: string, costs: OperationalCost[]) {
+    const validatedFields = UpdateOperationalCostsSchema.safeParse({ operationalCosts: costs });
     
     if (!validatedFields.success) {
         return {
-            message: 'error',
-            error: validatedFields.error.flatten().fieldErrors.costPerKm?.[0] || "Valor inválido."
+            message: 'error' as const,
+            error: "Dados de custo inválidos."
         };
     }
 
     try {
         const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
         await accountRef.update({
-            costPerKm: validatedFields.data.costPerKm
+            operationalCosts: validatedFields.data.operationalCosts ?? []
         });
         revalidatePath('/settings');
-        return { message: 'success' };
+        return { message: 'success' as const };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return { message: 'error' as const, error: handleFirebaseError(e) };
     }
 }
 
@@ -1910,5 +1927,10 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
+
+
+
+
 
 

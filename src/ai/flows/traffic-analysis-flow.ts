@@ -1,4 +1,5 @@
 
+
 'use server';
 /**
  * @fileOverview Flow para análise de trânsito usando IA.
@@ -37,6 +38,8 @@ const PromptInputSchema = z.object({
   weather: z.string().optional(),
   trafficDuration: z.string().optional(),
   totalDuration: z.string().optional(),
+  routeSummary: z.string().optional(),
+  tollInfo: z.string().optional(),
 });
 
 
@@ -51,54 +54,37 @@ const trafficAnalysisPrompt = ai.definePrompt({
    A resposta deve ser objetiva, fácil de entender e trazer recomendações úteis.
 
 2. CONTEXTO DA ANÁLISE
-Data da Previsão: {{{date}}}. A análise deve cobrir o período da manhã e da tarde, correspondente a uma rota de trabalho com duração total de aproximadamente {{{totalDuration}}}.
-Localização: Cidades e bairros na rota.
-Região/Rota Específica: {{{routeStops}}}
-Condições Climáticas (Previsão): {{{weather}}}
-Duração Estimada (Primeiro Trecho): {{{trafficDuration}}}
-Beleza, agora vou simplificar o prompt para que a IA produza **respostas mais práticas e objetivas**, sem jargão técnico pesado, mas ainda mantendo a análise dos fatores importantes (clima, eventos, histórico, etc.). Fica mais no tom de **guia prático** para um usuário comum que quer entender o trânsito.
+   - **Data da Previsão:** {{{date}}}. A análise deve cobrir o período da manhã e da tarde, correspondente a uma rota de trabalho com duração total de aproximadamente {{{totalDuration}}}.
+   - **Região/Rota Específica:** {{{routeStops}}}
+   - **Duração Estimada (Primeiro Trecho):** {{{trafficDuration}}}
+   - **Condições Climáticas (Previsão):** {{{weather}}}
 
-2. Fontes de Informação
+3. Fontes de Informação
+   - **Histórico de trânsito:** padrões médios de velocidade e congestionamento no mesmo dia e horário.
+   - **Dados em tempo real:** Google Maps, Waze, Here, sensores e câmeras públicas.
+   - **Clima:** chuva, neblina, calor extremo.
+   - **Eventos programados:** shows, jogos, manifestações, obras.
+   - **Transporte público:** greves, atrasos ou alterações de linhas.
+   - **Redes sociais:** posts em Twitter ou Facebook sobre acidentes ou congestionamentos.
+   - **Notícias locais:** sites e rádios de trânsito.
 
-* Histórico de trânsito: padrões médios de velocidade e congestionamento no mesmo dia e horário.
-* Dados em tempo real: Google Maps, Waze, Here, sensores e câmeras públicas.
-* Clima: chuva, neblina, calor extremo.
-* Eventos programados: shows, jogos, manifestações, obras.
-* Transporte público: greves, atrasos ou alterações de linhas.
-* Redes sociais: posts em Twitter ou Facebook sobre acidentes ou congestionamentos.
-* Notícias locais: sites e rádios de trânsito.
+4. Passo a Passo da Análise
+   - **Etapa 1 – Linha de Base:** Descubra como o trânsito costuma ser normalmente naquele local, dia da semana e horário.
+   - **Etapa 2 – Ajustes:** Verifique fatores que podem mudar esse padrão, como eventos, clima, obras ou greves.
+   - **Etapa 3 – Confirmação:** Compare diferentes fontes para ter certeza.
+   - **Etapa 4 – Resultado Final:** Mostre:
+     - Nível de trânsito esperado (leve, moderado, intenso ou muito congestionado).
+     - Tempo de viagem estimado em relação ao normal (exemplo: 30% a mais).
+     - Principais motivos (exemplo: chuva forte, evento esportivo, acidente).
+     - Sugestões práticas de rotas alternativas ou horários melhores.
 
-3. Passo a Passo da Análise
-   Etapa 1 – Linha de Base
-   Descubra como o trânsito costuma ser normalmente naquele local, dia da semana e horário.
-
-Etapa 2 – Ajustes
-Verifique fatores que podem mudar esse padrão:
-
-* Eventos grandes na região (exemplo: jogo de futebol).
-* Clima (chuva costuma aumentar congestionamentos).
-* Obras ou fechamentos de vias.
-* Greves no transporte público.
-
-Etapa 3 – Confirmação
-Compare diferentes fontes para ter certeza. Se várias confirmarem o mesmo problema (por exemplo, acidente relatado no Waze, Twitter e rádio), aumente a confiança da previsão.
-
-Etapa 4 – Resultado Final
-Mostre:
-
-* Nível de trânsito esperado (leve, moderado, intenso ou muito congestionado).
-* Tempo de viagem estimado em relação ao normal (exemplo: 30% a mais).
-* Principais motivos (exemplo: chuva forte, evento esportivo, acidente).
-* Sugestões práticas de rotas alternativas ou horários melhores.
-
-4. Regras para Responder
-
-* Use linguagem simples e clara.
-* Dê sempre um resumo rápido do que esperar.
-* Inclua causas principais do trânsito.
-* Informe se há alternativas melhores.
-* Seja objetivo: máximo de 3 a 5 pontos principais.
-
+5. Regras para Responder
+   - Use linguagem simples e clara.
+   - Dê sempre um resumo rápido do que esperar.
+   - Inclua causas principais do trânsito.
+   - Informe se há alternativas melhores.
+   - Seja objetivo: máximo de 3 a 5 pontos principais.
+   - Inicie a resposta com uma análise concisa do cenário geral.
 `
 });
 
@@ -112,10 +98,11 @@ const trafficAnalysisFlow = ai.defineFlow(
     try {
         let weatherInfo = "Não foi possível obter a previsão do tempo.";
         let trafficInfo = "Não foi possível obter dados de trânsito em tempo real.";
+        let routeSummary = "Sem resumo da rota.";
+        let tollInfo = "Sem informações de pedágio.";
 
         const analysisDate = new Date(input.date);
         
-        // Format the date to be more human-readable and timezone-aware for the LLM
         const timeZone = 'America/Sao_Paulo';
         const zonedDate = toZonedTime(analysisDate, timeZone);
         const formattedDateForPrompt = format(zonedDate, "dd 'de' MMMM 'de' yyyy, 'iniciando aproximadamente às' HH:mm", { locale: ptBR }) + " (Horário de Brasília)";
@@ -124,19 +111,22 @@ const trafficAnalysisFlow = ai.defineFlow(
             const originLocation = await geocodeAddress(input.routeStops[0]);
             
             if (originLocation) {
-                // Fetch weather
                 const weatherResult = await getWeatherForecastAction(originLocation, analysisDate);
                 if (weatherResult) {
                     weatherInfo = `${weatherResult.condition}, temperatura de ${weatherResult.tempC}°C.`;
                 }
 
-                // Fetch traffic for the first leg of the journey
                 if (input.routeStops.length > 1) {
                     const destinationLocation = await geocodeAddress(input.routeStops[1]);
                     if (destinationLocation) {
                         const directionsResult = await getDirectionsAction(originLocation, destinationLocation);
-                        if (directionsResult?.duration) {
-                            trafficInfo = `A duração estimada para o primeiro trecho da rota é de ${directionsResult.duration}.`;
+                        if (directionsResult) {
+                            const hours = Math.floor(directionsResult.durationSeconds / 3600);
+                            const minutes = Math.floor((directionsResult.durationSeconds % 3600) / 60);
+                            let durationText = '';
+                            if (hours > 0) durationText += `${hours}h `;
+                            if (minutes > 0) durationText += `${minutes}min`;
+                            trafficInfo = `A duração estimada para o primeiro trecho da rota é de ${durationText.trim()}.`;
                         }
                     }
                 }
@@ -145,9 +135,9 @@ const trafficAnalysisFlow = ai.defineFlow(
 
         const response = await trafficAnalysisPrompt({ 
             ...input, 
-            date: formattedDateForPrompt, // Use the new formatted date
+            date: formattedDateForPrompt,
             weather: weatherInfo, 
-            trafficDuration: trafficInfo 
+            trafficDuration: trafficInfo,
         });
 
         const outputText = response.text; 
@@ -164,4 +154,6 @@ const trafficAnalysisFlow = ai.defineFlow(
   }
 );
     
+
+
 

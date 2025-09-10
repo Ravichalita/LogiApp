@@ -431,6 +431,7 @@ export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assigned
     assignedToUser: UserAccount | null;
 };
 export type PopulatedOperation = Operation & {
+    id: string;
     itemType: 'operation';
     operationTypes: {id: string, name: string}[];
     client: Client | null;

@@ -1,10 +1,9 @@
 
-
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition, useMemo } from 'react';
 import { updateRentalAction } from '@/lib/actions';
-import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment } from '@/lib/types';
+import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment, Account, AdditionalCost } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isBefore as isBeforeDate, parseISO } from 'date-fns';
+import { format, isBefore as isBeforeDate, parseISO, startOfDay, addDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -23,12 +22,23 @@ import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import { useRouter } from 'next/navigation';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { geocodeAddress, getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
+import { MapDialog } from '@/components/map-dialog';
+import { CostsDialog } from '@/app/operations/new/costs-dialog';
+import { Separator } from '@/components/ui/separator';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
   clients: Client[];
   team: UserAccount[];
-  rentalPrices?: RentalPrice[];
+  account: Account;
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -46,34 +56,159 @@ const formatCurrencyForDisplay = (value: number): string => {
   }).format(value);
 };
 
-export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRentalFormProps) {
+const WeatherIcon = ({ condition }: { condition: string }) => {
+    const lowerCaseCondition = condition.toLowerCase();
+    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
+        return <CloudRain className="h-5 w-5" />;
+    }
+    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
+        return <Snowflake className="h-5 w-5" />;
+    }
+    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
+        return <Cloudy className="h-5 w-5" />;
+    }
+    return <Sun className="h-5 w-5" />;
+};
+
+
+export function EditRentalForm({ rental, clients, team, account }: EditRentalFormProps) {
   const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
   
-  const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedToUser?.id);
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedTo);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
   const [rentalDate, setRentalDate] = useState<Date | undefined>(parseISO(rental.rentalDate));
   const [returnDate, setReturnDate] = useState<Date | undefined>(parseISO(rental.returnDate));
-  const [location, setLocation] = useState<Omit<Location, 'address'> | null>(
+  const [deliveryLocation, setDeliveryLocation] = useState<Omit<Location, 'address'> | null>(
     rental.latitude && rental.longitude ? { lat: rental.latitude, lng: rental.longitude } : null
   );
+
+  const selectedBase = account?.bases?.find(b => b.address === rental.startAddress);
+  const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(selectedBase?.id);
+  const [startAddress, setStartAddress] = useState(rental.startAddress || '');
+  const [startLocation, setStartLocation] = useState<Omit<Location, 'address'> | null>(
+    rental.startLatitude && rental.startLongitude
+      ? { lat: rental.startLatitude, lng: rental.startLongitude }
+      : null
+  );
+  
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState(rental.value);
+  const [lumpSumValue, setLumpSumValue] = useState(rental.lumpSumValue || 0);
+  const [billingType, setBillingType] = useState<'perDay' | 'lumpSum'>(rental.billingType || 'perDay');
+
   const [displayValue, setDisplayValue] = useState(formatCurrencyForInput((rental.value * 100).toString()));
+  const [displayLumpSumValue, setDisplayLumpSumValue] = useState(formatCurrencyForInput(((rental.lumpSumValue || 0) * 100).toString()));
+  
   const [priceId, setPriceId] = useState<string | undefined>();
   const [attachments, setAttachments] = useState<Attachment[]>(rental.attachments || []);
+  const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>(rental.additionalCosts || []);
   
+  const [directions, setDirections] = useState<{ distanceMeters: number, durationSeconds: number, distance: string, duration: string } | null>(null);
+  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
+  const [travelCost, setTravelCost] = useState<number | null>(null);
+  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
-  const handleLocationSelect = (selectedLocation: Location) => {
-    setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+  const rentalDays = returnDate && rentalDate ? differenceInCalendarDays(returnDate, rentalDate) + 1 : 0;
+  const totalRentalValue = billingType === 'lumpSum' ? lumpSumValue : value * rentalDays;
+  const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
+  const profit = totalRentalValue - totalOperationCost;
+
+  useEffect(() => {
+    const fetchRouteInfo = async () => {
+      if (startLocation && deliveryLocation && rentalDate) {
+        setIsFetchingInfo(true);
+        setDirections(null);
+        setWeather(null);
+        setTravelCost(null);
+        try {
+          const [directionsResult, weatherResult] = await Promise.all([
+             getDirectionsAction(startLocation, deliveryLocation),
+             getWeatherForecastAction(deliveryLocation, rentalDate),
+          ]);
+          if (directionsResult) {
+            setDirections(directionsResult);
+            const truckType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
+
+            if (truckType) {
+                let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
+                // Fallback: If no specific base config, find any config for this truck type.
+                if (!costConfig) {
+                    costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
+                }
+
+                const costPerKm = costConfig?.value || 0;
+                
+                if (costPerKm > 0) {
+                    setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
+                } else {
+                    setTravelCost(0);
+                }
+            } else {
+                setTravelCost(0);
+            }
+          }
+          if (weatherResult) {
+              setWeather(weatherResult);
+          }
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setIsFetchingInfo(false);
+        }
+      } else {
+          setDirections(null);
+          setWeather(null);
+          setTravelCost(null);
+      }
+    };
+
+    fetchRouteInfo();
+  }, [startLocation, deliveryLocation, rentalDate, account, selectedBaseId]);
+
+
+  const handleBaseSelect = (baseId: string) => {
+    setSelectedBaseId(baseId);
+    const selectedBase = account?.bases?.find(b => b.id === baseId);
+    if (selectedBase) {
+        setStartAddress(selectedBase.address);
+        if (selectedBase.latitude && selectedBase.longitude) {
+            setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
+        } else {
+            setStartLocation(null); 
+            geocodeAddress(selectedBase.address).then(location => {
+                if (location) {
+                    setStartLocation({ lat: location.lat, lng: location.lng });
+                }
+            });
+        }
+    }
+  };
+  
+  const handleStartLocationSelect = (selectedLocation: Location) => {
+    setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+    setStartAddress(selectedLocation.address);
+    setSelectedBaseId(undefined); // Clear base selection if custom address is chosen
+  };
+  
+  const handleStartAddressChange = (newAddress: string) => {
+    setStartAddress(newAddress);
+    setStartLocation(null);
+    setSelectedBaseId(undefined); // Clear base selection if custom address is chosen
+  }
+  
+  const handleDeliveryLocationSelect = (selectedLocation: Location) => {
+    setDeliveryLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setDeliveryAddress(selectedLocation.address);
   };
   
-  const handleAddressChange = (newAddress: string) => {
+  const handleDeliveryAddressChange = (newAddress: string) => {
     setDeliveryAddress(newAddress);
+    setDeliveryLocation(null);
   }
 
   const handleFormAction = (formData: FormData) => {
@@ -84,15 +219,24 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         }
         
         formData.set('id', rental.id);
+        formData.set('startAddress', startAddress);
+        if (startLocation) {
+          formData.set('startLatitude', String(startLocation.lat));
+          formData.set('startLongitude', String(startLocation.lng));
+        }
+
         formData.set('deliveryAddress', deliveryAddress);
         if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
         if (returnDate) formData.set('returnDate', returnDate.toISOString());
-        if (location) {
-          formData.set('latitude', String(location.lat));
-          formData.set('longitude', String(location.lng));
+        if (deliveryLocation) {
+          formData.set('latitude', String(deliveryLocation.lat));
+          formData.set('longitude', String(deliveryLocation.lng));
         }
+        formData.set('billingType', billingType);
         formData.set('value', String(value));
+        formData.set('lumpSumValue', String(lumpSumValue));
         formData.set('attachments', JSON.stringify(attachments));
+        formData.set('additionalCosts', JSON.stringify(additionalCosts));
 
         const boundAction = updateRentalAction.bind(null, accountId);
         const result = await boundAction(null, formData);
@@ -119,15 +263,12 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
   };
   
   const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
-    // This requires a server action to be truly effective (delete from storage)
-    // For now, it just removes from the local state to be saved.
     setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
   };
 
-
   const handlePriceSelection = (selectedPriceId: string) => {
     setPriceId(selectedPriceId);
-    const selectedPrice = rentalPrices?.find(p => p.id === selectedPriceId);
+    const selectedPrice = account.rentalPrices?.find(p => p.id === selectedPriceId);
     if(selectedPrice) {
         setValue(selectedPrice.value);
         setDisplayValue(formatCurrencyForInput((selectedPrice.value * 100).toString()));
@@ -140,21 +281,43 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
     setValue(cents / 100);
     setDisplayValue(formatCurrencyForInput(rawValue));
   }
+  
+  const handleLumpSumValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '');
+    const cents = parseInt(rawValue, 10) || 0;
+    setLumpSumValue(cents / 100);
+    setDisplayLumpSumValue(formatCurrencyForInput(rawValue));
+  }
+  
+  const handleAccordionChange = (value: string) => {
+    const newBillingType = value === 'lump-sum' ? 'lumpSum' : 'perDay';
+    setBillingType(newBillingType);
+    if (newBillingType === 'perDay') {
+        setLumpSumValue(0);
+        setDisplayLumpSumValue('');
+    } else {
+        setValue(0);
+        setDisplayValue('');
+        setPriceId(undefined);
+    }
+  };
+
 
   return (
     <form action={handleFormAction} className="space-y-6">
-        {/* Hidden inputs to pass data not directly in a form field */}
         <input type="hidden" name="clientId" value={rental.clientId} />
         <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
 
-      <div className="space-y-2">
-        <Label>Caçamba</Label>
-        <Input value={`${rental.dumpster?.name} (${rental.dumpster?.size}m³)`} disabled />
-      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+            <Label>Caçamba</Label>
+            <Input value={`${rental.dumpster?.name} (${rental.dumpster?.size}m³)`} disabled />
+        </div>
 
-      <div className="space-y-2">
-        <Label>Cliente</Label>
-        <Input value={rental.client?.name} disabled />
+        <div className="space-y-2">
+            <Label>Cliente</Label>
+            <Input value={rental.client?.name} disabled />
+        </div>
       </div>
       
        <div className="space-y-2">
@@ -169,18 +332,105 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
         </Select>
         {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
       </div>
-      
+
+       <div className="p-4 border rounded-md space-y-4 bg-card relative">
+        {(account?.bases?.length ?? 0) > 0 && (
+            <div className="space-y-2">
+                <Label htmlFor="base-select" className="text-muted-foreground">Endereço de Partida</Label>
+                <Select onValueChange={handleBaseSelect} value={selectedBaseId}>
+                    <SelectTrigger id="base-select">
+                        <SelectValue placeholder="Selecione uma base de partida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {account?.bases?.map(base => (
+                            <SelectItem key={base.id} value={base.id}>{base.name} - {base.address}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
+        <Accordion type="single" collapsible className="w-full" defaultValue="">
+             <AccordionItem value="custom-address" className="border-b-0">
+                <div className="flex justify-between items-center w-full">
+                  <AccordionTrigger className="text-sm hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground flex-grow">
+                      <span className="font-normal">{ (account?.bases?.length ?? 0) > 0 ? "Ou digite um endereço de partida personalizado" : "Endereço de Partida" }</span>
+                  </AccordionTrigger>
+                  <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
+                </div>
+                <AccordionContent className="pt-4 space-y-2">
+                    <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} />
+                    {errors?.startAddress && (
+                        <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
+                    )}
+                </AccordionContent>
+             </AccordionItem>
+        </Accordion>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="address-input">Endereço de Entrega</Label>
         <AddressInput
             id="address-input"
             value={deliveryAddress}
-            onInputChange={handleAddressChange}
-            onLocationSelect={handleLocationSelect}
-            initialLocation={location}
+            onInputChange={handleDeliveryAddressChange}
+            onLocationSelect={handleDeliveryLocationSelect}
+            initialLocation={deliveryLocation}
         />
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
+      
+       {isFetchingInfo && (
+        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Spinner size="small" />
+          Calculando rota e previsão do tempo...
+        </div>
+      )}
+      
+       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && deliveryLocation && !isFetchingInfo && (
+          <div className="relative">
+             <Alert variant="info" className="flex-grow flex flex-col gap-4">
+               <AlertTitle>Informações da Rota e Clima</AlertTitle>
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                {directions && (
+                    <>
+                    <div className="flex items-center gap-2 text-sm">
+                        <Route className="h-5 w-5" />
+                        <span className="font-bold">{directions.distance}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-5 w-5" />
+                        <span className="font-bold">{directions.duration}</span>
+                    </div>
+                    </>
+                )}
+                 {weather && (
+                    <div className="text-center">
+                    <div className="flex items-center gap-2 text-sm">
+                        <WeatherIcon condition={weather.condition} />
+                        <span className="font-bold">{weather.tempC}°C</span>
+                    </div>
+                    </div>
+                )}
+                 {(travelCost !== null && travelCost > 0) && (
+                    <div className="flex items-center gap-2 text-sm">
+                        <DollarSign className="h-5 w-5" />
+                        <span className="font-bold">{formatCurrencyForDisplay(travelCost)} (ida/volta)</span>
+                    </div>
+                 )}
+                </div>
+                 <Button asChild variant="outline" size="sm" className="w-full mt-auto border-primary/50">
+                    <Link
+                        href={`https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${deliveryLocation.lat},${deliveryLocation.lng}`}
+                        target="_blank"
+                        className="flex items-center gap-2"
+                    >
+                        <MapIcon className="h-4 w-4" />
+                        <span>Ver Trajeto no Mapa</span>
+                    </Link>
+                </Button>
+            </Alert>
+          </div>
+        )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -240,50 +490,117 @@ export function EditRentalForm({ rental, clients, team, rentalPrices }: EditRent
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>
-       
-       <div className="space-y-2">
-        <Label htmlFor="value">Valor da Diária (R$)</Label>
-        {(rentalPrices && rentalPrices.length > 0) ? (
-            <div className="flex gap-2">
-                <Select onValueChange={handlePriceSelection} value={priceId}>
-                     <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma tabela de preço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {rentalPrices.map(p => (
+
+       <Accordion type="single" collapsible defaultValue={billingType} className="w-full" onValueChange={handleAccordionChange}>
+        <AccordionItem value="perDay">
+          <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
+          <AccordionContent>
+            <div className="p-4 border rounded-md space-y-4 bg-card">
+              <div className="grid grid-cols-3 gap-4 items-end">
+                <div className="grid gap-2 col-span-2">
+                  {(account.rentalPrices && account.rentalPrices.length > 0) ? (
+                    <div className="flex gap-2">
+                      <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um preço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {account.rentalPrices.map(p => (
                             <SelectItem key={p.id} value={p.id}>
-                                {p.name} ({formatCurrencyForDisplay(p.value)})
+                              {p.name} ({formatCurrencyForDisplay(p.value)})
                             </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                 <Input
-                    id="value"
-                    name="value_display"
-                    value={displayValue}
-                    onChange={handleValueChange}
-                    placeholder="R$ 0,00"
-                    required
-                    className="w-1/3 text-right"
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="value"
+                        name="value_display"
+                        value={displayValue}
+                        onChange={handleValueChange}
+                        placeholder="R$ 0,00"
+                        required={billingType === 'perDay'}
+                        className="w-1/3 text-right"
+                        disabled={billingType !== 'perDay'}
+                      />
+                    </div>
+                  ) : (
+                    <Input
+                      id="value_display"
+                      name="value_display"
+                      value={displayValue}
+                      onChange={handleValueChange}
+                      placeholder="R$ 0,00"
+                      required={billingType === 'perDay'}
+                      className="text-right"
+                      disabled={billingType !== 'perDay'}
                     />
+                  )}
+                </div>
+              </div>
+              {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
             </div>
-        ) : (
-            <Input
-            id="value_display"
-            name="value_display"
-            value={displayValue}
-            onChange={handleValueChange}
-            placeholder="R$ 0,00"
-            required
-            className="text-right"
-            />
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="lump-sum">
+          <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
+          <AccordionContent>
+            <div className="p-4 border rounded-md space-y-4 bg-card">
+              <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
+              <Input
+                id="lumpSumValue"
+                name="lumpSumValue_display"
+                value={displayLumpSumValue}
+                onChange={handleLumpSumValueChange}
+                placeholder="R$ 0,00"
+                required={billingType === 'lumpSum'}
+                className="text-right"
+                disabled={billingType !== 'lumpSum'}
+              />
+              {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+      
+       <div className="p-4 border rounded-md space-y-4 bg-card">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-destructive" />
+                <span className="font-medium">Custo Total da Operação:</span>
+                <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
+            </div>
+            <CostsDialog 
+              costs={additionalCosts} 
+              onSave={setAdditionalCosts} 
+            >
+              <Button type="button" variant="outline">Adicionar Custos</Button>
+            </CostsDialog>
+        </div>
+        {(totalRentalValue > 0 || totalOperationCost > 0) && (
+            <>
+            <Separator />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm pt-2 gap-2 sm:gap-4">
+                <div className="flex items-center gap-2">
+                    {profit >= 0 ? 
+                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                    }
+                    <span className="font-medium">Lucro Previsto:</span>
+                    <span className={cn(
+                        "font-bold",
+                        profit >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                        {formatCurrencyForDisplay(profit)}
+                    </span>
+                </div>
+            </div>
+            </>
         )}
-        {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" defaultValue={rental.observations} placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+        <Textarea id="observations" name="observations" defaultValue={rental.observations ?? ''} placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
       </div>
 

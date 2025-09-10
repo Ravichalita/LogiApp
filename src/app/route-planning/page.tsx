@@ -4,33 +4,62 @@
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { PopulatedOperation, UserAccount, Account } from '@/lib/types';
-import { getPopulatedOperations, fetchAccount } from '@/lib/data';
+import type { PopulatedOperation, UserAccount, Account, Location as AppLocation, Base, PopulatedRental } from '@/lib/types';
+import { getPopulatedOperations, getPopulatedRentals, fetchAccount } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Map, ListOrdered, PlayCircle, ShieldAlert, User, Clock, MapPin, Warehouse, MoveRight, Calendar as CalendarIcon, Route, TrendingDown, DollarSign, TrendingUp, TrafficCone } from 'lucide-react';
-import { isToday, parseISO, format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
+import { Map, ListOrdered, PlayCircle, ShieldAlert, User, Clock, MapPin, Warehouse, MoveRight, Calendar as CalendarIcon, Route, TrendingDown, DollarSign, TrendingUp, TrafficCone, Navigation, Container } from 'lucide-react';
+import { isToday, parseISO, format, startOfDay, endOfDay, isWithinInterval, isBefore, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Spinner } from '@/components/ui/spinner';
 import { optimizeRoute } from '@/ai/flows/optimize-route-flow';
+import { optimizeRentalRoute } from '@/ai/flows/optimize-rental-route-flow';
 import { analyzeTraffic } from '@/ai/flows/traffic-analysis-flow';
-import type { OptimizeRouteOutput } from '@/ai/flows/optimize-route-flow';
+import type { OptimizeRouteOutput, OptimizedStop } from '@/ai/flows/optimize-route-flow';
 import { useToast } from '@/hooks/use-toast';
 import { OptimizedRouteMap } from './optimized-route-map';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { geocodeAddress } from '@/lib/data-server-actions';
+import { Input } from '@/components/ui/input';
 
-interface OperationsByDriver {
+interface RouteGroup {
+    startAddress: string;
+    baseId?: string;
+    operations: PopulatedOperation[];
+    optimizedRoute?: OptimizeRouteOutput;
+    trafficAnalysis?: string;
+    isOptimizing?: boolean;
+    isAnalyzingTraffic?: boolean;
+}
+
+interface RentalRouteGroup {
+    startAddress: string;
+    baseId?: string;
+    items: { type: 'delivery' | 'pickup', rental: PopulatedRental }[];
+    departureTime: string;
+    optimizedRoute?: OptimizeRouteOutput;
+    trafficAnalysis?: string;
+    isOptimizing?: boolean;
+    isAnalyzingTraffic?: boolean;
+}
+
+interface TasksByDriver {
   driverId: string;
   driverName: string;
-  operations: PopulatedOperation[];
-  optimizedRoute?: OptimizeRouteOutput;
-  trafficAnalysis?: string;
-  isOptimizing?: boolean;
-  isAnalyzingTraffic?: boolean;
+  operationRoutes: RouteGroup[];
+  rentalRoutes: RentalRouteGroup[];
 }
 
 // Helper function to format bold text from markdown-like syntax
@@ -52,15 +81,44 @@ const formatBoldText = (text: string | null | undefined) => {
     });
 };
 
+const generateGoogleMapsUrl = (baseLocation: AppLocation, stops: OptimizedStop[]): string => {
+    if (stops.length === 0) {
+        return `https://www.google.com/maps/search/?api=1&query=${baseLocation.lat},${baseLocation.lng}`;
+    }
+
+    const baseUrl = 'https://www.google.com/maps/dir/';
+    
+    const origin = `${baseLocation.lat},${baseLocation.lng}`;
+    
+    const destinationStop = stops[stops.length - 1].ordemServico;
+    const destination = `${destinationStop.destinationLatitude},${destinationStop.destinationLongitude}`;
+    
+    const waypoints = stops
+        .slice(0, -1) // All stops except the last one are waypoints
+        .map(stop => `${stop.ordemServico.destinationLatitude},${stop.ordemServico.destinationLongitude}`)
+        .join('/');
+
+    // The final URL structure should be: /origin/waypoint1/waypoint2/.../destination
+    let finalUrl = `${baseUrl}${origin}/`;
+    if (waypoints) {
+        finalUrl += `${waypoints}/`;
+    }
+    finalUrl += destination;
+
+    return finalUrl;
+};
+
 export default function RoutePlanningPage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [account, setAccount] = useState<Account | null>(null);
-    const [operationsByDriver, setOperationsByDriver] = useState<OperationsByDriver[]>([]);
+    const [tasksByDriver, setTasksByDriver] = useState<TasksByDriver[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const { toast } = useToast();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [includeOverdue, setIncludeOverdue] = useState(false);
     
     const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessRoutes;
+    const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.permissions?.canAccessFinance;
 
     useEffect(() => {
         if (authLoading) return;
@@ -74,104 +132,218 @@ export default function RoutePlanningPage() {
             const accountData = await fetchAccount(accountId);
             setAccount(accountData);
 
-            const unsub = getPopulatedOperations(accountId, (allOps) => {
-                const dayStart = startOfDay(selectedDate);
-                const dayEnd = endOfDay(selectedDate);
+            const unsubOps = getPopulatedOperations(accountId, (allOps) => {
+                 getPopulatedRentals(accountId, (allRentals) => {
+                    const dayStart = startOfDay(selectedDate);
+                    const dayEnd = endOfDay(selectedDate);
+                    const today = startOfDay(new Date());
 
-                const dayOps = allOps.filter(op => {
-                    if (!op.startDate) return false;
-                    const opDate = parseISO(op.startDate);
-                    return isWithinInterval(opDate, { start: dayStart, end: dayEnd });
-                });
-                
-                const groupedOps = dayOps.reduce((acc, op) => {
-                    const driverId = op.driverId || 'unassigned';
-                    if (!acc[driverId]) {
-                        acc[driverId] = {
-                            driverId: driverId,
-                            driverName: op.driver?.name || 'Sem Responsável',
-                            operations: [],
-                            isOptimizing: false,
-                        };
-                    }
-                    acc[driverId].operations.push(op);
-                    return acc;
-                }, {} as Record<string, OperationsByDriver>);
+                    // Filter Operations for the day
+                    const dayOps = allOps.filter(op => {
+                        if (!op.startDate) return false;
+                        const opDate = parseISO(op.startDate);
+                        const isForToday = isWithinInterval(opDate, { start: dayStart, end: dayEnd });
+                        const isOverdueOp = includeOverdue && isBefore(opDate, today);
+                        return isForToday || isOverdueOp;
+                    });
+                    
+                    const dayRentalItems: { type: 'delivery' | 'pickup', rental: PopulatedRental }[] = allRentals.flatMap(r => {
+                        const items = [];
+                        if (isSameDay(parseISO(r.rentalDate), selectedDate)) {
+                            items.push({ type: 'delivery' as const, rental: r });
+                        }
+                        if (isSameDay(parseISO(r.returnDate), selectedDate)) {
+                             items.push({ type: 'pickup' as const, rental: r });
+                        }
+                        return items;
+                    });
+                    
+                    const combinedTasks = [
+                        ...dayOps.map(op => ({ type: 'operation' as const, task: op, driverId: op.driverId || 'unassigned', driverName: op.driver?.name || 'Sem Responsável' })),
+                        ...dayRentalItems.map(item => ({ type: 'rental' as const, task: item, driverId: item.rental.assignedTo, driverName: item.rental.assignedToUser?.name || 'Sem Responsável' })),
+                    ];
+                    
+                    const groupedByDriver = combinedTasks.reduce((acc, { driverId, driverName, type, task }) => {
+                        if (!driverId) return acc;
+                        if (!acc[driverId]) {
+                            acc[driverId] = {
+                                driverId,
+                                driverName,
+                                operations: [],
+                                rentals: []
+                            };
+                        }
+                        if (type === 'operation') {
+                            acc[driverId].operations.push(task as PopulatedOperation);
+                        } else {
+                            acc[driverId].rentals.push(task as { type: 'delivery' | 'pickup', rental: PopulatedRental });
+                        }
+                        return acc;
+                    }, {} as Record<string, { driverId: string; driverName: string; operations: PopulatedOperation[]; rentals: { type: 'delivery' | 'pickup', rental: PopulatedRental }[] }>);
 
-                setOperationsByDriver(Object.values(groupedOps));
-                setLoadingData(false);
-            }, (error) => {
-                console.error(error);
-                setLoadingData(false);
-            });
-            return unsub;
+
+                    const finalGroupedData: TasksByDriver[] = Object.values(groupedByDriver).map(driverGroup => {
+                        const operationRoutes = Object.values(driverGroup.operations.reduce((acc, op) => {
+                            const startAddress = op.startAddress || 'Endereço de partida não definido';
+                            if (!acc[startAddress]) {
+                                const base = accountData?.bases?.find(b => b.address === startAddress);
+                                acc[startAddress] = { startAddress, baseId: base?.id, operations: [] };
+                            }
+                            acc[startAddress].operations.push(op);
+                            return acc;
+                        }, {} as Record<string, RouteGroup>));
+
+                        const rentalRoutes = Object.values(driverGroup.rentals.reduce((acc, item) => {
+                            const startAddress = item.rental.startAddress || 'Endereço de partida não definido';
+                            if (!acc[startAddress]) {
+                                const base = accountData?.bases.find(b => b.address === startAddress);
+                                acc[startAddress] = { startAddress, baseId: base?.id, items: [], departureTime: '08:00' };
+                            }
+                            acc[startAddress].items.push(item);
+                            return acc;
+                        }, {} as Record<string, RentalRouteGroup>));
+
+                        return { driverId: driverGroup.driverId, driverName: driverGroup.driverName, operationRoutes, rentalRoutes };
+                    });
+
+                    setTasksByDriver(finalGroupedData);
+                    setLoadingData(false);
+                 }, console.error);
+            }, console.error);
+
+            return () => unsubOps();
         }
         
         fetchData();
 
-    }, [accountId, authLoading, canAccess, selectedDate]);
+    }, [accountId, authLoading, canAccess, selectedDate, includeOverdue]);
+    
+    const handleOptimizeOperationRoute = async (driverId: string, routeIndex: number) => {
+        const driverGroup = tasksByDriver.find(g => g.driverId === driverId);
+        const routeToOptimize = driverGroup?.operationRoutes[routeIndex];
 
-    const handleOptimizeRoute = async (driverId: string) => {
-        const groupToOptimize = operationsByDriver.find(g => g.driverId === driverId);
-
-        if (!groupToOptimize || !account || !account.baseAddress) {
-            toast({ title: 'Erro', description: 'Dados do motorista ou endereço da base não encontrados.', variant: 'destructive' });
+        if (!driverGroup || !routeToOptimize || !accountId) {
+            toast({ title: 'Erro', description: 'Dados do motorista ou da rota não encontrados.', variant: 'destructive' });
             return;
         }
 
-        setOperationsByDriver(prev => prev.map(group => 
-            group.driverId === driverId ? { ...group, isOptimizing: true, optimizedRoute: undefined, trafficAnalysis: undefined } : group
-        ));
-        
-        const baseLocation = {
-            address: account.baseAddress,
-            lat: account.baseLatitude || 0,
-            lng: account.baseLongitude || 0
+        const startLocation = await geocodeAddress(routeToOptimize.startAddress);
+        if (!startLocation) {
+            toast({ title: 'Erro de Endereço', description: 'Não foi possível encontrar as coordenadas do endereço de partida.', variant: 'destructive' });
+            return;
+        }
+
+        const updateOperationRouteState = (updates: Partial<RouteGroup>) => {
+            setTasksByDriver(prev => prev.map(d => {
+                if (d.driverId === driverId) {
+                    const newRoutes = [...d.operationRoutes];
+                    newRoutes[routeIndex] = { ...newRoutes[routeIndex], ...updates };
+                    return { ...d, operationRoutes: newRoutes };
+                }
+                return d;
+            }));
         };
+
+        updateOperationRouteState({ isOptimizing: true, optimizedRoute: undefined, trafficAnalysis: undefined });
 
         try {
             const optimizedRoute = await optimizeRoute({
-                operations: groupToOptimize.operations,
-                startLocation: baseLocation,
-                accountId: accountId!,
+                operations: routeToOptimize.operations,
+                startLocation,
+                startBaseId: routeToOptimize.baseId,
+                accountId: accountId,
             });
 
-            setOperationsByDriver(prev => prev.map(group => 
-                group.driverId === driverId 
-                ? { ...group, optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true } 
-                : group
-            ));
+            updateOperationRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
             
-            // Trigger traffic analysis after route optimization
-            const routeStops = [
-                baseLocation.address, 
-                ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)
-            ];
-            
+            const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
             const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
 
             const trafficResult = await analyzeTraffic({
-                routeStops: [...new Set(routeStops)], // Remove duplicate addresses
+                routeStops: [...new Set(routeStops)],
                 date: departureTime.toISOString(),
                 totalDuration: optimizedRoute.totalDuration || 'não calculado',
             });
 
-             setOperationsByDriver(prev => prev.map(group => 
-                group.driverId === driverId 
-                ? { ...group, trafficAnalysis: trafficResult, isAnalyzingTraffic: false } 
-                : group
-            ));
-
+             updateOperationRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
 
         } catch (error) {
             console.error("Optimization failed:", error);
             toast({ title: 'Erro na Otimização', description: 'Não foi possível calcular a rota. Tente novamente.', variant: 'destructive' });
-            setOperationsByDriver(prev => prev.map(group => 
-                group.driverId === driverId ? { ...group, isOptimizing: false, isAnalyzingTraffic: false } : group
-            ));
+            updateOperationRouteState({ isOptimizing: false, isAnalyzingTraffic: false });
         }
     };
     
+    const handleOptimizeRentalRoute = async (driverId: string, routeIndex: number) => {
+        const driverGroup = tasksByDriver.find(g => g.driverId === driverId);
+        const routeToOptimize = driverGroup?.rentalRoutes[routeIndex];
+
+        if (!driverGroup || !routeToOptimize || !accountId) {
+            toast({ title: 'Erro', description: 'Dados do motorista ou da rota não encontrados.', variant: 'destructive' });
+            return;
+        }
+
+        const startLocation = await geocodeAddress(routeToOptimize.startAddress);
+         if (!startLocation) {
+            toast({ title: 'Erro de Endereço', description: `Não foi possível encontrar as coordenadas para a base: ${routeToOptimize.startAddress}.`, variant: 'destructive' });
+            return;
+        }
+        
+        const updateRentalRouteState = (updates: Partial<RentalRouteGroup>) => {
+            setTasksByDriver(prev => prev.map(d => {
+                if (d.driverId === driverId) {
+                    const newRoutes = [...d.rentalRoutes];
+                    newRoutes[routeIndex] = { ...newRoutes[routeIndex], ...updates };
+                    return { ...d, rentalRoutes: newRoutes };
+                }
+                return d;
+            }));
+        };
+        
+        updateRentalRouteState({ isOptimizing: true, optimizedRoute: undefined, trafficAnalysis: undefined });
+
+        try {
+            const optimizedRoute = await optimizeRentalRoute({
+                rentals: routeToOptimize.items.map(i => i.rental),
+                day: selectedDate.toISOString(),
+                startLocation,
+                baseId: routeToOptimize.baseId,
+                accountId,
+                baseDepartureTime: routeToOptimize.departureTime,
+            });
+
+            updateRentalRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
+            
+            const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
+            const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
+
+            const trafficResult = await analyzeTraffic({
+                routeStops: [...new Set(routeStops)],
+                date: departureTime.toISOString(),
+                totalDuration: optimizedRoute.totalDuration || 'não calculado',
+            });
+            
+            updateRentalRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+
+        } catch (error) {
+             console.error("Rental route optimization failed:", error);
+            toast({ title: 'Erro na Otimização', description: 'Não foi possível calcular a rota de logística. Tente novamente.', variant: 'destructive' });
+            updateRentalRouteState({ isOptimizing: false, isAnalyzingTraffic: false });
+        }
+    };
+    
+    const handleDepartureTimeChange = (driverId: string, routeIndex: number, time: string) => {
+        setTasksByDriver(prev => prev.map(d => {
+            if (d.driverId === driverId && d.rentalRoutes[routeIndex]) {
+                 const newRoutes = [...d.rentalRoutes];
+                 newRoutes[routeIndex] = { ...newRoutes[routeIndex], departureTime: time };
+                 return { ...d, rentalRoutes: newRoutes };
+            }
+            return d;
+        }));
+    };
+
+
     const formatCurrency = (value: number | undefined | null) => {
         if (value === undefined || value === null) {
             return "R$ 0,00";
@@ -210,7 +382,7 @@ export default function RoutePlanningPage() {
             </p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap gap-4 items-center">
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
@@ -231,9 +403,15 @@ export default function RoutePlanningPage() {
                     />
                 </PopoverContent>
             </Popover>
+             <div className="flex items-center space-x-2">
+                <Checkbox id="include-overdue" checked={includeOverdue} onCheckedChange={(checked) => setIncludeOverdue(!!checked)} />
+                <Label htmlFor="include-overdue" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Incluir OSs Atrasadas
+                </Label>
+            </div>
         </div>
         
-        {operationsByDriver.length === 0 && !isLoading && (
+        {tasksByDriver.length === 0 && !isLoading && (
              <Card>
                 <CardHeader>
                     <CardTitle>Nenhuma Operação para {format(selectedDate, 'dd/MM/yyyy')}</CardTitle>
@@ -245,152 +423,241 @@ export default function RoutePlanningPage() {
         )}
 
         <div className="space-y-6">
-            {operationsByDriver.map(group => (
+            {tasksByDriver.map(group => (
                  <Card key={group.driverId}>
                     <CardHeader>
                         <div className="flex items-center gap-2">
                              <User className="h-6 w-6 text-primary" />
                              <CardTitle className="text-xl">{group.driverName}</CardTitle>
                         </div>
-                        <CardDescription>
-                            {group.operations.length} {group.operations.length === 1 ? 'operação encontrada' : 'operações encontradas'} para o dia selecionado.
-                        </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <Button onClick={() => handleOptimizeRoute(group.driverId)} disabled={group.isOptimizing || isLoading || authLoading || loadingData} className="w-full">
-                            {group.isOptimizing ? <Spinner size="small" /> : <PlayCircle className="mr-2 h-4 w-4" />}
-                            Otimizar Rota de {group.driverName}
-                        </Button>
-                        
-                        {group.isOptimizing && (
-                            <div className="flex justify-center items-center p-4">
-                                <Spinner />
-                            </div>
-                        )}
-                        
-                         {!group.isOptimizing && group.optimizedRoute && group.optimizedRoute.stops.length > 0 && account && (
-                             <div className="space-y-4 pt-4">
-                                <div className="h-96 w-full rounded-md overflow-hidden border">
-                                     <OptimizedRouteMap 
-                                        baseLocation={{address: account.baseAddress || '', lat: account.baseLatitude || 0, lng: account.baseLongitude || 0}} 
-                                        stops={group.optimizedRoute.stops} 
-                                    />
-                                </div>
-                                
-                                <h4 className="font-semibold">Rota Otimizada:</h4>
-                                <ol className="space-y-3">
-                                     {group.optimizedRoute.baseDepartureTime && (
-                                        <div className="p-3 border rounded-md bg-primary/10">
-                                            <div className="flex items-center gap-2 font-bold">
-                                                <Warehouse className="h-5 w-5" />
-                                                <span>Ponto de Partida: Base</span>
-                                            </div>
-                                            <div className="text-sm mt-2 flex items-center gap-2">
-                                                 <Clock className="h-4 w-4 text-muted-foreground" />
-                                                 <span>Saída da base às: <span className="font-bold">{format(parseISO(group.optimizedRoute.baseDepartureTime), 'HH:mm')}</span></span>
-                                            </div>
-                                        </div>
-                                     )}
-                                    {group.optimizedRoute.stops.map(stop => (
-                                        <li key={stop.ordemServico.id}>
-                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                                                <MoveRight className="h-3 w-3" />
-                                                <span>Sair até as <span className="font-semibold text-foreground">{format(parseISO(stop.horarioSugeridoSaidaDoPontoAnterior), 'HH:mm')}</span> para o próximo destino</span>
-                                            </div>
-                                            <div className="p-3 border rounded-md bg-muted/50">
-                                                <p className="font-bold">{stop.ordemNaRota}. {stop.ordemServico.client?.name}</p>
-                                                <p className="text-sm">{stop.ordemServico.destinationAddress}</p>
-                                                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-4">
-                                                    <div className="flex items-center gap-1">
-                                                        <Clock className="h-3 w-3" />
-                                                        <span>Chegada: {format(parseISO(stop.horarioPrevistoChegada), 'HH:mm')}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1">
-                                                        <span>Duração Viagem: ~{stop.tempoViagemAteAquiMin} min</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ol>
-                                <Separator className="my-4" />
-                                <div className="p-3 border rounded-md bg-muted/50">
-                                    <h5 className="font-semibold mb-2">Resumo da Rota</h5>
-                                    <div className="flex flex-wrap justify-between text-sm gap-y-2 gap-x-4">
-                                        <div className="flex items-center gap-2">
-                                            <Route className="h-4 w-4 text-muted-foreground"/>
-                                            <span>Distância Total:</span>
-                                            <span className="font-bold">{group.optimizedRoute.totalDistance}</span>
-                                        </div>
-                                         <div className="flex items-center gap-2">
-                                            <Clock className="h-4 w-4 text-muted-foreground"/>
-                                            <span>Tempo Total de Viagem:</span>
-                                            <span className="font-bold">{group.optimizedRoute.totalDuration}</span>
-                                        </div>
-                                        {group.optimizedRoute.totalRevenue !== undefined && (
-                                            <div className="flex items-center gap-2">
-                                                <TrendingUp className="h-4 w-4 text-muted-foreground"/>
-                                                <span>Receita Bruta Total:</span>
-                                                <span className="font-bold text-green-600">{formatCurrency(group.optimizedRoute.totalRevenue)}</span>
-                                            </div>
-                                        )}
-                                        {group.optimizedRoute.totalCost !== undefined && (
-                                            <div className="flex items-center gap-2">
-                                                <TrendingDown className="h-4 w-4 text-muted-foreground"/>
-                                                <span>Custo Total da Operação:</span>
-                                                <span className="font-bold text-destructive">{formatCurrency(group.optimizedRoute.totalCost)}</span>
-                                            </div>
-                                        )}
-                                        {group.optimizedRoute.profit !== undefined && (
-                                            <div className="flex items-center gap-2">
-                                                <DollarSign className="h-4 w-4 text-muted-foreground"/>
-                                                <span>Lucro Previsto:</span>
-                                                <span className={cn("font-bold", group.optimizedRoute.profit >= 0 ? "text-green-600" : "text-destructive")}>
-                                                    {formatCurrency(group.optimizedRoute.profit)}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                        <Accordion type="multiple" className="space-y-4" defaultValue={['operation-routes', 'rental-routes']}>
+                            {group.operationRoutes.length > 0 && (
+                                <AccordionItem value="operation-routes" className="border rounded-lg shadow-sm bg-card p-4">
+                                     <AccordionTrigger className="hover:no-underline font-semibold text-lg pb-4">
+                                         Rotas de Operação
+                                     </AccordionTrigger>
+                                     <AccordionContent>
+                                        <Accordion type="multiple" className="space-y-4" defaultValue={group.operationRoutes.map((_, index) => `op-route-${index}`)}>
+                                            {group.operationRoutes.map((route, index) => (
+                                                <AccordionItem value={`op-route-${index}`} key={index} className="border rounded-lg shadow-sm bg-muted/30 p-4">
+                                                    <AccordionTrigger className="hover:no-underline font-medium">
+                                                        <div className="flex items-center gap-2">
+                                                            <Warehouse className="h-5 w-5 text-muted-foreground"/>
+                                                            <span>Partida: {route.startAddress} ({route.operations.length} OSs)</span>
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-4 space-y-4">
+                                                        <ul className="space-y-2 text-sm text-muted-foreground">
+                                                            {route.operations.map(op => (
+                                                                <li key={op.id} className="flex items-center gap-2">
+                                                                    <MapPin className="h-4 w-4 shrink-0" />
+                                                                    <span>
+                                                                        <span className="font-semibold text-foreground">{op.client?.name}</span> - {op.destinationAddress}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                        <Separator />
+                                                        <Button onClick={() => handleOptimizeOperationRoute(group.driverId, index)} disabled={route.isOptimizing || isLoading || authLoading || loadingData} className="w-full">
+                                                            {route.isOptimizing ? <Spinner size="small" /> : <PlayCircle className="mr-2 h-4 w-4" />}
+                                                            Otimizar esta Rota
+                                                        </Button>
 
-                                <div className="space-y-2 pt-4">
-                                    {(group.isAnalyzingTraffic || group.trafficAnalysis) && (
-                                        <Alert>
-                                            <TrafficCone className="h-4 w-4" />
-                                            <AlertTitle className="font-semibold">Previsão do Trânsito</AlertTitle>
-                                            <AlertDescription className="whitespace-pre-wrap">
-                                                {group.isAnalyzingTraffic ? (
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center p-2">
-                                                        <Spinner size="small" />
-                                                        <span>Analisando condições de trânsito...</span>
-                                                    </div>
-                                                ) : (
-                                                   formatBoldText(group.trafficAnalysis)
-                                                )}
-                                            </AlertDescription>
-                                        </Alert>
-                                    )}
-                                    {!group.isAnalyzingTraffic && group.trafficAnalysis && (
-                                         <p className="text-xs text-muted-foreground text-center italic">
-                                            Aviso: As respostas são geradas por inteligência artificial, meramente informativas e podem não ser precisas.
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                        
-                        {!group.isOptimizing && (!group.optimizedRoute || group.optimizedRoute.stops.length === 0) && (
-                             <div className="pt-2">
-                                <h4 className="font-semibold text-sm mb-2">Operações não otimizadas:</h4>
-                                <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-                                     {group.operations.map(op => (
-                                        <li key={op.id}>
-                                            <span className="font-semibold text-foreground">{op.client?.name}</span> - Agendado para {op.startDate ? format(parseISO(op.startDate), 'HH:mm', { locale: ptBR }) : 'sem horário'}
-                                        </li>
-                                     ))}
-                                </ul>
-                            </div>
-                        )}
+                                                        {route.isOptimizing && <div className="flex justify-center items-center p-4"><Spinner /></div>}
+                                                        
+                                                        {!route.isOptimizing && route.optimizedRoute && route.optimizedRoute.stops.length > 0 && account && (
+                                                            <div className="space-y-4 pt-4">
+                                                                <div className="h-96 w-full rounded-md overflow-hidden border">
+                                                                    <OptimizedRouteMap 
+                                                                        baseLocation={{address: route.startAddress, lat: route.optimizedRoute.stops[0]?.ordemServico.startLatitude || 0, lng: route.optimizedRoute.stops[0]?.ordemServico.startLongitude || 0}} 
+                                                                        stops={route.optimizedRoute.stops} 
+                                                                    />
+                                                                </div>
+                                                                
+                                                                <div className="flex justify-between items-center">
+                                                                    <h4 className="font-semibold">Rota Otimizada:</h4>
+                                                                    <Button asChild variant="outline" size="sm">
+                                                                        <a href={generateGoogleMapsUrl({address: route.startAddress, lat: route.optimizedRoute.stops[0]?.ordemServico.startLatitude || 0, lng: route.optimizedRoute.stops[0]?.ordemServico.startLongitude || 0}, route.optimizedRoute.stops)} target="_blank" rel="noopener noreferrer">
+                                                                            <Navigation className="mr-2 h-4 w-4" />
+                                                                            Ir para a rota
+                                                                        </a>
+                                                                    </Button>
+                                                                </div>
+                                                                 <div className="p-3 border rounded-md bg-muted/50">
+                                                                    <h3 className="font-semibold text-sm mb-2">Resumo da Rota</h3>
+                                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                                        <div className="flex items-center gap-2"><Route className="h-4 w-4 text-muted-foreground"/><span>Distância Total:</span><span className="font-bold">{route.optimizedRoute.totalDistance}</span></div>
+                                                                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground"/><span>Tempo Total de Viagem:</span><span className="font-bold">{route.optimizedRoute.totalDuration}</span></div>
+                                                                        {canSeeFinance && (
+                                                                            <>
+                                                                                <div className="flex items-center gap-2 text-green-600"><TrendingUp className="h-4 w-4"/><span>Receita Bruta Total:</span><span className="font-bold">{formatCurrency(route.optimizedRoute.totalRevenue)}</span></div>
+                                                                                <div className="flex items-center gap-2 text-destructive"><TrendingDown className="h-4 w-4"/><span>Custo Total da Operação:</span><span className="font-bold">{formatCurrency(route.optimizedRoute.totalCost)}</span></div>
+                                                                                <div className="flex items-center gap-2 col-span-2 justify-center font-bold text-lg"><DollarSign className="h-5 w-5"/><span>Lucro Previsto:</span><span>{formatCurrency(route.optimizedRoute.profit)}</span></div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <ol className="space-y-3">
+                                                                    {route.optimizedRoute.baseDepartureTime && (
+                                                                        <div className="p-3 border rounded-md bg-primary/10">
+                                                                            <div className="flex items-center gap-2 font-bold"><Warehouse className="h-5 w-5" /><span>Ponto de Partida: Base</span></div>
+                                                                            <div className="text-sm mt-2 flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span>Saída da base às: <span className="font-bold">{format(parseISO(route.optimizedRoute.baseDepartureTime), 'HH:mm')}</span></span></div>
+                                                                        </div>
+                                                                    )}
+                                                                    {route.optimizedRoute.stops.map(stop => (
+                                                                        <li key={stop.ordemServico.id}>
+                                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2"><MoveRight className="h-3 w-3" /><span>Sair até as <span className="font-semibold text-foreground">{format(parseISO(stop.horarioSugeridoSaidaDoPontoAnterior), 'HH:mm')}</span> para o próximo destino</span></div>
+                                                                            <div className="p-3 border rounded-md bg-muted/50">
+                                                                                <p className="font-bold">{stop.ordemNaRota}. {stop.ordemServico.client?.name}</p>
+                                                                                <p className="text-sm">{stop.ordemServico.destinationAddress}</p>
+                                                                                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-4">
+                                                                                    <div className="flex items-center gap-1"><Clock className="h-3 w-3" /><span>Chegada: {format(parseISO(stop.horarioPrevistoChegada), 'HH:mm')}</span></div>
+                                                                                    <div className="flex items-center gap-1"><span>Duração Viagem: ~{stop.tempoViagemAteAquiMin} min</span></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </li>
+                                                                    ))}
+                                                                </ol>
+                                                                <div className="space-y-2 pt-4">
+                                                                    {(route.isAnalyzingTraffic || route.trafficAnalysis) && (
+                                                                        <Alert>
+                                                                            <AlertTitle className="font-semibold">Previsão do Trânsito</AlertTitle>
+                                                                            <AlertDescription className="whitespace-pre-wrap">
+                                                                                {route.isAnalyzingTraffic ? <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center p-2"><Spinner size="small" /><span>Analisando condições de trânsito...</span></div> : formatBoldText(route.trafficAnalysis)}
+                                                                            </AlertDescription>
+                                                                        </Alert>
+                                                                    )}
+                                                                    {!route.isAnalyzingTraffic && route.trafficAnalysis && <p className="text-xs text-muted-foreground text-center italic">Aviso: As respostas são geradas por inteligência artificial, meramente informativas e podem não ser precisas.</p>}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                        </Accordion>
+                                     </AccordionContent>
+                                </AccordionItem>
+                            )}
+
+                             {group.rentalRoutes.length > 0 && (
+                                <AccordionItem value="rental-routes" className="border rounded-lg shadow-sm bg-card p-4">
+                                    <AccordionTrigger className="hover:no-underline font-semibold text-lg pb-4">
+                                         Rotas de Logística
+                                     </AccordionTrigger>
+                                     <AccordionContent>
+                                         <Accordion type="multiple" className="space-y-4" defaultValue={group.rentalRoutes.map((_, index) => `rental-route-${index}`)}>
+                                            {group.rentalRoutes.map((route, index) => (
+                                                <AccordionItem value={`rental-route-${index}`} key={index} className="border rounded-lg shadow-sm bg-muted/30 p-4">
+                                                    <AccordionTrigger className="hover:no-underline font-medium">
+                                                        <div className="flex items-center gap-2">
+                                                            <Container className="h-5 w-5 text-muted-foreground"/>
+                                                            <span>Partida: {route.startAddress} ({route.items.length} paradas)</span>
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-4 space-y-4">
+                                                        <ul className="space-y-2 text-sm text-muted-foreground">
+                                                            {route.items.map(item => (
+                                                                <li key={item.rental.id} className="flex items-center gap-2">
+                                                                    <MapPin className="h-4 w-4 shrink-0" />
+                                                                    <span>
+                                                                        <span className="font-semibold capitalize text-foreground">{item.type === 'delivery' ? 'Entrega' : 'Retirada'}</span>
+                                                                        : {item.rental.client?.name}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                        <Separator />
+                                                         <div className="space-y-2">
+                                                            <Label htmlFor={`departure-time-${group.driverId}-${index}`}>Horário de Saída da Base</Label>
+                                                            <Input
+                                                                id={`departure-time-${group.driverId}-${index}`}
+                                                                type="time"
+                                                                value={route.departureTime}
+                                                                onChange={(e) => handleDepartureTimeChange(group.driverId, index, e.target.value)}
+                                                                className="w-full md:w-auto"
+                                                            />
+                                                            <p className="text-xs text-muted-foreground">Informe a que horas o motorista deve iniciar esta rota.</p>
+                                                        </div>
+                                                         <Button onClick={() => handleOptimizeRentalRoute(group.driverId, index)} disabled={route.isOptimizing || isLoading || authLoading || loadingData} className="w-full">
+                                                            {route.isOptimizing ? <Spinner size="small" /> : <PlayCircle className="mr-2 h-4 w-4" />}
+                                                            Otimizar Rota de Logística
+                                                        </Button>
+
+                                                        {route.isOptimizing && <div className="flex justify-center items-center p-4"><Spinner /></div>}
+                                                        
+                                                         {!route.isOptimizing && route.optimizedRoute && route.optimizedRoute.stops.length > 0 && account && (
+                                                            <div className="space-y-4 pt-4">
+                                                                <div className="h-96 w-full rounded-md overflow-hidden border">
+                                                                    <OptimizedRouteMap
+                                                                        baseLocation={{ address: route.startAddress, lat: route.optimizedRoute.stops[0]?.ordemServico.startLatitude || 0, lng: route.optimizedRoute.stops[0]?.ordemServico.startLongitude || 0 }}
+                                                                        stops={route.optimizedRoute.stops}
+                                                                    />
+                                                                </div>
+                                                                 <div className="flex justify-between items-center">
+                                                                    <h4 className="font-semibold">Rota Otimizada:</h4>
+                                                                    <Button asChild variant="outline" size="sm">
+                                                                        <a href={generateGoogleMapsUrl({ address: route.startAddress, lat: route.optimizedRoute.stops[0]?.ordemServico.startLatitude || 0, lng: route.optimizedRoute.stops[0]?.ordemServico.startLongitude || 0 }, route.optimizedRoute.stops)} target="_blank" rel="noopener noreferrer">
+                                                                            <Navigation className="mr-2 h-4 w-4" />
+                                                                            Ir para a rota
+                                                                        </a>
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="p-3 border rounded-md bg-muted/50">
+                                                                    <h3 className="font-semibold text-sm mb-2">Resumo da Rota</h3>
+                                                                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                                                        <div className="flex items-center gap-2"><Route className="h-4 w-4 text-muted-foreground"/><span>Distância Total:</span><span className="font-bold">{route.optimizedRoute.totalDistance}</span></div>
+                                                                        <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground"/><span>Tempo Total de Viagem:</span><span className="font-bold">{route.optimizedRoute.totalDuration}</span></div>
+                                                                        {canSeeFinance && (
+                                                                            <>
+                                                                                <div className="flex items-center gap-2 text-destructive"><TrendingDown className="h-4 w-4"/><span>Custo Total da Operação:</span><span className="font-bold">{formatCurrency(route.optimizedRoute.totalCost)}</span></div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                 <ol className="space-y-3">
+                                                                    {route.optimizedRoute.baseDepartureTime && (
+                                                                        <div className="p-3 border rounded-md bg-primary/10">
+                                                                            <div className="flex items-center gap-2 font-bold"><Warehouse className="h-5 w-5" /><span>Ponto de Partida: Base</span></div>
+                                                                            <div className="text-sm mt-2 flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span>Saída da base às: <span className="font-bold">{format(parseISO(route.optimizedRoute.baseDepartureTime), 'HH:mm')}</span></span></div>
+                                                                        </div>
+                                                                    )}
+                                                                    {route.optimizedRoute.stops.map(stop => (
+                                                                        <li key={stop.ordemServico.id}>
+                                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2"><MoveRight className="h-3 w-3" /><span>Sair até as <span className="font-semibold text-foreground">{format(parseISO(stop.horarioSugeridoSaidaDoPontoAnterior), 'HH:mm')}</span> para o próximo destino</span></div>
+                                                                            <div className="p-3 border rounded-md bg-muted/50">
+                                                                                <p className="font-bold">{stop.ordemNaRota}. [{stop.ordemServico.operationTypes[0].name}] {stop.ordemServico.client?.name}</p>
+                                                                                <p className="text-sm">{stop.ordemServico.destinationAddress}</p>
+                                                                                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-4">
+                                                                                    <div className="flex items-center gap-1"><Clock className="h-3 w-3" /><span>Chegada: {format(parseISO(stop.horarioPrevistoChegada), 'HH:mm')}</span></div>
+                                                                                    <div className="flex items-center gap-1"><span>Duração Viagem: ~{stop.tempoViagemAteAquiMin} min</span></div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </li>
+                                                                    ))}
+                                                                </ol>
+
+                                                                <div className="space-y-2 pt-4">
+                                                                     {(route.isAnalyzingTraffic || route.trafficAnalysis) && (
+                                                                        <Alert>
+                                                                            <AlertTitle className="font-semibold">Previsão do Trânsito</AlertTitle>
+                                                                            <AlertDescription className="whitespace-pre-wrap">
+                                                                                {route.isAnalyzingTraffic ? <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center p-2"><Spinner size="small" /><span>Analisando condições de trânsito...</span></div> : formatBoldText(route.trafficAnalysis)}
+                                                                            </AlertDescription>
+                                                                        </Alert>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            ))}
+                                         </Accordion>
+                                     </AccordionContent>
+                                </AccordionItem>
+                            )}
+                        </Accordion>
                     </CardContent>
                 </Card>
             ))}

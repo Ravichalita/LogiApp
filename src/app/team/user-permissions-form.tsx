@@ -17,6 +17,7 @@ import { Shield } from 'lucide-react';
 const screenPermissionLabels: Partial<Record<keyof Permissions, string>> = {
   canAccessRentals: 'Aluguéis',
   canAccessOperations: 'Operações',
+  canAccessRoutes: 'Rotas',
   canAccessClients: 'Clientes',
   canAccessDumpsters: 'Caçambas',
   canAccessFleet: 'Frota',
@@ -152,6 +153,7 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     delete filteredFeatureLabels.canAccessNotificationsStudio;
     delete filteredScreenLabels.canAccessDumpsters;
     delete filteredScreenLabels.canAccessFleet;
+    delete filteredScreenLabels.canAccessOperations;
   }
 
   return (
@@ -173,5 +175,3 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     </div>
   );
 }
-
-    

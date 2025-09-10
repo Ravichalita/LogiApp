@@ -1,10 +1,10 @@
 
-
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
 import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Operation } from './types';
 import { adminDb } from './firebase-admin';
+import { differenceInDays, isSameDay } from 'date-fns';
 
 // Helper to convert Timestamps to serializable format
 const toSerializableObject = (obj: any): any => {
@@ -296,45 +296,116 @@ export async function getPopulatedOperationById(accountId: string, operationId: 
 
 
 export async function getDirectionsAction(
-    origin: Omit<Location, 'address'>,
-    destination: Omit<Location, 'address'>
-): Promise<{ distance: string; duration: string } | null> {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  origin: Omit<Location, 'address'>,
+  destination: Omit<Location, 'address'>
+): Promise<{
+  distanceMeters: number;
+  durationSeconds: number;
+  distance: string;
+  duration: string;
+} | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.error("Google Maps API key is not configured.");
+    return null;
+  }
+
+  const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+  const body = {
+    origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+    destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
+    travelMode: 'DRIVE',
+    routingPreference: 'TRAFFIC_AWARE',
+    languageCode: 'pt-BR'
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.localizedValues',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!data.routes || data.routes.length === 0) {
+      console.error('Routes API error:', data.error?.message || 'No route found');
+      return null;
+    }
+
+    const route = data.routes[0];
+    
+    const durationSeconds = parseInt(route.duration.slice(0, -1), 10);
+
+    return {
+      distanceMeters: route.distanceMeters,
+      durationSeconds: durationSeconds,
+      distance: route.localizedValues.distance.text,
+      duration: route.localizedValues.duration.text
+    };
+  } catch (error) {
+    console.error('Failed to fetch directions from Routes API:', error);
+    return null;
+  }
+}
+
+
+export async function getSuperAdminsAction(): Promise<UserAccount[]> {
+    try {
+        const usersRef = adminDb.collection('users');
+        const q = usersRef.where('role', '==', 'superadmin');
+        const querySnapshot = await q.get();
+        
+        if (querySnapshot.empty) {
+            return [];
+        }
+
+        const superAdmins = querySnapshot.docs.map(doc => docToSerializable(doc) as UserAccount);
+        return superAdmins;
+
+    } catch (error) {
+        console.error("Error fetching super admins:", error);
+        return [];
+    }
+}
+
+
+export async function geocodeAddress(address: string): Promise<Location | null> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
         console.error("Google Maps API key is not configured.");
         return null;
     }
 
-    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
-    url.searchParams.append('origin', `${origin.lat},${origin.lng}`);
-    url.searchParams.append('destination', `${destination.lat},${destination.lng}`);
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.append('address', address);
     url.searchParams.append('key', apiKey);
     url.searchParams.append('language', 'pt-BR');
 
-    try {
-        const response = await fetch(url.toString());
-        const data = await response.json();
+  try {
+    const response = await fetch(url.toString());
+    const data = await response.json();
 
-        if (data.status !== 'OK' || !data.routes || data.routes.length === 0) {
-            console.error('Directions API error:', data.status, data.error_message);
-            return null;
-        }
-
-        const route = data.routes[0];
-        const leg = route.legs[0];
-
-        if (leg.distance && leg.duration) {
-            return {
-                distance: leg.distance.text,
-                duration: leg.duration.text,
-            };
-        }
-
-        return null;
-    } catch (error) {
-        console.error('Failed to fetch directions:', error);
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        console.error('Geocode API error:', data.status, data.error_message);
         return null;
     }
+    
+    const { lat, lng } = data.results[0].geometry.location;
+    return {
+        lat,
+        lng,
+        address: data.results[0].formatted_address
+    };
+
+  } catch (error) {
+    console.error(`Geocode was not successful for the following reason: ${error}`);
+    return null;
+  }
 }
 
 export async function getWeatherForecastAction(
@@ -394,59 +465,3 @@ export async function getWeatherForecastAction(
     return null;
   }
 }
-
-export async function getSuperAdminsAction(): Promise<UserAccount[]> {
-    try {
-        const usersRef = adminDb.collection('users');
-        const q = usersRef.where('role', '==', 'superadmin');
-        const querySnapshot = await q.get();
-        
-        if (querySnapshot.empty) {
-            return [];
-        }
-
-        const superAdmins = querySnapshot.docs.map(doc => docToSerializable(doc) as UserAccount);
-        return superAdmins;
-
-    } catch (error) {
-        console.error("Error fetching super admins:", error);
-        return [];
-    }
-}
-
-
-export async function geocodeAddress(address: string): Promise<Location | null> {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-        console.error("Google Maps API key is not configured.");
-        return null;
-    }
-
-    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
-    url.searchParams.append('address', address);
-    url.searchParams.append('key', apiKey);
-    url.searchParams.append('language', 'pt-BR');
-
-  try {
-    const response = await fetch(url.toString());
-    const data = await response.json();
-
-    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-        console.error('Geocode API error:', data.status, data.error_message);
-        return null;
-    }
-    
-    const { lat, lng } = data.results[0].geometry.location;
-    return {
-        lat,
-        lng,
-        address: data.results[0].formatted_address
-    };
-
-  } catch (error) {
-    console.error(`Geocode was not successful for the following reason: ${error}`);
-    return null;
-  }
-}
-
-    

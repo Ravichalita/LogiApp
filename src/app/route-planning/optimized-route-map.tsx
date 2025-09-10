@@ -1,8 +1,7 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, DirectionsService, DirectionsRenderer, TrafficLayer } from '@react-google-maps/api';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { OptimizedStop } from '@/ai/flows/optimize-route-flow';
@@ -98,6 +97,7 @@ export function OptimizedRouteMap({ baseLocation, stops }: OptimizedRouteMapProp
         center={baseLocation || defaultCenter}
         zoom={12}
       >
+        <TrafficLayer autoUpdate />
         {directionsOptions && !directions && (
             <DirectionsService
                 options={directionsOptions}

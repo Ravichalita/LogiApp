@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Warehouse } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parse, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,7 +17,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
-import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment } from '@/lib/types';
+import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment, Base } from '@/lib/types';
 import { createOperationAction } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import {
@@ -27,7 +26,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
+import { getDirectionsAction, geocodeAddress, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CostsDialog } from './costs-dialog';
 import { OperationTypeDialog } from './operation-type-dialog';
@@ -63,6 +62,20 @@ const formatCurrency = (value: number | undefined | null) => {
     }).format(value);
 }
 
+const WeatherIcon = ({ condition }: { condition: string }) => {
+    const lowerCaseCondition = condition.toLowerCase();
+    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
+        return <CloudRain className="h-5 w-5" />;
+    }
+    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
+        return <Snowflake className="h-5 w-5" />;
+    }
+    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
+        return <Cloudy className="h-5 w-5" />;
+    }
+    return <Sun className="h-5 w-5" />;
+};
+
 export function OperationForm({ clients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
   const { user, accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
@@ -74,10 +87,12 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [endTime, setEndTime] = useState<string>('');
   
-  const [startAddress, setStartAddress] = useState(account?.baseAddress || '');
+  const defaultBase = account?.bases?.[0];
+  const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(defaultBase?.id);
+  const [startAddress, setStartAddress] = useState(defaultBase?.address || '');
   const [startLocation, setStartLocation] = useState<Omit<Location, 'address'> | null>(
-    account?.baseLatitude && account.baseLongitude
-      ? { lat: account.baseLatitude, lng: account.baseLongitude }
+    defaultBase?.latitude && defaultBase.longitude
+      ? { lat: defaultBase.latitude, lng: defaultBase.longitude }
       : null
   );
 
@@ -90,13 +105,13 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [baseValue, setBaseValue] = useState(0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
   
-  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
-  const [isFetchingDirections, setIsFetchingDirections] = useState(false);
-  const [directionsError, setDirectionsError] = useState<string | null>(null);
-  const [travelCost, setTravelCost] = useState<number | null>(null);
-  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [scheduleConflict, setScheduleConflict] = useState<string | null>(null);
+
+  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
+  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
+  const [travelCost, setTravelCost] = useState<number | null>(null);
+  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
 
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
@@ -115,19 +130,86 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   }, [selectedTruckId, operations]);
 
 
-    const WeatherIcon = ({ condition }: { condition: string }) => {
-        const lowerCaseCondition = condition.toLowerCase();
-        if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
-            return <CloudRain className="h-5 w-5" />;
+    useEffect(() => {
+        if (!startLocation && startAddress) {
+            geocodeAddress(startAddress).then(location => {
+                if (location) {
+                    setStartLocation({ lat: location.lat, lng: location.lng });
+                }
+            });
         }
-        if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
-            return <Snowflake className="h-5 w-5" />;
+    }, [startAddress, startLocation]);
+
+    useEffect(() => {
+        if (!destinationLocation && destinationAddress) {
+            geocodeAddress(destinationAddress).then(location => {
+                if (location) {
+                    setDestinationLocation({ lat: location.lat, lng: location.lng });
+                }
+            });
         }
-        if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
-            return <Cloudy className="h-5 w-5" />;
+    }, [destinationAddress, destinationLocation]);
+
+  useEffect(() => {
+    const fetchRouteInfo = async () => {
+      if (startLocation && destinationLocation && startDate) {
+        setIsFetchingInfo(true);
+        setDirections(null);
+        setWeather(null);
+        setTravelCost(null);
+        try {
+          const [directionsResult, weatherResult] = await Promise.all([
+            getDirectionsAction(startLocation, destinationLocation),
+            getWeatherForecastAction(destinationLocation, startDate),
+          ]);
+
+          if (directionsResult) {
+            setDirections(directionsResult);
+            const truck = trucks.find(t => t.id === selectedTruckId);
+            const truckType = account?.truckTypes.find(t => t.name === truck?.type);
+
+            if (truckType) {
+                let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
+                // Fallback: If no specific base config, find any config for this truck type.
+                if (!costConfig) {
+                    costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
+                }
+
+                const costPerKm = costConfig?.value || 0;
+                
+                if (costPerKm > 0 && directionsResult.distanceMeters) {
+                    setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
+                } else {
+                    setTravelCost(0);
+                }
+            } else {
+                setTravelCost(0);
+            }
+          }
+          
+          if (weatherResult) {
+              setWeather(weatherResult);
+          }
+
+        } catch (error) {
+          console.error("Error fetching route or weather info:", error);
+          toast({
+            title: "Erro de Comunicação",
+            description: "Não foi possível obter os dados de rota ou previsão do tempo.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsFetchingInfo(false);
         }
-        return <Sun className="h-5 w-5" />;
+      } else {
+          setDirections(null);
+          setWeather(null);
+          setTravelCost(null);
+      }
     };
+
+    fetchRouteInfo();
+  }, [startLocation, destinationLocation, startDate, account, selectedBaseId, selectedTruckId, trucks, toast]);
 
 
   useEffect(() => {
@@ -150,6 +232,9 @@ export function OperationForm({ clients, team, trucks, operations, operationType
            setDestinationLocation({ lat: client.latitude, lng: client.longitude });
          } else {
            setDestinationLocation(null);
+           geocodeAddress(client.address).then(location => {
+             if (location) setDestinationLocation({ lat: location.lat, lng: location.lng });
+           });
          }
       }
     } else {
@@ -157,48 +242,6 @@ export function OperationForm({ clients, team, trucks, operations, operationType
        setDestinationLocation(null);
     }
   }, [selectedClientId, clients]);
-  
-  useEffect(() => {
-    const fetchRouteAndWeather = async () => {
-      if (startLocation && destinationLocation && startDate) {
-        setIsFetchingDirections(true);
-        setDirections(null);
-        setDirectionsError(null);
-        setTravelCost(null);
-        setWeather(null);
-        try {
-          // Fetch Directions
-          const directionsResult = await getDirectionsAction(startLocation, destinationLocation);
-          if (directionsResult) {
-            setDirections(directionsResult);
-            const costPerKm = account?.costPerKm || 0;
-            if (costPerKm > 0) {
-                 const distanceKm = parseFloat(directionsResult.distance.replace(/[^0-9,]/g, '').replace(',', '.'));
-                 if (!isNaN(distanceKm)) {
-                    setTravelCost(distanceKm * 2 * costPerKm);
-                 }
-            }
-          } else {
-            setDirectionsError('Não foi possível calcular a rota.');
-          }
-
-          // Fetch Weather
-          const weatherResult = await getWeatherForecastAction(destinationLocation, startDate);
-          if (weatherResult) {
-              setWeather(weatherResult);
-          }
-
-        } catch (error) {
-          setDirectionsError('Erro ao buscar dados da rota ou previsão do tempo.');
-          console.error(error);
-        } finally {
-          setIsFetchingDirections(false);
-        }
-      }
-    };
-
-    fetchRouteAndWeather();
-  }, [startLocation, destinationLocation, startDate, account?.costPerKm]);
   
   useEffect(() => {
     const newBaseValue = selectedOperationTypeIds.reduce((total, id) => {
@@ -244,14 +287,35 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     }
   }, [selectedTruckId, startDate, startTime, endDate, endTime, operations]);
 
-
+  const handleBaseSelect = (baseId: string) => {
+    setSelectedBaseId(baseId);
+    const selectedBase = account?.bases?.find(b => b.id === baseId);
+    if (selectedBase) {
+        setStartAddress(selectedBase.address);
+         if (selectedBase.latitude && selectedBase.longitude) {
+            setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
+        } else {
+            setStartLocation(null);
+             // Trigger geocoding if coords are missing
+            geocodeAddress(selectedBase.address).then(location => {
+                if (location) {
+                    setStartLocation({ lat: location.lat, lng: location.lng });
+                }
+            });
+        }
+    }
+  };
+  
   const handleStartLocationSelect = (selectedLocation: Location) => {
     setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setStartAddress(selectedLocation.address);
+    setSelectedBaseId(undefined); // Clear base selection if custom address is chosen
   };
   
   const handleStartAddressChange = (newAddress: string) => {
     setStartAddress(newAddress);
+    setStartLocation(null);
+    setSelectedBaseId(undefined); // Clear base selection if custom address is chosen
   }
   
   const handleDestinationLocationSelect = (selectedLocation: Location) => {
@@ -261,6 +325,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
   const handleDestinationAddressChange = (newAddress: string) => {
     setDestinationAddress(newAddress);
+    setDestinationLocation(null);
   }
 
   const handleBaseValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -334,10 +399,12 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
         formData.set('value', String(baseValue));
         formData.set('additionalCosts', JSON.stringify(additionalCosts));
+        
+        formData.set('attachments', JSON.stringify(attachments));
+        
         if (travelCost) {
             formData.set('travelCost', String(travelCost));
         }
-        formData.set('attachments', JSON.stringify(attachments));
 
         const boundAction = createOperationAction.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
@@ -359,7 +426,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
   return (
     <form action={handleFormAction} className="space-y-6">
-      <input type="hidden" name="travelCost" value={travelCost || 0} />
+      
       <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -505,6 +572,39 @@ export function OperationForm({ clients, team, trucks, operations, operationType
       </div>
 
       <div className="p-4 border rounded-md space-y-4 bg-card relative">
+        {(account?.bases?.length ?? 0) > 0 && (
+            <div className="space-y-2">
+                <Label htmlFor="base-select" className="text-muted-foreground">Endereço de Partida</Label>
+                <Select onValueChange={handleBaseSelect} defaultValue={account?.bases?.[0].id}>
+                    <SelectTrigger id="base-select">
+                        <SelectValue placeholder="Selecione uma base de partida" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {account?.bases?.map(base => (
+                            <SelectItem key={base.id} value={base.id}>{base.name} - {base.address}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
+        <Accordion type="single" collapsible className="w-full" defaultValue="">
+             <AccordionItem value="custom-address" className="border-b-0">
+                <div className="flex justify-between items-center w-full">
+                  <AccordionTrigger className="text-sm hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground flex-grow">
+                      <span className="font-normal">{ (account?.bases?.length ?? 0) > 0 ? "Ou digite um endereço de partida personalizado" : "Endereço de Partida" }</span>
+                  </AccordionTrigger>
+                  <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
+                </div>
+                <AccordionContent className="pt-4 space-y-2">
+                    <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} />
+                    {errors?.startAddress && (
+                        <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
+                    )}
+                </AccordionContent>
+             </AccordionItem>
+        </Accordion>
+
+        <Separator />
         <div className="space-y-2">
             <div className="flex justify-between items-center">
                  <Label htmlFor="destination-address-input" className="text-muted-foreground">Endereço de Destino</Label>
@@ -518,43 +618,19 @@ export function OperationForm({ clients, team, trucks, operations, operationType
             />
             {errors?.destinationAddress && <p className="text-sm font-medium text-destructive">{errors.destinationAddress[0]}</p>}
         </div>
-
-        <Accordion type="single" collapsible className="w-full" defaultValue="">
-          <AccordionItem value="start-address" className="border-none">
-            <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-between [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
-              <span className="font-normal">Trocar endereço de partida</span>
-            </AccordionTrigger>
-            <AccordionContent className="pt-4 mt-2">
-              <AddressInput
-                id="start-address-input"
-                value={startAddress}
-                onInputChange={handleStartAddressChange}
-                onLocationSelect={handleStartLocationSelect}
-                initialLocation={startLocation}
-              />
-              {errors?.startAddress && (
-                <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
       </div>
       
-      {isFetchingDirections && (
+       {isFetchingInfo && (
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Spinner size="small" />
-          Calculando rota...
+          Calculando rota e previsão do tempo...
         </div>
       )}
-      {directionsError && (
-        <Alert variant="warning" className="text-xs">
-          <AlertDescription>{directionsError}</AlertDescription>
-        </Alert>
-      )}
-      <div className="flex flex-col gap-2">
-        {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && (
+      
+      {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && !isFetchingInfo && (
           <div className="relative">
-             <Alert variant="warning" className="flex-grow flex flex-col gap-4">
+             <Alert variant="info" className="flex-grow flex flex-col gap-4">
+               <AlertTitle>Informações da Rota e Clima</AlertTitle>
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 {directions && (
                     <>
@@ -568,21 +644,20 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                     </div>
                     </>
                 )}
-                {weather && (
+                 {weather && (
                     <div className="text-center">
                     <div className="flex items-center gap-2 text-sm">
                         <WeatherIcon condition={weather.condition} />
                         <span className="font-bold">{weather.tempC}°C</span>
                     </div>
-                    <p className="text-xs mt-1 text-primary/80">Previsão do Tempo</p>
                     </div>
                 )}
-                {travelCost !== null && travelCost > 0 && (
+                 {(travelCost !== null && travelCost > 0) && (
                     <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-5 w-5" />
-                    <span className="font-bold">{formatCurrency(travelCost)} (ida/volta)</span>
+                        <DollarSign className="h-5 w-5" />
+                        <span className="font-bold">{formatCurrency(travelCost)} (ida/volta)</span>
                     </div>
-                )}
+                 )}
                 </div>
                  <Button asChild variant="outline" size="sm" className="w-full mt-auto border-primary/50">
                     <Link
@@ -597,8 +672,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
             </Alert>
           </div>
         )}
-       </div>
-     
+
       <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="grid grid-cols-2 gap-4 items-end">
             <div className="grid gap-2">
@@ -678,7 +752,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                 uploadPath={`accounts/${accountId}/operations/attachments`}
             />
         </div>
-       )}
+      )}
 
 
        <div className="space-y-2">

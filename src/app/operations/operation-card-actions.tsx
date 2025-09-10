@@ -4,6 +4,7 @@
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { MoreVertical, Edit, Trash2, CheckCircle, Share2, Download, MessageSquare } from 'lucide-react';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import type { PopulatedOperation } from '@/lib/types';
@@ -117,67 +118,67 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
         </div>
     </div>
     <div className="flex w-full items-center gap-2 mt-auto">
-      <AlertDialog>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <MoreVertical className="h-4 w-4" />
+        <AlertDialog>
+            <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="nooutline" size="bigicon">
+                <MoreVertical className="h-6 w-6" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                {canEdit && (
+                <DropdownMenuItem asChild>
+                    <Link href={`/operations/${operation.id}/edit?account=${encodeURIComponent(acctForLink!)}`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar Operação
+                    </Link>
+                </DropdownMenuItem>
+                )}
+                {canDelete && (
+                <>
+                    <DropdownMenuSeparator />
+                    <AlertDialogTrigger asChild>
+                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir Operação
+                    </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                </>
+                )}
+            </DropdownMenuContent>
+            </DropdownMenu>
+
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Excluir esta Operação?</AlertDialogTitle>
+                <AlertDialogDescription>
+                Esta ação não pode ser desfeita e excluirá permanentemente os dados desta operação.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+        <div className="flex-grow flex items-center justify-end gap-2">
+            {canFinish && (
+            <Button
+                onClick={handleFinish}
+                disabled={isFinishing}
+                className="flex-grow bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+                {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Finalizar
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {canEdit && (
-              <DropdownMenuItem asChild>
-                <Link href={`/operations/${operation.id}/edit?account=${encodeURIComponent(acctForLink!)}`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar Operação
-                </Link>
-              </DropdownMenuItem>
             )}
-            {canDelete && (
-              <>
-                <DropdownMenuSeparator />
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Excluir Operação
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir esta Operação?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta ação não pode ser desfeita e excluirá permanentemente os dados desta operação.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-              {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <Button variant="outline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} className="px-2 md:px-4">
-          {isGeneratingPdf ? <Spinner size="small" /> : <Download className="h-4 w-4 md:mr-2" />}
-          <span className="hidden md:inline">Baixar PDF</span>
-      </Button>
-
-      {canFinish && (
-        <Button
-          onClick={handleFinish}
-          disabled={isFinishing}
-          className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-        >
-          {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-          Finalizar Operação
-        </Button>
-      )}
+             <Button variant="nooutline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} className="px-2 md:px-4">
+                {isGeneratingPdf ? <Spinner size="small" /> : <Image src="/pdf.svg" alt="PDF Icon" width={26} height={26} />}
+            </Button>
+      </div>
     </div>
     </>
   );

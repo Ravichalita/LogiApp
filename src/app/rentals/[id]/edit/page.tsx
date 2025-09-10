@@ -128,7 +128,7 @@ export default function EditRentalPage() {
                         rental={rental}
                         clients={clients}
                         team={team}
-                        rentalPrices={account.rentalPrices}
+                        account={account}
                     />
                 )}
             </CardContent>

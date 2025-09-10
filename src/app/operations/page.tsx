@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/accordion";
 import { Separator } from '@/components/ui/separator';
 import { OperationCardActions } from './operation-card-actions';
-import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
@@ -118,119 +117,10 @@ const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
         className="cls-1"
         {...props}
     >
-      <path d="M10.01,0C4.5,0,.02,4.44.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z"/>
+      <path d="M10.01,0C4.5,0,.02,4.44,.02,9.92c0,1.77.47,3.5,1.37,5.01l-1.39,5.07,5.2-1.39h0c1.47.8,3.12,1.23,4.81,1.23,5.52,0,9.99-4.44,9.99-9.92S15.53,0,10.01,0ZM10.01,18.21c-1.69,0-3.26-.5-4.57-1.35l-3.11.83.83-3.03h0c-.95-1.35-1.5-2.98-1.5-4.75C1.66,5.34,5.4,1.63,10.01,1.63s8.35,3.71,8.35,8.29-3.74,8.29-8.35,8.29Z"/>
       <path d="M5.39,9.36c-.71-1.36-.65-2.83.51-3.83.46-.44,1.36-.4,1.62.16l.8,1.92c.1.21.09.42-.06.63-.19.22-.37.44-.56.66-.15.17-.22.31-.08.48.76,1.28,1.86,2.32,3.42,2.98.23.09.39.07.55-.12.24-.29.48-.59.72-.88.2-.26.39-.29.68-.17.66.31,1.98.94,1.98.94.49.37-.19,1.8-.79,2.16-.87.51-1.46.43-2.37.25-2.97-.59-5.28-3.13-6.43-5.18h0Z"/>
     </svg>
 );
-
-const WeatherIcon = ({ condition }: { condition: string }) => {
-    const lowerCaseCondition = condition.toLowerCase();
-    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
-        return <CloudRain className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
-        return <Snowflake className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
-        return <Cloudy className="h-5 w-5" />;
-    }
-    return <Sun className="h-5 w-5" />;
-};
-
-const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => {
-  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
-  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!operation.startLatitude || !operation.startLongitude || !operation.destinationLatitude || !operation.destinationLongitude || !operation.startDate) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const [directionsResult, weatherResult] = await Promise.all([
-          getDirectionsAction(
-            { lat: operation.startLatitude, lng: operation.startLongitude },
-            { lat: operation.destinationLatitude, lng: operation.destinationLongitude }
-          ),
-          getWeatherForecastAction(
-            { lat: operation.destinationLatitude, lng: operation.destinationLongitude },
-            parseISO(operation.startDate)
-          )
-        ]);
-
-        if (directionsResult) setDirections(directionsResult);
-        if (weatherResult) setWeather(weatherResult);
-
-        if (!directionsResult && !weatherResult) {
-            setError("Não foi possível carregar dados de rota e previsão do tempo.")
-        }
-
-      } catch (err) {
-        setError("Erro ao carregar dados adicionais.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [operation]);
-
-  if (loading) {
-    return <div className="flex justify-center items-center p-4"><Spinner /></div>;
-  }
-  
-  if (error) {
-    return <Alert variant="warning" className="text-xs"><AlertDescription>{error}</AlertDescription></Alert>
-  }
-  
-  if (!directions && !weather) {
-      return null;
-  }
-
-  return (
-    <div className="flex w-full items-center gap-2">
-        <Alert variant="info" className="flex-grow flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-            {directions && (
-                <>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Route className="h-5 w-5" />
-                        <span className="font-bold">{directions.distance}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-5 w-5" />
-                        <span className="font-bold">{directions.duration}</span>
-                    </div>
-                </>
-            )}
-            {weather && (
-              <div className="text-center">
-                <div className="flex items-center gap-2 text-sm">
-                  <WeatherIcon condition={weather.condition} />
-                  <span className="font-bold">{weather.tempC}°C</span>
-                </div>
-                 <p className="text-xs mt-1 text-blue-800 dark:text-blue-300">Previsão do Tempo</p>
-              </div>
-            )}
-        </Alert>
-        <Button asChild variant="outline" size="sm" className="h-auto self-stretch">
-            <Link 
-                href={`https://www.google.com/maps/dir/?api=1&origin=${operation.startLatitude},${operation.startLongitude}&destination=${operation.destinationLatitude},${operation.destinationLongitude}`}
-                target="_blank"
-                className="flex flex-col items-center justify-center p-2 text-center"
-            >
-                <Map className="h-4 w-4" />
-                <span className="text-[10px] leading-tight mt-1">Trajeto no mapa</span>
-            </Link>
-        </Button>
-    </div>
-  );
-};
-
 
 export default function OperationsPage() {
     const { accountId, user, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
@@ -376,9 +266,6 @@ export default function OperationsPage() {
                                                  <span className="text-xs font-semibold uppercase text-muted-foreground">Destino:</span>
                                                  <span>{op.destinationAddress}</span>
                                             </div>
-                                             <div className="mt-2">
-                                                <DynamicInfoLoader operation={op} />
-                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
                                                 <AccordionItem value="start-address" className="border-none">
                                                     <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">

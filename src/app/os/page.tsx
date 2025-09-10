@@ -27,7 +27,6 @@ import { cn } from '@/lib/utils';
 import { EditAssignedUserDialog } from '@/app/rentals/edit-assigned-user-dialog';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { Spinner } from '@/components/ui/spinner';
 import { Separator } from '@/components/ui/separator';
 import { EditOperationAssignedUserDialog } from '@/app/operations/edit-assigned-user-dialog';
@@ -131,124 +130,6 @@ const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
       <path d="M5.39,9.36c-.71-1.36-.65-2.83.51-3.83.46-.44,1.36-.4,1.62.16l.8,1.92c.1.21.09.42-.06.63-.19.22-.37.44-.56.66-.15.17-.22.31-.08.48.76,1.28,1.86,2.32,3.42,2.98.23.09.39.07.55-.12.24-.29.48-.59.72-.88.2-.26.39-.29.68-.17.66.31,1.98.94,1.98.94.49.37-.19,1.8-.79,2.16-.87.51-1.46.43-2.37.25-2.97-.59-5.28-3.13-6.43-5.18h0Z"/>
     </svg>
 );
-
-const WeatherIcon = ({ condition }: { condition: string }) => {
-    const lowerCaseCondition = condition.toLowerCase();
-    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
-        return <CloudRain className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
-        return <Snowflake className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
-        return <Cloudy className="h-5 w-5" />;
-    }
-    return <Sun className="h-5 w-5" />;
-};
-
-const DynamicInfoLoader = ({ operation }: { operation: PopulatedOperation }) => {
-  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
-  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { travelCost } = operation;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!operation.startLatitude || !operation.startLongitude || !operation.destinationLatitude || !operation.destinationLongitude || !operation.startDate) {
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const [directionsResult, weatherResult] = await Promise.all([
-          getDirectionsAction(
-            { lat: operation.startLatitude, lng: operation.startLongitude },
-            { lat: operation.destinationLatitude, lng: operation.destinationLongitude }
-          ),
-          getWeatherForecastAction(
-            { lat: operation.destinationLatitude, lng: operation.destinationLongitude },
-            parseISO(operation.startDate)
-          )
-        ]);
-
-        if (directionsResult) setDirections(directionsResult);
-        if (weatherResult) setWeather(weatherResult);
-
-        if (!directionsResult && !weatherResult) {
-            setError("Não foi possível carregar dados de rota e previsão do tempo.")
-        }
-
-      } catch (err) {
-        setError("Erro ao carregar dados adicionais.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [operation]);
-
-  if (loading) {
-    return <div className="flex justify-center items-center p-4"><Spinner /></div>;
-  }
-  
-  if (error) {
-    return <Alert variant="warning" className="text-xs"><AlertDescription>{error}</AlertDescription></Alert>
-  }
-  
-  if (!directions && !weather && (travelCost === null || travelCost === undefined)) {
-      return null;
-  }
-
-  return (
-    <div className="relative">
-      <Alert variant="warning" className="flex-grow flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          {directions && (
-            <>
-              <div className="flex items-center gap-2 text-sm">
-                <Route className="h-5 w-5" />
-                <span className="font-bold">{directions.distance}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Clock className="h-5 w-5" />
-                <span className="font-bold">{directions.duration}</span>
-              </div>
-            </>
-          )}
-          {weather && (
-            <div className="text-center">
-              <div className="flex items-center gap-2 text-sm">
-                <WeatherIcon condition={weather.condition} />
-                <span className="font-bold">{weather.tempC}°C</span>
-              </div>
-              <p className="text-xs mt-1 text-primary/80">Previsão do Tempo</p>
-            </div>
-          )}
-          {(travelCost !== null && travelCost > 0) && (
-             <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="h-5 w-5" />
-                <span className="font-bold">{formatCurrency(travelCost)} (ida/volta)</span>
-             </div>
-          )}
-        </div>
-         <Button asChild variant="outline" size="sm" className="w-full mt-auto border-primary/50">
-            <Link
-                href={`https://www.google.com/maps/dir/?api=1&origin=${operation.startLatitude},${operation.startLongitude}&destination=${operation.destinationLatitude},${operation.destinationLongitude}`}
-                target="_blank"
-                className="flex items-center gap-2"
-            >
-                <Map className="h-4 w-4" />
-                <span>Ver trajeto no Mapa</span>
-            </Link>
-        </Button>
-      </Alert>
-    </div>
-  );
-};
-
 
 // --- Skeleton Component ---
 function OSCardSkeleton() {
@@ -712,9 +593,6 @@ export default function OSPage() {
                                                  <span className="text-xs font-semibold uppercase text-muted-foreground">Destino:</span>
                                                  <span>{op.destinationAddress}</span>
                                             </div>
-                                             <div className="mt-2">
-                                                <DynamicInfoLoader operation={op} />
-                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
                                                 <AccordionItem value="start-address" className="border-none">
                                                     <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
@@ -743,27 +621,6 @@ export default function OSPage() {
                                                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                                                     <span className="font-medium">Valor do Serviço:</span>
                                                     <span className="font-bold">{formatCurrency(op.value)}</span>
-                                                </div>
-
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <TrendingDown className="h-4 w-4 text-destructive" />
-                                                        <span className="font-medium">Custo Total:</span>
-                                                        <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {profit >= 0 ? 
-                                                            <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                                            <TrendingDown className="h-4 w-4 text-red-600" />
-                                                        }
-                                                        <span className="font-medium">Lucro:</span>
-                                                        <span className={cn(
-                                                            "font-bold",
-                                                            profit >= 0 ? "text-green-600" : "text-red-600"
-                                                        )}>
-                                                            {formatCurrency(profit)}
-                                                        </span>
-                                                    </div>
                                                 </div>
                                             </>
                                         )}

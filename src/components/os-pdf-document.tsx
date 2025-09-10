@@ -2,7 +2,7 @@
 'use client';
 
 import { PopulatedOperation, PopulatedRental } from '@/lib/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Image from 'next/image';
 
@@ -48,6 +48,10 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
     const clientAddress = isRental ? rental?.deliveryAddress : operation?.destinationAddress;
     const responsibleName = isRental ? rental?.assignedToUser?.name : operation?.driver?.name;
 
+    const rentalDays = rental ? Math.max(differenceInCalendarDays(parseISO(rental.returnDate), parseISO(rental.rentalDate)) + 1, 1) : 0;
+    const totalRentalValue = rental ? (rental.billingType === 'lumpSum' ? (rental.lumpSumValue || 0) : rental.value * rentalDays) : 0;
+
+
     return (
         <div className="bg-white p-8 font-sans" style={{ fontFamily: 'Arial, sans-serif' }}>
             {/* Header */}
@@ -90,7 +94,14 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
                         <>
                             <InfoField label="Caçamba" value={`${rental?.dumpster?.name} (${rental?.dumpster?.size}m³)`} />
                             <InfoField label="Período do Aluguel" value={`${formatDate(rental!.rentalDate)} a ${formatDate(rental!.returnDate)}`} />
-                            <InfoField label="Valor da Diária" value={formatCurrency(rental!.value)} />
+                            {rental?.billingType === 'lumpSum' ? (
+                                <InfoField label="Valor da Empreitada" value={formatCurrency(rental!.lumpSumValue)} />
+                            ) : (
+                                <>
+                                    <InfoField label="Valor da Diária" value={formatCurrency(rental!.value)} />
+                                    <InfoField label="Valor Total Previsto" value={`${formatCurrency(totalRentalValue)} (${rentalDays} ${rentalDays > 1 ? 'dias' : 'dia'})`} />
+                                </>
+                            )}
                         </>
                     ) : (
                         <>

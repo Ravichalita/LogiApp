@@ -14,9 +14,9 @@ interface AddressInputProps {
   id?: string;
   onInputChange?: (value: string) => void;
   onLocationSelect: (location: Location) => void;
-  onBlur?: () => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   className?: string;
-  value?: string; // Controlled value from parent
+  value: string; // Controlled value from parent
   initialLocation?: { lat: number; lng: number } | null;
 }
 
@@ -24,20 +24,12 @@ export function AddressInput({
   id,
   onInputChange,
   onLocationSelect,
-  value: controlledValue,
-  onBlur,
+  value,
+  onKeyDown,
   initialLocation,
 }: AddressInputProps) {
-  const [searchValue, setSearchValue] = useState(controlledValue ?? '');
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    // Keep the internal state in sync with the controlled value prop
-    if (controlledValue !== undefined) {
-      setSearchValue(controlledValue);
-    }
-  }, [controlledValue]);
 
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -62,26 +54,17 @@ export function AddressInput({
           address: place.formatted_address,
         };
         
-        // Update the input field value to reflect the selected address.
-        if (inputRef.current) {
-          inputRef.current.value = locationData.address;
-        }
-        // Update the internal state as well.
-        setSearchValue(locationData.address);
-        // Call the parent callback.
+        // Update both location and the input text in the parent
         onLocationSelect(locationData);
       }
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setSearchValue(newValue);
-    onInputChange?.(newValue);
+    onInputChange?.(e.target.value);
   }
 
   const handleClear = () => {
-      setSearchValue('');
       onInputChange?.('');
       if(inputRef.current) {
           inputRef.current.focus();
@@ -104,12 +87,12 @@ export function AddressInput({
                     id={id}
                     ref={inputRef}
                     placeholder="Digite para buscar um endereço..."
-                    value={searchValue}
+                    value={value}
                     onChange={handleInputChange}
-                    onBlur={onBlur}
+                    onKeyDown={onKeyDown}
                     className="pr-8"
                 />
-                {searchValue && (
+                {value && (
                     <button
                     type="button"
                     onClick={handleClear}

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip, Warehouse } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map as MapIcon, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip, Warehouse } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parseISO, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,7 +27,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getDirectionsAction, getWeatherForecastAction, geocodeAddress } from '@/lib/data-server-actions';
+import { getDirectionsAction, geocodeAddress } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CostsDialog } from '../../new/costs-dialog';
 import { OperationTypeDialog } from '../../new/operation-type-dialog';
@@ -65,20 +66,6 @@ const formatCurrency = (value: number | undefined | null) => {
     }).format(value);
 }
 
-const WeatherIcon = ({ condition }: { condition: string }) => {
-    const lowerCaseCondition = condition.toLowerCase();
-    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
-        return <CloudRain className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
-        return <Snowflake className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
-        return <Cloudy className="h-5 w-5" />;
-    }
-    return <Sun className="h-5 w-5" />;
-};
-
 export function EditOperationForm({ operation, clients, team, trucks, operations, operationTypes, account }: EditOperationFormProps) {
   const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
@@ -115,12 +102,11 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(selectedBase?.id);
 
   const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
-  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
 
 
-  const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
+  const totalOperationCost = additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
@@ -146,32 +132,26 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   
   useEffect(() => {
     const fetchRouteInfo = async () => {
-      if (startLocation && destinationLocation && startDate) {
+      if (startLocation && destinationLocation) {
         setIsFetchingInfo(true);
         setDirections(null);
-        setWeather(null);
         setTravelCost(null);
         try {
-          const [directionsResult, weatherResult] = await Promise.all([
-             getDirectionsAction(startLocation, destinationLocation),
-             getWeatherForecastAction(destinationLocation, startDate),
-          ]);
-          
+          const directionsResult = await getDirectionsAction(startLocation, destinationLocation);
           if (directionsResult) {
             setDirections(directionsResult);
-            const truck = trucks.find(t => t.id === selectedTruckId);
-            const truckType = account?.truckTypes.find(t => t.name === truck?.type);
+            // Calculate Travel Cost for Poliguindaste
+            const poliguindasteType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
 
-            if (truckType) {
-                let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
-                // Fallback: If no specific base config, find any config for this truck type.
-                if (!costConfig) {
-                    costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
-                }
+            if (poliguindasteType && selectedBaseId) {
+                const costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === poliguindasteType.id);
                 const costPerKm = costConfig?.value || 0;
                 
-                if (costPerKm > 0 && directionsResult.distanceMeters) {
-                    setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
+                if (costPerKm > 0) {
+                    const distanceMeters = directionsResult.distanceMeters;
+                    if (!isNaN(distanceMeters)) {
+                        setTravelCost((distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
+                    }
                 } else {
                     setTravelCost(0);
                 }
@@ -179,9 +159,6 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                 setTravelCost(0);
             }
           }
-           if (weatherResult) {
-              setWeather(weatherResult);
-           }
         } catch (error) {
           console.error(error);
         } finally {
@@ -189,13 +166,12 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
         }
       } else {
           setDirections(null);
-          setWeather(null);
           setTravelCost(null);
       }
     };
 
     fetchRouteInfo();
-  }, [startLocation, destinationLocation, startDate, account, selectedBaseId, selectedTruckId, trucks]);
+  }, [startLocation, destinationLocation, account, selectedBaseId]);
 
   const handleStartLocationSelect = (selectedLocation: Location) => {
     setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -479,14 +455,14 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
       {isFetchingInfo && (
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Spinner size="small" />
-          Calculando rota e previsão do tempo...
+          Calculando rota...
         </div>
       )}
       
-       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && !isFetchingInfo && (
+       {(directions || travelCost) && startLocation && destinationLocation && (
           <div className="relative">
              <Alert variant="info" className="flex-grow flex flex-col gap-4">
-               <AlertTitle>Informações da Rota e Clima</AlertTitle>
+               <AlertTitle>Informações da Rota</AlertTitle>
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 {directions && (
                     <>
@@ -499,14 +475,6 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                         <span className="font-bold">{directions.duration}</span>
                     </div>
                     </>
-                )}
-                 {weather && (
-                    <div className="text-center">
-                    <div className="flex items-center gap-2 text-sm">
-                        <WeatherIcon condition={weather.condition} />
-                        <span className="font-bold">{weather.tempC}°C</span>
-                    </div>
-                    </div>
                 )}
                  {(travelCost !== null && travelCost > 0) && (
                     <div className="flex items-center gap-2 text-sm">
@@ -521,7 +489,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                         target="_blank"
                         className="flex items-center gap-2"
                     >
-                        <Map className="h-4 w-4" />
+                        <MapIcon className="h-4 w-4" />
                         <span>Ver Trajeto no Mapa</span>
                     </Link>
                 </Button>

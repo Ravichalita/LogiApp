@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -75,15 +73,15 @@ export default function SettingsPage() {
                                 <div className="flex items-center gap-3">
                                     <Pin className="h-6 w-6" />
                                     <div className="text-left">
-                                        <h3 className="font-headline text-lg font-semibold">Endereço da Base</h3>
-                                        <p className="text-sm text-muted-foreground font-normal">Defina o endereço de onde saem os caminhões. Geralmente da garagem.</p>
+                                        <h3 className="font-headline text-lg font-semibold">Endereços da Base</h3>
+                                        <p className="text-sm text-muted-foreground font-normal">Defina os endereços de onde saem os caminhões.</p>
                                     </div>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent>
                                 <Separator />
                                 <div className="p-4">
-                                    {isLoading || !account ? <Skeleton className="h-10 w-full" /> : <BaseAddressForm account={account} />}
+                                    {isLoading || !account ? <Skeleton className="h-24 w-full" /> : <BaseAddressForm account={account} />}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -114,15 +112,15 @@ export default function SettingsPage() {
                                 <div className="flex items-center gap-3">
                                     <DollarSign className="h-6 w-6" />
                                     <div className="text-left">
-                                        <h3 className="font-headline text-lg font-semibold">Custo operacional por Km</h3>
-                                        <p className="text-sm text-muted-foreground font-normal">Defina valor médio dos custos envolvidos para o deslocamento dos caminhões</p>
+                                        <h3 className="font-headline text-lg font-semibold">Custo Operacional por Km</h3>
+                                        <p className="text-sm text-muted-foreground font-normal">Defina os custos por Km para cada base e tipo de caminhão.</p>
                                     </div>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent>
                                 <Separator />
                                 <div className="p-4">
-                                    {isLoading || !account ? <Skeleton className="h-10 w-full" /> : <CostSettingsForm account={account} />}
+                                    {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <CostSettingsForm account={account} />}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>

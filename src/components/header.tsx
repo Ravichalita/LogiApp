@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Image from "next/image";
@@ -26,7 +27,7 @@ import { Home, Container, Users, Truck, Workflow, Map } from 'lucide-react';
 
 const allNavLinks = [
   { href: '/os', label: 'OS', permission: ['canAccessRentals', 'canAccessOperations'] as const },
-  { href: '/route-planning', label: 'Rotas', icon: Map, permission: ['canAccessOperations'] as const },
+  { href: '/route-planning', label: 'Rotas', permission: ['canAccessRoutes'] as const },
   { href: '/dumpsters', label: 'Caçambas', permission: ['canAccessRentals'] as const },
   { href: '/fleet', label: 'Frota', permission: ['canAccessFleet'] as const },
   { href: '/clients', label: 'Clientes', permission: ['canAccessClients'] as const },
