@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo, useTransition } from 'react';
@@ -375,14 +374,14 @@ export default function RoutePlanningPage() {
 
   return (
     <div className="py-8">
-        <div className="mb-8 px-4">
+        <div className="mb-8 px-4 md:px-6">
             <h1 className="text-3xl font-headline font-bold">Planejamento de Rota IA</h1>
             <p className="text-muted-foreground mt-1">
                 Deixe a Inteligência Artificial sugerir a rota mais eficiênte no mapa.
             </p>
         </div>
 
-        <div className="mb-6 px-4 flex flex-wrap gap-4 items-center">
+        <div className="mb-6 px-4 md:px-6 flex flex-wrap gap-4 items-center">
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
@@ -412,7 +411,7 @@ export default function RoutePlanningPage() {
         </div>
         
         {tasksByDriver.length === 0 && !isLoading && (
-             <Card className="mx-4 md:mx-0">
+             <Card className="mx-4 md:mx-6">
                 <CardHeader>
                     <CardTitle>Nenhuma Operação para {format(selectedDate, 'dd/MM/yyyy')}</CardTitle>
                 </CardHeader>
@@ -424,14 +423,14 @@ export default function RoutePlanningPage() {
 
         <div className="space-y-6">
             {tasksByDriver.map(group => (
-                 <Card key={group.driverId} className="md:rounded-lg md:mx-6">
+                 <Card key={group.driverId} className="md:rounded-lg">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                              <User className="h-6 w-6 text-primary" />
                              <CardTitle className="text-xl">{group.driverName}</CardTitle>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 p-0 md:p-6 md:pt-0">
                         <Accordion type="multiple" className="space-y-4" defaultValue={['operation-routes', 'rental-routes']}>
                             {group.operationRoutes.length > 0 && (
                                 <AccordionItem value="operation-routes" className="border rounded-lg shadow-sm bg-card p-4">
@@ -542,11 +541,12 @@ export default function RoutePlanningPage() {
                             )}
 
                              {group.rentalRoutes.length > 0 && (
-                                <AccordionItem value="rental-routes" className="border rounded-lg shadow-sm bg-card">
-                                    <AccordionTrigger className="hover:no-underline font-semibold text-lg p-4">
+                                <AccordionItem value="rental-routes" className="border-none">
+                                    <div className="border rounded-lg shadow-sm bg-card p-4">
+                                     <AccordionTrigger className="hover:no-underline font-semibold text-lg pb-4">
                                          Rotas de Logística
                                      </AccordionTrigger>
-                                     <AccordionContent className="p-4">
+                                     <AccordionContent>
                                          <Accordion type="multiple" className="space-y-4" defaultValue={group.rentalRoutes.map((_, index) => `rental-route-${index}`)}>
                                             {group.rentalRoutes.map((route, index) => (
                                                 <AccordionItem value={`rental-route-${index}`} key={index} className="border rounded-lg shadow-sm bg-muted/30 p-4">
@@ -655,6 +655,7 @@ export default function RoutePlanningPage() {
                                             ))}
                                          </Accordion>
                                      </AccordionContent>
+                                    </div>
                                 </AccordionItem>
                             )}
                         </Accordion>
