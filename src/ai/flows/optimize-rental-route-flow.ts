@@ -130,7 +130,8 @@ const optimizeRentalRouteFlow = ai.defineFlow(
 
     if (baseDepartureTime) {
       const [hours, minutes] = baseDepartureTime.split(':').map(Number);
-      horarioDePartidaAtual = set(today, { hours, minutes, seconds: 0, milliseconds: 0 });
+      // Adding 3 hours to compensate for timezone differences
+      horarioDePartidaAtual = set(today, { hours: hours + 3, minutes, seconds: 0, milliseconds: 0 });
     } else {
       // Fallback to a default time if not provided
       horarioDePartidaAtual = set(today, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
@@ -209,7 +210,8 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     let initialDepartureTime: Date;
     if (baseDepartureTime) {
       const [hours, minutes] = baseDepartureTime.split(':').map(Number);
-      initialDepartureTime = set(today, { hours, minutes, seconds: 0, milliseconds: 0 });
+      // Also add 3 hours to the returned base departure time for consistency
+      initialDepartureTime = set(today, { hours: hours + 3, minutes, seconds: 0, milliseconds: 0 });
     } else {
       initialDepartureTime = set(today, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
     }
