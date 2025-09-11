@@ -13,7 +13,6 @@ import { z } from 'zod';
 import type { PopulatedRental, Location, Account, Truck, PopulatedOperation } from '@/lib/types';
 import { getDirectionsAction } from '@/lib/data-server-actions';
 import { addMinutes, formatISO, max, parseISO, subMinutes, differenceInMinutes, addSeconds, set, startOfDay, isSameDay } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const LocationSchema = z.object({
@@ -82,8 +81,6 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     const accountSnap = await db.doc(`accounts/${accountId}`).get();
     const accountData = accountSnap.data() as Account | undefined;
     
-    const timeZone = 'America/Sao_Paulo';
-    
     // Treat the incoming date string as being in the local timezone by parsing only the date part.
     const today = parseISO(day.substring(0, 10));
 
@@ -139,9 +136,6 @@ const optimizeRentalRouteFlow = ai.defineFlow(
       horarioDePartidaAtual = set(today, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
     }
     
-    // Convert the initial departure time to the correct timezone before storing it.
-    const initialDepartureTime = toZonedTime(horarioDePartidaAtual, timeZone);
-
     let totalKm = 0;
     let totalSeconds = 0;
 
@@ -211,6 +205,15 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     const totalDurationHours = Math.floor(totalMin / 60);
     const totalDurationMins = totalMin % 60;
     
+    // Set the initial departure time based on whether it was provided or defaulted
+    let initialDepartureTime: Date;
+    if (baseDepartureTime) {
+      const [hours, minutes] = baseDepartureTime.split(':').map(Number);
+      initialDepartureTime = set(today, { hours, minutes, seconds: 0, milliseconds: 0 });
+    } else {
+      initialDepartureTime = set(today, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
+    }
+    
     return { 
         stops: rotaOtimizada, 
         baseDepartureTime: formatISO(initialDepartureTime),
@@ -220,5 +223,3 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     };
   }
 );
-
-    
