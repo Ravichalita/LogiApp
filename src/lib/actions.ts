@@ -1316,15 +1316,7 @@ export async function resetAllDataAction(accountId: string) {
     const accountRef = db.doc(`accounts/${accountId}`);
 
     try {
-        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
-        for (const collection of collectionsToDelete) {
-            await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
-        }
-        
-        const bucket = getStorage(adminApp).bucket();
-        await bucket.deleteFiles({ prefix: `accounts/${accountId}/` });
-        
-        // Reset all settings fields on the account document
+        // First, reset all settings fields on the account document.
         await accountRef.update({
             rentalPrices: [],
             operationTypes: [],
@@ -1336,6 +1328,25 @@ export async function resetAllDataAction(accountId: string) {
             operationCounter: 0,
         });
 
+        // Then, delete all subcollections.
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
+        for (const collection of collectionsToDelete) {
+            await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
+        }
+        
+        // Finally, attempt to delete files from storage, ignoring if not found.
+        try {
+            const bucket = getStorage(adminApp).bucket();
+            await bucket.deleteFiles({ prefix: `accounts/${accountId}/` });
+        } catch (storageError: any) {
+            if (storageError.code === 404) {
+                console.log(`Storage path for account ${accountId} not found. Skipping deletion.`);
+            } else {
+                // Re-throw other storage errors if they should be considered fatal
+                throw storageError;
+            }
+        }
+        
         revalidatePath('/');
         revalidatePath('/clients');
         revalidatePath('/dumpsters');
@@ -1953,3 +1964,4 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
