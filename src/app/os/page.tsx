@@ -429,8 +429,8 @@ export default function OSPage() {
                 </Button>
                 <Button asChild variant="default" className="md:hidden flex-col h-auto p-2">
                     <Link href="/route-planning">
-                        <Sparkles className="h-5 w-5" />
-                        <span className="text-xs mt-1">Rota IA</span>
+                        <Sparkles className="h-6 w-6" />
+                        <span className="text-xs">Rota IA</span>
                     </Link>
                 </Button>
                 </>

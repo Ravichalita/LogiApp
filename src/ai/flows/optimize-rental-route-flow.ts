@@ -124,18 +124,17 @@ const optimizeRentalRouteFlow = ai.defineFlow(
 
     const rotaOtimizada: OptimizedStop[] = [];
     let pontoDePartidaAtual = startLocation;
-    let horarioDeTerminoPontoAnterior: Date;
-    let departureTime: Date;
+    let horarioDePartidaAtual: Date;
 
     if (baseDepartureTime) {
       const [hours, minutes] = baseDepartureTime.split(':').map(Number);
-      departureTime = set(today, { hours, minutes });
+      horarioDePartidaAtual = set(today, { hours, minutes });
     } else {
       // Fallback to a default time if not provided
-      departureTime = set(today, { hours: 8 });
+      horarioDePartidaAtual = set(today, { hours: 8 });
     }
-    horarioDeTerminoPontoAnterior = departureTime;
-
+    
+    const initialDepartureTime = horarioDePartidaAtual;
 
     let totalKm = 0;
     let totalSeconds = 0;
@@ -143,7 +142,7 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     for (let i = 0; i < rotaAgendada.length; i++) {
         const os = rotaAgendada[i];
         
-        if (!os.destinationLatitude || !os.destinationLongitude || !os.startDate || !os.endDate) continue;
+        if (!os.destinationLatitude || !os.destinationLongitude) continue;
         
         const destinoAtual = { lat: os.destinationLatitude, lng: os.destinationLongitude };
         
@@ -154,12 +153,7 @@ const optimizeRentalRouteFlow = ai.defineFlow(
         totalKm += distanciaKm;
         totalSeconds += tempoViagemSeg;
 
-        const horarioAgendado = parseISO(os.startDate); // This is just a placeholder (8am or 5pm)
-        const MARGEM_SEGURANCA_MIN = 15;
-
-        // Horário de saída do ponto anterior para chegar no próximo
-        const saidaPontoAnterior = addMinutes(horarioDeTerminoPontoAnterior, 5); // 5 min break
-        const horarioPrevistoChegada = addSeconds(saidaPontoAnterior, tempoViagemSeg);
+        const horarioPrevistoChegada = addSeconds(horarioDePartidaAtual, tempoViagemSeg);
         
         // O serviço começa assim que chegar.
         const horarioInicioEfetivo = horarioPrevistoChegada;
@@ -174,7 +168,7 @@ const optimizeRentalRouteFlow = ai.defineFlow(
             horarioPrevistoChegada: formatISO(horarioPrevistoChegada),
             horarioPrevistoInicioServico: formatISO(horarioInicioEfetivo),
             horarioPrevistoTerminoServico: formatISO(horarioTerminoServico),
-            horarioSugeridoSaidaDoPontoAnterior: formatISO(saidaPontoAnterior),
+            horarioSugeridoSaidaDoPontoAnterior: formatISO(horarioDePartidaAtual),
         };
 
         rotaOtimizada.push(novaParada);
@@ -184,7 +178,8 @@ const optimizeRentalRouteFlow = ai.defineFlow(
             lat: os.destinationLatitude!,
             lng: os.destinationLongitude!,
         };
-        horarioDeTerminoPontoAnterior = horarioTerminoServico; 
+        // A próxima partida acontece depois do término do serviço + 5 minutos de pausa
+        horarioDePartidaAtual = addMinutes(horarioTerminoServico, 5); 
     }
     
     // Calculate return to base
@@ -212,7 +207,7 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     
     return { 
         stops: rotaOtimizada, 
-        baseDepartureTime: formatISO(departureTime),
+        baseDepartureTime: formatISO(initialDepartureTime),
         totalDistance: `${totalKm.toFixed(1).replace('.',',')} km`,
         totalDuration: `${totalDurationHours}h ${totalDurationMins}min`,
         totalCost,
