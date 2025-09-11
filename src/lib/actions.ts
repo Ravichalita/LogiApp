@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -1420,6 +1421,7 @@ export async function createFirestoreBackupAction(accountId: string, retentionDa
         if (accountDoc.exists) {
             const accountData = accountDoc.data();
             const backupAccountRef = db.doc(`backups/${backupId}/accounts/${accountId}`);
+            // Backup the main account document
             await backupAccountRef.set(accountData!);
         }
 
@@ -1502,8 +1504,10 @@ export async function restoreFirestoreBackupAction(accountId: string, backupId: 
         const accountData = backupAccountSnap.data();
         if (accountData) {
             accountData.lastBackupDate = new Date().toISOString();
+            // Restore the main account document
+            await db.doc(`accounts/${accountId}`).set(accountData);
         }
-        await db.doc(`accounts/${accountId}`).set(accountData!);
+
 
         for (const collection of subcollections) {
             const sourcePath = `backups/${backupId}/accounts/${accountId}/${collection}`;
@@ -1927,6 +1931,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
 
 
 
