@@ -1356,7 +1356,6 @@ export async function resetAllDataAction(accountId: string) {
     }
 
     const db = adminDb;
-    const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
     
     try {
         // Step 1: Update the account document to reset settings
@@ -1373,6 +1372,7 @@ export async function resetAllDataAction(accountId: string) {
         });
 
         // Step 2: Concurrently delete all collections and gather attachment paths
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
         let allAttachmentPaths: string[] = [];
         const deletionPromises = collectionsToDelete.map(async (collection) => {
             try {
@@ -1387,17 +1387,6 @@ export async function resetAllDataAction(accountId: string) {
         // Step 3: Delete all collected attachments from storage
         const storageDeletePromises = allAttachmentPaths.map(path => deleteStorageFileAction(path));
         await Promise.all(storageDeletePromises);
-        
-        // Step 4: Final attempt to delete any remaining top-level storage files
-        try {
-            const bucket = getStorage(adminApp).bucket();
-            await bucket.deleteFiles({ prefix: `accounts/${accountId}/` });
-        } catch (storageError: any) {
-            // Ignore 404 error if the directory doesn't exist.
-            if (storageError.code !== 404) {
-                console.warn(`Could not perform final storage cleanup for account ${accountId}.`, storageError);
-            }
-        }
         
         revalidatePath('/');
         revalidatePath('/clients');
@@ -1629,12 +1618,19 @@ export async function deleteFirestoreBackupAction(accountId: string, backupId: s
 
 export async function deleteStorageFileAction(pathOrUrl: string) {
     try {
-        let objectPath = pathOrUrl.replace(/^\/+/, "");
+        let objectPath = pathOrUrl;
 
+        // If it's a full URL, parse it to get the object path
         if (/^https?:\/\//.test(objectPath)) {
-            const u = new URL(objectPath);
-            const afterO = u.pathname.split("/o/")[1] ?? "";
-            objectPath = decodeURIComponent(afterO.split("?")[0]);
+            const url = new URL(objectPath);
+            // The path in Firebase Storage URLs is typically after "/o/" and before the "?alt=media" query parameter.
+            const decodedPath = decodeURIComponent(url.pathname);
+            const pathSegments = decodedPath.split('/o/');
+            if (pathSegments.length > 1) {
+                objectPath = pathSegments[1];
+            } else {
+                 throw new Error("Could not determine object path from URL.");
+            }
         }
         
         const bucket = getStorage(adminApp).bucket();
