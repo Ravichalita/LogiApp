@@ -1249,6 +1249,13 @@ async function deleteCollection(db: FirebaseFirestore.Firestore, query: Firebase
 
 async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number) {
     const collectionRef = db.collection(collectionPath);
+    const collectionDoc = await collectionRef.limit(1).get();
+
+    // If the collection doesn't exist, we don't need to do anything.
+    if(collectionDoc.empty) {
+        return;
+    }
+
     const query = collectionRef.orderBy('__name__').limit(batchSize);
 
     return new Promise((resolve, reject) => {
@@ -1309,9 +1316,9 @@ export async function resetAllDataAction(accountId: string) {
     const accountRef = db.doc(`accounts/${accountId}`);
 
     try {
-        const collections = await accountRef.listCollections();
-        for (const collection of collections) {
-            await deleteCollectionByPath(db, collection.path, 50);
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
+        for (const collection of collectionsToDelete) {
+            await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
         }
         
         const bucket = getStorage(adminApp).bucket();
