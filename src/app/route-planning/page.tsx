@@ -9,7 +9,7 @@ import { getPopulatedOperations, getPopulatedRentals, fetchAccount } from '@/lib
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Map, ListOrdered, PlayCircle, ShieldAlert, User, Clock, MapPin, Warehouse, MoveRight, Calendar as CalendarIcon, Route, TrendingDown, DollarSign, TrendingUp, TrafficCone, Navigation, Container } from 'lucide-react';
+import { Map, ListOrdered, PlayCircle, ShieldAlert, User, Clock, MapPin, Warehouse, MoveRight, Calendar as CalendarIcon, Route, TrendingDown, DollarSign, TrendingUp, TrafficCone, Navigation, Container, Sparkles } from 'lucide-react';
 import { isToday, parseISO, format, startOfDay, endOfDay, isWithinInterval, isBefore, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Spinner } from '@/components/ui/spinner';
@@ -412,7 +412,7 @@ export default function RoutePlanningPage() {
         </div>
         
         {tasksByDriver.length === 0 && !isLoading && (
-             <Card className="mx-4">
+             <Card className="mx-4 md:mx-0">
                 <CardHeader>
                     <CardTitle>Nenhuma Operação para {format(selectedDate, 'dd/MM/yyyy')}</CardTitle>
                 </CardHeader>
@@ -424,7 +424,7 @@ export default function RoutePlanningPage() {
 
         <div className="space-y-6">
             {tasksByDriver.map(group => (
-                 <Card key={group.driverId} className="md:rounded-lg">
+                 <Card key={group.driverId} className="md:rounded-lg md:mx-6">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                              <User className="h-6 w-6 text-primary" />
@@ -542,11 +542,11 @@ export default function RoutePlanningPage() {
                             )}
 
                              {group.rentalRoutes.length > 0 && (
-                                <AccordionItem value="rental-routes" className="border rounded-lg shadow-sm bg-card p-4">
-                                    <AccordionTrigger className="hover:no-underline font-semibold text-lg pb-4">
+                                <AccordionItem value="rental-routes" className="border rounded-lg shadow-sm bg-card">
+                                    <AccordionTrigger className="hover:no-underline font-semibold text-lg p-4">
                                          Rotas de Logística
                                      </AccordionTrigger>
-                                     <AccordionContent>
+                                     <AccordionContent className="p-4">
                                          <Accordion type="multiple" className="space-y-4" defaultValue={group.rentalRoutes.map((_, index) => `rental-route-${index}`)}>
                                             {group.rentalRoutes.map((route, index) => (
                                                 <AccordionItem value={`rental-route-${index}`} key={index} className="border rounded-lg shadow-sm bg-muted/30 p-4">
