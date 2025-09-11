@@ -424,7 +424,7 @@ export default function RoutePlanningPage() {
 
         <div className="space-y-6">
             {tasksByDriver.map(group => (
-                 <Card key={group.driverId} className="mx-4 md:mx-6">
+                 <Card key={group.driverId} className="md:mx-6">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                              <User className="h-6 w-6 text-primary" />
