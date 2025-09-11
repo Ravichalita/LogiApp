@@ -13,7 +13,7 @@ import { z } from 'zod';
 import type { PopulatedRental, Location, Account, Truck, PopulatedOperation } from '@/lib/types';
 import { getDirectionsAction } from '@/lib/data-server-actions';
 import { addMinutes, formatISO, max, parseISO, subMinutes, differenceInMinutes, addSeconds, set, startOfDay, isSameDay } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const LocationSchema = z.object({
@@ -82,11 +82,10 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     const accountSnap = await db.doc(`accounts/${accountId}`).get();
     const accountData = accountSnap.data() as Account | undefined;
     
-    const timeZone = 'America/Sao_Paulo';
-    const zonedDayStart = toZonedTime(parseISO(day), timeZone);
+    // Treat the incoming date string as being in the local timezone, not UTC
+    const today = parseISO(day);
 
     // Convert rentals into "operations" for the day
-    const today = startOfDay(parseISO(day));
     const operations: PopulatedOperation[] = rentals.flatMap(rental => {
         const tasks: PopulatedOperation[] = [];
         const deliveryDate = startOfDay(parseISO(rental.rentalDate));
@@ -132,10 +131,10 @@ const optimizeRentalRouteFlow = ai.defineFlow(
 
     if (baseDepartureTime) {
       const [hours, minutes] = baseDepartureTime.split(':').map(Number);
-      horarioDePartidaAtual = set(zonedDayStart, { hours, minutes, seconds: 0, milliseconds: 0 });
+      horarioDePartidaAtual = set(today, { hours, minutes, seconds: 0, milliseconds: 0 });
     } else {
       // Fallback to a default time if not provided
-      horarioDePartidaAtual = set(zonedDayStart, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
+      horarioDePartidaAtual = set(today, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
     }
     
     const initialDepartureTime = horarioDePartidaAtual;
