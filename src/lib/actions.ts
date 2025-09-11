@@ -1317,13 +1317,17 @@ export async function resetAllDataAction(accountId: string) {
         const bucket = getStorage(adminApp).bucket();
         await bucket.deleteFiles({ prefix: `accounts/${accountId}/` });
         
-        await db.doc(`accounts/${accountId}`).update({
+        // Reset all settings fields on the account document
+        await accountRef.update({
             rentalPrices: [],
             operationTypes: [],
+            truckTypes: [],
+            bases: [],
+            operationalCosts: [],
+            notificationImages: [],
             rentalCounter: 0,
             operationCounter: 0,
         });
-
 
         revalidatePath('/');
         revalidatePath('/clients');
@@ -1939,3 +1943,6 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 
+
+
+    
