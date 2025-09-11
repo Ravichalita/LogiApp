@@ -82,8 +82,10 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     const accountSnap = await db.doc(`accounts/${accountId}`).get();
     const accountData = accountSnap.data() as Account | undefined;
     
-    // Treat the incoming date string as being in the local timezone, not UTC
-    const today = parseISO(day);
+    const timeZone = 'America/Sao_Paulo';
+    
+    // Treat the incoming date string as being in the local timezone by parsing only the date part.
+    const today = parseISO(day.substring(0, 10));
 
     // Convert rentals into "operations" for the day
     const operations: PopulatedOperation[] = rentals.flatMap(rental => {
@@ -137,7 +139,8 @@ const optimizeRentalRouteFlow = ai.defineFlow(
       horarioDePartidaAtual = set(today, { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 });
     }
     
-    const initialDepartureTime = horarioDePartidaAtual;
+    // Convert the initial departure time to the correct timezone before storing it.
+    const initialDepartureTime = toZonedTime(horarioDePartidaAtual, timeZone);
 
     let totalKm = 0;
     let totalSeconds = 0;
@@ -217,3 +220,5 @@ const optimizeRentalRouteFlow = ai.defineFlow(
     };
   }
 );
+
+    
