@@ -1263,22 +1263,17 @@ async function deleteCollection(db: FirebaseFirestore.Firestore, query: Firebase
 
 async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number): Promise<string[]> {
     const collectionRef = db.collection(collectionPath);
-    const collectionDoc = await collectionRef.limit(batchSize).get();
+    let query = collectionRef.orderBy(FieldPath.documentId()).limit(batchSize);
+    let attachmentPaths: string[] = [];
 
-    if (collectionDoc.empty) {
-        return [];
-    }
-
-    const attachmentPaths: string[] = [];
-
-    const deleteBatch = async (query: FirebaseFirestore.Query) => {
+    while (true) {
         const snapshot = await query.get();
-        if (snapshot.size === 0) {
-            return;
+        if (snapshot.empty) {
+            break;
         }
 
         const batch = db.batch();
-        snapshot.docs.forEach((doc) => {
+        snapshot.docs.forEach(doc => {
             const data = doc.data();
             if (data.attachments && Array.isArray(data.attachments)) {
                 for (const attachment of data.attachments) {
@@ -1290,16 +1285,14 @@ async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectio
             batch.delete(doc.ref);
         });
         await batch.commit();
-
-        if (snapshot.size === batchSize) {
-            const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-            await deleteBatch(query.startAfter(lastVisible));
-        }
-    };
+        
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        query = collectionRef.orderBy(FieldPath.documentId()).startAfter(lastVisible).limit(batchSize);
+    }
     
-    await deleteBatch(collectionRef.orderBy('__name__').limit(batchSize));
     return attachmentPaths;
 }
+
 
 export async function resetCompletedRentalsAction(accountId: string) {
     if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
@@ -1363,23 +1356,11 @@ export async function resetAllDataAction(accountId: string) {
     }
 
     const db = adminDb;
-    const accountRef = db.doc(`accounts/${accountId}`);
     const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
-    let allAttachmentPaths: string[] = [];
-
+    
     try {
-        // First, collect all attachment paths from all relevant collections
-        for (const collection of collectionsToDelete) {
-            const paths = await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
-            allAttachmentPaths = allAttachmentPaths.concat(paths);
-        }
-        
-        // Delete all collected attachments from storage
-        for (const path of allAttachmentPaths) {
-            await deleteStorageFileAction(path);
-        }
-        
-        // Then, reset the settings on the account document
+        // Step 1: Update the account document to reset settings
+        const accountRef = db.doc(`accounts/${accountId}`);
         await accountRef.update({
             rentalPrices: [],
             operationTypes: [],
@@ -1390,16 +1371,31 @@ export async function resetAllDataAction(accountId: string) {
             rentalCounter: 0,
             operationCounter: 0,
         });
+
+        // Step 2: Concurrently delete all collections and gather attachment paths
+        let allAttachmentPaths: string[] = [];
+        const deletionPromises = collectionsToDelete.map(async (collection) => {
+            try {
+                const paths = await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
+                allAttachmentPaths = allAttachmentPaths.concat(paths);
+            } catch (collectionError) {
+                console.warn(`Could not delete collection ${collection}. It might not exist.`, collectionError);
+            }
+        });
+        await Promise.all(deletionPromises);
         
-        // Also delete any remaining top-level storage files for the account (like notification images)
+        // Step 3: Delete all collected attachments from storage
+        const storageDeletePromises = allAttachmentPaths.map(path => deleteStorageFileAction(path));
+        await Promise.all(storageDeletePromises);
+        
+        // Step 4: Final attempt to delete any remaining top-level storage files
         try {
             const bucket = getStorage(adminApp).bucket();
             await bucket.deleteFiles({ prefix: `accounts/${accountId}/` });
         } catch (storageError: any) {
-            if (storageError.code === 404) {
-                console.log(`Storage path for account ${accountId} not found during final cleanup. Skipping deletion.`);
-            } else {
-                throw storageError;
+            // Ignore 404 error if the directory doesn't exist.
+            if (storageError.code !== 404) {
+                console.warn(`Could not perform final storage cleanup for account ${accountId}.`, storageError);
             }
         }
         
@@ -2030,5 +2026,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
 
+
+    
 
     
