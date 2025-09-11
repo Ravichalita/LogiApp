@@ -374,15 +374,15 @@ export default function RoutePlanningPage() {
 
 
   return (
-    <div className="container mx-auto py-8">
-        <div className="mb-8 px-4 md:px-6">
+    <div className="py-8">
+        <div className="mb-8 px-4">
             <h1 className="text-3xl font-headline font-bold">Planejamento de Rota IA</h1>
             <p className="text-muted-foreground mt-1">
                 Deixe a Inteligência Artificial sugerir a rota mais eficiênte no mapa.
             </p>
         </div>
 
-        <div className="mb-6 px-4 md:px-6 flex flex-wrap gap-4 items-center">
+        <div className="mb-6 px-4 flex flex-wrap gap-4 items-center">
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
@@ -412,7 +412,7 @@ export default function RoutePlanningPage() {
         </div>
         
         {tasksByDriver.length === 0 && !isLoading && (
-             <Card className="mx-4 md:mx-6">
+             <Card className="mx-4">
                 <CardHeader>
                     <CardTitle>Nenhuma Operação para {format(selectedDate, 'dd/MM/yyyy')}</CardTitle>
                 </CardHeader>
@@ -424,7 +424,7 @@ export default function RoutePlanningPage() {
 
         <div className="space-y-6">
             {tasksByDriver.map(group => (
-                 <Card key={group.driverId} className="md:mx-6">
+                 <Card key={group.driverId} className="md:rounded-lg">
                     <CardHeader>
                         <div className="flex items-center gap-2">
                              <User className="h-6 w-6 text-primary" />
