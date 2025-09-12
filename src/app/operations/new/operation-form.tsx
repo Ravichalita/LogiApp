@@ -1,39 +1,40 @@
 
 'use client';
 
-import { useState, useTransition, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
+import { createOperationAction } from '@/lib/actions';
+import type { Client, Dumpster, Location, UserAccount, RentalPrice, Attachment, Account, Base, AdditionalCost, OperationType, PopulatedOperation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Warehouse } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, set, parse, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AddressInput } from '@/components/address-input';
-import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment, Base } from '@/lib/types';
-import { createOperationAction } from '@/lib/actions';
-import { Input } from '@/components/ui/input';
+import { AttachmentsUploader } from '@/components/attachments-uploader';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getDirectionsAction, geocodeAddress, getWeatherForecastAction } from '@/lib/data-server-actions';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CostsDialog } from './costs-dialog';
-import { OperationTypeDialog } from './operation-type-dialog';
+import { geocodeAddress, getDirectionsAction, getWeatherForecastAction } from '@/lib/data-server-actions';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
-import { parseISO } from 'date-fns';
-import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { CostsDialog } from '@/app/operations/new/costs-dialog';
+import { OperationTypeDialog } from './operation-type-dialog';
+import { ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface OperationFormProps {
   clients: Client[];
@@ -81,6 +82,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
   const { toast } = useToast();
+  const router = useRouter();
 
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [startTime, setStartTime] = useState<string>(format(new Date(), 'HH:mm'));
@@ -363,6 +365,14 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
   };
 
+  const handleClientValueChange = (clientId: string) => {
+      if (clientId === 'add-new-client') {
+          router.push('/clients/new');
+          return;
+      }
+      setSelectedClientId(clientId);
+  }
+
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -448,12 +458,19 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
           <div className="space-y-2">
             <Label htmlFor="clientId" className="text-muted-foreground">Cliente</Label>
-            <Select name="clientId" onValueChange={setSelectedClientId} required>
+            <Select name="clientId" onValueChange={handleClientValueChange} value={selectedClientId} required>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um cliente" />
               </SelectTrigger>
               <SelectContent>
                 {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                <Separator />
+                <SelectItem value="add-new-client" className="text-red-500">
+                    <div className="flex items-center">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Cliente
+                    </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
@@ -665,7 +682,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                         target="_blank"
                         className="flex items-center gap-2"
                     >
-                        <Map className="h-4 w-4" />
+                        <MapIcon className="h-4 w-4" />
                         <span>Ver Trajeto no Mapa</span>
                     </Link>
                 </Button>

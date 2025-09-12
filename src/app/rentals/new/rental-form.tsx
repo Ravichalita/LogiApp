@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -32,6 +32,7 @@ import { geocodeAddress, getDirectionsAction, getWeatherForecastAction } from '@
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { CostsDialog } from '@/app/operations/new/costs-dialog';
+import { useRouter } from 'next/navigation';
 
 const initialState = {
   errors: {},
@@ -94,6 +95,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
   const { accountId, user, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
@@ -426,6 +428,13 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
             </SelectTrigger>
             <SelectContent>
               {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              <Separator />
+               <Link href="/clients/new">
+                <div className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-500">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Cliente
+                </div>
+              </Link>
             </SelectContent>
           </Select>
           {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}

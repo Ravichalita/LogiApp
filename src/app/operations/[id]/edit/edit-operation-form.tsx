@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip, Warehouse } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip, Warehouse, Plus } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parseISO, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +36,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/
 import { getFirebase } from '@/lib/firebase-client';
 import { Progress } from '@/components/ui/progress';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { useRouter } from 'next/navigation';
 
 interface EditOperationFormProps {
   operation: PopulatedOperation;
@@ -84,6 +85,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
   const { toast } = useToast();
+  const router = useRouter();
 
   // State initialization from operation prop
   const [startDate, setStartDate] = useState<Date | undefined>(operation.startDate ? parseISO(operation.startDate) : undefined);
@@ -106,6 +108,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   );
   
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(operation.truckId);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(operation.clientId);
   const [selectedOperationTypeIds, setSelectedOperationTypeIds] = useState<string[]>(operation.typeIds || []);
   const [baseValue, setBaseValue] = useState(operation.value || 0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>(operation.additionalCosts || []);
@@ -255,6 +258,14 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
           }
       }
   };
+  
+  const handleClientValueChange = (clientId: string) => {
+      if (clientId === 'add-new-client') {
+          router.push('/clients/new');
+          return;
+      }
+      setSelectedClientId(clientId);
+  }
 
 
   const handleFormAction = (formData: FormData) => {
@@ -342,12 +353,19 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
 
           <div className="space-y-2">
             <Label htmlFor="clientId" className="text-muted-foreground">Cliente</Label>
-            <Select name="clientId" defaultValue={operation.clientId} required>
+            <Select name="clientId" defaultValue={operation.clientId} onValueChange={handleClientValueChange} value={selectedClientId} required>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um cliente" />
               </SelectTrigger>
               <SelectContent>
                 {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                <Separator />
+                <SelectItem value="add-new-client" className="text-red-500">
+                    <div className="flex items-center">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Cliente
+                    </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
