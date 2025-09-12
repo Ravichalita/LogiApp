@@ -26,7 +26,8 @@ const screenPermissionLabels: Partial<Record<keyof Permissions, string>> = {
 };
 
 const featurePermissionLabels: Partial<Record<keyof Permissions, string>> = {
-  canAccessFinance: 'Acessar Histórico e Valores $',
+  canAccessFinance: 'Acessar Histórico Financeiro',
+  canSeeServiceValue: 'Visualizar Valor do Serviço',
   canAccessNotificationsStudio: 'Notificações Personalizadas',
   canUseAttachments: 'Gerenciar Anexos',
 };
@@ -151,8 +152,6 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
   let filteredScreenLabels = { ...screenPermissionLabels };
   if (isTargetViewer) {
     delete filteredFeatureLabels.canAccessNotificationsStudio;
-    delete filteredScreenLabels.canAccessDumpsters;
-    delete filteredScreenLabels.canAccessFleet;
   }
 
   return (
