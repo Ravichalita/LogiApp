@@ -482,6 +482,7 @@ export default function OSPage() {
             if (item.itemType === 'rental') {
                 const rental = item as PopulatedRental;
                 const status = getRentalStatus(rental);
+                const attachmentCount = rental.attachments?.length || 0;
                 return (
                     <Accordion type="single" collapsible className="w-full" key={`rental-${rental.id}`}>
                          <AccordionItem value={rental.id} className="border-none">
@@ -537,6 +538,7 @@ export default function OSPage() {
                 const status = getOperationStatus(op);
                 const totalCost = op.totalCost ?? 0;
                 const profit = (op.value || 0) - totalCost;
+                const attachmentCount = op.attachments?.length || 0;
                 return (
                      <Accordion type="single" collapsible className="w-full" key={`op-${op.id}`}>
                          <AccordionItem value={op.id} className="border-none">
@@ -642,7 +644,9 @@ export default function OSPage() {
                                                         </a>
                                                     )}
                                                     {canUseAttachments && (
-                                                        <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                                                        <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
+                                                            Anexos {attachmentCount > 0 && `(${attachmentCount})`}
+                                                        </AccordionTrigger>
                                                     )}
                                                 </div>
                                                 {canUseAttachments && (

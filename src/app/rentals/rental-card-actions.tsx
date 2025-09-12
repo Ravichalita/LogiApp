@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
@@ -190,6 +191,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   };
 
   const boundFinishRentalAction = finishRentalAction.bind(null, accountId!);
+  const attachmentCount = attachments.length;
 
   return (
     <>
@@ -258,7 +260,9 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                       </a>
                   )}
                   {canUseAttachments && (
-                      <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">Anexos</AccordionTrigger>
+                    <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
+                        Anexos {attachmentCount > 0 && `(${attachmentCount})`}
+                    </AccordionTrigger>
                   )}
               </div>
               {canUseAttachments && (
