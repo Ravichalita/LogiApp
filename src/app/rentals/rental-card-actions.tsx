@@ -201,31 +201,31 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
       </div>
       <div className="flex flex-col gap-4 h-full px-1">
         <div className="space-y-4">
-          <div className="space-y-2">
-             <div className="flex justify-between items-center gap-2">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground shrink-0">Local de Entrega:</span>
-                    <span className="font-medium">{rental.deliveryAddress}</span>
-                </div>
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                    <MapPinned className="h-5 w-5" />
-                    <span className="text-[10px] font-bold">GPS</span>
-                </a>
-            </div>
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="start-address" className="border-none">
-                  <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
-                      <span className="font-normal">Mostrar endereço de partida</span>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold uppercase text-xs">Saída:</span>
-                      <span>{rental.startAddress}</span>
+           <div className="space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                     <div className="flex-grow">
+                        <p className="text-sm text-muted-foreground">Local de Entrega:</p>
+                        <p className="font-medium">{rental.deliveryAddress}</p>
                     </div>
-                  </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                        <MapPinned className="h-5 w-5" />
+                        <span className="text-[10px] font-bold">GPS</span>
+                    </a>
+                </div>
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="start-address" className="border-none">
+                        <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
+                            <span className="font-normal">Mostrar endereço de partida</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2">
+                                <div className="flex items-center gap-2 text-sm">
+                                <span className="font-semibold uppercase text-xs">Saída:</span>
+                                <span>{rental.startAddress}</span>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </div>
 
           <div className="space-y-2">
               <div>
