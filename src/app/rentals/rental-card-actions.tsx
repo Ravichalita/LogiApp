@@ -202,10 +202,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
       <div className="flex flex-col gap-4 h-full px-1">
         <div className="space-y-4">
           <div className="space-y-2">
-            <div>
-              <span className="text-sm text-muted-foreground">Endereço de Partida</span>
-              <p className="font-medium">{rental.startAddress}</p>
-            </div>
              <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground shrink-0">Local de Entrega:</span>
@@ -216,6 +212,19 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     <span className="text-[10px] font-bold">GPS</span>
                 </a>
             </div>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="start-address" className="border-none">
+                  <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
+                      <span className="font-normal">Mostrar endereço de partida</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold uppercase text-xs">Saída:</span>
+                      <span>{rental.startAddress}</span>
+                    </div>
+                  </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
 
           <div className="space-y-2">
