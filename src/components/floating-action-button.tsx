@@ -3,7 +3,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus, Workflow, Container } from "lucide-react";
+import { Plus, Workflow, Container, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NewItemDialog } from "./new-item-dialog";
@@ -45,6 +45,7 @@ export function FloatingActionButton() {
         const permissions = userAccount?.permissions;
         const canAccessOps = isSuperAdmin || permissions?.canAccessOperations;
         const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
+        const canAddClients = isSuperAdmin || permissions?.canAddClients;
 
         switch (pathname) {
             case '/fleet':
@@ -103,6 +104,16 @@ export function FloatingActionButton() {
                                 >
                                     <Workflow className="mr-2 h-4 w-4" />
                                     <span>Nova Operação</span>
+                                 </Link>
+                             </DropdownMenuItem>
+                              <DropdownMenuItem asChild className="py-3">
+                                 <Link 
+                                    href="/clients/new"
+                                    aria-disabled={!canAddClients} 
+                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAddClients && "pointer-events-none opacity-50")}
+                                >
+                                    <User className="mr-2 h-4 w-4" />
+                                    <span>Novo Cliente</span>
                                  </Link>
                              </DropdownMenuItem>
                         </DropdownMenuContent>
