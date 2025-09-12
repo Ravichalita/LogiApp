@@ -35,7 +35,7 @@ export function FloatingActionButton() {
     ];
     
     // Specific pages that have their own FAB logic
-    const fabPages = ['/fleet', '/clients'];
+    const fabPages: string[] = ['/fleet'];
 
     if (pathname.startsWith('/edit') || (pagesToHideFab.some(path => pathname.startsWith(path)) && !fabPages.includes(pathname))) {
         return null;
@@ -58,25 +58,18 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="dumpster" />;
                 }
                 return null;
-            case '/clients':
-                 if (isAdmin || permissions?.canAddClients) {
-                    return (
-                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                            <Link href="/clients/new">
-                                <Plus className="h-8 w-8" />
-                                <span className="sr-only">Novo Cliente</span>
-                            </Link>
-                        </Button>
-                    );
-                }
-                return null;
             case '/team':
                 if (isAdmin || permissions?.canAccessTeam) {
                     return <NewItemDialog itemType="team" />;
                 }
                 return null;
             case '/os':
+            case '/clients':
             default:
+                 // Only show on /os and /clients, hide on others by default
+                if (pathname !== '/os' && pathname !== '/clients') {
+                    return null;
+                }
                 return (
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
