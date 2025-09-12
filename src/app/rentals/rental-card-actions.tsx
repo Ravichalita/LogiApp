@@ -206,14 +206,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
               <span className="text-sm text-muted-foreground">Endereço de Partida</span>
               <p className="font-medium">{rental.startAddress}</p>
             </div>
-             <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
+             <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground shrink-0">Local de Entrega:</span>
                     <span className="font-medium">{rental.deliveryAddress}</span>
                 </div>
-                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                    <MapPinned className="h-6 w-6" />
-                    <span className="text-xs font-bold">GPS</span>
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                    <MapPinned className="h-5 w-5" />
+                    <span className="text-[10px] font-bold">GPS</span>
                 </a>
             </div>
           </div>
