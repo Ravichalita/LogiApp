@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -17,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalCardActions } from '@/app/rentals/rental-card-actions';
 import { OperationCardActions } from '@/app/operations/operation-card-actions';
-import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip, Sparkles } from 'lucide-react';
+import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip, Sparkles, MapPinned } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -591,12 +590,14 @@ export default function OSPage() {
                                 <AccordionContent className="px-6 py-4">
                                     <div className="space-y-4 text-sm px-1">
                                          <div className="mt-3 space-y-4">
-                                            <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                                                 <span className="text-xs font-semibold uppercase text-muted-foreground">Destino:</span>
-                                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:underline">
-                                                    <span>{op.destinationAddress}</span>
-                                                    <Map className="h-4 w-4 text-primary" />
-                                                    <span className="text-xs text-muted-foreground">(Abrir no Mapa)</span>
+                                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-semibold uppercase text-muted-foreground shrink-0">Destino:</span>
+                                                    <span className="font-medium">{op.destinationAddress}</span>
+                                                </div>
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                                                    <MapPinned className="h-6 w-6" />
+                                                    <span className="text-xs font-bold">GPS</span>
                                                 </a>
                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
@@ -710,5 +711,3 @@ export default function OSPage() {
     </div>
   );
 }
-
-    

@@ -1,12 +1,11 @@
 
-
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import { finishRentalAction, deleteRentalAction, updateRentalAction } from '@/lib/actions';
 import type { PopulatedRental, Attachment, Account } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, MessageSquare, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, Map as MapIcon, DollarSign } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, MessageSquare, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, Map as MapIcon, DollarSign, MapPinned } from 'lucide-react';
 import Image from 'next/image';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -207,12 +206,14 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
               <span className="text-sm text-muted-foreground">Endereço de Partida</span>
               <p className="font-medium">{rental.startAddress}</p>
             </div>
-             <div>
-                <span className="text-sm text-muted-foreground">Local de Entrega</span>
-                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 font-medium hover:underline">
-                    <span>{rental.deliveryAddress}</span>
-                    <MapIcon className="h-4 w-4 text-primary" />
-                    <span className="text-xs text-muted-foreground">(Abrir no Mapa)</span>
+             <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground shrink-0">Local de Entrega:</span>
+                    <span className="font-medium">{rental.deliveryAddress}</span>
+                </div>
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                    <MapPinned className="h-6 w-6" />
+                    <span className="text-xs font-bold">GPS</span>
                 </a>
             </div>
           </div>
@@ -387,5 +388,3 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </>
   );
 }
-
-    
