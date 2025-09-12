@@ -624,6 +624,27 @@ export default function OSPage() {
                                                     <span className="font-medium">Valor do Serviço:</span>
                                                     <span className="font-bold">{formatCurrency(op.value)}</span>
                                                 </div>
+
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <TrendingDown className="h-4 w-4 text-destructive" />
+                                                        <span className="font-medium">Custo Total:</span>
+                                                        <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {profit >= 0 ? 
+                                                            <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                                                            <TrendingDown className="h-4 w-4 text-red-600" />
+                                                        }
+                                                        <span className="font-medium">Lucro:</span>
+                                                        <span className={cn(
+                                                            "font-bold",
+                                                            profit >= 0 ? "text-green-600" : "text-red-600"
+                                                        )}>
+                                                            {formatCurrency(profit)}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </>
                                         )}
                                         
@@ -645,7 +666,7 @@ export default function OSPage() {
                                                     )}
                                                     {canUseAttachments && (
                                                         <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
-                                                            Anexos {attachmentCount > 0 && `(${attachmentCount})`}
+                                                            ({attachmentCount}) Anexos
                                                         </AccordionTrigger>
                                                     )}
                                                 </div>

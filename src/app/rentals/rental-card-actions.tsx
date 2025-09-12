@@ -261,7 +261,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                   )}
                   {canUseAttachments && (
                     <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
-                        Anexos {attachmentCount > 0 && `(${attachmentCount})`}
+                      Anexos ({attachmentCount})
                     </AccordionTrigger>
                   )}
               </div>
