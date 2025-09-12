@@ -208,8 +208,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
               <p className="font-medium">{rental.startAddress}</p>
             </div>
              <div>
-              <span className="text-sm text-muted-foreground">Local de Entrega</span>
-              <p className="font-medium">{rental.deliveryAddress}</p>
+                <span className="text-sm text-muted-foreground">Local de Entrega</span>
+                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 font-medium hover:underline">
+                    <span>{rental.deliveryAddress}</span>
+                    <MapIcon className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-muted-foreground">(Abrir no Mapa)</span>
+                </a>
             </div>
           </div>
 
@@ -261,7 +265,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                   )}
                   {canUseAttachments && (
                     <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
-                      Anexos ({attachmentCount})
+                      ({attachmentCount}) Anexos
                     </AccordionTrigger>
                   )}
               </div>
@@ -383,3 +387,5 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </>
   );
 }
+
+    

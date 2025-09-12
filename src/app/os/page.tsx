@@ -593,7 +593,11 @@ export default function OSPage() {
                                          <div className="mt-3 space-y-4">
                                             <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
                                                  <span className="text-xs font-semibold uppercase text-muted-foreground">Destino:</span>
-                                                 <span>{op.destinationAddress}</span>
+                                                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:underline">
+                                                    <span>{op.destinationAddress}</span>
+                                                    <Map className="h-4 w-4 text-primary" />
+                                                    <span className="text-xs text-muted-foreground">(Abrir no Mapa)</span>
+                                                </a>
                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
                                                 <AccordionItem value="start-address" className="border-none">
@@ -666,7 +670,7 @@ export default function OSPage() {
                                                     )}
                                                     {canUseAttachments && (
                                                         <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
-                                                            ({attachmentCount}) Anexos
+                                                           ({attachmentCount}) Anexos
                                                         </AccordionTrigger>
                                                     )}
                                                 </div>
@@ -706,3 +710,5 @@ export default function OSPage() {
     </div>
   );
 }
+
+    
