@@ -535,8 +535,6 @@ export default function OSPage() {
             } else {
                 const op = item as PopulatedOperation;
                 const status = getOperationStatus(op);
-                const totalCost = op.totalCost ?? 0;
-                const profit = (op.value || 0) - totalCost;
                 const attachmentCount = op.attachments?.length || 0;
                 return (
                      <Accordion type="single" collapsible className="w-full" key={`op-${op.id}`}>
@@ -625,34 +623,11 @@ export default function OSPage() {
                                         <Separator />
 
                                         {canSeeFinance && (
-                                            <>
-                                                <div className="flex items-center gap-2 pt-2">
-                                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                    <span className="font-medium">Valor do Serviço:</span>
-                                                    <span className="font-bold">{formatCurrency(op.value)}</span>
-                                                </div>
-
-                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-2 sm:gap-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <TrendingDown className="h-4 w-4 text-destructive" />
-                                                        <span className="font-medium">Custo Total:</span>
-                                                        <span className="font-bold text-destructive">{formatCurrency(totalCost)}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        {profit >= 0 ? 
-                                                            <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                                            <TrendingDown className="h-4 w-4 text-red-600" />
-                                                        }
-                                                        <span className="font-medium">Lucro:</span>
-                                                        <span className={cn(
-                                                            "font-bold",
-                                                            profit >= 0 ? "text-green-600" : "text-red-600"
-                                                        )}>
-                                                            {formatCurrency(profit)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </>
+                                            <div className="flex items-center gap-2 pt-2">
+                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-medium">Valor do Serviço:</span>
+                                                <span className="font-bold">{formatCurrency(op.value)}</span>
+                                            </div>
                                         )}
                                         
                                         <Separator />

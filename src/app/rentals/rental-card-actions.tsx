@@ -202,12 +202,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
       <div className="flex flex-col gap-4 h-full px-1">
         <div className="space-y-4">
            <div className="space-y-2">
-                <div className="flex justify-between items-start gap-2">
-                     <div className="flex-grow">
+                 <div className="flex justify-between items-start gap-2">
+                    <div className="flex-grow">
                         <p className="text-sm text-muted-foreground">Local de Entrega:</p>
                         <p className="font-medium">{rental.deliveryAddress}</p>
                     </div>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
                         <MapPinned className="h-5 w-5" />
                         <span className="text-[10px] font-bold">GPS</span>
                     </a>
