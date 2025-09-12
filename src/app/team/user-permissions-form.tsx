@@ -153,7 +153,6 @@ export function UserPermissionsForm({ member }: UserPermissionsFormProps) {
     delete filteredFeatureLabels.canAccessNotificationsStudio;
     delete filteredScreenLabels.canAccessDumpsters;
     delete filteredScreenLabels.canAccessFleet;
-    delete filteredScreenLabels.canAccessOperations;
   }
 
   return (
