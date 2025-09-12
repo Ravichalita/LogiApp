@@ -590,14 +590,14 @@ export default function OSPage() {
                                 <AccordionContent className="px-6 py-4">
                                     <div className="space-y-4 text-sm px-1">
                                          <div className="mt-3 space-y-4">
-                                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-2">
+                                            <div className="flex items-center justify-between gap-2">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-xs font-semibold uppercase text-muted-foreground shrink-0">Destino:</span>
                                                     <span className="font-medium">{op.destinationAddress}</span>
                                                 </div>
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                                                    <MapPinned className="h-6 w-6" />
-                                                    <span className="text-xs font-bold">GPS</span>
+                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                                                    <MapPinned className="h-5 w-5" />
+                                                    <span className="text-[10px] font-bold">GPS</span>
                                                 </a>
                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
@@ -621,6 +621,8 @@ export default function OSPage() {
                                                 <p className="whitespace-pre-wrap">{op.observations}</p>
                                             </div>
                                         )}
+                                        
+                                        <Separator />
 
                                         {canSeeFinance && (
                                             <>
