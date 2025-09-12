@@ -110,8 +110,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const permissions = userAccount?.permissions;
   const canEdit = isSuperAdmin || permissions?.canEditRentals;
   const canDelete = isSuperAdmin || permissions?.canEditRentals;
-  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
-  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canSeeServiceValue;
+  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
   const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
 
   const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
@@ -209,18 +208,18 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         <p className="text-xs font-semibold uppercase text-muted-foreground">Local de Entrega:</p>
                         <p className="font-medium">{rental.deliveryAddress}</p>
                     </div>
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                        <MapPinned className="h-5 w-5" />
-                        <span className="text-[10px] font-bold">GPS</span>
-                    </a>
+                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                         <MapPinned className="h-5 w-5" />
+                         <span className="text-[10px] font-bold">GPS</span>
+                     </a>
                 </div>
-                 <Accordion type="single" collapsible className="w-full">
+                <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="start-address" className="border-none">
                         <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
                             <span className="font-normal">Mostrar endereço de partida</span>
                         </AccordionTrigger>
                         <AccordionContent className="pt-2">
-                                <div className="flex items-center gap-2 text-sm">
+                            <div className="flex items-center gap-2 text-sm">
                                 <span className="font-semibold uppercase text-xs">Saída:</span>
                                 <span>{rental.startAddress}</span>
                             </div>
@@ -399,3 +398,4 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </>
   );
 }
+

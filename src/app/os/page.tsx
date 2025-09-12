@@ -195,8 +195,7 @@ export default function OSPage() {
   const canAccessRoutes = isSuperAdmin || permissions?.canAccessRoutes;
   const canEditRentals = isSuperAdmin || permissions?.canEditRentals;
   const canEditOperations = isSuperAdmin || permissions?.canEditOperations;
-  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canAccessFinance;
-  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || permissions?.canSeeServiceValue;
+  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
   const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
   
   useEffect(() => {
@@ -591,14 +590,14 @@ export default function OSPage() {
                                     <div className="space-y-4 text-sm px-1">
                                          <div className="mt-3 space-y-4">
                                             <div className="flex justify-between items-start gap-2">
-                                                <div className="flex-grow">
+                                                 <div className="flex-grow">
                                                     <p className="text-xs font-semibold uppercase text-muted-foreground">Destino:</p>
-                                                    <p className="font-medium">{op.destinationAddress}</p>
-                                                </div>
-                                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                                                    <MapPinned className="h-5 w-5" />
-                                                    <span className="text-[10px] font-bold">GPS</span>
-                                                </a>
+                                                     <p className="font-medium">{op.destinationAddress}</p>
+                                                 </div>
+                                                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                                                     <MapPinned className="h-5 w-5" />
+                                                     <span className="text-[10px] font-bold">GPS</span>
+                                                 </a>
                                             </div>
                                             <Accordion type="single" collapsible className="w-full">
                                                 <AccordionItem value="start-address" className="border-none">
@@ -690,3 +689,4 @@ export default function OSPage() {
     </div>
   );
 }
+
