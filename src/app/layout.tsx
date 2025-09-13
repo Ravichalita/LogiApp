@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-context";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
-import { FloatingActionButton } from "@/components/floating-action-button";
+import { FloatingActionButton } from "./floating-action-button";
 import { ThemeProvider } from "@/components/theme-provider";
 import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
@@ -69,7 +69,7 @@ export default function RootLayout({
                   )} />
                   <FloatingActionButton className={cn(
                      "transition-transform duration-300",
-                     scrollDirection === 'down' ? 'translate-y-24' : 'translate-y-0'
+                     scrollDirection === 'down' ? 'translate-y-full mb-4' : 'translate-y-0'
                   )} />
                   <InstallPwaPrompt />
               </div>

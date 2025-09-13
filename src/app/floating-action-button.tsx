@@ -3,10 +3,10 @@
 
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
-import { Plus, Workflow, Container } from "lucide-react";
+import { Plus, Workflow, Container, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NewItemDialog } from "./new-item-dialog";
+import { NewItemDialog } from "@/components/new-item-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils";
 
-export function FloatingActionButton() {
+export function FloatingActionButton({ className }: { className?: string }) {
     const { user, userAccount, isSuperAdmin } = useAuth();
     const pathname = usePathname();
     const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
 
-    if (!user || pathname === '/admin/superadmins') {
+    if (!user) {
         return null;
     }
 
@@ -34,8 +34,10 @@ export function FloatingActionButton() {
         '/notifications-studio',
     ];
     
-    // Check for pages where the FAB should be hidden entirely FIRST.
-    if (pagesToHideFab.includes(pathname) || pathname.startsWith('/edit')) {
+    // Specific pages that have their own FAB logic
+    const fabPages: string[] = ['/fleet'];
+
+    if (pathname.startsWith('/edit') || (pagesToHideFab.some(path => pathname.startsWith(path)) && !fabPages.includes(pathname))) {
         return null;
     }
 
@@ -43,6 +45,7 @@ export function FloatingActionButton() {
         const permissions = userAccount?.permissions;
         const canAccessOps = isSuperAdmin || permissions?.canAccessOperations;
         const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
+        const canAddClients = isSuperAdmin || permissions?.canAddClients;
 
         switch (pathname) {
             case '/fleet':
@@ -55,28 +58,18 @@ export function FloatingActionButton() {
                     return <NewItemDialog itemType="dumpster" />;
                 }
                 return null;
-            case '/clients':
-                 if (isAdmin || permissions?.canAddClients) {
-                    return (
-                        <Button asChild className="h-16 w-16 rounded-full shadow-lg">
-                            <Link href="/clients/new">
-                                <Plus className="h-8 w-8" />
-                                <span className="sr-only">Novo Cliente</span>
-                            </Link>
-                        </Button>
-                    );
-                }
-                return null;
             case '/team':
                 if (isAdmin || permissions?.canAccessTeam) {
                     return <NewItemDialog itemType="team" />;
                 }
                 return null;
             case '/os':
+            case '/clients':
             default:
-                // Do not show the FAB on any page that is not explicitly handled above
-                if (pathname !== '/os') return null;
-
+                 // Only show on /os and /clients, hide on others by default
+                if (pathname !== '/os' && pathname !== '/clients') {
+                    return null;
+                }
                 return (
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -106,6 +99,16 @@ export function FloatingActionButton() {
                                     <span>Nova Operação</span>
                                  </Link>
                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild className="py-3">
+                                 <Link 
+                                    href="/clients/new"
+                                    aria-disabled={!canAddClients} 
+                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAddClients && "pointer-events-none opacity-50")}
+                                >
+                                    <User className="mr-2 h-4 w-4" />
+                                    <span>Novo Cliente</span>
+                                 </Link>
+                             </DropdownMenuItem>
                         </DropdownMenuContent>
                      </DropdownMenu>
                 );
@@ -116,7 +119,7 @@ export function FloatingActionButton() {
     if (!content) return null;
 
     return (
-        <div className="fab-container fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+        <div className={cn("fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6", className)}>
             {content}
         </div>
     )
