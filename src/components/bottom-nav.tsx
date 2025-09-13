@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -18,7 +17,7 @@ const allNavLinks = [
 ];
 
 
-export function BottomNav() {
+export function BottomNav({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, userAccount, isSuperAdmin } = useAuth();
 
@@ -36,7 +35,7 @@ export function BottomNav() {
   });
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t">
+    <nav className={cn("fixed bottom-0 left-0 right-0 z-50 bg-card border-t", className)}>
       <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${visibleLinks.length > 0 ? visibleLinks.length : 1}, 1fr)`}}>
         {visibleLinks.map(({ href, label, icon: Icon }) => (
           <Link

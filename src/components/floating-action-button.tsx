@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils";
 
-export function FloatingActionButton() {
+export function FloatingActionButton({ className }: { className?: string }) {
     const { user, userAccount, isSuperAdmin } = useAuth();
     const pathname = usePathname();
     const isAdmin = userAccount?.role === 'admin' || userAccount?.role === 'owner';
@@ -119,7 +119,7 @@ export function FloatingActionButton() {
     if (!content) return null;
 
     return (
-        <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+        <div className={cn("fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6", className)}>
             {content}
         </div>
     )

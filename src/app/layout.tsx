@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { Metadata } from "next";
 import { Inter, PT_Sans } from "next/font/google";
 import "./globals.css";
@@ -9,6 +11,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingActionButton } from "@/components/floating-action-button";
 import { ThemeProvider } from "@/components/theme-provider";
 import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
+import { useScrollDirection } from "@/hooks/use-scroll-direction";
+import { cn } from "@/lib/utils";
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -22,7 +26,8 @@ const pt_sans = PT_Sans({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
+// Metadata is now a plain object since we are using 'use client'
+const metadata: Metadata = {
   title: "LogiApp - Gestão de Logistica Integrada",
   description: "Gestão de Logística Integrada",
   manifest: "/manifest.json",
@@ -33,6 +38,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const scrollDirection = useScrollDirection();
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -50,11 +57,20 @@ export default function RootLayout({
         >
           <AuthProvider>
               <div className="flex flex-col min-h-screen">
-                  <Header />
+                  <Header className={cn(
+                    "transition-transform duration-300",
+                    scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
+                  )} />
                   <main className="flex-grow">{children}</main>
                   <div className="h-16 md:hidden" />
-                  <BottomNav />
-                  <FloatingActionButton />
+                  <BottomNav className={cn(
+                    "transition-transform duration-300 md:hidden",
+                     scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'
+                  )} />
+                  <FloatingActionButton className={cn(
+                     "transition-transform duration-300",
+                     scrollDirection === 'down' ? 'translate-y-24' : 'translate-y-0'
+                  )} />
                   <InstallPwaPrompt />
               </div>
               <Toaster />

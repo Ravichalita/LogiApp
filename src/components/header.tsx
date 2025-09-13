@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Image from "next/image";
@@ -18,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { HeaderActions, DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
+import { DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import React from "react";
@@ -33,7 +32,7 @@ const allNavLinks = [
   { href: '/clients', label: 'Clientes', permission: ['canAccessClients'] as const },
 ];
 
-export function Header() {
+export function Header({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, userAccount, logout, isSuperAdmin } = useAuth();
   const isMobile = useIsMobile();
@@ -71,7 +70,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-card">
+    <header className={cn("sticky top-0 z-40 w-full border-b bg-card", className)}>
       <div className="container flex h-16 items-center">
         <div className="flex items-center">
                      <Link href="/os" className="mr-6 flex items-center space-x-2">
