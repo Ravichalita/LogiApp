@@ -68,8 +68,8 @@ export default function RootLayout({
                      scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'
                   )} />
                   <FloatingActionButton className={cn(
-                     "transition-transform duration-300",
-                     scrollDirection === 'down' ? 'translate-y-full mb-4' : 'translate-y-0'
+                     "transition-opacity duration-300",
+                     scrollDirection === 'down' ? 'opacity-0 pointer-events-none' : 'opacity-100'
                   )} />
                   <InstallPwaPrompt />
               </div>
