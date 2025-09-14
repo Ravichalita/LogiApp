@@ -1354,51 +1354,20 @@ export async function resetAllDataAction(accountId: string) {
     if (!accountId) {
         return { message: 'error', error: 'Conta não identificada.' };
     }
-
     const db = adminDb;
-    
     try {
-        // Step 1: Update the account document to reset settings
+        // This server action only resets the counters now.
+        // The client-side will handle the deletion of collections and files.
         const accountRef = db.doc(`accounts/${accountId}`);
         await accountRef.update({
-            rentalPrices: [],
-            operationTypes: [],
-            truckTypes: [],
-            bases: [],
-            operationalCosts: [],
-            notificationImages: [],
             rentalCounter: 0,
             operationCounter: 0,
         });
-
-        // Step 2: Concurrently delete all collections and gather attachment paths
-        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
-        let allAttachmentPaths: string[] = [];
-        const deletionPromises = collectionsToDelete.map(async (collection) => {
-            try {
-                const paths = await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
-                allAttachmentPaths = allAttachmentPaths.concat(paths);
-            } catch (collectionError) {
-                console.warn(`Could not delete collection ${collection}. It might not exist.`, collectionError);
-            }
-        });
-        await Promise.all(deletionPromises);
         
-        // Step 3: Delete all collected attachments from storage
-        const storageDeletePromises = allAttachmentPaths.map(path => deleteStorageFileAction(path));
-        await Promise.all(storageDeletePromises);
-        
-        revalidatePath('/');
-        revalidatePath('/clients');
-        revalidatePath('/dumpsters');
-        revalidatePath('/finance');
         revalidatePath('/settings');
-        revalidatePath('/fleet');
-        revalidatePath('/operations');
-        
         return { message: 'success' };
     } catch (e) {
-        console.error("Error in resetAllDataAction:", e);
+        console.error("Error in resetAllDataAction (server-side part):", e);
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
@@ -2026,4 +1995,5 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
 
