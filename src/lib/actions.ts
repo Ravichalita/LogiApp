@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -1356,8 +1355,18 @@ export async function resetAllDataAction(accountId: string) {
     }
     const db = adminDb;
     try {
-        // This server action only resets the counters now.
-        // The client-side will handle the deletion of collections and files.
+        const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
+        let allAttachmentPaths: string[] = [];
+
+        for (const collection of collectionsToDelete) {
+            const paths = await deleteCollectionByPath(db, `accounts/${accountId}/${collection}`, 50);
+            allAttachmentPaths = allAttachmentPaths.concat(paths);
+        }
+        
+        for (const path of allAttachmentPaths) {
+            await deleteStorageFileAction(path);
+        }
+        
         const accountRef = db.doc(`accounts/${accountId}`);
         await accountRef.update({
             rentalCounter: 0,
@@ -1365,6 +1374,7 @@ export async function resetAllDataAction(accountId: string) {
         });
         
         revalidatePath('/settings');
+        revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
         console.error("Error in resetAllDataAction (server-side part):", e);
@@ -1995,5 +2005,6 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
 
 

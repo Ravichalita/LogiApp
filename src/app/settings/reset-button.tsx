@@ -93,108 +93,16 @@ function GenericResetButton({ accountId, action, title, description, buttonText,
 
 
 export function ResetAllDataButton({ accountId }: { accountId: string }) {
-    const [isPending, startTransition] = useTransition();
-    const { toast } = useToast();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const { db, storage } = getFirebase();
-
-    const handleClientSideReset = async () => {
-        if (!db || !storage) {
-            toast({ title: 'Erro', description: 'Ocorreu um erro ao inicializar o Firebase. Recarregue a página e tente novamente.', variant: 'destructive' });
-            return;
-        }
-
-        startTransition(async () => {
-            const collectionsToDelete = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
-            const allAttachmentPaths: string[] = [];
-            
-            try {
-                // This process can be slow and intensive on the browser.
-                toast({ title: 'Iniciando limpeza...', description: 'Este processo pode demorar alguns minutos. Não feche a janela.' });
-
-                // 1. Fetch and delete documents from all collections
-                for (const collectionName of collectionsToDelete) {
-                    const collectionPath = `accounts/${accountId}/${collectionName}`;
-                    const q = query(collection(db, collectionPath));
-                    const querySnapshot = await getDocs(q);
-
-                    if (querySnapshot.empty) continue;
-
-                    const batch = writeBatch(db);
-                    querySnapshot.forEach(doc => {
-                        const data = doc.data();
-                        if (data.attachments && Array.isArray(data.attachments)) {
-                            for (const attachment of data.attachments) {
-                                if (attachment.path) {
-                                    allAttachmentPaths.push(attachment.path);
-                                }
-                            }
-                        }
-                        batch.delete(doc.ref);
-                    });
-                    await batch.commit();
-                }
-
-                // 2. Delete all collected attachments from storage
-                const storageDeletePromises = allAttachmentPaths.map(path => {
-                    const fileRef = ref(storage, path);
-                    return deleteObject(fileRef).catch(e => console.warn(`Failed to delete ${path}`, e));
-                });
-                await Promise.all(storageDeletePromises);
-
-                // 3. Reset account counters via server action (as this is a simple, safe update)
-                const result = await resetAllDataAction(accountId);
-                if (result.message === 'error') {
-                   throw new Error(result.error);
-                }
-
-                toast({
-                    title: 'Sucesso!',
-                    description: 'Todos os dados da conta foram zerados com sucesso.',
-                });
-                setIsDialogOpen(false);
-                // Optionally, force a page reload to reflect the empty state
-                window.location.reload();
-
-            } catch (error) {
-                console.error("Client-side reset failed:", error);
-                toast({
-                    title: 'Erro ao Zerar Dados',
-                    description: error instanceof Error ? error.message : 'Não foi possível completar a operação. Verifique o console para mais detalhes.',
-                    variant: 'destructive',
-                });
-            }
-        });
-    };
-
     return (
-        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <AlertDialogTrigger asChild>
-                <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setIsDialogOpen(true)}
-                >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Zerar Todos os Dados da Conta
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Você tem certeza absoluta?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Essa ação não pode ser desfeita. Isso excluirá permanentemente todos os aluguéis, operações, clientes, caçambas, frotas e anexos. Os dados de usuário e equipe não serão afetados.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClientSideReset} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
-                        {isPending ? <Spinner size="small" /> : 'Sim, zerar dados'}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <GenericResetButton
+            accountId={accountId}
+            action={resetAllDataAction}
+            title="Zerar Todos os Dados da Conta?"
+            description="Essa ação não pode ser desfeita. Isso excluirá permanentemente todos os aluguéis, operações, clientes, caçambas, frotas e anexos. Os dados de usuário e equipe não serão afetados."
+            buttonText="Zerar Todos os Dados da Conta"
+            toastSuccess="A limpeza completa dos dados foi iniciada no servidor."
+            toastError="Erro ao Iniciar a Limpeza"
+        />
     );
 }
 
