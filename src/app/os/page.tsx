@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -453,7 +452,7 @@ export default function OSPage() {
                 {typeFilterOptions.map(option => (
                     <Button
                         key={option.value}
-                        variant={osTypeFilter === option.value ? "selected" : "outline"}
+                        variant={osTypeFilter === option.value ? "default" : "outline"}
                         onClick={() => handleTypeFilterChange(option.value)}
                         className="py-2"
                     >
@@ -465,7 +464,7 @@ export default function OSPage() {
                 {statusFilterOptions.map((option) => (
                     <Button
                         key={option.value}
-                        variant={statusFilter === option.value ? 'selected' : 'outline'}
+                        variant={statusFilter === option.value ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setStatusFilter(option.value as StatusFilter)}
                         className="py-1 h-7 text-xs"
@@ -662,7 +661,7 @@ export default function OSPage() {
                                                             onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
                                                             onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
                                                             uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                            showDeleteButton={false}
+                                                            showDeleteButton={true}
                                                             showLabel={false}
                                                         />
                                                     </div>
@@ -689,4 +688,3 @@ export default function OSPage() {
     </div>
   );
 }
-

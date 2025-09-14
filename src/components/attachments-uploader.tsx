@@ -4,13 +4,11 @@
 import { useState, useRef, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, Paperclip, Plus } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirebase } from '@/lib/firebase-client';
 import type { Attachment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Spinner } from './ui/spinner';
-import { deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Label } from './ui/label';
 import Image from 'next/image';
@@ -91,13 +89,34 @@ export const AttachmentsUploader = ({
 
      const handleDeleteAttachment = (attachment: Attachment) => {
         startDeleteTransition(async () => {
-             try {
-                // Here we would ideally call a server action to delete from storage if needed
-                // For now, we just remove it from the state via the parent callback
+            const { storage } = getFirebase();
+            if (!storage) {
+                toast({ title: 'Erro', description: 'Serviço de armazenamento não inicializado.', variant: 'destructive'});
+                return;
+            }
+
+            const fileRef = ref(storage, attachment.path);
+
+            try {
+                // Step 1: Delete the file from Firebase Storage
+                await deleteObject(fileRef);
+                
+                // Step 2: Optimistically update the UI and trigger the DB deletion via the parent component
                 onAttachmentDeleted(attachment);
+                
                 toast({ title: 'Sucesso', description: 'Anexo removido.' });
-            } catch (error) {
-                toast({ title: 'Erro', description: 'Não foi possível remover o anexo.', variant: 'destructive' });
+
+            } catch (error: any) {
+                console.error("Error deleting attachment:", error);
+                let errorMessage = 'Não foi possível excluir o anexo.';
+                
+                if (error.code === 'storage/object-not-found') {
+                    // If file isn't in storage, it's safe to just remove the DB reference.
+                    errorMessage = 'Arquivo não encontrado no armazenamento. Removendo apenas a referência.';
+                    onAttachmentDeleted(attachment); // Trigger DB deletion anyway
+                }
+                
+                toast({ title: 'Erro na Exclusão', description: errorMessage, variant: 'destructive' });
             }
         });
     };
