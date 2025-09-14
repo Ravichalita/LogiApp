@@ -1659,10 +1659,6 @@ export async function deleteNotificationImageAction(accountId: string, imagePath
     }
 
     try {
-        // First, delete the file from storage
-        await deleteStorageFileAction(imagePath);
-
-        // Then, remove the reference from the account document
         const accountRef = adminDb.doc(`accounts/${accountId}`);
         const accountSnap = await accountRef.get();
         if (accountSnap.exists) {
@@ -1674,7 +1670,7 @@ export async function deleteNotificationImageAction(accountId: string, imagePath
         revalidatePath('/notifications-studio');
         return { message: 'success' as const };
     } catch (e) {
-        console.error('Error deleting notification image:', e);
+        console.error('Error deleting notification image reference from DB:', e);
         return { message: 'error' as const, error: handleFirebaseError(e) };
     }
 }
@@ -2005,6 +2001,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
 
 
 

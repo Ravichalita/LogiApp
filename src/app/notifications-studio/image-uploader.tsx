@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, ImageIcon, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -23,7 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/context/auth-context';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getFirebase } from '@/lib/firebase-client';
 
 
@@ -45,6 +45,7 @@ export const ImageUploader = ({
     uploadPath 
 }: ImageUploaderProps) => {
     const [isUploading, setIsUploading] = useState(false);
+    const [isDeleting, startDeleteTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const { accountId } = useAuth();
@@ -119,18 +120,41 @@ export const ImageUploader = ({
         );
     };
 
-    const handleDeleteImage = async (imagePath: string) => {
-        if (!accountId) {
-            toast({ title: "Erro", description: "Conta não identificada.", variant: "destructive" });
+    const handleDeleteImage = (imagePath: string) => {
+        if (!accountId || !imagePath) {
+            toast({ title: "Erro", description: "Caminho da imagem ou ID da conta ausente.", variant: "destructive" });
             return;
         }
-        const result = await deleteNotificationImageAction(accountId, imagePath);
-        if (result.message === 'success') {
-            onImageDeleted(imagePath);
-            toast({ title: 'Imagem Excluída', description: 'A imagem foi removida do armazenamento.' });
-        } else {
-            toast({ title: 'Erro', description: result.error, variant: 'destructive' });
-        }
+
+        startDeleteTransition(async () => {
+            const { storage } = getFirebase();
+            if (!storage) {
+                toast({ title: "Erro", description: "Serviço de armazenamento não inicializado.", variant: "destructive" });
+                return;
+            }
+
+            const fileRef = ref(storage, imagePath);
+
+            try {
+                // Step 1: Delete from Storage
+                await deleteObject(fileRef);
+            } catch (storageError: any) {
+                // If the file doesn't exist in storage, we can still proceed to delete from DB
+                if (storageError.code !== 'storage/object-not-found') {
+                    console.error("Storage deletion error:", storageError);
+                    toast({ title: "Erro de Armazenamento", description: "Não foi possível remover o arquivo do servidor, mas a referência será removida.", variant: "destructive" });
+                }
+            }
+
+            // Step 2: Delete from DB via Server Action
+            const result = await deleteNotificationImageAction(accountId, imagePath);
+            if (result.message === 'success') {
+                onImageDeleted(imagePath);
+                toast({ title: 'Imagem Excluída', description: 'A imagem foi removida com sucesso.' });
+            } else {
+                toast({ title: 'Erro de Banco de Dados', description: result.error, variant: 'destructive' });
+            }
+        });
     };
 
     return (
@@ -189,9 +213,9 @@ export const ImageUploader = ({
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteImage(image.path)} className="bg-destructive hover:bg-destructive/90">
-                                        Sim, Excluir
+                                    <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteImage(image.path)} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                        {isDeleting ? <Spinner size="small" /> : 'Sim, Excluir'}
                                     </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
