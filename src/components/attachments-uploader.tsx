@@ -51,8 +51,8 @@ export const AttachmentsUploader = ({
         if (!storage) return;
 
         setIsUploading(true);
-        const fullUploadPath = uploadPath.replace('{accountId}', accountId);
-        const storageRef = ref(storage, `${fullUploadPath}/${Date.now()}_${file.name}`);
+        const fullUploadPath = `${uploadPath}/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, fullUploadPath);
         const uploadTask = uploadBytesResumable(storageRef, file);
 
         uploadTask.on('state_changed',
@@ -75,6 +75,7 @@ export const AttachmentsUploader = ({
                         name: file.name,
                         type: file.type,
                         uploadedAt: new Date().toISOString(),
+                        path: fullUploadPath,
                     };
                     onAttachmentUploaded(newAttachment);
                     toast({
@@ -95,29 +96,23 @@ export const AttachmentsUploader = ({
                 return;
             }
 
-            const fileRef = ref(storage, attachment.path);
-
-            try {
-                // Step 1: Delete the file from Firebase Storage
-                await deleteObject(fileRef);
-                
-                // Step 2: Optimistically update the UI and trigger the DB deletion via the parent component
-                onAttachmentDeleted(attachment);
-                
-                toast({ title: 'Sucesso', description: 'Anexo removido.' });
-
-            } catch (error: any) {
-                console.error("Error deleting attachment:", error);
-                let errorMessage = 'Não foi possível excluir o anexo.';
-                
-                if (error.code === 'storage/object-not-found') {
-                    // If file isn't in storage, it's safe to just remove the DB reference.
-                    errorMessage = 'Arquivo não encontrado no armazenamento. Removendo apenas a referência.';
-                    onAttachmentDeleted(attachment); // Trigger DB deletion anyway
+            // Ensure the attachment has a path before attempting deletion from storage
+            if (attachment.path) {
+                try {
+                    const fileRef = ref(storage, attachment.path);
+                    await deleteObject(fileRef);
+                } catch (error: any) {
+                    console.error("Error deleting file from storage:", error);
+                     if (error.code !== 'storage/object-not-found') {
+                        toast({ title: 'Erro de Armazenamento', description: 'Não foi possível remover o arquivo do servidor, mas a referência será removida.', variant: 'destructive' });
+                     }
                 }
-                
-                toast({ title: 'Erro na Exclusão', description: errorMessage, variant: 'destructive' });
+            } else {
+                 console.warn("Attachment path is missing, cannot delete from storage. Proceeding to delete reference from DB.", attachment);
             }
+
+            // Always call the parent handler to remove the reference from the database
+            onAttachmentDeleted(attachment);
         });
     };
 

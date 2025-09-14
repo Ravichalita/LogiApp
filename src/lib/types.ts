@@ -160,6 +160,7 @@ export const AttachmentSchema = z.object({
     name: z.string(),
     type: z.string(),
     uploadedAt: z.string(),
+    path: z.string(),
 });
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
@@ -414,7 +415,7 @@ export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'compl
     client?: Client | null;
     dumpster?: Dumpster | null;
     assignedToUser?: UserAccount | null;
-    attachments?: z.infer<typeof AttachmentSchema>[];
+    attachments?: Attachment[];
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
