@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
-import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval, isSameDay } from 'date-fns';
+import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval, isSameDay, endOfDay } from 'date-fns';
 import {
   Accordion,
   AccordionContent,
@@ -186,7 +186,8 @@ export default function OSPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [isDateOpen, setIsDateOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -253,12 +254,13 @@ export default function OSPage() {
 
     // Filter by date first
     if (selectedDate) {
-        const dayStart = startOfToday(selectedDate);
+        const dayStart = startOfDay(selectedDate);
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
-                return isWithinInterval(dayStart, { start: rentalStart, end: rentalEnd });
+                // An OS is relevant for a day if the day is within its rental period (inclusive)
+                return isWithinInterval(dayStart, { start: startOfDay(rentalStart), end: endOfDay(rentalEnd) });
             }
             if (item.itemType === 'operation') {
                 return isSameDay(parseISO(item.startDate!), dayStart);
@@ -466,7 +468,7 @@ export default function OSPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Popover>
+            <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
@@ -483,8 +485,10 @@ export default function OSPage() {
                     <Calendar
                         mode="single"
                         selected={selectedDate}
-                        onSelect={(date) => date && setSelectedDate(date)}
-                        initialFocus
+                        onSelect={(date) => {
+                            setSelectedDate(date);
+                            setIsDateOpen(false);
+                        }}
                     />
                 </PopoverContent>
             </Popover>
