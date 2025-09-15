@@ -323,7 +323,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="assignedTo">Designar para</Label>
           <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>

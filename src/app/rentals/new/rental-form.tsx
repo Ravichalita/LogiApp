@@ -256,7 +256,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     const selectedBase = account?.bases?.find(b => b.id === baseId);
     if (selectedBase) {
         setStartAddress(selectedBase.address);
-        if (selectedBase.latitude && selectedBase.longitude) {
+         if (selectedBase.latitude && selectedBase.longitude) {
             setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
         } else {
             setStartLocation(null); 
@@ -609,7 +609,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
            {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="assignedTo">Designar para</Label>
           <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
@@ -623,16 +623,16 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
         </div>
         <div className="space-y-2">
-            <Label htmlFor="truckId" className="text-muted-foreground">Caminhão</Label>
-            <Select name="truckId" onValueChange={setSelectedTruckId} required>
+            <Label htmlFor="truckId">Caminhão</Label>
+            <Select name="truckId" onValueChange={setSelectedTruckId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um caminhão para o serviço" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="sem-caminhao">Nenhum caminhão</SelectItem>
                 {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
               </SelectContent>
             </Select>
-            {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}
         </div>
       </div>
       
