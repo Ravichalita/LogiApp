@@ -453,6 +453,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   );
 
   const poliguindasteTrucks = trucks.filter(t => t.type?.toLowerCase().includes('poliguindaste'));
+  
+  useEffect(() => {
+    if (poliguindasteTrucks.length === 1) {
+      setSelectedTruckId(poliguindasteTrucks[0].id);
+    }
+  }, [trucks]);
 
   return (
     <form action={handleFormAction} className="space-y-6">
@@ -624,8 +630,8 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
         </div>
         <div className="space-y-2">
-            <Label htmlFor="truckId">Caminhão</Label>
-            <Select name="truckId" onValueChange={setSelectedTruckId}>
+            <Label htmlFor="truckId">Caminhão (Opcional)</Label>
+            <Select name="truckId" onValueChange={setSelectedTruckId} value={selectedTruckId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um caminhão para o serviço" />
               </SelectTrigger>
