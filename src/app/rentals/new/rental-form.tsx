@@ -546,7 +546,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           {errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{errors.dumpsterId[0]}</p>}
         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
             <Label htmlFor="clientId">Cliente</Label>
             <Dialog open={clientSelectOpen} onOpenChange={setClientSelectOpen}>
@@ -609,7 +608,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
             </Dialog>
            {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
         </div>
-         <div className="space-y-2">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="assignedTo">Designar para</Label>
           <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
             <SelectTrigger>
@@ -621,8 +622,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           </Select>
           {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
         </div>
-      </div>
-      <div className="space-y-2">
+        <div className="space-y-2">
             <Label htmlFor="truckId" className="text-muted-foreground">Caminhão</Label>
             <Select name="truckId" onValueChange={setSelectedTruckId} required>
               <SelectTrigger>
@@ -634,6 +634,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
             </Select>
             {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}
         </div>
+      </div>
       
        <div className="p-4 border rounded-md space-y-4 bg-card relative">
         {(account?.bases?.length ?? 0) > 0 && (

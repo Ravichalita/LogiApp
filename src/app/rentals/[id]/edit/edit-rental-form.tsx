@@ -323,31 +323,32 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         </div>
       </div>
       
-       <div className="space-y-2">
-        <Label htmlFor="assignedTo">Designar para</Label>
-        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione um membro da equipe" />
-          </SelectTrigger>
-          <SelectContent>
-            {team.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
-      </div>
-
-       <div className="space-y-2">
-            <Label htmlFor="truckId" className="text-muted-foreground">Caminhão (Opcional)</Label>
-            <Select name="truckId" onValueChange={setSelectedTruckId} defaultValue={selectedTruckId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um caminhão para o serviço" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sem-caminhao">Nenhum caminhão</SelectItem>
-                {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
-              </SelectContent>
-            </Select>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="assignedTo">Designar para</Label>
+          <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um membro da equipe" />
+            </SelectTrigger>
+            <SelectContent>
+              {team.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="truckId">Caminhão (Opcional)</Label>
+          <Select name="truckId" onValueChange={setSelectedTruckId} defaultValue={selectedTruckId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione um caminhão para o serviço" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sem-caminhao">Nenhum caminhão</SelectItem>
+              {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       
        <div className="p-4 border rounded-md space-y-4 bg-card relative">
         {(account?.bases?.length ?? 0) > 0 && (
