@@ -370,10 +370,29 @@ export default function FinancePage() {
     const extractCity = (address: string) => {
         if (!address) return 'N/A';
         const parts = address.split(',').map(p => p.trim());
-        if (parts.length >= 3) {
-            const cityState = parts[parts.length - 2];
-            return cityState.split('-')[0].trim();
+        if (parts.length < 2) return 'N/A';
+
+        // Try to find a part with "Cidade - Estado" format
+        const cityStatePart = parts.find(p => p.includes('-'));
+        if (cityStatePart) {
+            return cityStatePart.split('-')[0].trim();
         }
+
+        // If not found, assume the second to last part is the city,
+        // but only if it's not a number (to avoid CEP)
+        const potentialCity = parts[parts.length - 2];
+        if (potentialCity && isNaN(parseInt(potentialCity.replace(/\D/g, '')))) {
+            return potentialCity;
+        }
+
+        // As a last resort, check the third to last part
+        if (parts.length >= 3) {
+            const lastResortCity = parts[parts.length - 3];
+            if (lastResortCity && isNaN(parseInt(lastResortCity.replace(/\D/g, '')))) {
+                return lastResortCity;
+            }
+        }
+        
         return 'N/A';
     };
     
