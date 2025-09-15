@@ -253,19 +253,15 @@ export default function OSPage() {
     
     let allItems = [...rentalItems, ...operationItems];
 
-    // Filter by date first
     if (selectedDate) {
-        const dayStart = startOfToday(selectedDate);
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
-                // Check if the selected date falls within the rental period (inclusive)
-                return isWithinInterval(dayStart, { start: rentalStart, end: rentalEnd });
+                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
             }
             if (item.itemType === 'operation') {
-                // Check if the operation happens on the selected day
-                return isSameDay(parseISO(item.startDate!), dayStart);
+                return isSameDay(parseISO(item.startDate!), selectedDate);
             }
             return false;
         });
@@ -470,7 +466,7 @@ export default function OSPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
+            <Popover>
                 <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
@@ -487,10 +483,8 @@ export default function OSPage() {
                     <Calendar
                         mode="single"
                         selected={selectedDate}
-                        onSelect={(date) => {
-                            setSelectedDate(date);
-                            setIsDateOpen(false);
-                        }}
+                        onSelect={setSelectedDate}
+                        initialFocus
                     />
                 </PopoverContent>
             </Popover>
