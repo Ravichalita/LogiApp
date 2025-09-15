@@ -421,6 +421,26 @@ export default function FinancePage() {
         name,
         value,
     })).sort((a, b) => b.value - a.value);
+    
+    const serviceTypeChartData = useMemo(() => {
+        const revenueByServiceType = historicItems.reduce((acc, item) => {
+            let serviceName = 'Serviço Indefinido';
+            if (item.kind === 'rental') {
+                serviceName = 'Aluguel';
+            } else if (item.kind === 'operation' && item.operationTypes && item.operationTypes.length > 0) {
+                serviceName = item.operationTypes.map(t => t.name).join(' / ');
+            }
+            
+            const value = item.totalValue || 0;
+            if (!acc[serviceName]) {
+                acc[serviceName] = 0;
+            }
+            acc[serviceName] += value;
+            return acc;
+        }, {} as Record<string, number>);
+
+        return Object.entries(revenueByServiceType).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    }, [historicItems]);
 
 
     const isLoading = authLoading || (loadingData && canAccess);
@@ -481,6 +501,15 @@ export default function FinancePage() {
                                 </CardHeader>
                                 <CardContent>
                                     {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={neighborhoodChartData} />}
+                                </CardContent>
+                            </CarouselItem>
+                            <CarouselItem>
+                                 <CardHeader>
+                                    <CardTitle className="font-headline">Faturamento por Tipo de Serviço</CardTitle>
+                                    <CardDescription>Receita gerada por cada tipo de serviço.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={serviceTypeChartData} />}
                                 </CardContent>
                             </CarouselItem>
                         </CarouselContent>
