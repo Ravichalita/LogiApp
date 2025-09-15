@@ -164,8 +164,19 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const profit = totalRentalValue - totalOperationCost;
 
 
+  const poliguindasteTrucks = useMemo(() => 
+    trucks.filter(t => t.type?.toLowerCase().includes('poliguindaste')), 
+  [trucks]);
+
+  useEffect(() => {
+    if (poliguindasteTrucks.length === 1 && !selectedTruckId) {
+      setSelectedTruckId(poliguindasteTrucks[0].id);
+    }
+  }, [poliguindasteTrucks, selectedTruckId]);
+
   useEffect(() => {
     setRentalDate(new Date());
+    setReturnDate(addDays(new Date(), 2));
     setAssignedToId(userAccount?.id)
   }, [userAccount]);
 
@@ -451,14 +462,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       </CommandItem>
     ))
   );
-
-  const poliguindasteTrucks = trucks.filter(t => t.type?.toLowerCase().includes('poliguindaste'));
-  
-  useEffect(() => {
-    if (poliguindasteTrucks.length === 1) {
-      setSelectedTruckId(poliguindasteTrucks[0].id);
-    }
-  }, [trucks]);
 
   return (
     <form action={handleFormAction} className="space-y-6">
@@ -762,7 +765,13 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                 mode="single"
                 selected={rentalDate}
                 onSelect={(date) => {
-                    setRentalDate(date);
+                    if (date) {
+                        setRentalDate(date);
+                        setReturnDate(addDays(date, 2));
+                    } else {
+                        setRentalDate(undefined);
+                        setReturnDate(undefined);
+                    }
                     setIsRentalDateOpen(false);
                 }}
                 disabled={selectedDumpsterInfo?.disabledRanges}
@@ -968,3 +977,5 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     </form>
   );
 }
+
+    
