@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
-import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval, isSameDay, endOfDay } from 'date-fns';
+import { isBefore, isAfter, isToday, parseISO, startOfDay, endOfDay, isWithinInterval, isSameDay } from 'date-fns';
 import {
   Accordion,
   AccordionContent,
@@ -45,7 +45,7 @@ type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em A
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info', order: number } {
-  const today = startOfToday();
+  const today = startOfDay(new Date());
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
 
@@ -75,7 +75,7 @@ function getOperationStatus(op: PopulatedOperation): { text: 'Pendente' | 'Em An
     if (isAfter(now, endDate)) {
         return { text: 'Em Atraso', variant: 'destructive' };
     }
-    if (isFuture(startDate)) {
+    if (isBefore(now, startDate)) {
         return { text: 'Pendente', variant: 'info' };
     }
     if (isWithinInterval(now, { start: startDate, end: endDate })) {
@@ -189,7 +189,7 @@ export default function OSPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -254,10 +254,13 @@ export default function OSPage() {
     
     let allItems = [...rentalItems, ...operationItems];
 
+    // Filter by date first
     if (selectedDate) {
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
-                return isWithinInterval(selectedDate, { start: parseISO(item.rentalDate), end: parseISO(item.returnDate) });
+                const rentalStart = parseISO(item.rentalDate);
+                const rentalEnd = parseISO(item.returnDate);
+                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
             }
             if (item.itemType === 'operation') {
                 return isSameDay(parseISO(item.startDate!), selectedDate);
@@ -475,7 +478,7 @@ export default function OSPage() {
                         )}
                     >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                        {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Filtrar por data</span>}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
