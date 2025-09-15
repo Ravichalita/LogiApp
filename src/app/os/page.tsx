@@ -34,6 +34,8 @@ import { AttachmentsUploader } from '@/components/attachments-uploader';
 import { addAttachmentToRentalAction, addAttachmentToOperationAction, deleteAttachmentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
@@ -188,7 +190,6 @@ export default function OSPage() {
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [isDateOpen, setIsDateOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -256,9 +257,7 @@ export default function OSPage() {
     if (selectedDate) {
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
-                const rentalStart = parseISO(item.rentalDate);
-                const rentalEnd = parseISO(item.returnDate);
-                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
+                return isWithinInterval(selectedDate, { start: parseISO(item.rentalDate), end: parseISO(item.returnDate) });
             }
             if (item.itemType === 'operation') {
                 return isSameDay(parseISO(item.startDate!), selectedDate);
@@ -466,25 +465,24 @@ export default function OSPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Popover>
+             <Popover>
                 <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
                         className={cn(
-                            "w-full md:w-[280px] justify-start text-left font-normal",
+                            "w-full md:w-auto justify-start text-left font-normal",
                             !selectedDate && "text-muted-foreground"
                         )}
                     >
-                        <Calendar className="mr-2 h-4 w-4" />
+                        <CalendarIcon className="mr-2 h-4 w-4" />
                         {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                    <Calendar
+                    <CalendarComponent
                         mode="single"
                         selected={selectedDate}
                         onSelect={setSelectedDate}
-                        initialFocus
                     />
                 </PopoverContent>
             </Popover>
