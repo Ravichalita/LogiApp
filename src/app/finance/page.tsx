@@ -41,6 +41,13 @@ import { useToast } from '@/hooks/use-toast';
 import { OsPdfDocument } from '@/components/os-pdf-document';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -360,6 +367,35 @@ export default function FinancePage() {
         value,
     })).sort((a,b) => b.value - a.value);
 
+    const extractCity = (address: string) => {
+        if (!address) return 'N/A';
+        const parts = address.split(',').map(p => p.trim());
+        if (parts.length >= 3) {
+            const cityState = parts[parts.length - 2];
+            return cityState.split('-')[0].trim();
+        }
+        return 'N/A';
+    };
+    
+    const revenueByCityData = historicItems.reduce((acc, item) => {
+        const address = item.kind === 'rental' ? item.data.deliveryAddress : (item.data as PopulatedOperation).destinationAddress;
+        if (!address) return acc;
+        const city = extractCity(address);
+        const value = item.totalValue || 0;
+
+        if (!acc[city]) {
+            acc[city] = 0;
+        }
+        acc[city] += value;
+
+        return acc;
+    }, {} as Record<string, number>);
+
+    const cityChartData = Object.entries(revenueByCityData).map(([name, value]) => ({
+        name,
+        value,
+    })).sort((a, b) => b.value - a.value);
+
 
     const isLoading = authLoading || (loadingData && canAccess);
 
@@ -392,13 +428,30 @@ export default function FinancePage() {
 
              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
                 <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="font-headline">Faturamento por Cliente</CardTitle>
-                        <CardDescription>Receita gerada por cada cliente no período total.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={clientChartData} />}
-                    </CardContent>
+                    <Carousel>
+                        <CarouselContent>
+                            <CarouselItem>
+                                 <CardHeader>
+                                    <CardTitle className="font-headline">Faturamento por Cliente</CardTitle>
+                                    <CardDescription>Receita gerada por cada cliente no período total.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={clientChartData} />}
+                                </CardContent>
+                            </CarouselItem>
+                             <CarouselItem>
+                                 <CardHeader>
+                                    <CardTitle className="font-headline">Faturamento por Cidade</CardTitle>
+                                    <CardDescription>Receita gerada em cada cidade no período total.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={cityChartData} />}
+                                </CardContent>
+                            </CarouselItem>
+                        </CarouselContent>
+                        <CarouselPrevious className="-left-4" />
+                        <CarouselNext className="-right-4"/>
+                    </Carousel>
                 </Card>
                 <Card className="lg:col-span-3">
                     <CardHeader>
