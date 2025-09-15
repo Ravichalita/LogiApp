@@ -452,6 +452,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     ))
   );
 
+  const poliguindasteTrucks = trucks.filter(t => t.type?.toLowerCase().includes('poliguindaste'));
 
   return (
     <form action={handleFormAction} className="space-y-6">
@@ -630,7 +631,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="sem-caminhao">Nenhum caminhão</SelectItem>
-                {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
+                {poliguindasteTrucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
               </SelectContent>
             </Select>
         </div>
