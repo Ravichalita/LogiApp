@@ -1,22 +1,20 @@
 {
-  "name": "LogiApp - Gestão de Logistica Integrada",
   "short_name": "LogiApp",
-  "description": "Gestão de Logística Integrada",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#18181b",
-  "theme_color": "#f97316",
+  "name": "LogiApp - Gestão de Logística",
   "icons": [
-
     {
       "src": "/192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "sizes": "192x192"
     },
     {
       "src": "/512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "sizes": "512x512"
     }
-  ]
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#ff9e00",
+  "background_color": "#18181b"
 }
