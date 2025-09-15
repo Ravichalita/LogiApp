@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
-import { isBefore, isAfter, isToday, parseISO, startOfDay, endOfDay, isWithinInterval, isSameDay } from 'date-fns';
+import { format, isBefore, isAfter, isToday, parseISO, startOfDay, endOfDay, isWithinInterval, isSameDay } from 'date-fns';
 import {
   Accordion,
   AccordionContent,
@@ -256,14 +256,19 @@ export default function OSPage() {
 
     // Filter by date first
     if (selectedDate) {
+        const dayStart = startOfDay(selectedDate);
+        const dayEnd = endOfDay(selectedDate);
+        
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
-                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
+                return isWithinInterval(dayStart, { start: rentalStart, end: rentalEnd });
             }
             if (item.itemType === 'operation') {
-                return isSameDay(parseISO(item.startDate!), selectedDate);
+                 if (!item.startDate) return false;
+                const opDate = parseISO(item.startDate);
+                return isWithinInterval(opDate, { start: dayStart, end: dayEnd });
             }
             return false;
         });
@@ -486,6 +491,7 @@ export default function OSPage() {
                         mode="single"
                         selected={selectedDate}
                         onSelect={setSelectedDate}
+                        initialFocus
                     />
                 </PopoverContent>
             </Popover>
