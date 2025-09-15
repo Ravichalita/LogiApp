@@ -379,76 +379,10 @@ export default function OSPage() {
 
   const isLoading = authLoading || (loading && (canAccessRentals || canAccessOperations));
 
-  if (isLoading) {
-    return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
-            <OSCardSkeleton />
-        </div>
-    )
-  }
-  
-  if (error) {
-       return (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
-             <div className="p-4 bg-destructive/10 rounded-full mb-4">
-                <ShieldAlert className="h-10 w-10 text-destructive" />
-            </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-                Não foi possível carregar as ordens de serviço. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
-            </p>
-             <Button onClick={() => window.location.reload()}>
-                Recarregar Página
-            </Button>
-        </div>
-    )
-  }
-
-  if (!canAccessRentals && !canAccessOperations && !loading) {
-    return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <Alert variant="destructive">
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Acesso Negado</AlertTitle>
-                <AlertDescription>
-                    Você não tem permissão para visualizar Ordens de Serviço.
-                </AlertDescription>
-            </Alert>
-        </div>
-    )
-  }
-
-  return (
-    <div className="container mx-auto py-8 px-4 md:px-6">
-       <div className="flex items-center justify-between mb-8">
-            <div>
-                <h1 className="text-3xl font-headline font-bold">Ordens de Serviço</h1>
-                <p className="text-muted-foreground mt-1">
-                    Gerencie suas ordens de aluguel e operações.
-                </p>
-            </div>
-             {canAccessRoutes && (
-                <>
-                 <Button asChild variant="outline" className="hidden md:inline-flex">
-                    <Link href="/route-planning">
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Planejar Rota com IA
-                    </Link>
-                </Button>
-                <Button asChild variant="default" className="md:hidden flex-col h-auto p-2">
-                    <Link href="/route-planning">
-                        <Sparkles className="h-6 w-6" />
-                        <span className="text-xs">Rota IA</span>
-                    </Link>
-                </Button>
-                </>
-            )}
-        </div>
-
-
+  const pageContent = (
+    <>
       <div className="space-y-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-2">
+        <div className="flex flex-row gap-2">
             <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -727,6 +661,76 @@ export default function OSPage() {
                 </Card>
             )}
         </div>
+    </>
+  );
+
+  if (isLoading) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
+            <OSCardSkeleton />
+        </div>
+    )
+  }
+  
+  if (error) {
+       return (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
+             <div className="p-4 bg-destructive/10 rounded-full mb-4">
+                <ShieldAlert className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+                Não foi possível carregar as ordens de serviço. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
+            </p>
+             <Button onClick={() => window.location.reload()}>
+                Recarregar Página
+            </Button>
+        </div>
+    )
+  }
+
+  if (!canAccessRentals && !canAccessOperations && !loading) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Acesso Negado</AlertTitle>
+                <AlertDescription>
+                    Você não tem permissão para visualizar Ordens de Serviço.
+                </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto py-8 px-4 md:px-6">
+       <div className="flex items-center justify-between mb-8">
+            <div>
+                <h1 className="text-3xl font-headline font-bold">Ordens de Serviço</h1>
+                <p className="text-muted-foreground mt-1">
+                    Gerencie suas ordens de aluguel e operações.
+                </p>
+            </div>
+             {canAccessRoutes && (
+                <>
+                 <Button asChild variant="outline" className="hidden md:inline-flex">
+                    <Link href="/route-planning">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Planejar Rota com IA
+                    </Link>
+                </Button>
+                <Button asChild variant="default" className="md:hidden flex-col h-auto p-2">
+                    <Link href="/route-planning">
+                        <Sparkles className="h-6 w-6" />
+                        <span className="text-xs">Rota IA</span>
+                    </Link>
+                </Button>
+                </>
+            )}
+        </div>
+        {pageContent}
     </div>
   );
 }
