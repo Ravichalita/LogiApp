@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -254,16 +255,17 @@ export default function OSPage() {
 
     // Filter by date first
     if (selectedDate) {
+        const dayStart = startOfToday(selectedDate);
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
                 // Check if the selected date falls within the rental period (inclusive)
-                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
+                return isWithinInterval(dayStart, { start: rentalStart, end: rentalEnd });
             }
             if (item.itemType === 'operation') {
                 // Check if the operation happens on the selected day
-                return isSameDay(parseISO(item.startDate!), selectedDate);
+                return isSameDay(parseISO(item.startDate!), dayStart);
             }
             return false;
         });
