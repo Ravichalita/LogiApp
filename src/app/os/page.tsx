@@ -260,8 +260,7 @@ export default function OSPage() {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
-                // An rental is active on a day if the day is between the start and end, inclusive.
-                return isSameDay(selectedDate, rentalStart) || isSameDay(selectedDate, rentalEnd) || (isAfter(selectedDate, rentalStart) && isBefore(selectedDate, rentalEnd));
+                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
             }
             if (item.itemType === 'operation') {
                 return isSameDay(parseISO(item.startDate!), selectedDate);
@@ -300,7 +299,12 @@ export default function OSPage() {
             const clientName = item.client?.name?.toLowerCase() || '';
             const assignedName = (item.itemType === 'rental' ? item.assignedToUser?.name?.toLowerCase() : item.driver?.name?.toLowerCase()) || '';
             const id = (item.itemType === 'rental' ? `al${item.sequentialId}` : `op${item.sequentialId}`).toLowerCase();
-            return clientName.includes(lowercasedTerm) || assignedName.includes(lowercasedTerm) || id.includes(lowercasedTerm);
+            const address = (item.itemType === 'rental' ? item.deliveryAddress.toLowerCase() : item.destinationAddress.toLowerCase());
+
+            return clientName.includes(lowercasedTerm) || 
+                   assignedName.includes(lowercasedTerm) || 
+                   id.includes(lowercasedTerm) ||
+                   address.includes(lowercasedTerm);
         });
     }
 
@@ -382,7 +386,7 @@ export default function OSPage() {
   const pageContent = (
     <>
       <div className="space-y-4 mb-6">
-        <div className="flex flex-row gap-2">
+        <div className="flex flex-col md:flex-row gap-2">
             <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
