@@ -190,6 +190,7 @@ export default function OSPage() {
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -252,23 +253,18 @@ export default function OSPage() {
     const rentalItems = canAccessRentals ? rentals.map(r => ({ ...r, itemType: 'rental' as const, sortDate: r.rentalDate })) : [];
     const operationItems = canAccessOperations ? operations.map(o => ({ ...o, itemType: 'operation' as const, sortDate: o.startDate! })) : [];
     
-    let allItems = [...rentalItems, ...operationItems];
+    let allItems: (PopulatedRental | PopulatedOperation)[] = [...rentalItems, ...operationItems];
 
-    // Filter by date first
     if (selectedDate) {
-        const dayStart = startOfDay(selectedDate);
-        const dayEnd = endOfDay(selectedDate);
-        
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
-                return isWithinInterval(dayStart, { start: rentalStart, end: rentalEnd });
+                // An rental is active on a day if the day is between the start and end, inclusive.
+                return isSameDay(selectedDate, rentalStart) || isSameDay(selectedDate, rentalEnd) || (isAfter(selectedDate, rentalStart) && isBefore(selectedDate, rentalEnd));
             }
             if (item.itemType === 'operation') {
-                 if (!item.startDate) return false;
-                const opDate = parseISO(item.startDate);
-                return isWithinInterval(opDate, { start: dayStart, end: dayEnd });
+                return isSameDay(parseISO(item.startDate!), selectedDate);
             }
             return false;
         });
@@ -308,7 +304,11 @@ export default function OSPage() {
         });
     }
 
-    return allItems.sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime());
+    return allItems.sort((a, b) => {
+        const dateA = new Date((a as any).sortDate);
+        const dateB = new Date((b as any).sortDate);
+        return dateA.getTime() - dateB.getTime()
+    });
 
   }, [rentals, operations, searchTerm, osTypeFilter, statusFilter, canAccessRentals, canAccessOperations, selectedDate]);
   
@@ -458,7 +458,7 @@ export default function OSPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-             <Popover>
+             <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                 <PopoverTrigger asChild>
                     <Button
                         variant={"outline"}
@@ -475,7 +475,10 @@ export default function OSPage() {
                     <CalendarComponent
                         mode="single"
                         selected={selectedDate}
-                        onSelect={setSelectedDate}
+                        onSelect={(date) => {
+                            setSelectedDate(date);
+                            setIsDatePopoverOpen(false);
+                        }}
                     />
                 </PopoverContent>
             </Popover>
@@ -508,222 +511,222 @@ export default function OSPage() {
             </div>
         </div>
       </div>
-
-      <div className="space-y-4">
-        {combinedItems.length > 0 ? combinedItems.map((item) => {
-            if (item.itemType === 'rental') {
-                const rental = item as PopulatedRental;
-                const status = getRentalStatus(rental);
-                const attachmentCount = rental.attachments?.length || 0;
-                return (
-                    <Accordion type="single" collapsible className="w-full" key={`rental-${rental.id}`}>
-                         <AccordionItem value={rental.id} className="border-none">
-                            <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                 <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
-                                    AL{rental.sequentialId}
-                                </span>
-                                <CardHeader className="pb-4 pt-8">
-                                    <div className="flex items-start justify-between">
-                                        <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
-                                        <div className="flex flex-col items-end gap-1 ml-2">
-                                            <Badge variant={status.variant} className="text-center">{status.text}</Badge>
-                                        </div>
-                                    </div>
-                                    <CardDescription className="text-sm mt-4">
-                                        <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
-                                            <div className="space-y-1.5">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Building className="h-4 w-4"/> {rental.client?.name}
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <User className="h-4 w-4"/>
-                                                     {canEditRentals && rental.assignedToUser ? (
-                                                        <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                            {rental.assignedToUser.name}
-                                                        </EditAssignedUserDialog>
-                                                    ) : (
-                                                        <span>{rental.assignedToUser?.name}</span>
-                                                    )}
+      
+       <div className="space-y-4">
+            {combinedItems.length > 0 ? (
+                combinedItems.map((item) => {
+                    if (item.itemType === 'rental') {
+                        const rental = item as PopulatedRental;
+                        const status = getRentalStatus(rental);
+                        return (
+                            <Accordion type="single" collapsible className="w-full" key={`rental-${rental.id}`}>
+                                <AccordionItem value={rental.id} className="border-none">
+                                    <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                                        <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
+                                            AL{rental.sequentialId}
+                                        </span>
+                                        <CardHeader className="pb-4 pt-8">
+                                            <div className="flex items-start justify-between">
+                                                <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
+                                                <div className="flex flex-col items-end gap-1 ml-2">
+                                                    <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                                                 </div>
                                             </div>
-                                            <div className="space-y-1.5 text-left md:text-right">
-                                                 <div className="flex items-center gap-1.5">
-                                                    <Calendar className="h-4 w-4"/>
-                                                    <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardDescription>
-                                </CardHeader>
-                                 <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                 </AccordionTrigger>
-                                <AccordionContent className="px-6 py-4">
-                                    <RentalCardActions rental={rental} status={status} />
-                                </AccordionContent>
-                            </Card>
-                         </AccordionItem>
-                    </Accordion>
-                )
-            } else {
-                const op = item as PopulatedOperation;
-                const status = getOperationStatus(op);
-                const attachmentCount = op.attachments?.length || 0;
-                return (
-                     <Accordion type="single" collapsible className="w-full" key={`op-${op.id}`}>
-                         <AccordionItem value={op.id} className="border-none">
-                            <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
-                                    OP{op.sequentialId}
-                                </span>
-                                <CardHeader className="pb-4 pt-8">
-                                     <div className="flex items-start justify-between mb-2">
-                                        <CardTitle className="text-xl font-headline">
-                                            {op.operationTypes.map(t => t.name).join(', ')}
-                                        </CardTitle>
-                                         <Badge variant={status.variant} className="text-center">{status.text}</Badge>
-                                    </div>
-                                     <CardDescription className="text-sm mt-4">
-                                        <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
-                                            <div className="space-y-1.5">
-                                                 <div className="flex items-center gap-1.5">
-                                                    <Building className="h-4 w-4"/> {op.client?.name}
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <User className="h-4 w-4"/> 
-                                                    {canEditOperations && op.driver ? (
-                                                        <EditOperationAssignedUserDialog operation={op} teamMembers={teamMembers}>
-                                                            {op.driver.name}
-                                                        </EditOperationAssignedUserDialog>
-                                                    ) : (
-                                                        <span>{op.driver?.name}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-1.5 text-left md:text-right">
-                                                {op.truck && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Truck className="h-4 w-4" />
-                                                        <span>{op.truck.name} ({op.truck.plate})</span>
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center gap-1.5">
-                                                    <Calendar className="h-4 w-4"/>
-                                                    {formatDateRange(op.startDate, op.endDate)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardDescription>
-                                </CardHeader>
-                                 <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
-                                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                 </AccordionTrigger>
-                                <AccordionContent className="px-6 py-4">
-                                    <div className="space-y-4 text-sm px-1">
-                                         <div className="mt-3 space-y-4">
-                                            <div className="flex justify-between items-start gap-2">
-                                                 <div className="flex-grow">
-                                                    <p className="text-xs font-semibold uppercase text-muted-foreground">Destino:</p>
-                                                     <p className="font-medium">{op.destinationAddress}</p>
-                                                 </div>
-                                                 <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                                                     <MapPinned className="h-5 w-5" />
-                                                     <span className="text-[10px] font-bold">GPS</span>
-                                                 </a>
-                                            </div>
-                                            <Accordion type="single" collapsible className="w-full">
-                                                <AccordionItem value="start-address" className="border-none">
-                                                    <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
-                                                        <span className="font-normal">Mostrar endereço de partida</span>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pt-2">
-                                                            <div className="flex items-center gap-2 text-sm">
-                                                            <span className="font-semibold uppercase text-xs">Saída:</span>
-                                                            <span>{op.startAddress}</span>
+                                            <CardDescription className="text-sm mt-4">
+                                                <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Building className="h-4 w-4"/> {rental.client?.name}
                                                         </div>
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
-                                        </div>
-                                        
-                                        {op.observations && (
-                                             <div className="flex items-start gap-3">
-                                                <FileText className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
-                                                <p className="whitespace-pre-wrap">{op.observations}</p>
-                                            </div>
-                                        )}
-                                        
-                                        <Separator />
-
-                                        {canSeeServiceValue && (
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                <span className="font-medium">Valor do Serviço:</span>
-                                                <span className="font-bold">{formatCurrency(op.value)}</span>
-                                            </div>
-                                        )}
-                                        
-                                        <Separator />
-
-                                        <Accordion type="single" collapsible className="w-full">
-                                            <AccordionItem value="attachments" className="border-none">
-                                                <div className="pt-2 flex justify-between items-center w-full">
-                                                    {op.client?.phone && (
-                                                        <a 
-                                                            href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}?text=Olá, ${op.client.name}! Somos da equipe LogiApp, sobre a OS OP${op.sequentialId}.`}
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center gap-2 hover:underline"
-                                                        >
-                                                            <WhatsAppIcon className="h-6 w-6 fill-green-600" />
-                                                            <span className="font-medium text-green-600">{op.client.phone}</span>
-                                                        </a>
-                                                    )}
-                                                    {canUseAttachments && (
-                                                        <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
-                                                           ({attachmentCount}) Anexos
-                                                        </AccordionTrigger>
-                                                    )}
-                                                </div>
-                                                {canUseAttachments && (
-                                                <AccordionContent className="pt-4">
-                                                    <div className="space-y-2">
-                                                        <AttachmentsUploader 
-                                                            accountId={accountId!}
-                                                            attachments={op.attachments || []}
-                                                            onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
-                                                            onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
-                                                            uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
-                                                            showDeleteButton={true}
-                                                            showLabel={false}
-                                                        />
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User className="h-4 w-4"/>
+                                                            {canEditRentals && rental.assignedToUser ? (
+                                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                                                    {rental.assignedToUser.name}
+                                                                </EditAssignedUserDialog>
+                                                            ) : (
+                                                                <span>{rental.assignedToUser?.name}</span>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </AccordionContent>
+                                                    <div className="space-y-1.5 text-left md:text-right">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Calendar className="h-4 w-4"/>
+                                                            <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-6 py-4">
+                                            <RentalCardActions rental={rental} status={status} />
+                                        </AccordionContent>
+                                    </Card>
+                                </AccordionItem>
+                            </Accordion>
+                        )
+                    } else {
+                        const op = item as PopulatedOperation;
+                        const status = getOperationStatus(op);
+                        const attachmentCount = op.attachments?.length || 0;
+                        return (
+                            <Accordion type="single" collapsible className="w-full" key={`op-${op.id}`}>
+                                <AccordionItem value={op.id} className="border-none">
+                                    <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                                        <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
+                                            OP{op.sequentialId}
+                                        </span>
+                                        <CardHeader className="pb-4 pt-8">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <CardTitle className="text-xl font-headline">
+                                                    {op.operationTypes.map(t => t.name).join(', ')}
+                                                </CardTitle>
+                                                <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                            </div>
+                                            <CardDescription className="text-sm mt-4">
+                                                <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Building className="h-4 w-4"/> {op.client?.name}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User className="h-4 w-4"/> 
+                                                            {canEditOperations && op.driver ? (
+                                                                <EditOperationAssignedUserDialog operation={op} teamMembers={teamMembers}>
+                                                                    {op.driver.name}
+                                                                </EditOperationAssignedUserDialog>
+                                                            ) : (
+                                                                <span>{op.driver?.name}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1.5 text-left md:text-right">
+                                                        {op.truck && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <Truck className="h-4 w-4" />
+                                                                <span>{op.truck.name} ({op.truck.plate})</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Calendar className="h-4 w-4"/>
+                                                            {formatDateRange(op.startDate, op.endDate)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-6 py-4">
+                                            <div className="space-y-4 text-sm px-1">
+                                                <div className="mt-3 space-y-4">
+                                                    <div className="flex justify-between items-start gap-2">
+                                                        <div className="flex-grow">
+                                                            <p className="text-xs font-semibold uppercase text-muted-foreground">Destino:</p>
+                                                            <p className="font-medium">{op.destinationAddress}</p>
+                                                        </div>
+                                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                                                            <MapPinned className="h-5 w-5" />
+                                                            <span className="text-[10px] font-bold">GPS</span>
+                                                        </a>
+                                                    </div>
+                                                    <Accordion type="single" collapsible className="w-full">
+                                                        <AccordionItem value="start-address" className="border-none">
+                                                            <AccordionTrigger className="text-xs text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground">
+                                                                <span className="font-normal">Mostrar endereço de partida</span>
+                                                            </AccordionTrigger>
+                                                            <AccordionContent className="pt-2">
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <span className="font-semibold uppercase text-xs">Saída:</span>
+                                                                    <span>{op.startAddress}</span>
+                                                                </div>
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    </Accordion>
+                                                </div>
+                                                
+                                                {op.observations && (
+                                                    <div className="flex items-start gap-3">
+                                                        <FileText className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                                                        <p className="whitespace-pre-wrap">{op.observations}</p>
+                                                    </div>
                                                 )}
-                                            </AccordionItem>
-                                        </Accordion>
-                                    </div>
-                                    <div className="mt-4">
-                                        <OperationCardActions operation={op} />
-                                    </div>
-                                </AccordionContent>
-                            </Card>
-                        </AccordionItem>
-                    </Accordion>
-                )
-            }
-        }) : (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Nenhuma OS Encontrada</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground text-center py-8">Não há Ordens de Serviço que correspondam aos filtros selecionados.</p>
-                </CardContent>
-            </Card>
-        )}
-      </div>
+                                                
+                                                <Separator />
+
+                                                {canSeeServiceValue && (
+                                                    <div className="flex items-center gap-2 pt-2">
+                                                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                        <span className="font-medium">Valor do Serviço:</span>
+                                                        <span className="font-bold">{formatCurrency(op.value)}</span>
+                                                    </div>
+                                                )}
+                                                
+                                                <Separator />
+
+                                                <Accordion type="single" collapsible className="w-full">
+                                                    <AccordionItem value="attachments" className="border-none">
+                                                        <div className="pt-2 flex justify-between items-center w-full">
+                                                            {op.client?.phone && (
+                                                                <a 
+                                                                    href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client.phone)}?text=Olá, ${op.client.name}! Somos da equipe LogiApp, sobre a OS OP${op.sequentialId}.`}
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-2 hover:underline"
+                                                                >
+                                                                    <WhatsAppIcon className="h-6 w-6 fill-green-600" />
+                                                                    <span className="font-medium text-green-600">{op.client.phone}</span>
+                                                                </a>
+                                                            )}
+                                                            {canUseAttachments && (
+                                                                <AccordionTrigger className="text-sm text-primary hover:underline p-0 justify-end [&>svg]:ml-1">
+                                                                ({attachmentCount}) Anexos
+                                                                </AccordionTrigger>
+                                                            )}
+                                                        </div>
+                                                        {canUseAttachments && (
+                                                        <AccordionContent className="pt-4">
+                                                            <div className="space-y-2">
+                                                                <AttachmentsUploader 
+                                                                    accountId={accountId!}
+                                                                    attachments={op.attachments || []}
+                                                                    onAttachmentUploaded={(newAttachment) => handleAttachmentUploaded(op, newAttachment)}
+                                                                    onAttachmentDeleted={(attachmentToDelete) => handleAttachmentDeleted(op, attachmentToDelete)}
+                                                                    uploadPath={`accounts/${accountId}/operations/${op.id}/attachments`}
+                                                                    showDeleteButton={true}
+                                                                    showLabel={false}
+                                                                />
+                                                            </div>
+                                                        </AccordionContent>
+                                                        )}
+                                                    </AccordionItem>
+                                                </Accordion>
+                                            </div>
+                                            <div className="mt-4">
+                                                <OperationCardActions operation={op} />
+                                            </div>
+                                        </AccordionContent>
+                                    </Card>
+                                </AccordionItem>
+                            </Accordion>
+                        )
+                    }
+                })
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Nenhuma OS Encontrada</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-muted-foreground text-center py-8">Não há Ordens de Serviço que correspondam aos filtros selecionados.</p>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
     </div>
   );
 }
-
