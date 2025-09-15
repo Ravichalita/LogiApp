@@ -120,6 +120,14 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = totalRentalValue - totalOperationCost;
 
+  const poliguindasteTrucks = trucks.filter(t => t.type?.toLowerCase().includes('poliguindaste'));
+
+  useEffect(() => {
+    if (poliguindasteTrucks.length === 1 && !selectedTruckId) {
+      setSelectedTruckId(poliguindasteTrucks[0].id);
+    }
+  }, [poliguindasteTrucks, selectedTruckId]);
+
   useEffect(() => {
     const fetchRouteInfo = async () => {
       if (startLocation && deliveryLocation && rentalDate) {
@@ -338,13 +346,13 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         </div>
         <div className="space-y-2">
           <Label htmlFor="truckId">Caminhão (Opcional)</Label>
-          <Select name="truckId" onValueChange={setSelectedTruckId} defaultValue={selectedTruckId}>
+          <Select name="truckId" onValueChange={setSelectedTruckId} value={selectedTruckId}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione um caminhão para o serviço" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="sem-caminhao">Nenhum caminhão</SelectItem>
-              {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
+              {poliguindasteTrucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
