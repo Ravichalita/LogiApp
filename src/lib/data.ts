@@ -14,7 +14,7 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase-client';
-import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType } from './types';
+import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType, CompletedRental, CompletedOperation } from './types';
 
 type Unsubscribe = () => void;
 
@@ -126,6 +126,21 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
     return unsubscribe;
 }
 
+export function getCompletedRentals(accountId: string, callback: (rentals: CompletedRental[]) => void): Unsubscribe {
+    const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
+    const q = query(rentalsCollection, where("accountId", "==", accountId));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const rentals = querySnapshot.docs.map(doc => docToSerializable(doc) as CompletedRental);
+        callback(rentals);
+    }, (error) => {
+        console.error("Error fetching completed rentals:", error);
+        callback([]);
+    });
+
+    return unsubscribe;
+}
+
 export async function getActiveRentalsForUser(accountId: string, id: string, field: 'assignedTo' | 'clientId' = 'assignedTo'): Promise<Rental[]> {
     if (!accountId || !id) return [];
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
@@ -163,6 +178,7 @@ export function getPopulatedRentals(
                 return {
                     id: rentalDoc.id,
                     ...rentalData,
+                    itemType: 'rental',
                     dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
                     client: docToSerializable(clientSnap) as Client | null,
                     assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
@@ -186,6 +202,26 @@ export function getPopulatedRentals(
 // #endregion
 
 // #region Operation Data
+export function getCompletedOperations(accountId: string, callback: (operations: CompletedOperation[]) => void): Unsubscribe {
+  const opsCollection = collection(db, `accounts/${accountId}/completed_operations`);
+  const q = query(opsCollection, where("accountId", "==", accountId));
+  const unsubscribe = onSnapshot(
+    q,
+    (querySnapshot) => {
+      const ops = querySnapshot.docs.map(
+        (doc) => docToSerializable(doc) as CompletedOperation
+      );
+      callback(ops);
+    },
+    (error) => {
+      console.error("Error fetching completed operations:", error);
+      callback([]);
+    }
+  );
+  return unsubscribe;
+}
+
+
 export function getPopulatedOperations(
     accountId: string,
     onData: (operations: PopulatedOperation[]) => void,
@@ -226,6 +262,7 @@ export function getPopulatedOperations(
 
                 return {
                     ...serializedData,
+                    itemType: 'operation',
                     client: docToSerializable(clientSnap) as Client | null,
                     truck: docToSerializable(truckSnap) as Truck | null,
                     driver: docToSerializable(driverSnap) as UserAccount | null,

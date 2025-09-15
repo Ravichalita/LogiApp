@@ -1,17 +1,19 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
-import type { PopulatedOperation, Client, UserAccount, Truck, Account, OperationType } from '@/lib/types';
+import type { PopulatedOperation, Client, UserAccount, Truck, Account, OperationType, Rental, CompletedRental, CompletedOperation } from '@/lib/types';
 import { getPopulatedOperationById } from '@/lib/data-server-actions';
-import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations } from '@/lib/data';
+import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations, getRentals } from '@/lib/data';
+import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { EditOperationForm } from './edit-operation-form';
+import { differenceInDays, parseISO } from 'date-fns';
+
 
 function EditOperationPageSkeleton() {
   return (
@@ -44,6 +46,9 @@ export default function EditOperationPage() {
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [operations, setOperations] = useState<PopulatedOperation[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [completedRentals, setCompletedRentals] = useState<CompletedRental[]>([]);
+  const [completedOperations, setCompletedOperations] = useState<CompletedOperation[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [operationTypes, setOperationTypes] = useState<OperationType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,15 +65,25 @@ export default function EditOperationPage() {
       setLoading(true);
       setError(null);
       try {
-        const [opData, clientData, teamData, accountData] = await Promise.all([
+        const [
+            opData, 
+            clientData, 
+            teamData, 
+            accountData, 
+            completedRentalsData, 
+            completedOpsData
+        ] = await Promise.all([
           getPopulatedOperationById(accountIdForData, operationId),
           fetchClients(accountIdForData),
           fetchTeamMembers(accountIdForData),
           new Promise<Account | null>((resolve) => {
             const unsub = getAccount(accountIdForData, (acc) => {
+                unsub();
                 resolve(acc);
             });
-          })
+          }),
+          getCompletedRentals(accountIdForData),
+          getCompletedOperations(accountIdForData)
         ]);
 
         if (!opData) {
@@ -77,22 +92,27 @@ export default function EditOperationPage() {
         
         const unsubTrucks = getTrucks(accountIdForData, setTrucks);
         const unsubOps = getPopulatedOperations(accountIdForData, setOperations, console.error);
+        const unsubRentals = getRentals(accountIdForData, setRentals);
         
         setOperation(opData);
         setClients(clientData);
         setTeam(teamData);
         setAccount(accountData);
         setOperationTypes(accountData?.operationTypes || []);
+        setCompletedRentals(completedRentalsData);
+        setCompletedOperations(completedOpsData);
+
+        setLoading(false);
 
         return () => {
           unsubTrucks();
           unsubOps();
+          unsubRentals();
         };
 
       } catch (e) {
         console.error(e);
         setError(e instanceof Error ? e.message : 'Falha ao carregar os dados da operação.');
-      } finally {
         setLoading(false);
       }
     };
@@ -100,6 +120,52 @@ export default function EditOperationPage() {
     fetchData();
 
   }, [accountIdForData, operationId]);
+  
+  const classifiedClients = useMemo(() => {
+    const today = new Date();
+
+    const activeClientIds = new Set([
+        ...rentals.map(r => r.clientId),
+        ...operations.map(o => o.clientId)
+    ]);
+    
+    const completedClientIds = new Set([
+        ...completedRentals.map(r => r.clientId),
+        ...completedOperations.map(o => o.clientId)
+    ]);
+    
+    const newClients: Client[] = [];
+    const activeClients: Client[] = [];
+    const completedClients: Client[] = [];
+    const unservedClients: Client[] = [];
+
+    clients.forEach(client => {
+      const hasActiveService = activeClientIds.has(client.id);
+      const hasCompletedService = completedClientIds.has(client.id);
+      const creationDate = client.createdAt ? (typeof client.createdAt === 'string' ? parseISO(client.createdAt) : client.createdAt.toDate()) : new Date(0);
+      const isNew = differenceInDays(today, creationDate) <= 3;
+
+      if (hasActiveService) {
+        activeClients.push(client);
+      } else if (isNew && !hasActiveService && !hasCompletedService) {
+        newClients.push(client);
+      } else if (!hasActiveService && hasCompletedService) {
+        completedClients.push(client);
+      } else if (!isNew && !hasActiveService && !hasCompletedService) {
+        unservedClients.push(client);
+      }
+    });
+    
+    const sortFn = (a: Client, b: Client) => a.name.localeCompare(b.name);
+
+    return {
+      newClients: newClients.sort(sortFn),
+      activeClients: activeClients.sort(sortFn),
+      completedClients: completedClients.sort(sortFn),
+      unservedClients: unservedClients.sort(sortFn),
+    };
+  }, [clients, rentals, operations, completedRentals, completedOperations]);
+
 
   if (loading) {
     return (
@@ -133,6 +199,7 @@ export default function EditOperationPage() {
             <EditOperationForm
               operation={operation}
               clients={clients}
+              classifiedClients={classifiedClients}
               team={team}
               trucks={trucks}
               operations={operations}

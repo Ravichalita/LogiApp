@@ -1,16 +1,18 @@
 
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { OperationForm } from './operation-form';
 import { useAuth } from '@/context/auth-context';
-import type { Client, UserAccount, Truck, Account, OperationType, PopulatedOperation } from '@/lib/types';
-import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations } from '@/lib/data';
+import type { Client, UserAccount, Truck, Account, OperationType, PopulatedOperation, PopulatedRental, Rental, CompletedRental, CompletedOperation } from '@/lib/types';
+import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations, getRentals, fetchAccount } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
+import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
+
 
 export default function NewOperationPage() {
   const { accountId } = useAuth();
@@ -18,6 +20,9 @@ export default function NewOperationPage() {
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [operations, setOperations] = useState<PopulatedOperation[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [completedRentals, setCompletedRentals] = useState<CompletedRental[]>([]);
+  const [completedOperations, setCompletedOperations] = useState<CompletedOperation[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [operationTypes, setOperationTypes] = useState<OperationType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,37 +31,30 @@ export default function NewOperationPage() {
     if (accountId) {
       const fetchData = async () => {
         setLoading(true);
-        const [clientData, teamData, accountData] = await Promise.all([
+        const [clientData, teamData, accountData, completedRentalsData, completedOpsData] = await Promise.all([
           fetchClients(accountId),
           fetchTeamMembers(accountId),
-          new Promise<Account | null>((resolve) => {
-            const unsub = getAccount(accountId, (acc) => {
-                unsub();
-                resolve(acc);
-            });
-          })
+          fetchAccount(accountId),
+          getCompletedRentals(accountId),
+          getCompletedOperations(accountId),
         ]);
         setClients(clientData);
         setTeam(teamData);
         setAccount(accountData);
         setOperationTypes(accountData?.operationTypes || []);
+        setCompletedRentals(completedRentalsData);
+        setCompletedOperations(completedOpsData);
         
-        const unsubTrucks = getTrucks(accountId, (truckData) => {
-          setTrucks(truckData);
-        });
+        const unsubTrucks = getTrucks(accountId, setTrucks);
+        const unsubOps = getPopulatedOperations(accountId, setOperations, console.error);
+        const unsubRentals = getRentals(accountId, setRentals);
 
-        const unsubOps = getPopulatedOperations(accountId, (opsData) => {
-            setOperations(opsData);
-        }, (error) => {
-            console.error("Error fetching operations for new op page:", error);
-        });
-
-        // Set loading to false once all initial fetches are setup
         setLoading(false);
 
         return () => {
             unsubTrucks();
             unsubOps();
+            unsubRentals();
         }
       };
       fetchData();
@@ -64,6 +62,51 @@ export default function NewOperationPage() {
       setLoading(false);
     }
   }, [accountId]);
+  
+  const classifiedClients = useMemo(() => {
+    const today = new Date();
+
+    const activeClientIds = new Set([
+        ...rentals.map(r => r.clientId),
+        ...operations.map(o => o.clientId)
+    ]);
+    
+    const completedClientIds = new Set([
+        ...completedRentals.map(r => r.clientId),
+        ...completedOperations.map(o => o.clientId)
+    ]);
+    
+    const newClients: Client[] = [];
+    const activeClients: Client[] = [];
+    const completedClients: Client[] = [];
+    const unservedClients: Client[] = [];
+
+    clients.forEach(client => {
+      const hasActiveService = activeClientIds.has(client.id);
+      const hasCompletedService = completedClientIds.has(client.id);
+      const creationDate = client.createdAt ? (typeof client.createdAt === 'string' ? parseISO(client.createdAt) : client.createdAt.toDate()) : new Date(0);
+      const isNew = differenceInDays(today, creationDate) <= 3;
+
+      if (hasActiveService) {
+        activeClients.push(client);
+      } else if (isNew && !hasActiveService && !hasCompletedService) {
+        newClients.push(client);
+      } else if (!hasActiveService && hasCompletedService) {
+        completedClients.push(client);
+      } else if (!isNew && !hasActiveService && !hasCompletedService) {
+        unservedClients.push(client);
+      }
+    });
+    
+    const sortFn = (a: Client, b: Client) => a.name.localeCompare(b.name);
+
+    return {
+      newClients: newClients.sort(sortFn),
+      activeClients: activeClients.sort(sortFn),
+      completedClients: completedClients.sort(sortFn),
+      unservedClients: unservedClients.sort(sortFn),
+    };
+  }, [clients, rentals, operations, completedRentals, completedOperations]);
 
 
   return (
@@ -85,7 +128,8 @@ export default function NewOperationPage() {
             </div>
           ) : (
             <OperationForm 
-                clients={clients} 
+                clients={clients}
+                classifiedClients={classifiedClients} 
                 team={team} 
                 trucks={trucks} 
                 operations={operations}

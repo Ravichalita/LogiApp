@@ -1,19 +1,19 @@
 
 'use client';
 
-import { useEffect, useState, useMemo, useTransition } from 'react';
-import { getDumpsters, getRentals, fetchClients } from '@/lib/data';
+import React, { useEffect, useState, useMemo, useTransition } from 'react';
+import { getDumpsters, getRentals, fetchClients, fetchAccount } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DumpsterActions, MaintenanceCheckbox, DumpsterOptionsMenu } from './dumpster-actions';
+import { DumpsterActions, MaintenanceCheckbox } from './dumpster-actions';
 import { Separator } from '@/components/ui/separator';
-import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor, Client } from '@/lib/types';
+import type { Dumpster, Rental, EnhancedDumpster, DerivedDumpsterStatus, DumpsterColor, Client, PopulatedRental, Account } from '@/lib/types';
 import { DUMPSTER_COLORS } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Search, GanttChartSquare, ShieldAlert } from 'lucide-react';
-import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO, subDays, endOfDay, addDays } from 'date-fns';
+import { Search, GanttChartSquare, ShieldAlert, ChevronDown, User, MapPin, Map as MapIcon } from 'lucide-react';
+import { isAfter, isWithinInterval, startOfToday, format, isToday, parseISO, subDays, endOfDay, isBefore, isSameDay, addDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { updateDumpsterStatusAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { GanttSpreadsheet } from './gantt-spreadsheet';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { DumpstersMap } from './dumpsters-map';
 
 
 function ColorDisplay({ color }: { color: DumpsterColor }) {
@@ -43,15 +44,17 @@ function DumpsterTableSkeleton() {
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead className="w-12"></TableHead>
                         <TableHead>Identificador</TableHead>
                         <TableHead>Cor</TableHead>
                         <TableHead>Tamanho (m³)</TableHead>
-                        <TableHead>Ações</TableHead>
+                        <TableHead className="w-[300px]">Status / Ações</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {[...Array(3)].map((_, i) => (
                         <TableRow key={i}>
+                            <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-10" /></TableCell>
@@ -84,6 +87,7 @@ export default function DumpstersPage() {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessRentals;
 
@@ -109,7 +113,6 @@ export default function DumpstersPage() {
         setAllRentals(data);
       });
       
-      // Fetch clients for the spreadsheet tooltips
       fetchClients(accountId).then(setClients);
 
       return () => {
@@ -124,43 +127,64 @@ export default function DumpstersPage() {
     }
   }, [accountId, authLoading, canAccess, loading, router]);
 
-  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
+ const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
     const today = startOfToday();
-    
+    const clientMap = new Map(clients.map(c => [c.id, c]));
+
     return dumpsters.map(d => {
-      if (d.status === 'Em Manutenção') {
-        return { ...d, derivedStatus: 'Em Manutenção' };
-      }
-      
-      const dumpsterRentals = allRentals.filter(r => r.dumpsterId === d.id);
-      
-      const activeRental = dumpsterRentals.find(r => {
-          const rentalStart = parseISO(r.rentalDate);
-          const rentalEnd = parseISO(r.returnDate);
-          return isToday(rentalStart) || isWithinInterval(today, { start: rentalStart, end: rentalEnd }) || isAfter(today, rentalEnd);
-      });
+        const enhancedDumpster: EnhancedDumpster = { ...d, derivedStatus: d.status, scheduledRentals: [] };
 
-      if(activeRental) {
-        const returnDate = parseISO(activeRental.returnDate);
-        if (isToday(returnDate)) {
-            return { ...d, derivedStatus: 'Encerra hoje' };
+        if (d.status === 'Em Manutenção') {
+            return enhancedDumpster;
         }
-        return { ...d, derivedStatus: 'Alugada' };
-      }
 
-      const futureRental = dumpsterRentals
-        .filter(r => isAfter(parseISO(r.rentalDate), today))
-        .sort((a,b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime())[0]; 
+        const relevantRentals: PopulatedRental[] = allRentals
+            .filter(r => r.dumpsterId === d.id)
+            .map(r => ({
+                ...r,
+                itemType: 'rental',
+                dumpster: d,
+                client: clientMap.get(r.clientId) || null,
+                assignedToUser: null // Not needed for this view
+            }))
+            .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
 
-      if (futureRental) {
-         const formattedDate = format(parseISO(futureRental.rentalDate), "dd/MM/yy");
-         return { ...d, derivedStatus: `Reservada para ${formattedDate}` };
-      }
-      
-      return { ...d, derivedStatus: 'Disponível' };
+        enhancedDumpster.scheduledRentals = relevantRentals;
+
+        const activeRental = relevantRentals.find(r => isWithinInterval(today, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) }));
+        const overdueRental = relevantRentals.find(r => isAfter(today, parseISO(r.returnDate)));
+        const futureRentals = relevantRentals.filter(r => isAfter(parseISO(r.rentalDate), endOfDay(today)));
+        
+        let baseStatus = '';
+
+        if (overdueRental) {
+            baseStatus = 'Em Atraso';
+        } else if (activeRental) {
+            if (isToday(parseISO(activeRental.returnDate))) {
+                baseStatus = 'Encerra hoje';
+            } else {
+                baseStatus = 'Alugada';
+            }
+        }
+        
+        if (futureRentals.length > 0) {
+            const nextBookingDate = format(parseISO(futureRentals[0].rentalDate), "dd/MM/yy");
+            if (baseStatus) {
+                enhancedDumpster.derivedStatus = `${baseStatus} / Agendada`;
+            } else {
+                enhancedDumpster.derivedStatus = `Reservada para ${nextBookingDate}`;
+            }
+        } else if (baseStatus) {
+            enhancedDumpster.derivedStatus = baseStatus;
+        } else {
+            enhancedDumpster.derivedStatus = 'Disponível';
+        }
+
+        return enhancedDumpster;
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-  }, [dumpsters, allRentals]);
+}, [dumpsters, allRentals, clients]);
+
 
   const filteredDumpsters = useMemo(() => {
     let result = dumpstersWithDerivedStatus;
@@ -186,7 +210,7 @@ export default function DumpstersPage() {
   
   const handleToggleStatus = (dumpster: EnhancedDumpster) => {
     if (!accountId) return;
-    const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
+    const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje' || dumpster.derivedStatus === 'Em Atraso' || dumpster.derivedStatus.includes('Agendada');
     const isReserved = dumpster.derivedStatus.startsWith('Reservada');
 
     if (isRented || isReserved) return;
@@ -210,11 +234,23 @@ export default function DumpstersPage() {
     });
   };
   
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        return newSet;
+    });
+  };
+
   const isLoading = authLoading || (loading && canAccess);
   
   if (!isLoading && !canAccess) {
     return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
+        <div className="container mx-auto py-8 px-4 md:px:6">
             <Alert variant="destructive">
                 <ShieldAlert className="h-4 w-4" />
                 <AlertTitle>Acesso Negado</AlertTitle>
@@ -228,11 +264,23 @@ export default function DumpstersPage() {
 
 
   return (
-    <div className="container mx-auto py-8 px-4 md:px:6">
+    <div className="container mx-auto py-8 px-4 md:px-6">
         <h1 className="text-3xl font-bold mb-2 font-headline">Gerenciar Caçambas</h1>
         <p className="text-muted-foreground mb-8">
             Visualize e gerencie seu inventário de caçambas.
         </p>
+
+        <Card className="mb-6">
+            <CardHeader className="flex-row items-center justify-between space-y-0 p-3 sm:p-6 sm:pb-2">
+                 <div className="flex min-w-0 items-center gap-2">
+                    <MapIcon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                    <CardTitle className="flex-shrink-0 text-sm font-medium sm:text-base">Mapa de Caçambas</CardTitle>
+                </div>
+            </CardHeader>
+             <CardContent className="p-0 h-96">
+                {loading ? <Skeleton className="h-full w-full" /> : <DumpstersMap dumpsters={dumpstersWithDerivedStatus} />}
+            </CardContent>
+        </Card>
 
         <Card className="mb-6">
             <CardHeader className="flex-row items-center justify-between space-y-0 p-3 sm:p-6 sm:pb-2">
@@ -278,62 +326,144 @@ export default function DumpstersPage() {
             <>
                 {/* Table for larger screens */}
                 <div className="hidden md:block border rounded-md bg-card">
-                <Table>
+                  <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-12"></TableHead>
                             <TableHead>Identificador</TableHead>
                             <TableHead>Cor</TableHead>
                             <TableHead>Tamanho (m³)</TableHead>
-                            <TableHead>Status / Ações</TableHead>
+                            <TableHead className="w-[300px]">Status / Ações</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
-                        <TableRow key={dumpster.id}>
-                        <TableCell className="font-medium">{dumpster.name}</TableCell>
-                        <TableCell><ColorDisplay color={dumpster.color as DumpsterColor} /></TableCell>
-                        <TableCell>{dumpster.size}</TableCell>
-                        <TableCell>
-                            <DumpsterActions dumpster={dumpster} />
-                        </TableCell>
-                        </TableRow>
-                    )) : (
-                        <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
-                            Nenhuma caçamba encontrada.
-                        </TableCell>
-                        </TableRow>
-                    )}
-                    </TableBody>
-                </Table>
+                        {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
+                            <React.Fragment key={dumpster.id}>
+                                <TableRow>
+                                    <TableCell className="p-0 pl-2">
+                                        {dumpster.scheduledRentals.length > 0 && (
+                                            <Button variant="ghost" size="icon" onClick={() => toggleRow(dumpster.id)} aria-label="Ver detalhes">
+                                                <ChevronDown className={cn("h-4 w-4 transition-transform", expandedRows.has(dumpster.id) && "rotate-180")} />
+                                            </Button>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="font-medium">{dumpster.name}</TableCell>
+                                    <TableCell><ColorDisplay color={dumpster.color as DumpsterColor} /></TableCell>
+                                    <TableCell>{dumpster.size}</TableCell>
+                                    <TableCell>
+                                        <DumpsterActions dumpster={dumpster} />
+                                    </TableCell>
+                                </TableRow>
+                                {expandedRows.has(dumpster.id) && (
+                                     <TableRow>
+                                        <TableCell colSpan={5} className="p-0">
+                                            <div className="p-4 bg-muted/50">
+                                                <h4 className="font-semibold mb-2">Agendamentos</h4>
+                                                <div className="space-y-3">
+                                                {dumpster.scheduledRentals.map(rental => (
+                                                    <div key={rental.id} className="text-sm p-3 border-l-4 rounded-r-md bg-background shadow-sm">
+                                                        <div className="flex items-start gap-2">
+                                                            <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Cliente</p>
+                                                                <p className="font-medium">{rental.client?.name}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-start gap-2 mt-2">
+                                                            <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                                            <div>
+                                                                <p className="text-xs text-muted-foreground">Endereço</p>
+                                                                <p className="font-medium">{rental.deliveryAddress}</p>
+                                                            </div>
+                                                        </div>
+                                                        {rental.rentalDate && rental.returnDate && (
+                                                            <p className="text-xs text-muted-foreground text-center pt-2 mt-2 border-t">
+                                                                Período de {format(parseISO(rental.rentalDate), 'dd/MM')} a {format(parseISO(rental.returnDate), 'dd/MM')}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </React.Fragment>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={5} className="h-24 text-center">
+                                    Nenhuma caçamba encontrada.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        </TableBody>
+                  </Table>
                 </div>
 
                 {/* Cards for smaller screens */}
                 <div className="md:hidden space-y-4">
                 {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => {
-                    const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
+                    const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje' || dumpster.derivedStatus === 'Em Atraso' || dumpster.derivedStatus.includes('Agendada');
                     const isReserved = dumpster.derivedStatus.startsWith('Reservada');
                     return (
-                    <div key={dumpster.id} className="border rounded-lg p-4 space-y-3 bg-card">
-                        <div className="flex justify-between items-start">
-                            <h3 className="font-bold text-lg">{dumpster.name}</h3>
-                            <DumpsterActions dumpster={dumpster} />
-                        </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                            <ColorDisplay color={dumpster.color as DumpsterColor} />
-                            <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
-                        </div>
-                        <Separator />
-                        <div className="pt-1 flex items-center gap-4">
-                                <DumpsterOptionsMenu dumpster={dumpster} />
-                            <MaintenanceCheckbox 
-                                dumpster={dumpster}
-                                isPending={isPending}
-                                handleToggleStatus={() => handleToggleStatus(dumpster)}
-                                isReservedOrRented={isRented || isReserved}
-                            />
-                        </div>
-                    </div>
+                         <Card key={dumpster.id} className="border rounded-lg overflow-hidden">
+                            <div className="p-4 space-y-3 bg-card">
+                                <div className="flex justify-between items-start">
+                                    <h3 className="font-bold text-lg">{dumpster.name}</h3>
+                                    <DumpsterActions dumpster={dumpster} />
+                                </div>
+                                <div className="flex justify-between text-sm text-muted-foreground">
+                                    <ColorDisplay color={dumpster.color as DumpsterColor} />
+                                    <span>Tamanho: <span className="font-medium text-foreground">{dumpster.size} m³</span></span>
+                                </div>
+
+                                {dumpster.scheduledRentals.length > 0 && (
+                                     <Button variant="ghost" className="w-full justify-center p-2 h-auto text-sm" onClick={() => toggleRow(dumpster.id)}>
+                                        Ver Detalhes do Agendamento ({dumpster.scheduledRentals.length})
+                                        <ChevronDown className={cn("h-4 w-4 ml-2 transition-transform", expandedRows.has(dumpster.id) && "rotate-180")} />
+                                    </Button>
+                                )}
+
+                                <Separator />
+                                <div className="pt-1">
+                                    <MaintenanceCheckbox 
+                                        dumpster={dumpster}
+                                        isPending={isPending}
+                                        handleToggleStatus={() => handleToggleStatus(dumpster)}
+                                        isReservedOrRented={isRented || isReserved}
+                                    />
+                                </div>
+                            </div>
+                            {expandedRows.has(dumpster.id) && (
+                                <div className="p-4 border-t bg-muted/50">
+                                    <div className="space-y-4 text-sm">
+                                    {dumpster.scheduledRentals.map((rentalInfo) => (
+                                        <div key={rentalInfo.id} className="space-y-3 border-b pb-3 last:border-b-0 last:pb-0">
+                                        <div className="flex items-start gap-2">
+                                            <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Cliente</p>
+                                                <p className="font-medium">{rentalInfo.client?.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <MapPin className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">Endereço</p>
+                                                <p className="font-medium">{rentalInfo.deliveryAddress}</p>
+                                            </div>
+                                        </div>
+                                        {rentalInfo.rentalDate && rentalInfo.returnDate && (
+                                            <p className="text-xs text-muted-foreground text-center pt-2">
+                                                Período de {format(parseISO(rentalInfo.rentalDate), 'dd/MM')} a {format(parseISO(rentalInfo.returnDate), 'dd/MM')}
+                                            </p>
+                                        )}
+                                        </div>
+                                    ))}
+                                </div>
+                                </div>
+                            )}
+                         </Card>
                     )
                 }) : (
                      <div className="text-center py-16 bg-card rounded-lg border">
@@ -346,3 +476,5 @@ export default function DumpstersPage() {
     </div>
   );
 }
+
+

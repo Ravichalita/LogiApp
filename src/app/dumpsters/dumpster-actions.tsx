@@ -79,7 +79,7 @@ export function DumpsterOptionsMenu({ dumpster }: { dumpster: EnhancedDumpster }
   const { toast } = useToast();
 
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
-  const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
+  const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje' || dumpster.derivedStatus === 'Em Atraso' || dumpster.derivedStatus === 'Alugada / Agendada' || dumpster.derivedStatus === 'Encerra Hoje / Agendada' || dumpster.derivedStatus === 'Em Atraso / Agendada';
   
   const canEdit = isSuperAdmin || userAccount?.permissions?.canEditDumpsters;
   const canDelete = isSuperAdmin || userAccount?.permissions?.canEditDumpsters;
@@ -175,16 +175,19 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
   const { toast } = useToast();
   
   const isReserved = dumpster.derivedStatus.startsWith('Reservada');
-  const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje';
+  const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje' || dumpster.derivedStatus === 'Em Atraso' || dumpster.derivedStatus.includes('Agendada');
   
-  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' | 'warning' => {
-    if (status.startsWith('Reservada')) return 'secondary';
+  const getStatusVariant = (status: EnhancedDumpster['derivedStatus']): 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info' => {
+    if (status.startsWith('Em Atraso')) return 'destructive';
+    if (status.startsWith('Reservada')) return 'info';
     switch (status) {
+      case 'Alugada':
+      case 'Alugada / Agendada':
+        return 'success';
       case 'Disponível':
         return 'success';
-      case 'Alugada':
-        return 'destructive';
       case 'Encerra hoje':
+      case 'Encerra Hoje / Agendada':
         return 'warning';
       case 'Em Manutenção':
         return 'secondary';
@@ -231,9 +234,8 @@ export function DumpsterActions({ dumpster }: { dumpster: EnhancedDumpster }) {
                 isReservedOrRented={isRented || isReserved}
             />
         </div>
-        <div className="hidden md:block">
-            <DumpsterOptionsMenu dumpster={dumpster} />
-        </div>
+        
+        <DumpsterOptionsMenu dumpster={dumpster} />
       </div>
   );
 }

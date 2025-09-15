@@ -1,9 +1,8 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { fetchClients, getDumpsters, getRentals, fetchTeamMembers, getAccount } from '@/lib/data';
+import { fetchClients, getDumpsters, getRentals, fetchTeamMembers, getAccount, getPopulatedOperations, fetchAccount, getTrucks } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalForm, type DumpsterForForm } from './rental-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -11,8 +10,10 @@ import { Truck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Client, Dumpster, Rental, UserAccount, Account } from '@/lib/types';
-import { isAfter, isToday, parseISO, startOfDay, format, isWithinInterval, isBefore, endOfDay, subDays } from 'date-fns';
+import type { Client, Dumpster, Rental, UserAccount, Account, PopulatedOperation, CompletedRental, CompletedOperation } from '@/lib/types';
+import { isAfter, isToday, parseISO, startOfToday, format, isWithinInterval, isBefore, endOfDay, subDays, differenceInDays } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 
 export default function NewRentalPage() {
   const { accountId } = useAuth();
@@ -20,6 +21,10 @@ export default function NewRentalPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
+  const [allOperations, setAllOperations] = useState<PopulatedOperation[]>([]);
+  const [allCompletedRentals, setAllCompletedRentals] = useState<CompletedRental[]>([]);
+  const [allCompletedOperations, setAllCompletedOperations] = useState<CompletedOperation[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,90 +32,148 @@ export default function NewRentalPage() {
     if (accountId) {
       const fetchData = async () => {
         setLoading(true);
-        const userClients = await fetchClients(accountId);
-        setClients(userClients);
+        const [clientData, teamData, accountData, completedRentalsData, completedOpsData] = await Promise.all([
+          fetchClients(accountId),
+          fetchTeamMembers(accountId),
+          fetchAccount(accountId),
+          getCompletedRentals(accountId),
+          getCompletedOperations(accountId)
+        ]);
 
-        const teamMembers = await fetchTeamMembers(accountId);
-        setTeam(teamMembers);
+        setClients(clientData);
+        setTeam(teamData);
+        setAccount(accountData);
+        setAllCompletedRentals(completedRentalsData);
+        setAllCompletedOperations(completedOpsData);
         
-        const unsubAccount = getAccount(accountId, (acc) => {
-            setAccount(acc);
-            // set loading false only after account is fetched
-            setLoading(false);
-        });
         const unsubDumpsters = getDumpsters(accountId, setDumpsters);
         const unsubRentals = getRentals(accountId, setAllRentals);
+        const unsubOps = getPopulatedOperations(accountId, setAllOperations, console.error);
+        const unsubTrucks = getTrucks(accountId, setTrucks);
+
+        setLoading(false);
         
         return () => {
           unsubDumpsters();
           unsubRentals();
-          unsubAccount();
+          unsubOps();
+          unsubTrucks();
         }
       };
       fetchData();
     } else {
         setLoading(false);
-        setDumpsters([]);
-        setClients([]);
-        setAllRentals([]);
-        setTeam([]);
-        setAccount(null);
     }
   }, [accountId]);
 
 
   const dumpstersForForm = useMemo((): DumpsterForForm[] => {
-    const today = startOfDay(new Date());
+    const today = startOfToday();
 
     return dumpsters
       .map(d => {
         if (d.status === 'Em Manutenção') {
-          return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [] };
+          return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [], schedules: [] };
         }
         
         const dumpsterRentals = allRentals
             .filter(r => r.dumpsterId === d.id)
-            .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
+            .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)))
+            .sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
 
         const disabledRanges = dumpsterRentals.map(r => {
-            const rentalStart = startOfDay(parseISO(r.rentalDate));
+            const rentalStart = startOfToday(parseISO(r.rentalDate));
             const rentalEnd = endOfDay(parseISO(r.returnDate));
-            // A caçamba fica disponível no dia da retirada, então o bloqueio vai até o dia anterior.
             return {
                 from: rentalStart,
                 to: subDays(rentalEnd, 1),
             }
-        }).filter(range => range.to >= range.from); // Ensure range is valid
+        }).filter(range => range.to >= range.from);
 
-        // Find the current or next rental to determine the specialStatus
-        const sortedRentals = dumpsterRentals.sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
-        const currentOrNextRental = sortedRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
+        const currentOrNextRental = dumpsterRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
 
         let specialStatus: string | undefined = undefined;
         
         if (currentOrNextRental) {
-            const rentalStart = startOfDay(parseISO(currentOrNextRental.rentalDate));
+            const rentalStart = startOfToday(parseISO(currentOrNextRental.rentalDate));
             const rentalEnd = endOfDay(parseISO(currentOrNextRental.returnDate));
 
             if (isWithinInterval(today, { start: rentalStart, end: rentalEnd })) {
                  if (isToday(rentalEnd)) {
                     specialStatus = `Encerra hoje`;
                  } else {
-                    specialStatus = `Alugada até ${format(rentalEnd, 'dd/MM/yy')}`;
+                    specialStatus = `Alugada até ${format(rentalEnd, 'dd/MM/yy', {locale: ptBR})}`;
                  }
             } else if (isBefore(today, rentalStart)) {
-                specialStatus = `Reservada para ${format(rentalStart, 'dd/MM/yy')}`;
+                specialStatus = `Reservada para ${format(rentalStart, 'dd/MM/yy', {locale: ptBR})}`;
             }
         }
+        
+        const schedules = dumpsterRentals.map(r => {
+           const start = parseISO(r.rentalDate);
+           const end = parseISO(r.returnDate);
+           let scheduleStatus = 'Reservada';
+           if (isWithinInterval(today, { start, end })) {
+             scheduleStatus = 'Alugada';
+           }
+           return `${scheduleStatus} de ${format(start, 'dd/MM', {locale: ptBR})} a ${format(end, 'dd/MM', {locale: ptBR})}`
+        });
         
         return { 
           ...d, 
           disabled: d.status === 'Em Manutenção',
           specialStatus,
           disabledRanges,
+          schedules,
         };
       });
   }, [dumpsters, allRentals]);
+
+  const classifiedClients = useMemo(() => {
+    const today = new Date();
+
+    const activeClientIds = new Set([
+        ...allRentals.map(r => r.clientId),
+        ...allOperations.map(o => o.clientId)
+    ]);
+    
+    const completedClientIds = new Set([
+        ...allCompletedRentals.map(r => r.clientId),
+        ...allCompletedOperations.map(o => o.clientId)
+    ]);
+    
+    const newClients: Client[] = [];
+    const activeClients: Client[] = [];
+    const completedClients: Client[] = [];
+    const unservedClients: Client[] = [];
+
+    clients.forEach(client => {
+      const hasActiveService = activeClientIds.has(client.id);
+      const hasCompletedService = completedClientIds.has(client.id);
+      const creationDate = client.createdAt ? (typeof client.createdAt === 'string' ? parseISO(client.createdAt) : client.createdAt.toDate()) : new Date(0);
+      const isNew = differenceInDays(today, creationDate) <= 3;
+
+      if (hasActiveService) {
+        activeClients.push(client);
+      } else if (isNew && !hasActiveService && !hasCompletedService) {
+        newClients.push(client);
+      } else if (!hasActiveService && hasCompletedService) {
+        completedClients.push(client);
+      } else if (!isNew && !hasActiveService && !hasCompletedService) {
+        unservedClients.push(client);
+      }
+    });
+
+    const sortFn = (a: Client, b: Client) => a.name.localeCompare(b.name);
+
+    return {
+      newClients: newClients.sort(sortFn),
+      activeClients: activeClients.sort(sortFn),
+      completedClients: completedClients.sort(sortFn),
+      unservedClients: unservedClients.sort(sortFn),
+    };
+  }, [clients, allRentals, allOperations, allCompletedRentals, allCompletedOperations]);
+
 
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
@@ -138,8 +201,10 @@ export default function NewRentalPage() {
           ) : (dumpsters.length > 0 && clients.length > 0) ? (
              <RentalForm 
                 dumpsters={dumpstersForForm} 
-                clients={clients} 
+                clients={clients}
+                classifiedClients={classifiedClients}
                 team={team} 
+                trucks={trucks}
                 rentalPrices={account?.rentalPrices}
                 account={account}
              />

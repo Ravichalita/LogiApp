@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, Star, Building, ShieldCheck } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -35,9 +35,17 @@ import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { OperationTypeDialog } from './operation-type-dialog';
 import { ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 
 interface OperationFormProps {
   clients: Client[];
+  classifiedClients: {
+    newClients: Client[];
+    activeClients: Client[];
+    completedClients: Client[];
+    unservedClients: Client[];
+  };
   team: UserAccount[];
   trucks: Truck[];
   operations: PopulatedOperation[];
@@ -77,7 +85,7 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
     return <Sun className="h-5 w-5" />;
 };
 
-export function OperationForm({ clients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
+export function OperationForm({ clients, classifiedClients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
   const { user, accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
@@ -114,6 +122,11 @@ export function OperationForm({ clients, team, trucks, operations, operationType
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+  const [clientSelectOpen, setClientSelectOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
+  const [isEndDateOpen, setIsEndDateOpen] = useState(false);
 
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
@@ -365,14 +378,50 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
   };
 
-  const handleClientValueChange = (clientId: string) => {
+  const handleClientSelect = (clientId: string) => {
       if (clientId === 'add-new-client') {
           router.push('/clients/new');
           return;
       }
       setSelectedClientId(clientId);
+      setClientSelectOpen(false);
+  }
+  
+  const filterClients = (clients: Client[], search: string) => {
+    if (!search) return clients;
+    return clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
   }
 
+  const filteredNewClients = filterClients(classifiedClients.newClients, clientSearch);
+  const filteredActiveClients = filterClients(classifiedClients.activeClients, clientSearch);
+  const filteredCompletedClients = filterClients(classifiedClients.completedClients, clientSearch);
+  const filteredUnservedClients = filterClients(classifiedClients.unservedClients, clientSearch);
+
+  useEffect(() => {
+    if (clientSearch) {
+        const groupsToOpen: string[] = [];
+        if (filteredCompletedClients.length > 0) groupsToOpen.push('completed');
+        if (filteredUnservedClients.length > 0) groupsToOpen.push('unserved');
+        setOpenAccordionGroups(groupsToOpen);
+    } else {
+        setOpenAccordionGroups([]);
+    }
+  }, [clientSearch, filteredCompletedClients.length, filteredUnservedClients.length]);
+
+  const renderClientList = (clientList: Client[], icon: React.ReactNode) => (
+    clientList.map(c => (
+      <CommandItem
+        key={c.id}
+        value={c.name}
+        onSelect={() => handleClientSelect(c.id)}
+      >
+        <div className="flex items-center gap-2">
+            {icon}
+            {c.name}
+        </div>
+      </CommandItem>
+    ))
+  );
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -390,6 +439,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         const finalStartDate = combineDateTime(startDate, startTime);
         const finalEndDate = combineDateTime(endDate, endTime);
         
+        if (selectedClientId) formData.set('clientId', selectedClientId);
         if (finalStartDate) formData.set('startDate', finalStartDate);
         if (finalEndDate) formData.set('endDate', finalEndDate);
         
@@ -438,7 +488,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
     <form action={handleFormAction} className="space-y-6">
       
       <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="type" className="text-muted-foreground">Tipo de Operação</Label>
             <OperationTypeDialog
@@ -458,21 +508,64 @@ export function OperationForm({ clients, team, trucks, operations, operationType
 
           <div className="space-y-2">
             <Label htmlFor="clientId" className="text-muted-foreground">Cliente</Label>
-            <Select name="clientId" onValueChange={handleClientValueChange} value={selectedClientId} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                <Separator />
-                <SelectItem value="add-new-client" className="text-red-500">
-                    <div className="flex items-center">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Novo Cliente
-                    </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+             <Dialog open={clientSelectOpen} onOpenChange={setClientSelectOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                       {selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : 'Selecione um cliente'}
+                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="p-0">
+                    <DialogHeader className="p-4 pb-0">
+                        <DialogTitle>Selecionar Cliente</DialogTitle>
+                    </DialogHeader>
+                    <Command>
+                         <CommandInput placeholder="Buscar cliente..." value={clientSearch} onValueChange={setClientSearch}/>
+                         <CommandList className="max-h-[60vh]">
+                            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                             {filteredNewClients.length > 0 && (
+                                <CommandGroup heading="Novos Clientes">
+                                    {renderClientList(filteredNewClients, <Star className="h-4 w-4 mr-2" />)}
+                                </CommandGroup>
+                            )}
+                            {filteredActiveClients.length > 0 && (
+                                <CommandGroup heading="Em Atendimento">
+                                    {renderClientList(filteredActiveClients, <Building className="h-4 w-4 mr-2" />)}
+                                </CommandGroup>
+                            )}
+                            <Accordion type="multiple" className="w-full" value={openAccordionGroups} onValueChange={setOpenAccordionGroups}>
+                                {filteredCompletedClients.length > 0 && (
+                                    <AccordionItem value="completed">
+                                        <AccordionTrigger className="px-2 text-sm font-semibold text-muted-foreground">Concluídos</AccordionTrigger>
+                                        <AccordionContent className="p-1">
+                                            <CommandGroup>
+                                                {renderClientList(filteredCompletedClients, <ShieldCheck className="h-4 w-4 mr-2" />)}
+                                            </CommandGroup>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+                                {filteredUnservedClients.length > 0 && (
+                                     <AccordionItem value="unserved">
+                                        <AccordionTrigger className="px-2 text-sm font-semibold text-muted-foreground">Não Atendidos</AccordionTrigger>
+                                        <AccordionContent className="p-1">
+                                            <CommandGroup>
+                                                 {renderClientList(filteredUnservedClients, <User className="h-4 w-4 mr-2" />)}
+                                            </CommandGroup>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+                            </Accordion>
+                         </CommandList>
+                         <CommandSeparator />
+                          <CommandGroup>
+                             <CommandItem onSelect={() => handleClientSelect('add-new-client')} className="text-primary focus:bg-primary/10 focus:text-primary">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Novo Cliente
+                            </CommandItem>
+                         </CommandGroup>
+                    </Command>
+                </DialogContent>
+            </Dialog>
             {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
           </div>
         </div>
@@ -510,7 +603,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
         <div className="space-y-2">
             <Label className="text-muted-foreground" >Início da Operação</Label>
             <div className="flex items-center gap-2">
-                <Popover>
+                <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
                 <PopoverTrigger asChild>
                     <Button
                     variant={"outline"}
@@ -528,7 +621,10 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                     <Calendar
                     mode="single"
                     selected={startDate}
-                    onSelect={setStartDate}
+                    onSelect={(date) => {
+                        setStartDate(date);
+                        setIsStartDateOpen(false);
+                    }}
                     initialFocus
                     locale={ptBR}
                     />
@@ -549,7 +645,7 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                      <div className="space-y-2">
                         <Label>Término (Previsão)</Label>
                         <div className="flex items-center gap-2">
-                            <Popover>
+                            <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                 variant={"outline"}
@@ -566,7 +662,10 @@ export function OperationForm({ clients, team, trucks, operations, operationType
                                 <Calendar
                                 mode="single"
                                 selected={endDate}
-                                onSelect={setEndDate}
+                                onSelect={(date) => {
+                                    setEndDate(date);
+                                    setIsEndDateOpen(false);
+                                }}
                                 initialFocus
                                 locale={ptBR}
                                 />

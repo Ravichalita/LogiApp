@@ -3,10 +3,10 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { PopulatedRental, Client, Dumpster, UserAccount, Account } from '@/lib/types';
+import type { PopulatedRental, Client, Dumpster, UserAccount, Account, Truck } from '@/lib/types';
 import { getDoc, doc } from 'firebase/firestore';
 import { getFirebase } from '@/lib/data';
-import { fetchTeamMembers, fetchClients, getAccount } from '@/lib/data';
+import { fetchTeamMembers, fetchClients, getAccount, getTrucks } from '@/lib/data';
 import { EditRentalForm } from './edit-rental-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,6 +23,7 @@ export default function EditRentalPage() {
   const [rental, setRental] = useState<PopulatedRental | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [account, setAccount] = useState<Account | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export default function EditRentalPage() {
         setLoading(true);
         setError(null);
         try {
-            const [rentalData, clientData, teamData, accountData] = await Promise.all([
+            const [rentalData, clientData, teamData, accountData, trucksData] = await Promise.all([
                 getPopulatedRentalById(accountId, rentalId),
                 fetchClients(accountId),
                 fetchTeamMembers(accountId),
@@ -47,6 +48,12 @@ export default function EditRentalPage() {
                     const unsub = getAccount(accountId, (acc) => {
                         unsub();
                         resolve(acc);
+                    });
+                }),
+                new Promise<Truck[]>((resolve) => {
+                    const unsub = getTrucks(accountId, (trucks) => {
+                        unsub();
+                        resolve(trucks);
                     });
                 })
             ]);
@@ -60,6 +67,7 @@ export default function EditRentalPage() {
             setClients(clientData);
             setTeam(teamData);
             setAccount(accountData);
+            setTrucks(trucksData);
 
         } catch (e) {
             console.error(e);
@@ -128,6 +136,7 @@ export default function EditRentalPage() {
                         rental={rental}
                         clients={clients}
                         team={team}
+                        trucks={trucks}
                         account={account}
                     />
                 )}

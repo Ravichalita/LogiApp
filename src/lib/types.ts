@@ -251,6 +251,7 @@ export const ClientSchema = z.object({
   latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
   longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   observations: z.string().optional(),
+  createdAt: z.custom<FieldValue | Timestamp | string>().optional(),
 });
 
 export const UpdateClientSchema = ClientSchema.extend({
@@ -278,6 +279,7 @@ export const RentalSchema = z.object({
   sequentialId: z.number().int().positive(),
   dumpsterId: z.string({ required_error: "Selecione uma caçamba." }),
   clientId: z.string({ required_error: "Selecione um cliente." }),
+  truckId: z.string().optional(),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
   startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }),
@@ -315,6 +317,7 @@ const UpdateRentalPeriodSchema = z.object({
 
 export const UpdateRentalSchema = z.object({
     id: z.string(),
+    truckId: z.string().optional(),
     rentalDate: z.string().optional(),
     returnDate: z.string().optional(),
     startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }).optional(),
@@ -404,7 +407,7 @@ export const RentalPricesSchema = z.object({
 
 
 // #region TypeScript Types
-export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
+export type Client = z.infer<typeof ClientSchema> & { id: string; accountId: string; createdAt?: string | Timestamp };
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string };
@@ -424,11 +427,15 @@ export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
-export type EnhancedDumpster = Dumpster & { derivedStatus: string };
+export type EnhancedDumpster = Dumpster & { 
+    derivedStatus: string;
+    scheduledRentals: PopulatedRental[];
+};
 export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
     id: string;
     itemType: 'rental';
     dumpster: Dumpster | null;
+    truck: Truck | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
 };

@@ -40,7 +40,7 @@ type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em A
 
 
 // --- Helper Functions ---
-export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning', order: number } {
+export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info', order: number } {
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
@@ -51,16 +51,16 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   if (isToday(returnDate)) {
     return { text: 'Encerra hoje', variant: 'warning', order: 2 };
   }
-  if (isToday(rentalDate) || (isAfter(today, rentalDate) && isBefore(today, returnDate))) {
+  if (isWithinInterval(today, { start: rentalDate, end: returnDate })) {
      return { text: 'Ativo', variant: 'success', order: 3 };
   }
   if (isBefore(today, rentalDate)) {
-    return { text: 'Pendente', variant: 'secondary', order: 4 };
+    return { text: 'Pendente', variant: 'info', order: 4 };
   }
   return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
 }
 
-function getOperationStatus(op: PopulatedOperation): { text: 'Pendente' | 'Em Andamento' | 'Em Atraso'; variant: 'secondary' | 'success' | 'destructive' } {
+function getOperationStatus(op: PopulatedOperation): { text: 'Pendente' | 'Em Andamento' | 'Em Atraso'; variant: 'secondary' | 'success' | 'destructive' | 'info' } {
     if (!op.startDate || !op.endDate) {
         return { text: 'Pendente', variant: 'secondary' };
     }
@@ -72,7 +72,7 @@ function getOperationStatus(op: PopulatedOperation): { text: 'Pendente' | 'Em An
         return { text: 'Em Atraso', variant: 'destructive' };
     }
     if (isFuture(startDate)) {
-        return { text: 'Pendente', variant: 'secondary' };
+        return { text: 'Pendente', variant: 'info' };
     }
     if (isWithinInterval(now, { start: startDate, end: endDate })) {
         return { text: 'Em Andamento', variant: 'success' };
@@ -605,7 +605,7 @@ export default function OSPage() {
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-2">
                                                             <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-semibold uppercase text-muted-foreground">Saída:</span>
+                                                            <span className="text-xs font-semibold uppercase text-xs">Saída:</span>
                                                             <span>{op.startAddress}</span>
                                                         </div>
                                                     </AccordionContent>
@@ -688,3 +688,5 @@ export default function OSPage() {
     </div>
   );
 }
+
+

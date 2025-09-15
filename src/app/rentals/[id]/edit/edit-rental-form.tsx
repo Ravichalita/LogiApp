@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { updateRentalAction } from '@/lib/actions';
-import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment, Account, AdditionalCost } from '@/lib/types';
+import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment, Account, AdditionalCost, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isBefore as isBeforeDate, parseISO, startOfDay, addDays, isSameDay, differenceInCalendarDays } from 'date-fns';
+import { format, isBefore as isBeforeDate, parseISO, startOfToday, addDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -38,6 +38,7 @@ interface EditRentalFormProps {
   rental: PopulatedRental;
   clients: Client[];
   team: UserAccount[];
+  trucks: Truck[];
   account: Account;
 }
 
@@ -71,13 +72,14 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
 };
 
 
-export function EditRentalForm({ rental, clients, team, account }: EditRentalFormProps) {
+export function EditRentalForm({ rental, clients, team, trucks, account }: EditRentalFormProps) {
   const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
   
   const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedTo);
+  const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(rental.truckId);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
   const [rentalDate, setRentalDate] = useState<Date | undefined>(parseISO(rental.rentalDate));
   const [returnDate, setReturnDate] = useState<Date | undefined>(parseISO(rental.returnDate));
@@ -219,6 +221,7 @@ export function EditRentalForm({ rental, clients, team, account }: EditRentalFor
         }
         
         formData.set('id', rental.id);
+        if (selectedTruckId) formData.set('truckId', selectedTruckId);
         formData.set('startAddress', startAddress);
         if (startLocation) {
           formData.set('startLatitude', String(startLocation.lat));
@@ -333,6 +336,19 @@ export function EditRentalForm({ rental, clients, team, account }: EditRentalFor
         {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
       </div>
 
+       <div className="space-y-2">
+            <Label htmlFor="truckId" className="text-muted-foreground">Caminhão (Opcional)</Label>
+            <Select name="truckId" onValueChange={setSelectedTruckId} defaultValue={selectedTruckId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um caminhão para o serviço" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sem-caminhao">Nenhum caminhão</SelectItem>
+                {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
+              </SelectContent>
+            </Select>
+        </div>
+      
        <div className="p-4 border rounded-md space-y-4 bg-card relative">
         {(account?.bases?.length ?? 0) > 0 && (
             <div className="space-y-2">
@@ -496,46 +512,44 @@ export function EditRentalForm({ rental, clients, team, account }: EditRentalFor
           <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
           <AccordionContent>
             <div className="p-4 border rounded-md space-y-4 bg-card">
-              <div className="grid grid-cols-3 gap-4 items-end">
-                <div className="grid gap-2 col-span-2">
-                  {(account.rentalPrices && account.rentalPrices.length > 0) ? (
-                    <div className="flex gap-2">
-                      <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um preço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {account.rentalPrices.map(p => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name} ({formatCurrencyForDisplay(p.value)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        id="value"
-                        name="value_display"
-                        value={displayValue}
-                        onChange={handleValueChange}
-                        placeholder="R$ 0,00"
-                        required={billingType === 'perDay'}
-                        className="w-1/3 text-right"
-                        disabled={billingType !== 'perDay'}
-                      />
-                    </div>
-                  ) : (
+              <div className="space-y-2">
+                {(account.rentalPrices && account.rentalPrices.length > 0) ? (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um preço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {account.rentalPrices.map(p => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({formatCurrencyForDisplay(p.value)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
-                      id="value_display"
+                      id="value"
                       name="value_display"
                       value={displayValue}
                       onChange={handleValueChange}
                       placeholder="R$ 0,00"
                       required={billingType === 'perDay'}
-                      className="text-right"
+                      className="sm:w-1/3 text-right"
                       disabled={billingType !== 'perDay'}
                     />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <Input
+                    id="value_display"
+                    name="value_display"
+                    value={displayValue}
+                    onChange={handleValueChange}
+                    placeholder="R$ 0,00"
+                    required={billingType === 'perDay'}
+                    className="text-right"
+                    disabled={billingType !== 'perDay'}
+                  />
+                )}
               </div>
               {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
             </div>
@@ -563,7 +577,7 @@ export function EditRentalForm({ rental, clients, team, account }: EditRentalFor
       </Accordion>
       
        <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-destructive" />
                 <span className="font-medium">Custo Total da Operação:</span>

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
 import { createRental } from '@/lib/actions';
-import type { Client, Dumpster, Location, UserAccount, RentalPrice, Attachment, Account, Base, AdditionalCost } from '@/lib/types';
+import type { Client, Dumpster, Location, UserAccount, RentalPrice, Attachment, Account, Base, AdditionalCost, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -33,6 +33,8 @@ import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { useRouter } from 'next/navigation';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const initialState = {
   errors: {},
@@ -43,6 +45,7 @@ export type DumpsterForForm = Dumpster & {
   specialStatus?: string;
   disabled: boolean;
   disabledRanges: { from: Date; to: Date }[];
+  schedules: string[];
 };
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -56,7 +59,14 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 interface RentalFormProps {
   dumpsters: DumpsterForForm[];
   clients: Client[];
+  classifiedClients: {
+    newClients: Client[];
+    activeClients: Client[];
+    completedClients: Client[];
+    unservedClients: Client[];
+  };
   team: UserAccount[];
+  trucks: Truck[];
   rentalPrices?: RentalPrice[];
   account: Account | null;
 }
@@ -91,7 +101,7 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
 };
 
 
-export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: RentalFormProps) {
+export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account }: RentalFormProps) {
   const { accountId, user, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -99,6 +109,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
   
   const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
+  const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
   const [assignedToId, setAssignedToId] = useState<string | undefined>(userAccount?.id);
   
   const defaultBase = account?.bases?.[0];
@@ -133,7 +144,14 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
 
+  const [dumpsterSelectOpen, setDumpsterSelectOpen] = useState(false);
+  const [clientSelectOpen, setClientSelectOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
   const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
+
+  const [isRentalDateOpen, setIsRentalDateOpen] = useState(false);
+  const [isReturnDateOpen, setIsReturnDateOpen] = useState(false);
 
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
@@ -203,6 +221,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
                 if (!costConfig) {
                     costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
                 }
+
                 const costPerKm = costConfig?.value || 0;
                 
                 if (costPerKm > 0) {
@@ -281,6 +300,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
         
         if (selectedDumpsterId) formData.set('dumpsterId', selectedDumpsterId);
         if (selectedClientId) formData.set('clientId', selectedClientId);
+        if (selectedTruckId) formData.set('truckId', selectedTruckId);
         if (assignedToId) formData.set('assignedTo', assignedToId);
         
         formData.set('startAddress', startAddress);
@@ -386,74 +406,235 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
   }
 
   const nextBookingDate = getNextBookingDate();
+  
+  const handleClientSelect = (clientId: string) => {
+    if (clientId === 'add-new-client') {
+        router.push('/clients/new');
+        return;
+    }
+    setSelectedClientId(clientId);
+    setClientSelectOpen(false);
+  }
+  
+  const filterClients = (clients: Client[], search: string) => {
+    if (!search) return clients;
+    return clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  }
+
+  const filteredNewClients = filterClients(classifiedClients.newClients, clientSearch);
+  const filteredActiveClients = filterClients(classifiedClients.activeClients, clientSearch);
+  const filteredCompletedClients = filterClients(classifiedClients.completedClients, clientSearch);
+  const filteredUnservedClients = filterClients(classifiedClients.unservedClients, clientSearch);
+  
+  useEffect(() => {
+    if (clientSearch) {
+        const groupsToOpen: string[] = [];
+        if (filteredCompletedClients.length > 0) groupsToOpen.push('completed');
+        if (filteredUnservedClients.length > 0) groupsToOpen.push('unserved');
+        setOpenAccordionGroups(groupsToOpen);
+    } else {
+        setOpenAccordionGroups([]);
+    }
+  }, [clientSearch, filteredCompletedClients.length, filteredUnservedClients.length]);
+
+  const renderClientList = (clientList: Client[], icon: React.ReactNode) => (
+    clientList.map(c => (
+      <CommandItem
+        key={c.id}
+        value={c.name}
+        onSelect={() => handleClientSelect(c.id)}
+      >
+        <div className="flex items-center gap-2">
+            {icon}
+            {c.name}
+        </div>
+      </CommandItem>
+    ))
+  );
+
 
   return (
     <form action={handleFormAction} className="space-y-6">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="dumpsterId">Caçamba</Label>
-          <Select name="dumpsterId" onValueChange={setSelectedDumpsterId} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione uma caçamba disponível" />
-            </SelectTrigger>
-            <SelectContent>
-              {dumpsters.map(d => (
-                <SelectItem key={d.id} value={d.id} disabled={d.status === 'Em Manutenção'}>
-                  <div className="flex justify-between w-full">
-                      <span>{`${d.name} (${d.size}m³, ${d.color})`}</span>
-                      {d.specialStatus && (
-                        <span className={cn(
-                          "text-xs ml-4 font-semibold",
-                          d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
-                          d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
-                          d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
-                          'text-red-500' // fallback for maintenance
-                        )}>
-                          {d.specialStatus}
-                        </span>
-                      )}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+       <div className="space-y-2">
+            <Label htmlFor="dumpsterId">Caçamba</Label>
+            <Popover open={dumpsterSelectOpen} onOpenChange={setDumpsterSelectOpen}>
+                <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={dumpsterSelectOpen}
+                    className="w-full justify-between"
+                >
+                    {selectedDumpsterId
+                    ? dumpsters.find((d) => d.id === selectedDumpsterId)?.name
+                    : "Selecione uma caçamba"}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder="Buscar caçamba..." />
+                        <CommandEmpty>Nenhuma caçamba encontrada.</CommandEmpty>
+                        <CommandList>
+                             <CommandGroup>
+                                <Accordion type="multiple" className="w-full">
+                                {dumpsters.map(d => {
+                                    const hasMultipleSchedules = d.schedules.length >= 2;
+                                    if (hasMultipleSchedules) {
+                                        return (
+                                            <AccordionItem value={d.id} key={d.id} className="border-b-0">
+                                                 <AccordionTrigger className="text-xs font-normal px-2 py-1.5 hover:no-underline hover:bg-accent rounded-sm">
+                                                    <div className="flex justify-between w-full pr-2">
+                                                        <span>{d.name} ({d.size}m³, {d.color})</span>
+                                                        <span className="text-blue-500 font-semibold">Verificar</span>
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent className="p-2 pl-4">
+                                                    <div className="space-y-1">
+                                                        <p className="text-xs font-bold text-muted-foreground">Agendamentos:</p>
+                                                        {d.schedules.map((schedule, i) => (
+                                                            <p key={i} className="text-xs">{schedule}</p>
+                                                        ))}
+                                                         <Button 
+                                                            size="sm" 
+                                                            variant="link"
+                                                            className="h-auto p-0 text-xs mt-1"
+                                                            onClick={() => {
+                                                                setSelectedDumpsterId(d.id);
+                                                                setDumpsterSelectOpen(false);
+                                                            }}
+                                                         >
+                                                             Selecionar mesmo assim
+                                                         </Button>
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        )
+                                    }
+                                    return (
+                                        <CommandItem
+                                            key={d.id}
+                                            value={`${d.name} ${d.size} ${d.color} ${d.specialStatus || ''}`}
+                                            disabled={d.status === 'Em Manutenção'}
+                                            onSelect={() => {
+                                                setSelectedDumpsterId(d.id);
+                                                setDumpsterSelectOpen(false);
+                                            }}
+                                            className="flex justify-between w-full"
+                                        >
+                                            <span>{d.name} ({d.size}m³, {d.color})</span>
+                                             {d.specialStatus && (
+                                                <span className={cn(
+                                                "text-xs ml-4 font-semibold",
+                                                d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
+                                                d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
+                                                d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
+                                                'text-red-500'
+                                                )}>
+                                                {d.specialStatus}
+                                                </span>
+                                            )}
+                                        </CommandItem>
+                                    )
+                                })}
+                                </Accordion>
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
           {errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{errors.dumpsterId[0]}</p>}
         </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="clientId">Cliente</Label>
-          <Select name="clientId" onValueChange={setSelectedClientId} value={selectedClientId} required>
+            <Label htmlFor="clientId">Cliente</Label>
+            <Dialog open={clientSelectOpen} onOpenChange={setClientSelectOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                       {selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : 'Selecione um cliente'}
+                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="p-0">
+                    <DialogHeader className="p-4 pb-0">
+                        <DialogTitle>Selecionar Cliente</DialogTitle>
+                    </DialogHeader>
+                    <Command>
+                         <CommandInput placeholder="Buscar cliente..." value={clientSearch} onValueChange={setClientSearch}/>
+                         <CommandList className="max-h-[60vh]">
+                            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                             {filteredNewClients.length > 0 && (
+                                <CommandGroup heading="Novos Clientes">
+                                    {renderClientList(filteredNewClients, <Star className="h-4 w-4 mr-2" />)}
+                                </CommandGroup>
+                            )}
+                            {filteredActiveClients.length > 0 && (
+                                <CommandGroup heading="Em Atendimento">
+                                    {renderClientList(filteredActiveClients, <Building className="h-4 w-4 mr-2" />)}
+                                </CommandGroup>
+                            )}
+                            <Accordion type="multiple" className="w-full" value={openAccordionGroups} onValueChange={setOpenAccordionGroups}>
+                                {filteredCompletedClients.length > 0 && (
+                                    <AccordionItem value="completed">
+                                        <AccordionTrigger className="px-2 text-sm font-semibold text-muted-foreground">Concluídos</AccordionTrigger>
+                                        <AccordionContent className="p-1">
+                                            <CommandGroup>
+                                                {renderClientList(filteredCompletedClients, <ShieldCheck className="h-4 w-4 mr-2" />)}
+                                            </CommandGroup>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+                                {filteredUnservedClients.length > 0 && (
+                                     <AccordionItem value="unserved">
+                                        <AccordionTrigger className="px-2 text-sm font-semibold text-muted-foreground">Não Atendidos</AccordionTrigger>
+                                        <AccordionContent className="p-1">
+                                            <CommandGroup>
+                                                 {renderClientList(filteredUnservedClients, <User className="h-4 w-4 mr-2" />)}
+                                            </CommandGroup>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+                            </Accordion>
+                         </CommandList>
+                         <CommandSeparator />
+                          <CommandGroup>
+                             <CommandItem onSelect={() => handleClientSelect('add-new-client')} className="text-primary focus:bg-primary/10 focus:text-primary">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Novo Cliente
+                            </CommandItem>
+                         </CommandGroup>
+                    </Command>
+                </DialogContent>
+            </Dialog>
+           {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
+        </div>
+         <div className="space-y-2">
+          <Label htmlFor="assignedTo">Designar para</Label>
+          <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecione um cliente" />
+              <SelectValue placeholder="Selecione um membro da equipe" />
             </SelectTrigger>
             <SelectContent>
-              {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              <Separator />
-               <Link href="/clients/new">
-                <div className="relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-red-500">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Cliente
-                </div>
-              </Link>
+              {assignableUsers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
+          {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
         </div>
       </div>
+      <div className="space-y-2">
+            <Label htmlFor="truckId" className="text-muted-foreground">Caminhão</Label>
+            <Select name="truckId" onValueChange={setSelectedTruckId} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um caminhão para o serviço" />
+              </SelectTrigger>
+              <SelectContent>
+                {trucks.map(t => <SelectItem key={t.id} value={t.id} disabled={t.status === 'Em Manutenção'}>{t.name} ({t.plate})</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}
+        </div>
       
-       <div className="space-y-2">
-        <Label htmlFor="assignedTo">Designar para</Label>
-        <Select name="assignedTo" value={assignedToId} onValueChange={setAssignedToId} required disabled={isViewer}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione um membro da equipe" />
-          </SelectTrigger>
-          <SelectContent>
-            {assignableUsers.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {errors?.assignedTo && <p className="text-sm font-medium text-destructive">{errors.assignedTo[0]}</p>}
-      </div>
-
        <div className="p-4 border rounded-md space-y-4 bg-card relative">
         {(account?.bases?.length ?? 0) > 0 && (
             <div className="space-y-2">
@@ -555,7 +736,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Data de Entrega</Label>
-          <Popover>
+          <Popover open={isRentalDateOpen} onOpenChange={setIsRentalDateOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
@@ -572,7 +753,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
               <Calendar
                 mode="single"
                 selected={rentalDate}
-                onSelect={setRentalDate}
+                onSelect={(date) => {
+                    setRentalDate(date);
+                    setIsRentalDateOpen(false);
+                }}
                 disabled={selectedDumpsterInfo?.disabledRanges}
                 initialFocus
                 locale={ptBR}
@@ -583,7 +767,7 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
         </div>
         <div className="space-y-2">
           <Label>Data de Retirada (Prevista)</Label>
-          <Popover>
+          <Popover open={isReturnDateOpen} onOpenChange={setIsReturnDateOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant={"outline"}
@@ -601,7 +785,10 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
               <Calendar
                 mode="single"
                 selected={returnDate}
-                onSelect={setReturnDate}
+                onSelect={(date) => {
+                    setReturnDate(date);
+                    setIsReturnDateOpen(false);
+                }}
                 disabled={(date) => {
                     if (!rentalDate || isBeforeDate(date, rentalDate)) {
                         return true;
@@ -645,47 +832,45 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
         <AccordionItem value="per-day">
           <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
           <AccordionContent>
-            <div className="p-4 border rounded-md space-y-4 bg-card">
-              <div className="grid grid-cols-3 gap-4 items-end">
-                <div className="grid gap-2 col-span-2">
-                  {(rentalPrices && rentalPrices.length > 0) ? (
-                    <div className="flex gap-2">
-                      <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um preço" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rentalPrices.map(p => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name} ({formatCurrencyForDisplay(p.value)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        id="value"
-                        name="value_display"
-                        value={displayValue}
-                        onChange={handleValueChange}
-                        placeholder="R$ 0,00"
-                        required={billingType === 'perDay'}
-                        className="w-1/3 text-right"
-                        disabled={billingType !== 'perDay'}
-                      />
-                    </div>
-                  ) : (
+             <div className="p-4 border rounded-md space-y-4 bg-card">
+              <div className="space-y-2">
+                {(rentalPrices && rentalPrices.length > 0) ? (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um preço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rentalPrices.map(p => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({formatCurrencyForDisplay(p.value)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
-                      id="value_display"
+                      id="value"
                       name="value_display"
                       value={displayValue}
                       onChange={handleValueChange}
                       placeholder="R$ 0,00"
                       required={billingType === 'perDay'}
-                      className="text-right"
+                      className="sm:w-1/3 text-right"
                       disabled={billingType !== 'perDay'}
                     />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <Input
+                    id="value_display"
+                    name="value_display"
+                    value={displayValue}
+                    onChange={handleValueChange}
+                    placeholder="R$ 0,00"
+                    required={billingType === 'perDay'}
+                    className="text-right"
+                    disabled={billingType !== 'perDay'}
+                  />
+                )}
               </div>
               {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
             </div>
@@ -711,9 +896,9 @@ export function RentalForm({ dumpsters, clients, team, rentalPrices, account }: 
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
-      <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="flex items-center justify-between">
+      
+       <div className="p-4 border rounded-md space-y-4 bg-card">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-destructive" />
                 <span className="font-medium">Custo Total da Operação:</span>
