@@ -5,15 +5,15 @@
 import { useEffect, useState, useTransition, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from '@/context/auth-context';
-import type { Truck, PopulatedOperation } from '@/lib/types';
-import { getTrucks, getPopulatedOperations } from '@/lib/data';
+import type { Truck, PopulatedOperation, Rental, Client } from '@/lib/types';
+import { getTrucks, getPopulatedOperations, getRentals, fetchClients } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { TruckActions, MaintenanceCheckbox } from './truck-actions';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, Calendar, User } from 'lucide-react';
+import { ShieldAlert, Calendar, User, Container } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateTruckStatusAction } from '@/lib/actions';
 import { Separator } from '@/components/ui/separator';
@@ -55,10 +55,21 @@ function FleetListSkeleton() {
   );
 }
 
+interface ScheduleItem {
+    id: string;
+    startDate: string;
+    endDate: string;
+    clientName: string;
+    type: 'operation' | 'rental';
+    rentalType?: 'Entrega' | 'Retirada';
+}
+
 export default function FleetPage() {
   const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [operations, setOperations] = useState<PopulatedOperation[]>([]);
+  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -81,11 +92,12 @@ export default function FleetPage() {
 
     const unsubOps = getPopulatedOperations(accountId, (data) => {
       setOperations(data);
-      if(trucks.length > 0 || data.length > 0) setLoadingData(false);
     }, (error) => {
       console.error("Error fetching operations:", error);
-      setLoadingData(false);
     });
+
+    const unsubRentals = getRentals(accountId, setRentals);
+    fetchClients(accountId).then(setClients);
     
     // Initial loading state handler
     const timer = setTimeout(() => setLoadingData(false), 2000);
@@ -93,18 +105,53 @@ export default function FleetPage() {
     return () => {
       unsubTrucks();
       unsubOps();
+      unsubRentals();
       clearTimeout(timer);
     };
   }, [accountId, authLoading, canAccess]);
 
   const trucksWithSchedules = useMemo(() => {
+    const clientMap = new Map(clients.map(c => [c.id, c.name]));
+    
     return trucks.map(truck => {
-      const schedule = operations
-        .filter(op => op.truckId === truck.id)
-        .sort((a, b) => new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime());
+        const truckOps: ScheduleItem[] = operations
+            .filter(op => op.truckId === truck.id)
+            .map(op => ({
+                id: op.id,
+                startDate: op.startDate!,
+                endDate: op.endDate!,
+                clientName: op.client?.name || 'N/A',
+                type: 'operation' as const,
+            }));
+        
+        const truckRentalsDelivery: ScheduleItem[] = rentals
+            .filter(r => r.truckId === truck.id)
+            .map(r => ({
+                id: `${r.id}-delivery`,
+                startDate: r.rentalDate,
+                endDate: r.rentalDate, // Delivery is a single-day event for the truck
+                clientName: clientMap.get(r.clientId) || 'N/A',
+                type: 'rental' as const,
+                rentalType: 'Entrega' as const
+            }));
+            
+        const truckRentalsPickup: ScheduleItem[] = rentals
+            .filter(r => r.truckId === truck.id)
+            .map(r => ({
+                id: `${r.id}-pickup`,
+                startDate: r.returnDate, // Pickup is on the return date
+                endDate: r.returnDate,
+                clientName: clientMap.get(r.clientId) || 'N/A',
+                type: 'rental' as const,
+                rentalType: 'Retirada' as const
+            }));
+
+        const schedule = [...truckOps, ...truckRentalsDelivery, ...truckRentalsPickup]
+            .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+            
       return { ...truck, schedule };
     });
-  }, [trucks, operations]);
+  }, [trucks, operations, rentals, clients]);
 
   const handleToggleStatus = (truck: Truck) => {
     if (!accountId || truck.status === 'Em Operação' || isPending) return;
@@ -181,15 +228,16 @@ export default function FleetPage() {
                                 <AccordionItem value="schedule" className="border-b-0">
                                   <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 justify-start [&>svg]:ml-1">Ver Agendamentos ({truck.schedule.length})</AccordionTrigger>
                                   <AccordionContent className="pt-2 space-y-2">
-                                    {truck.schedule.map(op => (
-                                      <div key={op.id} className="text-xs p-2 bg-muted/50 rounded-md">
+                                    {truck.schedule.map(item => (
+                                      <div key={item.id} className="text-xs p-2 bg-muted/50 rounded-md">
                                         <div className="flex items-center gap-2 font-medium">
-                                          <Calendar className="h-3 w-3" />
-                                          <span>{format(parseISO(op.startDate!), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+                                          {item.type === 'rental' ? <Container className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+                                          <span>{format(parseISO(item.startDate), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}</span>
+                                           {item.type === 'rental' && <span className="font-bold">({item.rentalType})</span>}
                                         </div>
                                         <div className="flex items-center gap-2 text-muted-foreground pl-1">
                                            <User className="h-3 w-3" />
-                                          <span>{op.client?.name}</span>
+                                          <span>{item.clientName}</span>
                                         </div>
                                       </div>
                                     ))}
@@ -214,4 +262,3 @@ export default function FleetPage() {
     </div>
   );
 }
-
