@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -60,7 +59,7 @@ export function RevenueByClientChart({ data }: RevenueByClientChartProps) {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
                     verticalAlign="bottom"
-                    formatter={(value, entry, index) => <span className="text-muted-foreground">{value}</span>}
+                    formatter={(value, entry, index) => <span className="text-muted-foreground text-xs">{value}</span>}
                     wrapperStyle={{ paddingTop: '20px' }}
                 />
             </PieChart>
