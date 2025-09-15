@@ -254,15 +254,16 @@ export default function OSPage() {
 
     // Filter by date first
     if (selectedDate) {
-        const dayStart = startOfToday(selectedDate);
         allItems = allItems.filter(item => {
             if (item.itemType === 'rental') {
                 const rentalStart = parseISO(item.rentalDate);
                 const rentalEnd = parseISO(item.returnDate);
-                return isWithinInterval(dayStart, { start: startOfToday(rentalStart), end: endOfDay(rentalEnd) });
+                // Check if the selected date falls within the rental period (inclusive)
+                return isWithinInterval(selectedDate, { start: rentalStart, end: rentalEnd });
             }
             if (item.itemType === 'operation') {
-                return isSameDay(parseISO(item.startDate!), dayStart);
+                // Check if the operation happens on the selected day
+                return isSameDay(parseISO(item.startDate!), selectedDate);
             }
             return false;
         });
@@ -733,5 +734,3 @@ export default function OSPage() {
     </div>
   );
 }
-
-    
