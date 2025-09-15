@@ -5,7 +5,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
-import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval } from 'date-fns';
+import { isBefore, isAfter, isToday, parseISO, startOfToday, format, addDays, isFuture, isWithinInterval, isSameDay } from 'date-fns';
 import {
   Accordion,
   AccordionContent,
@@ -32,6 +32,7 @@ import { EditOperationAssignedUserDialog } from '@/app/operations/edit-assigned-
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import { addAttachmentToRentalAction, addAttachmentToOperationAction, deleteAttachmentAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
@@ -185,6 +186,7 @@ export default function OSPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const router = useRouter();
   const { toast } = useToast();
 
@@ -249,6 +251,22 @@ export default function OSPage() {
     
     let allItems = [...rentalItems, ...operationItems];
 
+    // Filter by date first
+    if (selectedDate) {
+        const dayStart = startOfToday(selectedDate);
+        allItems = allItems.filter(item => {
+            if (item.itemType === 'rental') {
+                const rentalStart = parseISO(item.rentalDate);
+                const rentalEnd = parseISO(item.returnDate);
+                return isWithinInterval(dayStart, { start: rentalStart, end: rentalEnd });
+            }
+            if (item.itemType === 'operation') {
+                return isSameDay(parseISO(item.startDate!), dayStart);
+            }
+            return false;
+        });
+    }
+    
     if (osTypeFilter === 'Aluguel') {
       allItems = allItems.filter(item => item.itemType === 'rental');
     } else if (osTypeFilter === 'Operação') {
@@ -285,7 +303,7 @@ export default function OSPage() {
 
     return allItems.sort((a, b) => new Date(a.sortDate).getTime() - new Date(b.sortDate).getTime());
 
-  }, [rentals, operations, searchTerm, osTypeFilter, statusFilter, canAccessRentals, canAccessOperations]);
+  }, [rentals, operations, searchTerm, osTypeFilter, statusFilter, canAccessRentals, canAccessOperations, selectedDate]);
   
   const handleTypeFilterChange = (type: OsTypeFilter) => {
     setOsTypeFilter(type);
@@ -438,14 +456,38 @@ export default function OSPage() {
 
 
       <div className="space-y-4 mb-6">
-        <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-                placeholder="Buscar por cliente, responsável ou nº da OS..."
-                className="pl-9 bg-card"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div className="flex flex-col md:flex-row gap-2">
+            <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Buscar por cliente, responsável ou nº da OS..."
+                    className="pl-9 bg-card"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                            "w-full md:w-[280px] justify-start text-left font-normal",
+                            !selectedDate && "text-muted-foreground"
+                        )}
+                    >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => date && setSelectedDate(date)}
+                        initialFocus
+                    />
+                </PopoverContent>
+            </Popover>
         </div>
         <div className="space-y-2">
              <div className="grid grid-cols-3 gap-2">
@@ -604,8 +646,8 @@ export default function OSPage() {
                                                         <span className="font-normal">Mostrar endereço de partida</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-2">
-                                                            <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-semibold uppercase text-xs">Saída:</span>
+                                                            <div className="flex items-center gap-2 text-sm">
+                                                            <span className="font-semibold uppercase text-xs">Saída:</span>
                                                             <span>{op.startAddress}</span>
                                                         </div>
                                                     </AccordionContent>
@@ -681,12 +723,10 @@ export default function OSPage() {
             }
         }) : (
             <div className="text-center py-16 bg-card rounded-lg border">
-                <p className="text-muted-foreground">Nenhuma OS encontrada para a busca aplicada.</p>
+                <p className="text-muted-foreground">Nenhuma OS encontrada para os filtros aplicados.</p>
             </div>
         )}
       </div>
     </div>
   );
 }
-
-
