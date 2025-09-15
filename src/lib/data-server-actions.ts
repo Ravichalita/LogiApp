@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
@@ -457,6 +458,52 @@ export async function getCityFromAddressAction(address: string): Promise<string 
 
     } catch (error) {
         console.error(`Reverse Geocode was not successful for the following reason: ${error}`);
+        return null;
+    }
+}
+
+export async function getNeighborhoodFromAddressAction(address: string): Promise<string | null> {
+    if (!address) {
+        return null;
+    }
+    const location = await geocodeAddress(address);
+    if (!location) {
+        return null;
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+        console.error("Google Maps API key is not configured.");
+        return null;
+    }
+    
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.append('latlng', `${location.lat},${location.lng}`);
+    url.searchParams.append('key', apiKey);
+    url.searchParams.append('language', 'pt-BR');
+    url.searchParams.append('result_type', 'sublocality_level_1|sublocality');
+
+    try {
+        const response = await fetch(url.toString());
+        const data = await response.json();
+
+        if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+            console.error('Reverse Geocode API error for neighborhood:', data.status, data.error_message);
+            return null;
+        }
+
+        for (const result of data.results) {
+             for (const component of result.address_components) {
+                if (component.types.includes('sublocality') || component.types.includes('sublocality_level_1')) {
+                    return component.long_name;
+                }
+            }
+        }
+        
+        return null; // Return null if no neighborhood is found
+
+    } catch (error) {
+        console.error(`Reverse Geocode for neighborhood was not successful: ${error}`);
         return null;
     }
 }

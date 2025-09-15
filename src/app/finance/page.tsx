@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment, PopulatedRental } from '@/lib/types';
-import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction } from '@/lib/data-server-actions';
+import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction, getNeighborhoodFromAddressAction } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -245,7 +246,9 @@ export default function FinancePage() {
     const [loadingData, setLoadingData] = useState(true);
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
     const [cityRevenue, setCityRevenue] = useState<Record<string, number>>({});
+    const [neighborhoodRevenue, setNeighborhoodRevenue] = useState<Record<string, number>>({});
     const cityCache = useMemo(() => new Map<string, string>(), []);
+    const neighborhoodCache = useMemo(() => new Map<string, string>(), []);
 
 
     const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessFinance;
@@ -301,6 +304,8 @@ export default function FinancePage() {
         if (historicItems.length > 0) {
             const processAddresses = async () => {
                 const revenueByCity: Record<string, number> = {};
+                const revenueByNeighborhood: Record<string, number> = {};
+
                 for (const item of historicItems) {
                     const address = item.kind === 'rental' ? item.data.deliveryAddress : (item.data as PopulatedOperation).destinationAddress;
                     if (!address) continue;
@@ -311,17 +316,29 @@ export default function FinancePage() {
                         cityCache.set(address, city);
                     }
                     
+                    let neighborhood = neighborhoodCache.get(address);
+                    if (!neighborhood) {
+                        neighborhood = await getNeighborhoodFromAddressAction(address) || 'Não identificado';
+                        neighborhoodCache.set(address, neighborhood);
+                    }
+                    
                     const value = item.totalValue || 0;
                     if (!revenueByCity[city]) {
                         revenueByCity[city] = 0;
                     }
                     revenueByCity[city] += value;
+
+                    if (!revenueByNeighborhood[neighborhood]) {
+                        revenueByNeighborhood[neighborhood] = 0;
+                    }
+                    revenueByNeighborhood[neighborhood] += value;
                 }
                 setCityRevenue(revenueByCity);
+                setNeighborhoodRevenue(revenueByNeighborhood);
             };
             processAddresses();
         }
-    }, [historicItems, cityCache]);
+    }, [historicItems, cityCache, neighborhoodCache]);
 
     const handleAttachmentUploaded = (itemId: string, newAttachment: Attachment) => {
         setHistoricItems(prevItems => prevItems.map(item => {
@@ -399,6 +416,11 @@ export default function FinancePage() {
         name,
         value,
     })).sort((a, b) => b.value - a.value);
+    
+    const neighborhoodChartData = Object.entries(neighborhoodRevenue).map(([name, value]) => ({
+        name,
+        value,
+    })).sort((a, b) => b.value - a.value);
 
 
     const isLoading = authLoading || (loadingData && canAccess);
@@ -450,6 +472,15 @@ export default function FinancePage() {
                                 </CardHeader>
                                 <CardContent>
                                     {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={cityChartData} />}
+                                </CardContent>
+                            </CarouselItem>
+                            <CarouselItem>
+                                 <CardHeader>
+                                    <CardTitle className="font-headline">Faturamento por Bairro</CardTitle>
+                                    <CardDescription>Receita gerada em cada bairro no período total.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={neighborhoodChartData} />}
                                 </CardContent>
                             </CarouselItem>
                         </CarouselContent>
