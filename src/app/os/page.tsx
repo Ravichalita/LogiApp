@@ -419,21 +419,6 @@ export default function OSPage() {
     )
   }
 
-  if (combinedItems.length === 0 && !loading && !searchTerm && osTypeFilter === 'Todas' && statusFilter === 'Todas') {
-    return (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
-             <div className="p-4 bg-primary/10 rounded-full mb-4">
-                <Truck className="h-10 w-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Nenhuma OS encontrada</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-                Você ainda não tem nenhuma OS agendada ou em andamento. Comece cadastrando uma nova.
-            </p>
-        </div>
-    )
-  }
-
-
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
        <div className="flex items-center justify-between mb-8">
@@ -491,7 +476,6 @@ export default function OSPage() {
                         mode="single"
                         selected={selectedDate}
                         onSelect={setSelectedDate}
-                        initialFocus
                     />
                 </PopoverContent>
             </Popover>
@@ -729,11 +713,17 @@ export default function OSPage() {
                 )
             }
         }) : (
-            <div className="text-center py-16 bg-card rounded-lg border">
-                <p className="text-muted-foreground">Nenhuma OS encontrada para os filtros aplicados.</p>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Nenhuma OS Encontrada</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground text-center py-8">Não há Ordens de Serviço que correspondam aos filtros selecionados.</p>
+                </CardContent>
+            </Card>
         )}
       </div>
     </div>
   );
 }
+
