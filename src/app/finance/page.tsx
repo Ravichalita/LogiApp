@@ -476,15 +476,6 @@ export default function FinancePage() {
                 <Card className="lg:col-span-2">
                     <Carousel>
                         <CarouselContent>
-                            <CarouselItem>
-                                 <CardHeader>
-                                    <CardTitle className="font-headline">Faturamento por Cliente</CardTitle>
-                                    <CardDescription>Receita gerada por cada cliente no período total.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={clientChartData} />}
-                                </CardContent>
-                            </CarouselItem>
                              <CarouselItem>
                                  <CardHeader>
                                     <CardTitle className="font-headline">Faturamento por Cidade</CardTitle>
@@ -510,6 +501,15 @@ export default function FinancePage() {
                                 </CardHeader>
                                 <CardContent>
                                     {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={serviceTypeChartData} />}
+                                </CardContent>
+                            </CarouselItem>
+                            <CarouselItem>
+                                 <CardHeader>
+                                    <CardTitle className="font-headline">Faturamento por Cliente</CardTitle>
+                                    <CardDescription>Receita gerada por cada cliente no período total.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {isLoading ? <Skeleton className="h-[300px] w-full" /> : <RevenueByClientChart data={clientChartData} />}
                                 </CardContent>
                             </CarouselItem>
                         </CarouselContent>
