@@ -230,8 +230,9 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
         const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
         const dumpsterPromise = adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
+        const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
 
-        const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise]);
+        const [clientSnap, dumpsterSnap, assignedToSnap, truckSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise, truckPromise]);
 
         return {
             ...rentalData,
@@ -239,6 +240,7 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
             client: docToSerializable(clientSnap) as Client | null,
             dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
+            truck: docToSerializable(truckSnap) as Truck | null,
         };
     } catch (error) {
         console.error(`Error fetching populated rental by ID ${rentalId}:`, error);
@@ -407,6 +409,58 @@ export async function geocodeAddress(address: string): Promise<Location | null> 
     return null;
   }
 }
+
+
+export async function getCityFromAddressAction(address: string): Promise<string | null> {
+    if (!address) {
+        return null;
+    }
+    const location = await geocodeAddress(address);
+    if (!location) {
+        return null;
+    }
+
+    // A reverse geocode might be more reliable for component extraction
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+        console.error("Google Maps API key is not configured.");
+        return null;
+    }
+    
+    const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+    url.searchParams.append('latlng', `${location.lat},${location.lng}`);
+    url.searchParams.append('key', apiKey);
+    url.searchParams.append('language', 'pt-BR');
+    url.searchParams.append('result_type', 'locality|administrative_area_level_2');
+
+    try {
+        const response = await fetch(url.toString());
+        const data = await response.json();
+
+        if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+            console.error('Reverse Geocode API error:', data.status, data.error_message);
+            // Fallback to splitting the formatted address
+            return address.split(',').slice(-2, -1)[0]?.trim() || null;
+        }
+
+        for (const result of data.results) {
+             for (const component of result.address_components) {
+                // 'locality' is typically the city
+                // 'administrative_area_level_2' is often the city in Brazil
+                if (component.types.includes('locality') || component.types.includes('administrative_area_level_2')) {
+                    return component.long_name;
+                }
+            }
+        }
+        
+        return null;
+
+    } catch (error) {
+        console.error(`Reverse Geocode was not successful for the following reason: ${error}`);
+        return null;
+    }
+}
+
 
 export async function getWeatherForecastAction(
   location: Omit<Location, 'address'>,

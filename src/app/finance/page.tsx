@@ -1,11 +1,10 @@
 
-
 'use client';
 
-import React, { useEffect, useState, useTransition } from 'react';
+import React, { useEffect, useState, useTransition, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment, PopulatedRental } from '@/lib/types';
-import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
+import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -245,6 +244,9 @@ export default function FinancePage() {
     const [historicItems, setHistoricItems] = useState<HistoricItem[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
+    const [cityRevenue, setCityRevenue] = useState<Record<string, number>>({});
+    const cityCache = useMemo(() => new Map<string, string>(), []);
+
 
     const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessFinance;
 
@@ -294,6 +296,32 @@ export default function FinancePage() {
         fetchData();
 
     }, [accountId, authLoading, canAccess]);
+
+     useEffect(() => {
+        if (historicItems.length > 0) {
+            const processAddresses = async () => {
+                const revenueByCity: Record<string, number> = {};
+                for (const item of historicItems) {
+                    const address = item.kind === 'rental' ? item.data.deliveryAddress : (item.data as PopulatedOperation).destinationAddress;
+                    if (!address) continue;
+
+                    let city = cityCache.get(address);
+                    if (!city) {
+                        city = await getCityFromAddressAction(address) || 'Não identificada';
+                        cityCache.set(address, city);
+                    }
+                    
+                    const value = item.totalValue || 0;
+                    if (!revenueByCity[city]) {
+                        revenueByCity[city] = 0;
+                    }
+                    revenueByCity[city] += value;
+                }
+                setCityRevenue(revenueByCity);
+            };
+            processAddresses();
+        }
+    }, [historicItems, cityCache]);
 
     const handleAttachmentUploaded = (itemId: string, newAttachment: Attachment) => {
         setHistoricItems(prevItems => prevItems.map(item => {
@@ -367,50 +395,7 @@ export default function FinancePage() {
         value,
     })).sort((a,b) => b.value - a.value);
 
-    const extractCity = (address: string) => {
-        if (!address) return 'N/A';
-        const parts = address.split(',').map(p => p.trim());
-        if (parts.length < 2) return 'N/A';
-
-        // Try to find a part with "Cidade - Estado" format
-        const cityStatePart = parts.find(p => p.includes('-'));
-        if (cityStatePart) {
-            return cityStatePart.split('-')[0].trim();
-        }
-
-        // If not found, assume the second to last part is the city,
-        // but only if it's not a number (to avoid CEP)
-        const potentialCity = parts[parts.length - 2];
-        if (potentialCity && isNaN(parseInt(potentialCity.replace(/\D/g, '')))) {
-            return potentialCity;
-        }
-
-        // As a last resort, check the third to last part
-        if (parts.length >= 3) {
-            const lastResortCity = parts[parts.length - 3];
-            if (lastResortCity && isNaN(parseInt(lastResortCity.replace(/\D/g, '')))) {
-                return lastResortCity;
-            }
-        }
-        
-        return 'N/A';
-    };
-    
-    const revenueByCityData = historicItems.reduce((acc, item) => {
-        const address = item.kind === 'rental' ? item.data.deliveryAddress : (item.data as PopulatedOperation).destinationAddress;
-        if (!address) return acc;
-        const city = extractCity(address);
-        const value = item.totalValue || 0;
-
-        if (!acc[city]) {
-            acc[city] = 0;
-        }
-        acc[city] += value;
-
-        return acc;
-    }, {} as Record<string, number>);
-
-    const cityChartData = Object.entries(revenueByCityData).map(([name, value]) => ({
+    const cityChartData = Object.entries(cityRevenue).map(([name, value]) => ({
         name,
         value,
     })).sort((a, b) => b.value - a.value);
