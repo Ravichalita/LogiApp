@@ -59,8 +59,8 @@ export function RevenueByClientChart({ data }: RevenueByClientChartProps) {
                 <Tooltip content={<CustomTooltip />} />
                 <Legend
                     verticalAlign="bottom"
-                    height={36}
                     formatter={(value, entry, index) => <span className="text-muted-foreground">{value}</span>}
+                    wrapperStyle={{ paddingTop: '20px' }}
                 />
             </PieChart>
         </ResponsiveContainer>
