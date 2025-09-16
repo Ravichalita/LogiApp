@@ -45,6 +45,7 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
     const osId = `${isRental ? 'AL' : 'OP'}${item.sequentialId}`;
     const clientName = item.client?.name;
     const clientPhone = item.client?.phone;
+    const clientCpfCnpj = item.client?.cpfCnpj;
     const clientAddress = isRental ? rental?.deliveryAddress : operation?.destinationAddress;
     const responsibleName = isRental ? rental?.assignedToUser?.name : operation?.driver?.name;
 
@@ -82,6 +83,9 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
                 <div className="grid grid-cols-2 gap-4">
                     <InfoField label="Cliente" value={clientName} />
                     <InfoField label="Telefone" value={clientPhone} />
+                    {clientCpfCnpj && (
+                        <InfoField label="CPF/CNPJ" value={clientCpfCnpj} className="col-span-2" />
+                    )}
                     <InfoField label="Endereço de Atendimento" value={clientAddress} className="col-span-2"/>
                 </div>
             </div>
