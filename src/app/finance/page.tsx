@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useTransition, useMemo } from 'react';
@@ -22,17 +21,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription as AlertDialogDescriptionComponent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle as AlertDialogTitleComponent,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import { addAttachmentToCompletedOperationAction, addAttachmentToCompletedRentalAction, deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -242,13 +232,14 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
 
 export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
-    const [historicItems, setHistoricItems] = useState<HistoricItem[]>([]);
+    const [allHistoricItems, setAllHistoricItems] = useState<HistoricItem[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
     const [cityRevenue, setCityRevenue] = useState<Record<string, number>>({});
     const [neighborhoodRevenue, setNeighborhoodRevenue] = useState<Record<string, number>>({});
     const cityCache = useMemo(() => new Map<string, string>(), []);
     const neighborhoodCache = useMemo(() => new Map<string, string>(), []);
+    const [activeTab, setActiveTab] = useState<'all' | 'rentals' | 'operations'>('all');
 
 
     const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessFinance;
@@ -292,13 +283,20 @@ export default function FinancePage() {
             
             combinedItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
             
-            setHistoricItems(combinedItems);
+            setAllHistoricItems(combinedItems);
             setLoadingData(false);
         }
         
         fetchData();
 
     }, [accountId, authLoading, canAccess]);
+
+    const historicItems = useMemo(() => {
+        if (activeTab === 'all') {
+            return allHistoricItems;
+        }
+        return allHistoricItems.filter(item => item.kind === activeTab.slice(0, -1));
+    }, [allHistoricItems, activeTab]);
 
      useEffect(() => {
         if (historicItems.length > 0) {
@@ -341,7 +339,7 @@ export default function FinancePage() {
     }, [historicItems, cityCache, neighborhoodCache]);
 
     const handleAttachmentUploaded = (itemId: string, newAttachment: Attachment) => {
-        setHistoricItems(prevItems => prevItems.map(item => {
+        setAllHistoricItems(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
                 const updatedAttachments = [...(item.data.attachments || []), newAttachment];
                 const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
@@ -355,7 +353,7 @@ export default function FinancePage() {
     };
     
      const handleAttachmentDeleted = (itemId: string, attachmentToDelete: Attachment) => {
-        setHistoricItems(prevItems => prevItems.map(item => {
+        setAllHistoricItems(prevItems => prevItems.map(item => {
             if (item.id === itemId) {
                 const updatedAttachments = (item.data.attachments || []).filter(
                     (att: Attachment) => att.url !== attachmentToDelete.url
@@ -465,6 +463,14 @@ export default function FinancePage() {
                  <h1 className="text-3xl font-headline font-bold">Histórico e Estatísticas</h1>
                  <p className="text-muted-foreground mt-1">Visualize o desempenho e o histórico financeiro do seu negócio.</p>
             </div>
+
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full mb-6">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="all">Todos</TabsTrigger>
+                    <TabsTrigger value="rentals">Aluguéis</TabsTrigger>
+                    <TabsTrigger value="operations">Operações</TabsTrigger>
+                </TabsList>
+            </Tabs>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
                  <StatCard title="Receita (Mês)" value={formatCurrency(monthlyRevenue)} icon={DollarSign} loading={isLoading} />
