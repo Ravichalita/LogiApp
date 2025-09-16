@@ -7,7 +7,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#F0F0F0",
-  "theme_color": "#70A4A4",
+  "theme_color": "#ff9e00",
   "icons": [
     {
       "src": "/192x192.png",
@@ -23,13 +23,13 @@
   "screenshots": [
     {
       "src": "/screenshots/screenshot1.png",
-      "sizes": "1080x1920",
+      "sizes": "1080x2316",
       "type": "image/png",
       "form_factor": "narrow"
     },
     {
       "src": "/screenshots/screenshot2.png",
-      "sizes": "1080x1920",
+      "sizes": "1080x2316",
       "type": "image/png",
       "form_factor": "narrow"
     }

@@ -146,7 +146,7 @@ export function DumpstersMap({ dumpsters }: DumpstersMapProps) {
           position={activeMarker.position}
           onCloseClick={handleInfoWindowClose}
         >
-          <div className="p-1 space-y-1">
+          <div className="p-1 space-y-1 text-gray-800">
             <h3 className="font-bold">{activeMarker.dumpsterName}</h3>
             <p className="text-sm">Cliente: {activeMarker.clientName}</p>
             <p className="text-sm">Status: {activeMarker.status}</p>
