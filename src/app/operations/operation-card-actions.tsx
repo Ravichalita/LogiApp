@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -175,7 +176,7 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
                 Finalizar
             </Button>
             )}
-             <Button variant="nooutline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} className="px-2 md:px-4">
+             <Button variant="nooutline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} size="bigicon">
                 {isGeneratingPdf ? <Spinner size="small" /> : <Image src="/pdf.svg" alt="PDF Icon" width={26} height={26} />}
             </Button>
       </div>
