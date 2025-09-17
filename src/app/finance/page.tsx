@@ -260,7 +260,7 @@ export default function FinancePage() {
 
 
     useEffect(() => {
-        if (authLoading || !accountId || !canAccess) {
+        if (authLoading || !accountId || !canAccessFinance) {
             if (!authLoading) setLoadingData(false);
             return;
         };
@@ -304,7 +304,7 @@ export default function FinancePage() {
         
         fetchData();
 
-    }, [accountId, authLoading, canAccess, canAccessRentals, canAccessOperations]);
+    }, [accountId, authLoading, canAccessFinance, canAccessRentals, canAccessOperations]);
 
     const historicItems = useMemo(() => {
         if (activeTab === 'all') {
@@ -456,9 +456,9 @@ export default function FinancePage() {
     }, [historicItems]);
 
 
-    const isLoading = authLoading || (loadingData && canAccess);
+    const isLoading = authLoading || (loadingData && canAccessFinance);
 
-    if (!isLoading && !canAccess) {
+    if (!isLoading && !canAccessFinance) {
          return (
             <div className="container mx-auto py-8 px-4 md:px-6">
                  <Alert variant="destructive">
