@@ -9,6 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useIsMobile } from '@/hooks/use-mobile';
+
 
 interface DraggableActionCardProps {
   children: React.ReactNode;
@@ -18,13 +27,14 @@ interface DraggableActionCardProps {
 export function DraggableActionCard({ children, actions }: DraggableActionCardProps) {
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const dragStartX = useRef(0);
   const thresholdReached = useRef(false);
+  const isMobile = useIsMobile();
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    // Allow dragging unless the target is an interactive element like a link or button
     if (target.closest('a, button, [role="button"], [role="link"]')) {
       return;
     }
@@ -36,46 +46,42 @@ export function DraggableActionCard({ children, actions }: DraggableActionCardPr
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!isDragging) return;
 
-    const currentX = e.touches[0].clientX;
-    let diffX = currentX - dragStartX.current;
+    let diffX = e.touches[0].clientX - dragStartX.current;
+    if (diffX < 0) diffX = 0;
 
-    // Restrict dragging from right to left
-    if (diffX < 0) {
-      diffX = 0;
-    }
+    const threshold = window.innerWidth * 0.25;
 
-    const screenWidth = window.innerWidth;
-    const threshold = screenWidth * 0.25;
-
-    // Vibrate when threshold is met, but only once per drag
     if (diffX >= threshold && !thresholdReached.current) {
-      if (navigator.vibrate) {
-        navigator.vibrate(50); // Vibrate for 50ms
-      }
+      if (navigator.vibrate) navigator.vibrate(50);
       thresholdReached.current = true;
     }
 
-    // Limit drag distance to avoid card going too far
-    setDragX(Math.min(diffX, screenWidth * 0.5));
+    setDragX(Math.min(diffX, window.innerWidth * 0.5));
   };
 
   const handleTouchEnd = () => {
     if (!isDragging) return;
 
     setIsDragging(false);
-    const screenWidth = window.innerWidth;
-    const threshold = screenWidth * 0.25;
-
-    if (dragX >= threshold) {
-      setIsDialogOpen(true);
+    if (dragX >= window.innerWidth * 0.25) {
+        if (isMobile) {
+            setIsSheetOpen(true);
+        } else {
+            setIsDialogOpen(true);
+        }
     }
     
-    // Animate back to original position
     setDragX(0);
   };
   
+  const ActionContent = () => (
+    <div className="grid grid-cols-2 gap-4 py-4">
+      {actions}
+    </div>
+  );
+
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <>
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -86,16 +92,28 @@ export function DraggableActionCard({ children, actions }: DraggableActionCardPr
           isDragging ? 'transition-none' : 'transition-transform duration-300 ease-out'
         )}
       >
-          {children}
+        {children}
       </div>
-       <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md rounded-lg">
-          <DialogHeader>
-            <DialogTitle>Ações Rápidas</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-              {actions}
-          </div>
-       </DialogContent>
-    </Dialog>
+
+      {isMobile ? (
+         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent side="bottom" className="rounded-t-lg">
+                <SheetHeader>
+                    <SheetTitle>Ações Rápidas</SheetTitle>
+                </SheetHeader>
+                <ActionContent />
+            </SheetContent>
+         </Sheet>
+      ) : (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md rounded-lg">
+              <DialogHeader>
+                <DialogTitle>Ações Rápidas</DialogTitle>
+              </DialogHeader>
+              <ActionContent />
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }

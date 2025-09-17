@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
@@ -396,33 +397,31 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             
             <div className="flex-grow flex items-center gap-2">
                 {isPendingStatus ? (
-                    canDelete && (
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Cancelar Agendamento
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle className="flex items-center gap-2">
-                                        <TriangleAlert className="h-6 w-6 text-destructive" />
-                                        Cancelar Agendamento?
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
-                                        {isDeleting ? 'Removendo...' : 'Sim, Cancelar'}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    )
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button className="w-full text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive" variant="outline" disabled={isDeleting}>
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Cancelar Agendamento
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                    <TriangleAlert className="h-6 w-6 text-destructive" />
+                                    Cancelar Agendamento?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta ação irá excluir permanentemente esta Ordem de Serviço. Deseja continuar?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isDeleting}>Voltar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteAction} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                    {isDeleting ? 'Removendo...' : 'Sim, Cancelar'}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 ) : (
                     <Button onClick={handleFinish} className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
                         {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
