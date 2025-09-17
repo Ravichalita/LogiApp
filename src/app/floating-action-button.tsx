@@ -79,36 +79,42 @@ export function FloatingActionButton({ className }: { className?: string }) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="mb-2">
-                             <DropdownMenuItem asChild className="py-3">
-                                 <Link 
-                                    href="/rentals/new"
-                                    aria-disabled={!canAccessRentals} 
-                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAccessRentals && "pointer-events-none opacity-50")}
-                                >
-                                    <Container className="mr-2 h-4 w-4" />
-                                    <span>Novo Aluguel</span>
-                                 </Link>
-                             </DropdownMenuItem>
-                             <DropdownMenuItem asChild className="py-3">
-                                 <Link 
-                                    href="/operations/new"
-                                    aria-disabled={!canAccessOps} 
-                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAccessOps && "pointer-events-none opacity-50")}
-                                >
-                                    <Workflow className="mr-2 h-4 w-4" />
-                                    <span>Nova Operação</span>
-                                 </Link>
-                             </DropdownMenuItem>
-                              <DropdownMenuItem asChild className="py-3">
-                                 <Link 
-                                    href="/clients/new"
-                                    aria-disabled={!canAddClients} 
-                                    className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAddClients && "pointer-events-none opacity-50")}
-                                >
-                                    <User className="mr-2 h-4 w-4" />
-                                    <span>Novo Cliente</span>
-                                 </Link>
-                             </DropdownMenuItem>
+                             {canAccessRentals && (
+                                <DropdownMenuItem asChild className="py-3">
+                                    <Link 
+                                        href="/rentals/new"
+                                        aria-disabled={!canAccessRentals} 
+                                        className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAccessRentals && "pointer-events-none opacity-50")}
+                                    >
+                                        <Container className="mr-2 h-4 w-4" />
+                                        <span>Novo Aluguel</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                             )}
+                             {canAccessOps && (
+                                <DropdownMenuItem asChild className="py-3">
+                                    <Link 
+                                        href="/operations/new"
+                                        aria-disabled={!canAccessOps} 
+                                        className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAccessOps && "pointer-events-none opacity-50")}
+                                    >
+                                        <Workflow className="mr-2 h-4 w-4" />
+                                        <span>Nova Operação</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                             )}
+                              {canAddClients && (
+                                <DropdownMenuItem asChild className="py-3">
+                                    <Link 
+                                        href="/clients/new"
+                                        aria-disabled={!canAddClients} 
+                                        className={cn("relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0", !canAddClients && "pointer-events-none opacity-50")}
+                                    >
+                                        <User className="mr-2 h-4 w-4" />
+                                        <span>Novo Cliente</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                              )}
                         </DropdownMenuContent>
                      </DropdownMenu>
                 );
