@@ -43,6 +43,7 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
 
     const osType = isRental ? 'Aluguel de Caçamba' : operation?.operationTypes.map(t => t.name).join(', ') || 'Operação';
     const osId = `${isRental ? 'AL' : 'OP'}${item.sequentialId}`;
+    const pdfContainerId = `pdf-${isRental ? 'al' : 'op'}-${item.id}`;
     const clientName = item.client?.name;
     const clientPhone = item.client?.phone;
     const clientCpfCnpj = item.client?.cpfCnpj;
@@ -54,7 +55,7 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
 
 
     return (
-        <div className="bg-white p-8 font-sans" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <div id={pdfContainerId} className="bg-white p-8 font-sans" style={{ fontFamily: 'Arial, sans-serif' }}>
             {/* Header */}
             <div className="flex justify-between items-center border-b-2 border-gray-200 pb-4">
                 <div className="flex items-center gap-4">

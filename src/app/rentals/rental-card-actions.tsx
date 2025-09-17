@@ -1,12 +1,11 @@
 
-
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
-import { finishRentalAction, deleteRentalAction, updateRentalAction } from '@/lib/actions';
+import { finishRentalAction, deleteRentalAction, updateRentalAction, deleteAttachmentAction } from '@/lib/actions';
 import type { PopulatedRental, Attachment, Account } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, MessageSquare, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, Map as MapIcon, DollarSign, MapPinned } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, MessageSquare, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, Map as MapIcon, DollarSign, MapPinned, ArrowRightLeft } from 'lucide-react';
 import Image from 'next/image';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -123,7 +122,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     const updatedAttachments = [...attachments, newAttachment];
     setAttachments(updatedAttachments);
     
-    // Create a FormData object and call the server action to save the new attachment list
     const formData = new FormData();
     formData.set('id', rental.id);
     formData.set('attachments', JSON.stringify(updatedAttachments));
@@ -133,7 +131,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
         const result = await updateRentalAction(accountId, null, formData);
         if (result?.message === 'error' || result?.errors) {
             toast({ title: "Erro ao salvar anexo", description: result.error || 'Ocorreu um erro.', variant: "destructive"});
-            // Revert state on failure
             setAttachments(attachments);
         } else {
             toast({ title: "Anexo salvo!" });
@@ -141,10 +138,18 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     });
   };
 
-  const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
-    // This requires a server action to be truly effective (delete from storage)
-    // For now, it just removes from the local state to be saved.
-    setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+   const handleAttachmentDeleted = (attachmentToRemove: Attachment) => {
+    if (!accountId) return;
+
+    startAttachmentTransition(async () => {
+        const result = await deleteAttachmentAction(accountId, rental.id, 'rentals', attachmentToRemove);
+        if (result.message === 'success') {
+            setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
+            toast({ title: 'Anexo Removido' });
+        } else {
+            toast({ title: 'Erro ao remover anexo', description: result.error, variant: 'destructive' });
+        }
+    });
   };
 
 
@@ -160,13 +165,26 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
      });
   }
   
+  const handleFinish = () => {
+    if (!accountId) return;
+    startFinishTransition(async () => {
+      const result = await finishRentalAction(accountId, rental.id);
+      if (result?.message === 'error') {
+        toast({ title: 'Erro ao finalizar', description: result.error, variant: 'destructive' });
+      } else {
+        toast({ title: 'Sucesso', description: 'OS de Aluguel finalizada.' });
+      }
+    });
+  };
+
   const handleGenerateAndDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     toast({ title: 'Gerando PDF...', description: 'Aguarde um momento.' });
 
-    const pdfContainer = document.getElementById(`pdf-al-${rental.id}`);
+    const pdfContainerId = `pdf-al-${rental.id}`;
+    const pdfContainer = document.getElementById(pdfContainerId);
     if (!pdfContainer) {
-        console.error("PDF container not found");
+        console.error("PDF container not found", pdfContainerId);
         setIsGeneratingPdf(false);
         toast({ title: "Erro", description: "Não foi possível encontrar o container para gerar o PDF.", variant: "destructive" });
         return;
@@ -190,15 +208,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     }
   };
 
-  const boundFinishRentalAction = finishRentalAction.bind(null, accountId!);
   const attachmentCount = attachments.length;
 
   return (
     <>
-     <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1 }}>
-        <div id={`pdf-al-${rental.id}`} style={{ width: '210mm', height: '297mm', backgroundColor: 'white' }}>
-            <OsPdfDocument item={rental} />
-        </div>
+     <div style={{ display: 'none' }}>
+        <OsPdfDocument item={rental} />
       </div>
       <div className="flex flex-col gap-4 h-full px-1">
         <div className="space-y-4">
@@ -287,9 +302,9 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                             accountId={accountId}
                             attachments={attachments || []}
                             onAttachmentUploaded={handleAttachmentUploaded}
-                            onAttachmentDeleted={handleRemoveAttachment}
+                            onAttachmentDeleted={handleAttachmentDeleted}
                             uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
-                            showDeleteButton={false}
+                            showDeleteButton={true}
                             showLabel={false}
                         />
                     )}
@@ -315,6 +330,35 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                                     <Edit className="mr-2 h-4 w-4" />
                                     Editar OS
                                 </Link>
+                            </DropdownMenuItem>
+                        )}
+                         {canEdit && (
+                            <DropdownMenuItem asChild>
+                                 <button
+                                    onClick={() => {
+                                        const query = new URLSearchParams({
+                                            prefill: JSON.stringify({
+                                                clientId: rental.clientId,
+                                                assignedTo: rental.assignedTo,
+                                                startAddress: rental.startAddress,
+                                                startLatitude: rental.startLatitude,
+                                                startLongitude: rental.startLongitude,
+                                                deliveryAddress: rental.deliveryAddress,
+                                                latitude: rental.latitude,
+                                                longitude: rental.longitude,
+                                                value: rental.value,
+                                                billingType: rental.billingType,
+                                                lumpSumValue: rental.lumpSumValue,
+                                                observations: rental.observations
+                                            })
+                                        }).toString();
+                                        window.location.href = `/rentals/new?${query}`;
+                                    }}
+                                    className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 w-full"
+                                >
+                                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                                    Trocar
+                                </button>
                             </DropdownMenuItem>
                         )}
                         {canDelete && !isPendingStatus && (
@@ -380,13 +424,10 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         </AlertDialog>
                     )
                 ) : (
-                    <form action={boundFinishRentalAction} className="flex-grow">
-                        <input type="hidden" name="rentalId" value={rental.id} />
-                        <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
-                            {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                            Finalizar
-                        </Button>
-                    </form>
+                    <Button onClick={handleFinish} className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isFinishing || isFinalizeDisabled}>
+                        {isFinishing ? <Spinner size="small" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                        Finalizar
+                    </Button>
                 )}
                 
                 <Button variant="nooutline" onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf} size="bigicon">
@@ -398,4 +439,3 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     </>
   );
 }
-

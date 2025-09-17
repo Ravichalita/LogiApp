@@ -591,7 +591,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                 <SelectValue placeholder="Selecione um caminhão" />
               </SelectTrigger>
               <SelectContent>
-                {trucks.map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.plate})</SelectItem>)}
+                {trucks.filter(t => !t.type?.toLowerCase().includes('poliguindaste')).map(t => <SelectItem key={t.id} value={t.id}>{t.name} ({t.plate})</SelectItem>)}
               </SelectContent>
             </Select>
             {errors?.truckId && <p className="text-sm font-medium text-destructive">{errors.truckId[0]}</p>}

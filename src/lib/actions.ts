@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -587,6 +588,11 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         body: `Você foi designado para a OS da ${dumpsterName}.`,
     });
 
+    const swapOriginId = formData.get('swapOriginId') as string | null;
+    if (swapOriginId) {
+        await finishRentalAction(accountId, swapOriginId);
+    }
+
   } catch (e) {
     return { message: handleFirebaseError(e) as string };
   }
@@ -595,10 +601,8 @@ export async function createRental(accountId: string, createdBy: string, prevSta
   redirect('/os');
 }
 
-export async function finishRentalAction(accountId: string, formData: FormData) {
-    const rentalId = formData.get('rentalId') as string;
+export async function finishRentalAction(accountId: string, rentalId: string) {
     if (!rentalId || !accountId) {
-        console.error("finishRentalAction called without rentalId or accountId.");
         return { message: 'error', error: 'ID da OS ou da conta está ausente.' };
     }
     
@@ -649,7 +653,7 @@ export async function finishRentalAction(accountId: string, formData: FormData) 
 
     } catch(e) {
          console.error("Failed to finish rental:", e);
-         throw e; 
+         return { message: 'error', error: handleFirebaseError(e) };
     }
     
     revalidatePath('/');
@@ -2001,6 +2005,10 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
+
+
+
 
 
 

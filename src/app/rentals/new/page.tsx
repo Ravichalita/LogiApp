@@ -1,7 +1,9 @@
 
+
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { fetchClients, getDumpsters, getRentals, fetchTeamMembers, getAccount, getPopulatedOperations, fetchAccount, getTrucks } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { RentalForm, type DumpsterForForm } from './rental-form';
@@ -15,8 +17,24 @@ import { isAfter, isToday, parseISO, startOfToday, format, isWithinInterval, isB
 import { ptBR } from 'date-fns/locale';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 
-export default function NewRentalPage() {
+function NewRentalPageContent() {
   const { accountId } = useAuth();
+  const searchParams = useSearchParams();
+  const prefillDataParam = searchParams.get('prefill');
+  const swapOriginId = searchParams.get('swapOriginId');
+  
+  const prefillData = useMemo(() => {
+    if (prefillDataParam) {
+      try {
+        return JSON.parse(prefillDataParam);
+      } catch (e) {
+        console.error("Failed to parse prefill data:", e);
+        return null;
+      }
+    }
+    return null;
+  }, [prefillDataParam]);
+
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
@@ -207,6 +225,8 @@ export default function NewRentalPage() {
                 trucks={trucks}
                 rentalPrices={account?.rentalPrices}
                 account={account}
+                prefillData={prefillData}
+                swapOriginId={swapOriginId}
              />
           ) : (
             <Alert>
@@ -222,4 +242,12 @@ export default function NewRentalPage() {
       </Card>
     </div>
   );
+}
+
+export default function NewRentalPage() {
+    return (
+        <Suspense fallback={<div>Carregando...</div>}>
+            <NewRentalPageContent />
+        </Suspense>
+    )
 }

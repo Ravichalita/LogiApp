@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
@@ -69,6 +70,8 @@ interface RentalFormProps {
   trucks: Truck[];
   rentalPrices?: RentalPrice[];
   account: Account | null;
+  prefillData?: any;
+  swapOriginId?: string | null;
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -101,39 +104,43 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
 };
 
 
-export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account }: RentalFormProps) {
+export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account, prefillData, swapOriginId }: RentalFormProps) {
   const { accountId, user, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
   
   const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(prefillData?.clientId);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
-  const [assignedToId, setAssignedToId] = useState<string | undefined>(userAccount?.id);
+  const [assignedToId, setAssignedToId] = useState<string | undefined>(prefillData?.assignedTo || userAccount?.id);
   
   const defaultBase = account?.bases?.[0];
   const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(defaultBase?.id);
-  const [startAddress, setStartAddress] = useState(defaultBase?.address || '');
+  const [startAddress, setStartAddress] = useState(prefillData?.startAddress || defaultBase?.address || '');
   const [startLocation, setStartLocation] = useState<Omit<Location, 'address'> | null>(
-    defaultBase?.latitude && defaultBase.longitude
-      ? { lat: defaultBase.latitude, lng: defaultBase.longitude }
-      : null
+    prefillData?.startLatitude && prefillData?.startLongitude
+      ? { lat: prefillData.startLatitude, lng: prefillData.startLongitude }
+      : (defaultBase?.latitude && defaultBase.longitude ? { lat: defaultBase.latitude, lng: defaultBase.longitude } : null)
   );
   
-  const [deliveryAddress, setDeliveryAddress] = useState<string>('');
-  const [deliveryLocation, setDeliveryLocation] = useState<Omit<Location, 'address'> | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState<string>(prefillData?.deliveryAddress || '');
+  const [deliveryLocation, setDeliveryLocation] = useState<Omit<Location, 'address'> | null>(
+    prefillData?.latitude && prefillData?.longitude
+      ? { lat: prefillData.latitude, lng: prefillData.longitude }
+      : null
+  );
 
-  const [rentalDate, setRentalDate] = useState<Date | undefined>();
-  const [returnDate, setReturnDate] = useState<Date | undefined>();
+  const [rentalDate, setRentalDate] = useState<Date | undefined>(prefillData ? new Date() : undefined);
+  const [returnDate, setReturnDate] = useState<Date | undefined>(prefillData ? addDays(new Date(), 2) : undefined);
   
   const [errors, setErrors] = useState<any>({});
-  const [value, setValue] = useState(0); // Store value as a number
-  const [lumpSumValue, setLumpSumValue] = useState(0);
-  const [billingType, setBillingType] = useState<'perDay' | 'lumpSum'>('perDay');
+  const [value, setValue] = useState(prefillData?.value || 0); // Store value as a number
+  const [lumpSumValue, setLumpSumValue] = useState(prefillData?.lumpSumValue || 0);
+  const [billingType, setBillingType] = useState<'perDay' | 'lumpSum'>(prefillData?.billingType || 'perDay');
   
-  const [displayValue, setDisplayValue] = useState(''); // Store formatted string for input
-  const [displayLumpSumValue, setDisplayLumpSumValue] = useState('');
+  const [displayValue, setDisplayValue] = useState(prefillData?.value ? formatCurrencyForInput((prefillData.value * 100).toString()) : ''); // Store formatted string for input
+  const [displayLumpSumValue, setDisplayLumpSumValue] = useState(prefillData?.lumpSumValue ? formatCurrencyForInput((prefillData.lumpSumValue * 100).toString()) : '');
   
   const [priceId, setPriceId] = useState<string | undefined>();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -175,10 +182,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   }, [poliguindasteTrucks, selectedTruckId]);
 
   useEffect(() => {
-    setRentalDate(new Date());
-    setReturnDate(addDays(new Date(), 2));
-    setAssignedToId(userAccount?.id)
-  }, [userAccount]);
+    if (!prefillData) {
+        setRentalDate(new Date());
+        setReturnDate(addDays(new Date(), 2));
+    }
+    setAssignedToId(prefillData?.assignedTo || userAccount?.id)
+  }, [userAccount, prefillData]);
 
    useEffect(() => {
         if (!startLocation && startAddress) {
@@ -193,7 +202,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   useEffect(() => {
     if (selectedClientId) {
       const client = clients.find(c => c.id === selectedClientId);
-      if (client) {
+      if (client && !prefillData?.deliveryAddress) { // Don't override prefilled address
          setDeliveryAddress(client.address);
          if (client.latitude && client.longitude) {
            setDeliveryLocation({ lat: client.latitude, lng: client.longitude });
@@ -204,11 +213,11 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
             });
          }
       }
-    } else {
+    } else if (!prefillData) { // Clear only if not prefilling
        setDeliveryAddress('');
        setDeliveryLocation(null);
     }
-  }, [selectedClientId, clients]);
+  }, [selectedClientId, clients, prefillData]);
   
   useEffect(() => {
     const fetchRouteInfo = async () => {
@@ -228,7 +237,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
             if (truckType) {
                 let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
-                // Fallback: If no specific base config, find any config for this truck type.
                 if (!costConfig) {
                     costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
                 }
@@ -341,6 +349,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         formData.set('travelCost', String(calculatedTravelCost));
         formData.set('totalCost', String(calculatedTotalCost));
 
+        if (swapOriginId) {
+            formData.set('swapOriginId', swapOriginId);
+        }
 
         const boundAction = createRental.bind(null, accountId, user.uid);
         const result = await boundAction(null, formData);
@@ -465,6 +476,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
   return (
     <form action={handleFormAction} className="space-y-6">
+      {swapOriginId && <input type="hidden" name="swapOriginId" value={swapOriginId} />}
        <div className="space-y-2">
             <Label htmlFor="dumpsterId">Caçamba</Label>
             <Popover open={dumpsterSelectOpen} onOpenChange={setDumpsterSelectOpen}>
@@ -952,7 +964,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
        <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" placeholder="Ex: Deixar caçamba na calçada, portão azul." />
+        <Textarea id="observations" name="observations" defaultValue={prefillData?.observations || ''} placeholder="Ex: Deixar caçamba na calçada, portão azul." />
         {errors?.observations && <p className="text-sm font-medium text-destructive">{errors.observations[0]}</p>}
       </div>
       
@@ -977,5 +989,3 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     </form>
   );
 }
-
-    
