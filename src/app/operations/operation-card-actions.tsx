@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -86,7 +85,7 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
                 )}
                 <DropdownMenuSeparator />
                 <AlertDialogTrigger asChild>
-                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()} disabled={!canEdit}>
                         <Trash2 className="mr-2 h-4 w-4" />
                         Excluir OS
                     </DropdownMenuItem>
@@ -111,4 +110,3 @@ export function OperationCardActions({ operation }: OperationCardActionsProps) {
     </AlertDialog>
   );
 }
-

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -558,11 +557,11 @@ export default function OSPage() {
                                 actions={
                                     <>
                                         {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('edit', rental)}><Edit className="h-6 w-6" /> Editar</Button>}
-                                        {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', rental)} disabled={isFinalizeDisabled}><CheckCircle className="h-6 w-6" /> Finalizar</Button>}
+                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', rental)} disabled={isFinalizeDisabled}><CheckCircle className="h-6 w-6" /> Finalizar</Button>
                                         <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone || '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex">
                                             <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
                                         </a>
-                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('swap', rental)}><ArrowRightLeft className="h-6 w-6" /> Trocar</Button>
+                                        {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('swap', rental)}><ArrowRightLeft className="h-6 w-6" /> Trocar</Button>}
                                         <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('pdf', rental)}><Download className="h-6 w-6" /> Baixar PDF</Button>
                                         {canEditRentals && <Button variant="destructive" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('delete', rental)}><Trash2 className="h-6 w-6" /> Excluir</Button>}
                                     </>
@@ -631,7 +630,7 @@ export default function OSPage() {
                                 actions={
                                     <>
                                         {canEditOp && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('edit', op)}><Edit className="h-6 w-6" /> Editar</Button>}
-                                        {canEditOp && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', op)} disabled={isFinalizeOpDisabled}><CheckCircle className="h-6 w-6" /> Finalizar</Button>}
+                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', op)} disabled={isFinalizeOpDisabled}><CheckCircle className="h-6 w-6" /> Finalizar</Button>
                                         <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(op.client?.phone || '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex">
                                             <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
                                         </a>
@@ -791,9 +790,9 @@ export default function OSPage() {
                                                                         </Link>
                                                                     </DropdownMenuItem>
                                                                 )}
-                                                                <DropdownMenuSeparator />
+                                                                {canEditOp && <DropdownMenuSeparator />}
                                                                 <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>
+                                                                    <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()} disabled={!canEditOp}>
                                                                         <Trash2 className="mr-2 h-4 w-4" />
                                                                         Excluir
                                                                     </DropdownMenuItem>
@@ -917,4 +916,3 @@ export default function OSPage() {
     </div>
   );
 }
-
