@@ -239,10 +239,25 @@ export default function FinancePage() {
     const [neighborhoodRevenue, setNeighborhoodRevenue] = useState<Record<string, number>>({});
     const cityCache = useMemo(() => new Map<string, string>(), []);
     const neighborhoodCache = useMemo(() => new Map<string, string>(), []);
-    const [activeTab, setActiveTab] = useState<'all' | 'rentals' | 'operations'>('all');
+    
+    const permissions = userAccount?.permissions;
+    const canAccessFinance = isSuperAdmin || permissions?.canAccessFinance;
+    const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
+    const canAccessOperations = isSuperAdmin || permissions?.canAccessOperations;
 
+    const getDefaultTab = () => {
+        if (canAccessRentals && canAccessOperations) return 'all';
+        if (canAccessRentals) return 'rentals';
+        if (canAccessOperations) return 'operations';
+        return 'all';
+    }
 
-    const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessFinance;
+    const [activeTab, setActiveTab] = useState<'all' | 'rentals' | 'operations'>(getDefaultTab());
+    
+    useEffect(() => {
+      setActiveTab(getDefaultTab());
+    }, [canAccessRentals, canAccessOperations]);
+
 
     useEffect(() => {
         if (authLoading || !accountId || !canAccess) {
@@ -253,8 +268,8 @@ export default function FinancePage() {
         async function fetchData() {
             setLoadingData(true);
             const [rentals, operations] = await Promise.all([
-                getCompletedRentals(accountId!),
-                getCompletedOperations(accountId!)
+                canAccessRentals ? getCompletedRentals(accountId!) : Promise.resolve([]),
+                canAccessOperations ? getCompletedOperations(accountId!) : Promise.resolve([])
             ]);
             
             const combinedItems: HistoricItem[] = [
@@ -289,13 +304,13 @@ export default function FinancePage() {
         
         fetchData();
 
-    }, [accountId, authLoading, canAccess]);
+    }, [accountId, authLoading, canAccess, canAccessRentals, canAccessOperations]);
 
     const historicItems = useMemo(() => {
         if (activeTab === 'all') {
             return allHistoricItems;
         }
-        return allHistoricItems.filter(item => item.kind === activeTab.slice(0, -1));
+        return allHistoricItems.filter(item => item.kind === (activeTab === 'rentals' ? 'rental' : 'operation'));
     }, [allHistoricItems, activeTab]);
 
      useEffect(() => {
@@ -457,6 +472,8 @@ export default function FinancePage() {
         )
     }
 
+    const showTabs = canAccessRentals && canAccessOperations;
+
     return (
         <div className="container mx-auto py-8 px-4 md:px-6">
             <div className="mb-8">
@@ -464,13 +481,15 @@ export default function FinancePage() {
                  <p className="text-muted-foreground mt-1">Visualize o desempenho e o histórico financeiro do seu negócio.</p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full mb-6">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="all">Todos</TabsTrigger>
-                    <TabsTrigger value="rentals">Aluguéis</TabsTrigger>
-                    <TabsTrigger value="operations">Operações</TabsTrigger>
-                </TabsList>
-            </Tabs>
+            {showTabs && (
+                <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full mb-6">
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="all">Todos</TabsTrigger>
+                        <TabsTrigger value="rentals">Aluguéis</TabsTrigger>
+                        <TabsTrigger value="operations">Operações</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
                  <StatCard title="Receita (Mês)" value={formatCurrency(monthlyRevenue)} icon={DollarSign} loading={isLoading} />
