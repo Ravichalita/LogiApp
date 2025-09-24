@@ -24,18 +24,20 @@ async function getUserIdFromSession(req: NextRequest): Promise<string | null> {
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
+    const state = searchParams.get('state'); // Not used in this flow, but good practice to check if needed
 
     if (!code) {
-        return NextResponse.redirect(new URL('/settings?error=google_auth_failed', req.url));
+        return NextResponse.redirect(new URL('/settings?error=google_auth_failed&reason=no_code', req.nextUrl.origin));
+    }
+    
+    // It's crucial to get the user context BEFORE processing the code
+    const userId = await getUserIdFromSession(req);
+    if (!userId) {
+        // This can happen if the session expires during the OAuth flow.
+        return NextResponse.redirect(new URL('/login?error=session_expired', req.nextUrl.origin));
     }
 
     try {
-        const userId = await getUserIdFromSession(req);
-        if (!userId) {
-            // Redirect to login or show an error, as user context is necessary
-            return NextResponse.redirect(new URL('/login?error=session_expired', req.url));
-        }
-        
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
@@ -44,8 +46,7 @@ export async function GET(req: NextRequest) {
 
         const { tokens } = await oAuth2Client.getToken(code);
         
-        // A refresh token is only returned on the first authorization from the user.
-        // If it's missing on subsequent authorizations, it's normal behavior.
+        // A refresh token is only returned on the first authorization.
         if (!tokens.refresh_token) {
             console.log("Refresh token not received. This is expected if the user has previously granted consent.");
         }
@@ -57,27 +58,29 @@ export async function GET(req: NextRequest) {
         const updateData: { [key: string]: any } = {
             'googleCalendar.accessToken': tokens.access_token,
             'googleCalendar.expiryDate': tokens.expiry_date,
-            'googleCalendar.calendarId': 'primary',
+            'googleCalendar.calendarId': 'primary', // Default to primary calendar
         };
 
+        // Only store the refresh token if we receive a new one
         if (tokens.refresh_token) {
             updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
         }
 
         await userRef.update(updateData);
 
-        // After successfully saving tokens, trigger the initial sync
+        // After successfully saving tokens, trigger the initial sync of all existing OSs
         await syncAllOsToGoogleCalendarAction(userId);
 
-        return NextResponse.redirect(new URL('/settings?success=google_auth_complete', req.url));
+        // Redirect back to settings page with a success message
+        return NextResponse.redirect(new URL('/settings?success=google_auth_complete', req.nextUrl.origin));
 
     } catch (error: any) {
         console.error("Error during Google OAuth callback:", error);
-
-        // Extract more specific error codes from the Google API response if available
+        
         const googleErrorCode = error.response?.data?.error;
-        const errorMessage = googleErrorCode || (error instanceof Error ? error.message : 'unknown_error');
+        const errorMessage = `google_error_${googleErrorCode || 'unknown'}`;
 
-        return NextResponse.redirect(new URL(`/settings?error=${encodeURIComponent(errorMessage)}`, req.url));
+        // Redirect with a more specific error
+        return NextResponse.redirect(new URL(`/settings?error=${errorMessage}`, req.nextUrl.origin));
     }
 }

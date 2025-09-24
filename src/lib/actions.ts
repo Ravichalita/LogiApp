@@ -1668,7 +1668,7 @@ export async function getGoogleAuthUrlAction() {
 
         const url = oAuth2Client.generateAuthUrl({
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'consent', // Ensures the user is prompted for consent and we get a refresh token on the first go
             scope: GMAIL_SCOPES,
         });
 
@@ -1689,7 +1689,7 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     const googleCalendar = userData.googleCalendar;
 
     if (!googleCalendar || !googleCalendar.refreshToken) {
-        console.log("Google Calendar não configurado ou sem refresh token para este usuário.");
+        console.log(`Google Calendar não configurado para o usuário ${userId}. Pulando sincronização.`);
         return;
     }
 
@@ -1702,22 +1702,20 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
         refresh_token: googleCalendar.refreshToken,
     });
     
-    let accessToken = googleCalendar.accessToken;
-
     if (!googleCalendar.expiryDate || googleCalendar.expiryDate < Date.now()) {
-        console.log("Token de acesso expirado. Atualizando...");
         try {
+            console.log(`Token de acesso para ${userId} expirado. Atualizando...`);
             const { credentials } = await oAuth2Client.refreshAccessToken();
-            accessToken = credentials.access_token!;
+            // Update the new credentials in the user's document
             await userRef.update({
                 'googleCalendar.accessToken': credentials.access_token,
                 'googleCalendar.expiryDate': credentials.expiry_date,
             });
-            // Re-apply the new credentials to the client for the current operation
+            // Apply the new credentials to the client for the current operation
             oAuth2Client.setCredentials(credentials);
         } catch (error) {
-            console.error('Erro ao atualizar o token de acesso do Google:', error);
-            // TODO: Potentially mark the integration as needing re-authentication
+            console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error);
+            // Optionally, mark the integration as needing re-authentication
             return;
         }
     }
@@ -1730,11 +1728,13 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     const eventId = `logiapp${osType}${os.id}`.replace(/[^a-zA-Z0-9]/g, '');
 
     if (osType === 'rental') {
-        const rental = os as PopulatedRental;
+        const rental = os as PopulatedRental; // Assuming it's populated for details
+        const client = rental.client?.name || 'Cliente desconhecido';
+        const dumpster = rental.dumpster?.name || 'Caçamba desconhecida';
         event = {
             id: eventId,
-            summary: `Aluguel Caçamba - OS #${rental.sequentialId}`,
-            description: `Cliente: ${rental.client?.name || 'N/A'}\nCaçamba: ${rental.dumpster?.name || 'N/A'}\nLocal: ${rental.deliveryAddress}\nObs: ${rental.observations || ''}`,
+            summary: `Aluguel: ${client} - Caçamba: ${dumpster}`,
+            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${client}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
             start: {
                 dateTime: rental.rentalDate,
                 timeZone: 'America/Sao_Paulo',
@@ -1747,10 +1747,11 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     } else {
         const operation = os as PopulatedOperation;
         const opTypes = operation.operationTypes.map(t => t.name).join(', ');
+        const client = operation.client?.name || 'Cliente desconhecido';
         event = {
             id: eventId,
-            summary: `${opTypes} - OS #${operation.sequentialId}`,
-            description: `Cliente: ${operation.client?.name || 'N/A'}\nDestino: ${operation.destinationAddress}\nObs: ${operation.observations || ''}`,
+            summary: `${opTypes} - ${client}`,
+            description: `<b>OS:</b> #${operation.sequentialId}\n<b>Cliente:</b> ${client}\n<b>Destino:</b> ${operation.destinationAddress}\n<b>Observações:</b> ${operation.observations || ''}`,
             start: {
                 dateTime: operation.startDate,
                 timeZone: 'America/Sao_Paulo',
@@ -1769,23 +1770,20 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
         }).catch(() => null); 
 
         if (existingEvent) {
-            console.log(`Evento para OS ${os.sequentialId} já existe. Atualizando...`);
-             await calendar.events.update({
+            await calendar.events.update({
                 calendarId: googleCalendar.calendarId || 'primary',
                 eventId: eventId,
                 requestBody: event,
             });
-            console.log('Evento atualizado com sucesso para a OS:', os.sequentialId);
         } else {
              await calendar.events.insert({
                 calendarId: googleCalendar.calendarId || 'primary',
                 requestBody: event,
             });
-            console.log('Evento criado com sucesso para a OS:', os.sequentialId);
         }
 
     } catch (error) {
-        console.error('Erro ao criar/atualizar evento no Google Calendar:', error);
+        console.error(`Erro ao criar/atualizar evento no Google Calendar para a OS ${os.id}:`, error);
     }
 }
 
@@ -1810,9 +1808,13 @@ export async function syncAllOsToGoogleCalendarAction(userId: string) {
         ...operations.map(os => syncOsToGoogleCalendarAction(userId, os)),
     ];
 
-    await Promise.all(syncPromises);
-
-    return { message: 'success' };
+    try {
+        await Promise.all(syncPromises);
+        return { message: 'success' };
+    } catch(e) {
+        console.error("Error during batch sync:", e);
+        return { message: 'error', error: 'Falha ao sincronizar todos os eventos.' };
+    }
 }
 
 // #endregion
