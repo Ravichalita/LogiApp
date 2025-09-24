@@ -25,16 +25,18 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state'); // Not used in this flow, but good practice to check if needed
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin;
+
 
     if (!code) {
-        return NextResponse.redirect(new URL('/settings?error=google_auth_failed&reason=no_code', req.nextUrl.origin));
+        return NextResponse.redirect(new URL('/settings?error=google_auth_failed&reason=no_code', baseUrl));
     }
     
     // It's crucial to get the user context BEFORE processing the code
     const userId = await getUserIdFromSession(req);
     if (!userId) {
         // This can happen if the session expires during the OAuth flow.
-        return NextResponse.redirect(new URL('/login?error=session_expired', req.nextUrl.origin));
+        return NextResponse.redirect(new URL('/login?error=session_expired', baseUrl));
     }
 
     try {
@@ -72,7 +74,7 @@ export async function GET(req: NextRequest) {
         await syncAllOsToGoogleCalendarAction(userId);
 
         // Redirect back to settings page with a success message
-        return NextResponse.redirect(new URL('/settings?success=google_auth_complete', req.nextUrl.origin));
+        return NextResponse.redirect(new URL('/settings?success=google_auth_complete', baseUrl));
 
     } catch (error: any) {
         console.error("Error during Google OAuth callback:", error);
@@ -81,6 +83,6 @@ export async function GET(req: NextRequest) {
         const errorMessage = `google_error_${googleErrorCode || 'unknown'}`;
 
         // Redirect with a more specific error
-        return NextResponse.redirect(new URL(`/settings?error=${errorMessage}`, req.nextUrl.origin));
+        return NextResponse.redirect(new URL(`/settings?error=${errorMessage}`, baseUrl));
     }
 }
