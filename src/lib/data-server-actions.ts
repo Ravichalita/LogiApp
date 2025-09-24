@@ -2,8 +2,8 @@
 
 'use server';
 
-import { getFirestore, Timestamp, onSnapshot } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Operation } from './types';
+import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/firestore';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Operation, Truck } from './types';
 import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay } from 'date-fns';
 
@@ -566,3 +566,70 @@ export async function getWeatherForecastAction(
     return null;
   }
 }
+
+// #region Server-Side Data Fetchers for Calendar Sync
+export async function getPopulatedRentalsForServer(accountId: string): Promise<PopulatedRental[]> {
+  const rentalsSnap = await adminDb.collection(`accounts/${accountId}/rentals`).get();
+  if (rentalsSnap.empty) return [];
+
+  const rentalsData = rentalsSnap.docs.map(doc => docToSerializable(doc) as Rental);
+
+  const clientIds = [...new Set(rentalsData.map(r => r.clientId))];
+  const dumpsterIds = [...new Set(rentalsData.map(r => r.dumpsterId))];
+  const userIds = [...new Set(rentalsData.map(r => r.assignedTo))];
+
+  const [clientsSnap, dumpstersSnap, usersSnap] = await Promise.all([
+    clientIds.length ? adminDb.collection(`accounts/${accountId}/clients`).where(FieldPath.documentId(), 'in', clientIds).get() : Promise.resolve({ docs: [] }),
+    dumpsterIds.length ? adminDb.collection(`accounts/${accountId}/dumpsters`).where(FieldPath.documentId(), 'in', dumpsterIds).get() : Promise.resolve({ docs: [] }),
+    userIds.length ? adminDb.collection('users').where(FieldPath.documentId(), 'in', userIds).get() : Promise.resolve({ docs: [] }),
+  ]);
+
+  const clientsMap = new Map(clientsSnap.docs.map(d => [d.id, docToSerializable(d)]));
+  const dumpstersMap = new Map(dumpstersSnap.docs.map(d => [d.id, docToSerializable(d)]));
+  const usersMap = new Map(usersSnap.docs.map(d => [d.id, docToSerializable(d)]));
+
+  return rentalsData.map(rental => ({
+    ...rental,
+    itemType: 'rental',
+    client: clientsMap.get(rental.clientId) || null,
+    dumpster: dumpstersMap.get(rental.dumpsterId) || null,
+    assignedToUser: usersMap.get(rental.assignedTo) || null,
+  }));
+}
+
+export async function getPopulatedOperationsForServer(accountId: string): Promise<PopulatedOperation[]> {
+    const accountSnap = await adminDb.doc(`accounts/${accountId}`).get();
+    if (!accountSnap.exists) return [];
+    
+    const operationTypes = accountSnap.data()?.operationTypes as OperationType[] || [];
+    const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
+    
+    const opsSnap = await adminDb.collection(`accounts/${accountId}/operations`).get();
+    if (opsSnap.empty) return [];
+
+    const opsData = opsSnap.docs.map(doc => docToSerializable(doc) as Operation);
+
+    const clientIds = [...new Set(opsData.map(o => o.clientId))];
+    const truckIds = [...new Set(opsData.map(o => o.truckId).filter(Boolean))];
+    const driverIds = [...new Set(opsData.map(o => o.driverId))];
+
+    const [clientsSnap, trucksSnap, driversSnap] = await Promise.all([
+        clientIds.length ? adminDb.collection(`accounts/${accountId}/clients`).where(FieldPath.documentId(), 'in', clientIds).get() : Promise.resolve({ docs: [] }),
+        truckIds.length ? adminDb.collection(`accounts/${accountId}/trucks`).where(FieldPath.documentId(), 'in', truckIds).get() : Promise.resolve({ docs: [] }),
+        driverIds.length ? adminDb.collection('users').where(FieldPath.documentId(), 'in', driverIds).get() : Promise.resolve({ docs: [] }),
+    ]);
+
+    const clientsMap = new Map(clientsSnap.docs.map(d => [d.id, docToSerializable(d)]));
+    const trucksMap = new Map(trucksSnap.docs.map(d => [d.id, docToSerializable(d)]));
+    const driversMap = new Map(driversSnap.docs.map(d => [d.id, docToSerializable(d)]));
+    
+    return opsData.map(op => ({
+        ...op,
+        itemType: 'operation',
+        operationTypes: (op.typeIds || []).map(id => ({ id, name: opTypeMap.get(id) || 'Tipo desconhecido' })),
+        client: clientsMap.get(op.clientId) || null,
+        truck: op.truckId ? trucksMap.get(op.truckId) || null : null,
+        driver: driversMap.get(op.driverId) || null,
+    }));
+}
+// #endregion

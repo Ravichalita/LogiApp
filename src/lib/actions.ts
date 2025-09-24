@@ -16,7 +16,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
 import { google } from 'googleapis';
-import { getPopulatedRentals, getPopulatedOperations } from './data';
+import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -1800,8 +1800,8 @@ export async function syncAllOsToGoogleCalendarAction(userId: string) {
     }
     
     // Fetch all OSs for the user's account
-    const rentals = await getPopulatedRentals(userData.accountId, () => {});
-    const operations = await getPopulatedOperations(userData.accountId, () => {});
+    const rentals = await getPopulatedRentalsForServer(userData.accountId);
+    const operations = await getPopulatedOperationsForServer(userData.accountId);
 
     const syncPromises = [
         ...rentals.map(os => syncOsToGoogleCalendarAction(userId, os)),
@@ -2197,3 +2197,4 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
