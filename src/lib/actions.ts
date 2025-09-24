@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -1718,7 +1719,6 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         refresh_token: googleCalendar.refreshToken,
     });
     
-    // Check if the access token is expired or close to expiring, then refresh it.
     if (!googleCalendar.accessToken || !googleCalendar.expiryDate || googleCalendar.expiryDate < (Date.now() + 60000)) {
         try {
             const { credentials } = await oAuth2Client.refreshAccessToken();
@@ -1730,7 +1730,6 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
             oAuth2Client.setCredentials(credentials);
         } catch (error: any) {
             console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error.response?.data || error.message);
-            // Invalidate the refresh token as it might be revoked.
             await userRef.update({ 'googleCalendar': FieldValue.delete() });
             console.log(`Refresh token for user ${userId} invalidated due to error.`);
             return;
@@ -1820,7 +1819,6 @@ export async function syncAllOsToGoogleCalendarAction(userId: string) {
         return { message: 'error', error: 'Integração com Google Agenda não configurada.' };
     }
     
-    // Fetch all OSs for the user's account
     const rentals = await getPopulatedRentalsForServer(userData.accountId);
     const operations = await getPopulatedOperationsForServer(userData.accountId);
 
@@ -2220,3 +2218,4 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+

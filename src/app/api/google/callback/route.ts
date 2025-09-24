@@ -56,8 +56,6 @@ export async function GET(req: NextRequest) {
             'googleCalendar.calendarId': 'primary', // Default to primary calendar
         };
 
-        // A refresh token is only returned on the first authorization.
-        // It's crucial to save it when received.
         if (tokens.refresh_token) {
             updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
         }
