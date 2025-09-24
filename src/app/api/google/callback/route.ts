@@ -48,13 +48,6 @@ export async function GET(req: NextRequest) {
 
         const { tokens } = await oAuth2Client.getToken(code);
         
-        // A refresh token is only returned on the first authorization.
-        if (!tokens.refresh_token) {
-            console.log("Refresh token not received. This is expected if the user has previously granted consent.");
-        }
-        
-        oAuth2Client.setCredentials(tokens);
-
         const userRef = adminDb.doc(`users/${userId}`);
 
         const updateData: { [key: string]: any } = {
@@ -63,7 +56,8 @@ export async function GET(req: NextRequest) {
             'googleCalendar.calendarId': 'primary', // Default to primary calendar
         };
 
-        // Only store the refresh token if we receive a new one
+        // A refresh token is only returned on the first authorization.
+        // It's crucial to save it when received.
         if (tokens.refresh_token) {
             updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
         }

@@ -1668,7 +1668,7 @@ export async function getGoogleAuthUrlAction() {
 
         const url = oAuth2Client.generateAuthUrl({
             access_type: 'offline',
-            prompt: 'consent', // Ensures the user is prompted for consent and we get a refresh token on the first go
+            prompt: 'consent',
             scope: GMAIL_SCOPES,
         });
 
@@ -1722,7 +1722,6 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
     // Check if the access token is expired or close to expiring, then refresh it.
     if (!googleCalendar.accessToken || !googleCalendar.expiryDate || googleCalendar.expiryDate < (Date.now() + 60000)) {
         try {
-            console.log(`Token de acesso para ${userId} expirado ou ausente. Atualizando...`);
             const { credentials } = await oAuth2Client.refreshAccessToken();
             
             await userRef.update({
@@ -1730,18 +1729,14 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
                 'googleCalendar.expiryDate': credentials.expiry_date,
             });
             oAuth2Client.setCredentials(credentials);
-        } catch (error) {
-            console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error);
-            await userRef.update({
-                'googleCalendar.refreshToken': FieldValue.delete(), // Invalidate the refresh token as it might be revoked.
-                'googleCalendar.accessToken': FieldValue.delete(),
-                'googleCalendar.expiryDate': FieldValue.delete(),
-            });
+        } catch (error: any) {
+            console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error.response?.data || error.message);
+            // Invalidate the refresh token as it might be revoked.
+            await userRef.update({ 'googleCalendar': FieldValue.delete() });
             console.log(`Refresh token for user ${userId} invalidated due to error.`);
-            return; // Stop the sync process if token refresh fails.
+            return;
         }
     } else {
-        // If not expired, set the existing access token
         oAuth2Client.setCredentials({
             access_token: googleCalendar.accessToken,
             refresh_token: googleCalendar.refreshToken,
@@ -1789,7 +1784,6 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
     }
 
     try {
-        // Check if event already exists to decide whether to update or insert
         const existingEvent = await calendar.events.get({
             calendarId: googleCalendar.calendarId || 'primary',
             eventId: eventId,
@@ -2221,4 +2215,5 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
 
