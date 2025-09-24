@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
             redirectUri // Use the dynamically constructed redirect URI
         );
 
-        const { tokens } = await oAuth2Client.getToken(code);
+        const { tokens } = await oAuth2Client.getToken({ code, redirect_uri: redirectUri });
         
         const userRef = adminDb.doc(`users/${userId}`);
 
