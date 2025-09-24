@@ -20,6 +20,58 @@ import { OperationTypesForm } from './operation-types-form';
 import { CostSettingsForm } from './cost-settings-form';
 import { GoogleCalendarIntegration } from './google-calendar-integration';
 
+import { useSearchParams } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+
+function GoogleAuthFeedback() {
+    const searchParams = useSearchParams();
+    const { toast } = useToast();
+    const error = searchParams.get('error');
+    const success = searchParams.get('success');
+
+    useEffect(() => {
+        if (error) {
+            let title = 'Erro na Autenticação com Google';
+            let description = 'Ocorreu um erro desconhecido. Tente novamente.';
+
+            switch (error) {
+                case 'access_denied':
+                    title = 'Acesso Negado';
+                    description = 'Você negou o acesso à sua conta do Google. Se desejar, pode tentar novamente.';
+                    break;
+                case 'invalid_grant':
+                    title = 'Erro de Configuração';
+                    description = 'A autenticação falhou. Isso pode ser devido a uma configuração incorreta no Google Cloud Console (ex: URI de redirecionamento inválido) ou um problema com os tokens de acesso. Verifique as configurações e tente reconectar.';
+                    break;
+                 case 'google_auth_failed':
+                    description = 'A autenticação com o Google falhou. Por favor, tente novamente.';
+                    break;
+                default:
+                    description = `Ocorreu um erro: ${error}. Por favor, tente novamente.`;
+                    break;
+            }
+
+            toast({
+                title: title,
+                description: description,
+                variant: 'destructive',
+                duration: 10000,
+            });
+        }
+
+        if (success === 'google_auth_complete') {
+            toast({
+                title: 'Conexão Bem-sucedida!',
+                description: 'Sua conta foi conectada ao Google Agenda com sucesso.',
+                variant: 'success',
+            });
+        }
+    }, [error, success, toast]);
+
+    return null; // This component does not render anything itself
+}
+
+
 export default function SettingsPage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [account, setAccount] = useState<Account | null>(null);
@@ -62,6 +114,7 @@ export default function SettingsPage() {
 
     return (
         <div className="bg-background min-h-full">
+            <GoogleAuthFeedback />
             <div className="container mx-auto py-8 px-4 md:px-6">
                 <div className="mb-8">
                     <h1 className="text-3xl font-headline font-bold">Configurações</h1>

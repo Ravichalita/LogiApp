@@ -32,7 +32,8 @@ export async function GET(req: NextRequest) {
     try {
         const userId = await getUserIdFromSession(req);
         if (!userId) {
-            throw new Error("Usuário não autenticado. Por favor, faça login novamente.");
+            // Redirect to login or show an error, as user context is necessary
+            return NextResponse.redirect(new URL('/login?error=session_expired', req.url));
         }
         
         const oAuth2Client = new google.auth.OAuth2(
@@ -43,29 +44,40 @@ export async function GET(req: NextRequest) {
 
         const { tokens } = await oAuth2Client.getToken(code);
         
+        // A refresh token is only returned on the first authorization from the user.
+        // If it's missing on subsequent authorizations, it's normal behavior.
         if (!tokens.refresh_token) {
-            console.warn("Refresh token não recebido. O usuário pode precisar re-autenticar no futuro.");
+            console.log("Refresh token not received. This is expected if the user has previously granted consent.");
         }
         
         oAuth2Client.setCredentials(tokens);
 
         const userRef = adminDb.doc(`users/${userId}`);
 
-        await userRef.update({
+        const updateData: { [key: string]: any } = {
             'googleCalendar.accessToken': tokens.access_token,
-            'googleCalendar.refreshToken': tokens.refresh_token,
             'googleCalendar.expiryDate': tokens.expiry_date,
-            'googleCalendar.calendarId': 'primary', // Default to primary calendar
-        });
+            'googleCalendar.calendarId': 'primary',
+        };
+
+        if (tokens.refresh_token) {
+            updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
+        }
+
+        await userRef.update(updateData);
 
         // After successfully saving tokens, trigger the initial sync
         await syncAllOsToGoogleCalendarAction(userId);
 
         return NextResponse.redirect(new URL('/settings?success=google_auth_complete', req.url));
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error during Google OAuth callback:", error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+        // Extract more specific error codes from the Google API response if available
+        const googleErrorCode = error.response?.data?.error;
+        const errorMessage = googleErrorCode || (error instanceof Error ? error.message : 'unknown_error');
+
         return NextResponse.redirect(new URL(`/settings?error=${encodeURIComponent(errorMessage)}`, req.url));
     }
 }
