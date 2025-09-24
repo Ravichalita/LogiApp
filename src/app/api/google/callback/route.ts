@@ -24,7 +24,6 @@ async function getUserIdFromSession(req: NextRequest): Promise<string | null> {
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
-    const state = searchParams.get('state'); // Not used in this flow, but good practice to check if needed
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin;
     const redirectUri = `${baseUrl}/api/google/callback`;
 
@@ -44,7 +43,7 @@ export async function GET(req: NextRequest) {
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
-            redirectUri // Use the dynamically constructed redirect URI
+            redirectUri
         );
 
         const { tokens } = await oAuth2Client.getToken({ code, redirect_uri: redirectUri });
@@ -63,7 +62,8 @@ export async function GET(req: NextRequest) {
             updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
         }
 
-        await userRef.update(updateData);
+        await userRef.set({ googleCalendar: updateData.googleCalendar }, { merge: true });
+
 
         // After successfully saving tokens, trigger the initial sync of all existing OSs
         await syncAllOsToGoogleCalendarAction(userId);
