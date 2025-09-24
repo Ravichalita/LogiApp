@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -15,6 +14,7 @@ import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, se
 import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
+import { google } from 'googleapis';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -1631,6 +1631,36 @@ export async function deleteStorageFileAction(pathOrUrl: string) {
 
 // #endregion
 
+// #region Google Calendar Actions
+export async function getGoogleAuthUrlAction() {
+    try {
+        const oAuth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            process.env.GOOGLE_REDIRECT_URI
+        );
+
+        const GMAIL_SCOPES = [
+            'https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
+        ];
+
+        const url = oAuth2Client.generateAuthUrl({
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: GMAIL_SCOPES,
+        });
+
+        return { url };
+    } catch (error) {
+        console.error("Error generating Google Auth URL:", error);
+        return { error: 'Falha ao gerar URL de autenticação do Google.' };
+    }
+}
+
+// #endregion
+
 // #region Notification Actions
 export async function uploadNotificationImageAction(accountId: string, image: UploadedImage) {
   if (!accountId || !image) {
@@ -2005,6 +2035,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
     
 
     
+
 
 
 

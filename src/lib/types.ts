@@ -356,6 +356,12 @@ export const CompletedRentalSchema = RentalSchema.extend({
     totalValue: z.number().positive(),
 });
 
+const GoogleCalendarInfoSchema = z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+    expiryDate: z.number(),
+    calendarId: z.string(),
+});
 
 export const UserAccountSchema = z.object({
   id: z.string(),
@@ -372,6 +378,7 @@ export const UserAccountSchema = z.object({
   fcmTokens: z.array(z.string()).optional(),
   hasSeenWelcome: z.boolean().optional(),
   firstAccessAt: z.string().optional(),
+  googleCalendar: GoogleCalendarInfoSchema.optional(),
 });
 
 export const UpdateUserProfileSchema = z.object({

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RentalPricesForm } from '@/app/finance/rental-prices-form';
 import { ResetAllDataButton, ResetActiveRentalsButton, ResetActiveOperationsButton, ResetCompletedRentalsButton, ResetCompletedOperationsButton } from '@/app/settings/reset-button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, TriangleAlert, Cog, Tag, HardDrive, Pin, Workflow, DollarSign } from 'lucide-react';
+import { ShieldAlert, TriangleAlert, Cog, Tag, HardDrive, Pin, Workflow, DollarSign, Calendar } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BackupRestore } from './backup-restore';
 import { BackupSettingsForm } from './backup-settings-form';
@@ -17,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { BaseAddressForm } from './base-address-form';
 import { OperationTypesForm } from './operation-types-form';
 import { CostSettingsForm } from './cost-settings-form';
+import { GoogleCalendarIntegration } from './google-calendar-integration';
 
 export default function SettingsPage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
@@ -146,6 +148,24 @@ export default function SettingsPage() {
                             </AccordionContent>
                         </AccordionItem>
                     )}
+
+                     <AccordionItem value="integrations" className="border rounded-lg bg-card">
+                        <AccordionTrigger className="p-4 hover:no-underline">
+                            <div className="flex items-center gap-3">
+                                <Calendar className="h-6 w-6" />
+                                <div className="text-left">
+                                    <h3 className="font-headline text-lg font-semibold">Integrações</h3>
+                                    <p className="text-sm text-muted-foreground font-normal">Conecte com outros serviços, como o Google Agenda.</p>
+                                </div>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <Separator />
+                            <div className="p-4">
+                                {isLoading || !userAccount ? <Skeleton className="h-24 w-full" /> : <GoogleCalendarIntegration user={userAccount} />}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                     
                     {(isSuperAdmin || permissions?.canAccessSettings) && (
                         <AccordionItem value="backup" className="border rounded-lg bg-card">
