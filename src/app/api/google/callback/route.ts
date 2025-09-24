@@ -24,7 +24,6 @@ async function getUserIdFromSession(req: NextRequest): Promise<string | null> {
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
-    const state = searchParams.get('state');
 
     if (!code) {
         return NextResponse.redirect(new URL('/settings?error=google_auth_failed', req.url));
