@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
             updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
         }
 
-        await userRef.set({ googleCalendar: updateData.googleCalendar }, { merge: true });
+        await userRef.update(updateData);
 
 
         // After successfully saving tokens, trigger the initial sync of all existing OSs
