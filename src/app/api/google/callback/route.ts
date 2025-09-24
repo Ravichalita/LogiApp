@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     const code = searchParams.get('code');
     const state = searchParams.get('state'); // Not used in this flow, but good practice to check if needed
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(req.url).origin;
+    const redirectUri = `${baseUrl}/api/google/callback`;
 
 
     if (!code) {
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
-            process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
+            redirectUri // Use the dynamically constructed redirect URI
         );
 
         const { tokens } = await oAuth2Client.getToken(code);
