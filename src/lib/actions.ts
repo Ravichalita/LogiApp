@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBasesSchema, OperationalCostSchema, UpdateOperationalCostsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema } from './types';
-import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType, OperationalCost } from './types';
+import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType, OperationalCost, PopulatedRental, PopulatedOperation } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
 import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
@@ -15,6 +15,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
 import { google } from 'googleapis';
+import { getPopulatedRentals, getPopulatedOperations } from './data';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -574,7 +575,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
     }
     
-    await rentalsRef.add({
+    const rentalDocRef = await rentalsRef.add({
       ...rentalData,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -587,6 +588,16 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         title: `Nova OS #${newSequentialId} Designada`,
         body: `Você foi designado para a OS da ${dumpsterName}.`,
     });
+
+    // Sync to Google Calendar if integrated
+    const userDoc = await db.doc(`users/${createdBy}`).get();
+    if (userDoc.exists && userDoc.data()?.googleCalendar) {
+        const rentalForSync = await db.doc(rentalDocRef.path).get(); // re-fetch to get populated data
+        if(rentalForSync.exists) {
+            const populatedRental = { id: rentalForSync.id, ...rentalForSync.data() } as Rental;
+            await syncOsToGoogleCalendarAction(createdBy, populatedRental);
+        }
+    }
 
     const swapOriginId = formData.get('swapOriginId') as string | null;
     if (swapOriginId) {
@@ -909,6 +920,16 @@ export async function createOperationAction(accountId: string, createdBy: string
             title: `Nova Operação #${newSequentialId} Designada`,
             body: `Você foi designado para uma operação.`,
         });
+    }
+
+     // Sync to Google Calendar if integrated
+    const userDoc = await db.doc(`users/${createdBy}`).get();
+    if (userDoc.exists && userDoc.data()?.googleCalendar) {
+        const opForSync = await db.doc(opDocRef.path).get();
+        if (opForSync.exists) {
+            const populatedOp = { id: opForSync.id, ...opForSync.data() } as Operation;
+            await syncOsToGoogleCalendarAction(createdBy, populatedOp);
+        }
     }
 
   } catch (e) {
@@ -1659,6 +1680,97 @@ export async function getGoogleAuthUrlAction() {
     }
 }
 
+export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | Operation) {
+    const userRef = adminDb.doc(`users/${userId}`);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) throw new Error("User not found");
+
+    const userData = userSnap.data() as UserAccount;
+    const googleCalendar = userData.googleCalendar;
+
+    if (!googleCalendar || !googleCalendar.accessToken) {
+        console.log("Google Calendar not configured for this user.");
+        return;
+    }
+
+    const oAuth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET
+    );
+    oAuth2Client.setCredentials({
+        access_token: googleCalendar.accessToken,
+        refresh_token: googleCalendar.refreshToken,
+        expiry_date: googleCalendar.expiryDate,
+    });
+
+    const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+
+    let event;
+    if ('dumpsterId' in os) { // It's a Rental
+        event = {
+            summary: `Aluguel Caçamba - OS #${os.sequentialId}`,
+            description: `Cliente: ${(os as PopulatedRental).client?.name}\nCaçamba: ${(os as PopulatedRental).dumpster?.name}\nLocal: ${os.deliveryAddress}\nObs: ${os.observations || ''}`,
+            start: {
+                dateTime: os.rentalDate,
+                timeZone: 'America/Sao_Paulo',
+            },
+            end: {
+                dateTime: os.returnDate,
+                timeZone: 'America/Sao_Paulo',
+            },
+        };
+    } else { // It's an Operation
+        event = {
+            summary: `Operação - OS #${os.sequentialId}`,
+            description: `Cliente: ${(os as PopulatedOperation).client?.name}\nDestino: ${os.destinationAddress}\nObs: ${os.observations || ''}`,
+            start: {
+                dateTime: os.startDate,
+                timeZone: 'America/Sao_Paulo',
+            },
+            end: {
+                dateTime: os.endDate,
+                timeZone: 'America/Sao_Paulo',
+            },
+        };
+    }
+
+    try {
+        await calendar.events.insert({
+            calendarId: googleCalendar.calendarId || 'primary',
+            requestBody: event,
+        });
+        console.log('Event created successfully for OS:', os.sequentialId);
+    } catch (error) {
+        console.error('Error creating calendar event:', error);
+        // Here you might want to handle token refresh logic if the error is related to an expired token.
+    }
+}
+
+export async function syncAllOsToGoogleCalendarAction(userId: string) {
+    const userRef = adminDb.doc(`users/${userId}`);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) throw new Error("User not found");
+
+    const userData = userSnap.data() as UserAccount;
+    if (!userData.googleCalendar || !userData.accountId) {
+        console.log("Google Calendar or accountId not configured for this user.");
+        return { message: 'error', error: 'Integração com Google Agenda não configurada.' };
+    }
+    
+    // Using the data fetching functions from data.ts but on the server
+    const rentals = await getPopulatedRentals(userData.accountId, () => {});
+    const operations = await getPopulatedOperations(userData.accountId, () => {});
+
+    const syncPromises = [
+        ...rentals.map(os => syncOsToGoogleCalendarAction(userId, os)),
+        ...operations.map(os => syncOsToGoogleCalendarAction(userId, os)),
+    ];
+
+    await Promise.all(syncPromises);
+
+    return { message: 'success' };
+}
+
 // #endregion
 
 // #region Notification Actions
@@ -2038,9 +2150,4 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 
-
-
-
-
-
-
+    
