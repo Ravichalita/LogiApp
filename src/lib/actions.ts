@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore';
@@ -1683,13 +1684,13 @@ export async function getGoogleAuthUrlAction() {
 export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | Operation) {
     const userRef = adminDb.doc(`users/${userId}`);
     const userSnap = await userRef.get();
-    if (!userSnap.exists) throw new Error("User not found");
+    if (!userSnap.exists) throw new Error("Usuário não encontrado");
 
     const userData = userSnap.data() as UserAccount;
     const googleCalendar = userData.googleCalendar;
 
-    if (!googleCalendar || !googleCalendar.accessToken) {
-        console.log("Google Calendar not configured for this user.");
+    if (!googleCalendar || !googleCalendar.refreshToken) {
+        console.log("Google Calendar não configurado ou sem refresh token para este usuário.");
         return;
     }
 
@@ -1697,67 +1698,111 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET
     );
+    
     oAuth2Client.setCredentials({
-        access_token: googleCalendar.accessToken,
         refresh_token: googleCalendar.refreshToken,
-        expiry_date: googleCalendar.expiryDate,
     });
+
+    // Handle token refresh
+    oAuth2Client.on('tokens', async (tokens) => {
+        if (tokens.refresh_token) {
+            // A new refresh token is sometimes issued. Store it.
+            console.log("Novo refresh token recebido.");
+            googleCalendar.refreshToken = tokens.refresh_token;
+        }
+        console.log("Access token atualizado.");
+        googleCalendar.accessToken = tokens.access_token!;
+        googleCalendar.expiryDate = tokens.expiry_date!;
+        await userRef.update({ googleCalendar });
+    });
+
+    // Check if the access token is expired and refresh it if necessary
+    if (googleCalendar.expiryDate && googleCalendar.expiryDate < Date.now()) {
+        console.log("Token expirado. Tentando atualizar...");
+        try {
+            await oAuth2Client.getAccessToken();
+        } catch (error) {
+            console.error('Erro ao atualizar o token de acesso do Google:', error);
+            // Potentially mark the integration as needing re-authentication
+            return;
+        }
+    }
+
 
     const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
 
     let event;
-    if ('dumpsterId' in os) { // It's a Rental
+    const osType = 'dumpsterId' in os ? 'rental' : 'operation';
+    const eventId = `logiapp${osType}${os.id}`.replace(/[^a-zA-Z0-9]/g, '');
+
+    if (osType === 'rental') {
+        const rental = os as PopulatedRental;
         event = {
-            summary: `Aluguel Caçamba - OS #${os.sequentialId}`,
-            description: `Cliente: ${(os as PopulatedRental).client?.name}\nCaçamba: ${(os as PopulatedRental).dumpster?.name}\nLocal: ${os.deliveryAddress}\nObs: ${os.observations || ''}`,
+            id: eventId,
+            summary: `Aluguel Caçamba - OS #${rental.sequentialId}`,
+            description: `Cliente: ${rental.client?.name || 'N/A'}\nCaçamba: ${rental.dumpster?.name || 'N/A'}\nLocal: ${rental.deliveryAddress}\nObs: ${rental.observations || ''}`,
             start: {
-                dateTime: os.rentalDate,
+                dateTime: rental.rentalDate,
                 timeZone: 'America/Sao_Paulo',
             },
             end: {
-                dateTime: os.returnDate,
+                dateTime: rental.returnDate,
                 timeZone: 'America/Sao_Paulo',
             },
         };
-    } else { // It's an Operation
+    } else {
+        const operation = os as PopulatedOperation;
+        const opTypes = operation.operationTypes.map(t => t.name).join(', ');
         event = {
-            summary: `Operação - OS #${os.sequentialId}`,
-            description: `Cliente: ${(os as PopulatedOperation).client?.name}\nDestino: ${os.destinationAddress}\nObs: ${os.observations || ''}`,
+            id: eventId,
+            summary: `${opTypes} - OS #${operation.sequentialId}`,
+            description: `Cliente: ${operation.client?.name || 'N/A'}\nDestino: ${operation.destinationAddress}\nObs: ${operation.observations || ''}`,
             start: {
-                dateTime: os.startDate,
+                dateTime: operation.startDate,
                 timeZone: 'America/Sao_Paulo',
             },
             end: {
-                dateTime: os.endDate,
+                dateTime: operation.endDate,
                 timeZone: 'America/Sao_Paulo',
             },
         };
     }
 
     try {
+        // Use events.list to check if the event with this ID already exists
+        const existingEvent = await calendar.events.get({
+            calendarId: googleCalendar.calendarId || 'primary',
+            eventId: eventId,
+        }).catch(() => null); // Ignore error if event is not found
+
+        if (existingEvent) {
+            console.log(`Event for OS ${os.sequentialId} already exists. Skipping creation.`);
+            return;
+        }
+
         await calendar.events.insert({
             calendarId: googleCalendar.calendarId || 'primary',
             requestBody: event,
         });
-        console.log('Event created successfully for OS:', os.sequentialId);
+        console.log('Evento criado com sucesso para a OS:', os.sequentialId);
     } catch (error) {
-        console.error('Error creating calendar event:', error);
-        // Here you might want to handle token refresh logic if the error is related to an expired token.
+        console.error('Erro ao criar evento no Google Calendar:', error);
     }
 }
+
 
 export async function syncAllOsToGoogleCalendarAction(userId: string) {
     const userRef = adminDb.doc(`users/${userId}`);
     const userSnap = await userRef.get();
-    if (!userSnap.exists) throw new Error("User not found");
+    if (!userSnap.exists) throw new Error("Usuário não encontrado.");
 
     const userData = userSnap.data() as UserAccount;
     if (!userData.googleCalendar || !userData.accountId) {
-        console.log("Google Calendar or accountId not configured for this user.");
+        console.log("Integração com o Google Agenda ou accountId não configurados para este usuário.");
         return { message: 'error', error: 'Integração com Google Agenda não configurada.' };
     }
     
-    // Using the data fetching functions from data.ts but on the server
+    // Fetch all OSs for the user's account
     const rentals = await getPopulatedRentals(userData.accountId, () => {});
     const operations = await getPopulatedOperations(userData.accountId, () => {});
 

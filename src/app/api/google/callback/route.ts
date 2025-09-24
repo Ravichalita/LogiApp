@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     try {
         const userId = await getUserIdFromSession(req);
         if (!userId) {
-            throw new Error("User not authenticated. Please log in again.");
+            throw new Error("Usuário não autenticado. Por favor, faça login novamente.");
         }
         
         const oAuth2Client = new google.auth.OAuth2(
@@ -43,6 +43,11 @@ export async function GET(req: NextRequest) {
         );
 
         const { tokens } = await oAuth2Client.getToken(code);
+        
+        if (!tokens.refresh_token) {
+            console.warn("Refresh token não recebido. O usuário pode precisar re-autenticar no futuro.");
+        }
+        
         oAuth2Client.setCredentials(tokens);
 
         const userRef = adminDb.doc(`users/${userId}`);
@@ -65,5 +70,3 @@ export async function GET(req: NextRequest) {
         return NextResponse.redirect(new URL(`/settings?error=${encodeURIComponent(errorMessage)}`, req.url));
     }
 }
-
-    
