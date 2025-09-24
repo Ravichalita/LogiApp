@@ -1663,9 +1663,7 @@ export async function getGoogleAuthUrlAction() {
         );
 
         const GMAIL_SCOPES = [
-            'https://www.googleapis.com/auth/calendar.events',
-            'https://www.googleapis.com/auth/userinfo.email',
-            'https://www.googleapis.com/auth/userinfo.profile',
+            'https://www.googleapis.com/auth/calendar.events'
         ];
 
         const url = oAuth2Client.generateAuthUrl({
@@ -1680,6 +1678,7 @@ export async function getGoogleAuthUrlAction() {
         return { error: 'Falha ao gerar URL de autenticação do Google.' };
     }
 }
+
 
 export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | Operation) {
     const userRef = adminDb.doc(`users/${userId}`);
@@ -1702,28 +1701,23 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     oAuth2Client.setCredentials({
         refresh_token: googleCalendar.refreshToken,
     });
+    
+    let accessToken = googleCalendar.accessToken;
 
-    // Handle token refresh
-    oAuth2Client.on('tokens', async (tokens) => {
-        if (tokens.refresh_token) {
-            // A new refresh token is sometimes issued. Store it.
-            console.log("Novo refresh token recebido.");
-            googleCalendar.refreshToken = tokens.refresh_token;
-        }
-        console.log("Access token atualizado.");
-        googleCalendar.accessToken = tokens.access_token!;
-        googleCalendar.expiryDate = tokens.expiry_date!;
-        await userRef.update({ googleCalendar });
-    });
-
-    // Check if the access token is expired and refresh it if necessary
-    if (googleCalendar.expiryDate && googleCalendar.expiryDate < Date.now()) {
-        console.log("Token expirado. Tentando atualizar...");
+    if (!googleCalendar.expiryDate || googleCalendar.expiryDate < Date.now()) {
+        console.log("Token de acesso expirado. Atualizando...");
         try {
-            await oAuth2Client.getAccessToken();
+            const { credentials } = await oAuth2Client.refreshAccessToken();
+            accessToken = credentials.access_token!;
+            await userRef.update({
+                'googleCalendar.accessToken': credentials.access_token,
+                'googleCalendar.expiryDate': credentials.expiry_date,
+            });
+            // Re-apply the new credentials to the client for the current operation
+            oAuth2Client.setCredentials(credentials);
         } catch (error) {
             console.error('Erro ao atualizar o token de acesso do Google:', error);
-            // Potentially mark the integration as needing re-authentication
+            // TODO: Potentially mark the integration as needing re-authentication
             return;
         }
     }
@@ -1769,24 +1763,29 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     }
 
     try {
-        // Use events.list to check if the event with this ID already exists
         const existingEvent = await calendar.events.get({
             calendarId: googleCalendar.calendarId || 'primary',
             eventId: eventId,
-        }).catch(() => null); // Ignore error if event is not found
+        }).catch(() => null); 
 
         if (existingEvent) {
-            console.log(`Event for OS ${os.sequentialId} already exists. Skipping creation.`);
-            return;
+            console.log(`Evento para OS ${os.sequentialId} já existe. Atualizando...`);
+             await calendar.events.update({
+                calendarId: googleCalendar.calendarId || 'primary',
+                eventId: eventId,
+                requestBody: event,
+            });
+            console.log('Evento atualizado com sucesso para a OS:', os.sequentialId);
+        } else {
+             await calendar.events.insert({
+                calendarId: googleCalendar.calendarId || 'primary',
+                requestBody: event,
+            });
+            console.log('Evento criado com sucesso para a OS:', os.sequentialId);
         }
 
-        await calendar.events.insert({
-            calendarId: googleCalendar.calendarId || 'primary',
-            requestBody: event,
-        });
-        console.log('Evento criado com sucesso para a OS:', os.sequentialId);
     } catch (error) {
-        console.error('Erro ao criar evento no Google Calendar:', error);
+        console.error('Erro ao criar/atualizar evento no Google Calendar:', error);
     }
 }
 
