@@ -1696,7 +1696,7 @@ export async function disconnectGoogleCalendarAction(userId: string) {
 }
 
 
-export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | Operation) {
+export async function syncOsToGoogleCalendarAction(userId: string, os: PopulatedRental | PopulatedOperation) {
     const userRef = adminDb.doc(`users/${userId}`);
     const userSnap = await userRef.get();
     if (!userSnap.exists) throw new Error("Usuário não encontrado");
@@ -1711,46 +1711,56 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
 
     const oAuth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     );
     
     oAuth2Client.setCredentials({
         refresh_token: googleCalendar.refreshToken,
     });
     
-    if (!googleCalendar.expiryDate || googleCalendar.expiryDate < Date.now()) {
+    // Check if the access token is expired or close to expiring, then refresh it.
+    if (!googleCalendar.accessToken || !googleCalendar.expiryDate || googleCalendar.expiryDate < (Date.now() + 60000)) {
         try {
-            console.log(`Token de acesso para ${userId} expirado. Atualizando...`);
+            console.log(`Token de acesso para ${userId} expirado ou ausente. Atualizando...`);
             const { credentials } = await oAuth2Client.refreshAccessToken();
-            // Update the new credentials in the user's document
+            
             await userRef.update({
                 'googleCalendar.accessToken': credentials.access_token,
                 'googleCalendar.expiryDate': credentials.expiry_date,
             });
-            // Apply the new credentials to the client for the current operation
             oAuth2Client.setCredentials(credentials);
         } catch (error) {
             console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error);
-            // Optionally, mark the integration as needing re-authentication
-            return;
+            await userRef.update({
+                'googleCalendar.refreshToken': FieldValue.delete(), // Invalidate the refresh token as it might be revoked.
+                'googleCalendar.accessToken': FieldValue.delete(),
+                'googleCalendar.expiryDate': FieldValue.delete(),
+            });
+            console.log(`Refresh token for user ${userId} invalidated due to error.`);
+            return; // Stop the sync process if token refresh fails.
         }
+    } else {
+        // If not expired, set the existing access token
+        oAuth2Client.setCredentials({
+            access_token: googleCalendar.accessToken,
+            refresh_token: googleCalendar.refreshToken,
+        });
     }
 
 
     const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
 
     let event;
-    const osType = 'dumpsterId' in os ? 'rental' : 'operation';
+    const osType = os.itemType;
     const eventId = `logiapp${osType}${os.id}`.replace(/[^a-zA-Z0-9]/g, '');
 
     if (osType === 'rental') {
-        const rental = os as PopulatedRental; // Assuming it's populated for details
-        const client = rental.client?.name || 'Cliente desconhecido';
-        const dumpster = rental.dumpster?.name || 'Caçamba desconhecida';
+        const rental = os as PopulatedRental;
         event = {
             id: eventId,
-            summary: `Aluguel: ${client} - Caçamba: ${dumpster}`,
-            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${client}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
+            summary: `Aluguel: ${rental.client?.name} - Caçamba: ${rental.dumpster?.name}`,
+            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
             start: {
                 dateTime: rental.rentalDate,
                 timeZone: 'America/Sao_Paulo',
@@ -1763,11 +1773,10 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     } else {
         const operation = os as PopulatedOperation;
         const opTypes = operation.operationTypes.map(t => t.name).join(', ');
-        const client = operation.client?.name || 'Cliente desconhecido';
         event = {
             id: eventId,
-            summary: `${opTypes} - ${client}`,
-            description: `<b>OS:</b> #${operation.sequentialId}\n<b>Cliente:</b> ${client}\n<b>Destino:</b> ${operation.destinationAddress}\n<b>Observações:</b> ${operation.observations || ''}`,
+            summary: `${opTypes} - ${operation.client?.name}`,
+            description: `<b>OS:</b> #${operation.sequentialId}\n<b>Cliente:</b> ${operation.client?.name}\n<b>Destino:</b> ${operation.destinationAddress}\n<b>Observações:</b> ${operation.observations || ''}`,
             start: {
                 dateTime: operation.startDate,
                 timeZone: 'America/Sao_Paulo',
@@ -1780,6 +1789,7 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
     }
 
     try {
+        // Check if event already exists to decide whether to update or insert
         const existingEvent = await calendar.events.get({
             calendarId: googleCalendar.calendarId || 'primary',
             eventId: eventId,
@@ -1791,11 +1801,13 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Rental | 
                 eventId: eventId,
                 requestBody: event,
             });
+             console.log(`Evento ${eventId} atualizado no Google Calendar.`);
         } else {
              await calendar.events.insert({
                 calendarId: googleCalendar.calendarId || 'primary',
                 requestBody: event,
             });
+            console.log(`Evento ${eventId} criado no Google Calendar.`);
         }
 
     } catch (error) {
@@ -2210,6 +2222,3 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
     
 
-
-
-    

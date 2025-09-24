@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
-            process.env.GOOGLE_REDIRECT_URI
+            process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
         );
 
         const { tokens } = await oAuth2Client.getToken(code);
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
         await syncAllOsToGoogleCalendarAction(userId);
 
         // Redirect back to settings page with a success message
-        return NextResponse.redirect(new URL('/settings?success=google_auth_complete', baseUrl));
+        return NextResponse.redirect(new URL('/os?success=google_auth_complete', baseUrl));
 
     } catch (error: any) {
         console.error("Error during Google OAuth callback:", error);
