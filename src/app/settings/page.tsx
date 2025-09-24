@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { BaseAddressForm } from './base-address-form';
 import { OperationTypesForm } from './operation-types-form';
 import { CostSettingsForm } from './cost-settings-form';
-import { GoogleCalendarIntegration } from './google-calendar-integration';
+
 
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -201,24 +201,6 @@ export default function SettingsPage() {
                             </AccordionContent>
                         </AccordionItem>
                     )}
-
-                     <AccordionItem value="integrations" className="border rounded-lg bg-card">
-                        <AccordionTrigger className="p-4 hover:no-underline">
-                            <div className="flex items-center gap-3">
-                                <Calendar className="h-6 w-6" />
-                                <div className="text-left">
-                                    <h3 className="font-headline text-lg font-semibold">Integrações</h3>
-                                    <p className="text-sm text-muted-foreground font-normal">Conecte com outros serviços, como o Google Agenda.</p>
-                                </div>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            <Separator />
-                            <div className="p-4">
-                                {isLoading || !userAccount ? <Skeleton className="h-24 w-full" /> : <GoogleCalendarIntegration user={userAccount} />}
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
                     
                     {(isSuperAdmin || permissions?.canAccessSettings) && (
                         <AccordionItem value="backup" className="border rounded-lg bg-card">

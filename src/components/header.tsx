@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Menu } from "lucide-react";
+import { LogOut, User as UserIcon, Menu, CheckCircle, ExternalLink, Calendar, LogOutIcon } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -20,8 +20,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
-import React from "react";
+import React, { useTransition } from "react";
 import { Home, Container, Users, Truck, Workflow, Map } from 'lucide-react';
+import { getGoogleAuthUrlAction, disconnectGoogleCalendarAction } from "@/lib/actions";
+import { useToast } from "@/hooks/use-toast";
+import { Spinner } from "./ui/spinner";
 
 
 const allNavLinks = [
@@ -37,6 +40,9 @@ export function Header({ className }: { className?: string }) {
   const { user, userAccount, logout, isSuperAdmin } = useAuth();
   const isMobile = useIsMobile();
   const [isClient, setIsClient] = React.useState(false);
+  const [isConnecting, startConnectTransition] = useTransition();
+  const [isDisconnecting, startDisconnectTransition] = useTransition();
+  const { toast } = useToast();
 
   React.useEffect(() => {
     setIsClient(true);
@@ -63,6 +69,51 @@ export function Header({ className }: { className?: string }) {
         {link.label}
       </Link>
     ));
+
+  const handleConnectGoogleCalendar = () => {
+    startConnectTransition(async () => {
+      try {
+        const result = await getGoogleAuthUrlAction();
+        if (result.url) {
+          window.location.href = result.url;
+        } else {
+          throw new Error(result.error || 'Não foi possível obter a URL de autenticação.');
+        }
+      } catch (error) {
+        toast({
+          title: 'Erro de Conexão',
+          description: error instanceof Error ? error.message : 'Falha ao iniciar a conexão com o Google.',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
+
+  const handleDisconnectGoogleCalendar = () => {
+    if (!user) return;
+    startDisconnectTransition(async () => {
+      try {
+        const result = await disconnectGoogleCalendarAction(user.uid);
+        if (result.message === 'success') {
+          toast({
+            title: 'Desconectado',
+            description: 'Sua conta do Google Agenda foi desconectada.',
+          });
+        } else {
+          throw new Error(result.error || 'Não foi possível desconectar.');
+        }
+      } catch(error) {
+         toast({
+          title: 'Erro',
+          description: error instanceof Error ? error.message : 'Falha ao desconectar do Google Agenda.',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
+
+  const isGoogleCalendarConnected = !!userAccount?.googleCalendar?.accessToken;
+
 
   // Hide header on auth pages
   if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email') || pathname.startsWith('/restore-from-backup') || pathname.startsWith('/access-denied')) {
@@ -127,6 +178,26 @@ export function Header({ className }: { className?: string }) {
                       <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+
+              {isGoogleCalendarConnected ? (
+                <>
+                    <DropdownMenuItem disabled>
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                      <span>Google Agenda Conectado</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleDisconnectGoogleCalendar} disabled={isDisconnecting}>
+                      {isDisconnecting ? <Spinner size="small" className="mr-2" /> : <LogOutIcon className="mr-2 h-4 w-4" />}
+                      <span>Desconectar</span>
+                    </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem onClick={handleConnectGoogleCalendar} disabled={isConnecting}>
+                    {isConnecting ? <Spinner size="small" className="mr-2" /> : <Calendar className="mr-2 h-4 w-4" />}
+                    <span>Conectar Google Agenda</span>
+                </DropdownMenuItem>
+              )}
+              
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />

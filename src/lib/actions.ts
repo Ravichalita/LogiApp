@@ -1659,7 +1659,7 @@ export async function getGoogleAuthUrlAction() {
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
             process.env.GOOGLE_CLIENT_SECRET,
-            process.env.GOOGLE_REDIRECT_URI
+            process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
         );
 
         const GMAIL_SCOPES = [
@@ -1676,6 +1676,22 @@ export async function getGoogleAuthUrlAction() {
     } catch (error) {
         console.error("Error generating Google Auth URL:", error);
         return { error: 'Falha ao gerar URL de autenticação do Google.' };
+    }
+}
+
+export async function disconnectGoogleCalendarAction(userId: string) {
+    if (!userId) {
+        return { message: 'error' as const, error: 'Usuário não identificado.' };
+    }
+    try {
+        const userRef = adminDb.doc(`users/${userId}`);
+        await userRef.update({
+            googleCalendar: FieldValue.delete()
+        });
+        revalidatePath('/');
+        return { message: 'success' as const };
+    } catch(e) {
+        return { message: 'error' as const, error: handleFirebaseError(e) };
     }
 }
 
@@ -2197,4 +2213,3 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
-
