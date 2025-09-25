@@ -38,19 +38,18 @@ export async function GET(req: NextRequest) {
         const { tokens } = await oAuth2Client.getToken({ code, redirect_uri: redirectUri });
         
         const userRef = adminDb.doc(`users/${userId}`);
+        const userSnap = await userRef.get();
+        const existingData = userSnap.data()?.googleCalendar || {};
 
-        const updateData: { [key: string]: any } = {
-            'googleCalendar.accessToken': tokens.access_token,
-            'googleCalendar.expiryDate': tokens.expiry_date,
-            'googleCalendar.calendarId': 'primary', // Default to primary calendar
+        const newGoogleCalendarData = {
+            accessToken: tokens.access_token,
+            expiryDate: tokens.expiry_date,
+            refreshToken: tokens.refresh_token || existingData.refreshToken, // Preserve old refresh token if a new one isn't provided
+            calendarId: existingData.calendarId || 'primary', // Preserve existing calendar ID or default to primary
         };
 
-        if (tokens.refresh_token) {
-            updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
-        }
-
-        // Use .update() to correctly handle dot notation for nested objects
-        await userRef.update(updateData);
+        // Atomically set the entire googleCalendar object
+        await userRef.set({ googleCalendar: newGoogleCalendarData }, { merge: true });
 
 
         // After successfully saving tokens, trigger the initial sync of all existing OSs
