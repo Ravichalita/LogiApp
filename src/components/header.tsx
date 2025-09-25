@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Image from "next/image";
@@ -71,9 +72,10 @@ export function Header({ className }: { className?: string }) {
     ));
 
   const handleConnectGoogleCalendar = () => {
+    if (!user) return;
     startConnectTransition(async () => {
       try {
-        const result = await getGoogleAuthUrlAction();
+        const result = await getGoogleAuthUrlAction(user.uid);
         if (result.url) {
           window.location.href = result.url;
         } else {

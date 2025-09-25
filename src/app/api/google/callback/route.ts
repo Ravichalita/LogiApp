@@ -1,24 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 import { syncAllOsToGoogleCalendarAction } from '@/lib/actions';
 
-// Helper function to get the user ID from the session cookie
-async function getUserIdFromSession(req: NextRequest): Promise<string | null> {
-    const sessionCookie = req.cookies.get('__session')?.value;
-    if (!sessionCookie) {
-        console.log("No session cookie found");
-        return null;
-    }
-
-    try {
-        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-        return decodedToken.uid;
-    } catch (error) {
-        console.error("Error verifying session cookie:", error);
-        return null;
-    }
+// This function now gets the user ID from the state parameter, not a session cookie.
+async function getUserIdFromState(req: NextRequest): Promise<string | null> {
+    const { searchParams } = new URL(req.url);
+    return searchParams.get('state');
 }
 
 export async function GET(req: NextRequest) {
@@ -33,10 +22,10 @@ export async function GET(req: NextRequest) {
     }
     
     // It's crucial to get the user context BEFORE processing the code
-    const userId = await getUserIdFromSession(req);
+    const userId = await getUserIdFromState(req);
     if (!userId) {
-        // This can happen if the session expires during the OAuth flow.
-        return NextResponse.redirect(new URL('/login?error=session_expired', baseUrl));
+        // This can happen if the state parameter is lost or tampered with.
+        return NextResponse.redirect(new URL('/login?error=invalid_state', baseUrl));
     }
 
     try {
@@ -60,6 +49,7 @@ export async function GET(req: NextRequest) {
             updateData['googleCalendar.refreshToken'] = tokens.refresh_token;
         }
 
+        // Use .update() to correctly handle dot notation for nested objects
         await userRef.update(updateData);
 
 

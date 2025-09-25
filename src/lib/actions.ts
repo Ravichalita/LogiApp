@@ -1654,7 +1654,10 @@ export async function deleteStorageFileAction(pathOrUrl: string) {
 // #endregion
 
 // #region Google Calendar Actions
-export async function getGoogleAuthUrlAction() {
+export async function getGoogleAuthUrlAction(userId: string) {
+    if (!userId) {
+        return { error: 'Usuário não autenticado.' };
+    }
     try {
         const oAuth2Client = new google.auth.OAuth2(
             process.env.GOOGLE_CLIENT_ID,
@@ -1670,6 +1673,7 @@ export async function getGoogleAuthUrlAction() {
             access_type: 'offline',
             prompt: 'consent',
             scope: GMAIL_SCOPES,
+            state: userId, // Pass the user ID in the state parameter
         });
 
         return { url };
@@ -2218,4 +2222,5 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
