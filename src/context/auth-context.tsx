@@ -27,11 +27,15 @@ interface BeforeInstallPromptEvent extends Event {
 interface AuthContextType {
   user: User | null;
   userAccount: UserAccount | null;
-  accountId: string | null;
+  accountId: string | null; // This will be the effective accountId (impersonated if active)
+  realAccountId: string | null; // The user's actual accountId
   loading: boolean;
   logout: () => Promise<void>;
   role: UserRole | null;
   isSuperAdmin: boolean;
+  impersonatedAccountId: string | null;
+  setImpersonatedAccountId: (accountId: string) => void;
+  clearImpersonation: () => void;
   deferredPrompt: BeforeInstallPromptEvent | null;
   isPwaInstalled: boolean;
   handleInstall: () => void;
@@ -42,10 +46,14 @@ export const AuthContext = createContext<AuthContextType>({
   user: null,
   userAccount: null,
   accountId: null,
+  realAccountId: null,
   loading: true,
   logout: async () => {},
   role: null,
   isSuperAdmin: false,
+  impersonatedAccountId: null,
+  setImpersonatedAccountId: () => {},
+  clearImpersonation: () => {},
   deferredPrompt: null,
   isPwaInstalled: false,
   handleInstall: () => {},
@@ -84,7 +92,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
-  const [accountId, setAccountId] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null); // The effective (potentially impersonated) account ID
+  const [realAccountId, setRealAccountId] = useState<string | null>(null); // The user's true account ID from claims
+  const [impersonatedAccountId, setImpersonatedAccountIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -103,6 +113,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const userDocUnsubscribe = useRef<() => void | null>(null);
   const accountDocUnsubscribe = useRef<() => void | null>(null);
 
+  const setImpersonatedAccountId = (newAccountId: string) => {
+    if (isSuperAdmin) {
+      localStorage.setItem('impersonatedAccountId', newAccountId);
+      setImpersonatedAccountIdState(newAccountId);
+      setAccountId(newAccountId);
+    }
+  };
+
+  const clearImpersonation = () => {
+    if (isSuperAdmin) {
+      localStorage.removeItem('impersonatedAccountId');
+      setImpersonatedAccountIdState(null);
+      setAccountId(realAccountId);
+    }
+  };
+
   const logout = useCallback(async () => {
     if (userDocUnsubscribe.current) userDocUnsubscribe.current();
     if (accountDocUnsubscribe.current) accountDocUnsubscribe.current();
@@ -110,11 +136,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userDocUnsubscribe.current = null;
     accountDocUnsubscribe.current = null;
     
+    localStorage.removeItem('impersonatedAccountId'); // Clear impersonation on logout
+
     setLoading(true);
     setUser(null);
     setUserAccount(null);
     setAccount(null);
     setAccountId(null);
+    setRealAccountId(null);
+    setImpersonatedAccountIdState(null);
     setRole(null);
     setIsSuperAdmin(false);
     setAccountMissing(false);
@@ -229,14 +259,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        const effectiveAccountId = claimsAccountId!;
+        const userIsSuperAdmin = claimsRole === 'superadmin';
+        setIsSuperAdmin(userIsSuperAdmin);
+        setRealAccountId(claimsAccountId!);
+
+        let effectiveAccountId = claimsAccountId!;
+        if (userIsSuperAdmin) {
+            const storedImpersonationId = localStorage.getItem('impersonatedAccountId');
+            if (storedImpersonationId) {
+                effectiveAccountId = storedImpersonationId;
+                setImpersonatedAccountIdState(storedImpersonationId);
+            }
+        }
         
         setUser(firebaseUser);
         setAccountId(effectiveAccountId);
-        
-        if (claimsRole === 'superadmin') {
-            setIsSuperAdmin(true);
-        }
 
         fcmUnsubscribe.current = await setupFcm(firebaseUser.uid);
         
@@ -395,10 +432,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     userAccount,
     accountId,
+    realAccountId,
     loading,
     logout,
     role,
     isSuperAdmin,
+    impersonatedAccountId,
+    setImpersonatedAccountId,
+    clearImpersonation,
     deferredPrompt,
     isPwaInstalled,
     handleInstall,

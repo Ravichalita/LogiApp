@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AccountSwitcher } from "./account-switcher";
 import React, { useTransition } from "react";
 import { Home, Container, Users, Truck, Workflow, Map } from 'lucide-react';
 import { getGoogleAuthUrlAction, disconnectGoogleCalendarAction } from "@/lib/actions";
@@ -139,6 +140,7 @@ export function Header({ className }: { className?: string }) {
         </div>
 
         <div className="flex flex-1 items-center justify-end space-x-2">
+          <AccountSwitcher />
           {!isMobile && <DesktopHeaderActions />}
           <ThemeToggle />
           
