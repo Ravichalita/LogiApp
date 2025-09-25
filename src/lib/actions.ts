@@ -593,7 +593,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     // Sync to Google Calendar if integrated
     try {
-        const userDoc = await db.doc(`users/${createdBy}`).get();
+        const userDoc = await db.doc(`users/${rentalData.assignedTo}`).get();
         if (userDoc.exists && userDoc.data()?.googleCalendar) {
             // Fetch all data required for the PopulatedRental type
             const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
@@ -609,7 +609,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                 assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
                 truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
             };
-            await syncOsToGoogleCalendarAction(createdBy, populatedRentalForSync);
+            await syncOsToGoogleCalendarAction(rentalData.assignedTo, populatedRentalForSync);
         }
     } catch (syncError: any) {
         console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
@@ -758,7 +758,9 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     try {
         const rentalRef = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
         
-        const rentalBeforeUpdate = (await rentalRef.get()).data() as Rental;
+        const rentalBeforeUpdateSnap = await rentalRef.get();
+        if (!rentalBeforeUpdateSnap.exists) throw new Error("OS não encontrada.");
+        const rentalBeforeUpdate = rentalBeforeUpdateSnap.data() as Rental;
         
         await rentalRef.update({
           ...updateData,
@@ -774,6 +776,32 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                 title: 'Você foi designado para uma OS',
                 body: `Você agora é o responsável pela OS para ${clientName}.`,
             });
+
+            // Sync to Google Calendar
+            try {
+                const userDoc = await adminDb.doc(`users/${updateData.assignedTo}`).get();
+                if (userDoc.exists && userDoc.data()?.googleCalendar) {
+
+                    const updatedRentalData = { ...rentalBeforeUpdate, ...updateData };
+
+                    const dumpsterSnap = await adminDb.doc(`accounts/${accountId}/dumpsters/${updatedRentalData.dumpsterId}`).get();
+                    const assignedToSnap = userDoc;
+                    const truckSnap = updatedRentalData.truckId ? await adminDb.doc(`accounts/${accountId}/trucks/${updatedRentalData.truckId}`).get() : null;
+
+                    const populatedRentalForSync: PopulatedRental = {
+                        id: id,
+                        ...updatedRentalData,
+                        itemType: 'rental',
+                        client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
+                        dumpster: dumpsterSnap.exists ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as any : null,
+                        assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
+                        truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
+                    };
+                    await syncOsToGoogleCalendarAction(updateData.assignedTo, populatedRentalForSync);
+                }
+            } catch (syncError: any) {
+                console.error(`Falha ao sincronizar a atualização da OS ${id} com o Google Agenda:`, syncError.message);
+            }
         }
         
         revalidatePath('/');
@@ -943,7 +971,7 @@ export async function createOperationAction(accountId: string, createdBy: string
 
      // Sync to Google Calendar if integrated
      try {
-        const userDoc = await db.doc(`users/${createdBy}`).get();
+        const userDoc = await db.doc(`users/${operationData.driverId}`).get();
         if (userDoc.exists && userDoc.data()?.googleCalendar) {
             const clientSnap = await db.doc(`accounts/${accountId}/clients/${operationData.clientId}`).get();
             const driverSnap = await db.doc(`users/${operationData.driverId}`).get();
@@ -962,7 +990,7 @@ export async function createOperationAction(accountId: string, createdBy: string
                 truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
                 operationTypes: (operationData.typeIds || []).map(id => ({ id, name: opTypeMap.get(id) || 'Tipo desconhecido' })),
             };
-            await syncOsToGoogleCalendarAction(createdBy, populatedOpForSync);
+            await syncOsToGoogleCalendarAction(operationData.driverId, populatedOpForSync);
         }
     } catch(syncError: any) {
         console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
@@ -1033,10 +1061,54 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
     try {
         const operationRef = adminDb.doc(`accounts/${accountId}/operations/${id}`);
+        const opBeforeUpdateSnap = await operationRef.get();
+        if (!opBeforeUpdateSnap.exists) throw new Error("Operação não encontrada.");
+        const opBeforeUpdate = opBeforeUpdateSnap.data() as Operation;
+
         await operationRef.update({
             ...updateData,
             updatedAt: FieldValue.serverTimestamp(),
         });
+
+        if (updateData.driverId && updateData.driverId !== opBeforeUpdate.driverId) {
+            await sendNotification({
+                userId: updateData.driverId,
+                title: 'Você foi designado para uma Operação',
+                body: `Você foi designado para uma nova operação. Verifique os detalhes no app.`,
+            });
+
+            // Sync to Google Calendar
+            try {
+                const userDoc = await adminDb.doc(`users/${updateData.driverId}`).get();
+                if (userDoc.exists && userDoc.data()?.googleCalendar) {
+
+                    const updatedOpData = { ...opBeforeUpdate, ...updateData };
+
+                    const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${updatedOpData.clientId}`).get();
+                    const driverSnap = userDoc;
+                    const truckSnap = updatedOpData.truckId ? await adminDb.doc(`accounts/${accountId}/trucks/${updatedOpData.truckId}`).get() : null;
+
+                    const accountSnap = await adminDb.doc(`accounts/${accountId}`).get();
+                    const operationTypes: OperationType[] = accountSnap.data()?.operationTypes || [];
+                    const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
+
+                    const populatedOpForSync: PopulatedOperation = {
+                        id,
+                        ...updatedOpData,
+                        itemType: 'operation',
+                        client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
+                        driver: driverSnap.exists ? { id: driverSnap.id, ...driverSnap.data() } as any : null,
+                        truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
+                        operationTypes: (updatedOpData.typeIds || []).map(typeId => ({ id: typeId, name: opTypeMap.get(typeId) || 'Tipo desconhecido' })),
+                    };
+
+                    await syncOsToGoogleCalendarAction(updateData.driverId, populatedOpForSync);
+                }
+            } catch (syncError: any) {
+                console.error(`Falha ao sincronizar a atualização da Operação ${id} com o Google Agenda:`, syncError.message);
+            }
+        }
+
         revalidatePath('/operations');
         revalidatePath('/os');
     } catch (e) {
