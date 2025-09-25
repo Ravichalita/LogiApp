@@ -1821,28 +1821,53 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
     }
 
     try {
-        const existingEvent = await calendar.events.get({
-            calendarId: googleCalendar.calendarId || 'primary',
-            eventId: eventId,
-        }).catch(() => null); 
-
-        if (existingEvent) {
-            await calendar.events.update({
+        // Unified try block for get, update, and insert
+        try {
+            const existingEvent = await calendar.events.get({
                 calendarId: googleCalendar.calendarId || 'primary',
                 eventId: eventId,
-                requestBody: event,
             });
-             console.log(`Evento ${eventId} atualizado no Google Calendar.`);
-        } else {
-             await calendar.events.insert({
-                calendarId: googleCalendar.calendarId || 'primary',
-                requestBody: event,
-            });
-            console.log(`Evento ${eventId} criado no Google Calendar.`);
-        }
 
-    } catch (error) {
-        console.error(`Erro ao criar/atualizar evento no Google Calendar para a OS ${os.id}:`, error);
+            if (existingEvent) {
+                await calendar.events.update({
+                    calendarId: googleCalendar.calendarId || 'primary',
+                    eventId: eventId,
+                    requestBody: event,
+                });
+                console.log(`Evento ${eventId} atualizado no Google Calendar.`);
+            }
+        } catch (error: any) {
+            if (error.code === 404) { // Event not found, so we insert it
+                await calendar.events.insert({
+                    calendarId: googleCalendar.calendarId || 'primary',
+                    requestBody: event,
+                });
+                console.log(`Evento ${eventId} criado no Google Calendar.`);
+            } else {
+                throw error; // Re-throw other errors to be caught by the outer block
+            }
+        }
+    } catch (error: any) {
+        console.error(`Erro ao sincronizar OS ${os.id} com Google Calendar. Tentando atualizar token. Erro:`, error.response?.data || error.message);
+
+        // If it's an auth error, try to refresh the token.
+        if (error.code === 401 || error.code === 403) {
+            try {
+                const { credentials } = await oAuth2Client.refreshAccessToken();
+                await userRef.update({
+                    'googleCalendar.accessToken': credentials.access_token,
+                    'googleCalendar.expiryDate': credentials.expiry_date,
+                });
+                oAuth2Client.setCredentials(credentials);
+                console.log(`Token de acesso atualizado para o usuário ${userId}. Tentando novamente a sincronização.`);
+                // Retry the entire sync action now that the token is refreshed
+                await syncOsToGoogleCalendarAction(userId, os);
+            } catch (refreshError: any) {
+                console.error(`Falha crítica ao atualizar o token do Google para o usuário ${userId}. Desativando integração. Erro:`, refreshError.response?.data || refreshError.message);
+                // If refreshing the token fails, the refresh token is likely invalid. Disable the integration.
+                await userRef.update({ 'googleCalendar': FieldValue.delete() });
+            }
+        }
     }
 }
 
