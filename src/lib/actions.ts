@@ -591,14 +591,30 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     });
 
     // Sync to Google Calendar if integrated
-    const userDoc = await db.doc(`users/${createdBy}`).get();
-    if (userDoc.exists && userDoc.data()?.googleCalendar) {
-        const rentalForSync = await db.doc(rentalDocRef.path).get(); // re-fetch to get populated data
-        if(rentalForSync.exists) {
-            const populatedRental = { id: rentalForSync.id, ...rentalForSync.data() } as Rental;
-            await syncOsToGoogleCalendarAction(createdBy, populatedRental);
+    try {
+        const userDoc = await db.doc(`users/${createdBy}`).get();
+        if (userDoc.exists && userDoc.data()?.googleCalendar) {
+            // Fetch all data required for the PopulatedRental type
+            const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
+            const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
+            const truckSnap = rentalData.truckId ? await db.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : null;
+
+            const populatedRentalForSync: PopulatedRental = {
+                id: rentalDocRef.id,
+                ...rentalData,
+                itemType: 'rental',
+                client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
+                dumpster: dumpsterSnap.exists ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as any : null,
+                assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
+                truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
+            };
+            await syncOsToGoogleCalendarAction(createdBy, populatedRentalForSync);
         }
+    } catch (syncError) {
+        console.error("Failed to sync new rental to Google Calendar:", syncError);
+        // Do not throw or return an error to the client, as the main operation succeeded.
     }
+
 
     const swapOriginId = formData.get('swapOriginId') as string | null;
     if (swapOriginId) {
@@ -924,14 +940,33 @@ export async function createOperationAction(accountId: string, createdBy: string
     }
 
      // Sync to Google Calendar if integrated
-    const userDoc = await db.doc(`users/${createdBy}`).get();
-    if (userDoc.exists && userDoc.data()?.googleCalendar) {
-        const opForSync = await db.doc(opDocRef.path).get();
-        if (opForSync.exists) {
-            const populatedOp = { id: opForSync.id, ...opForSync.data() } as Operation;
-            await syncOsToGoogleCalendarAction(createdBy, populatedOp);
+     try {
+        const userDoc = await db.doc(`users/${createdBy}`).get();
+        if (userDoc.exists && userDoc.data()?.googleCalendar) {
+            const clientSnap = await db.doc(`accounts/${accountId}/clients/${operationData.clientId}`).get();
+            const driverSnap = await db.doc(`users/${operationData.driverId}`).get();
+            const truckSnap = operationData.truckId ? await db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`).get() : null;
+            
+            const accountSnap = await accountRef.get();
+            const operationTypes: OperationType[] = accountSnap.data()?.operationTypes || [];
+            const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
+
+            const populatedOpForSync: PopulatedOperation = {
+                id: opDocRef.id,
+                ...operationData,
+                itemType: 'operation',
+                client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
+                driver: driverSnap.exists ? { id: driverSnap.id, ...driverSnap.data() } as any : null,
+                truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
+                operationTypes: (operationData.typeIds || []).map(id => ({ id, name: opTypeMap.get(id) || 'Tipo desconhecido' })),
+            };
+            await syncOsToGoogleCalendarAction(createdBy, populatedOpForSync);
         }
+    } catch(syncError) {
+        console.error("Failed to sync new operation to Google Calendar:", syncError);
+        // Do not throw, main action succeeded
     }
+
 
   } catch (e) {
     return { message: 'error', error: handleFirebaseError(e) as string };
@@ -2222,5 +2257,6 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
 
