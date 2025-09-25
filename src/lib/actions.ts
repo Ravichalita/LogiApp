@@ -500,6 +500,7 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
 export async function createRental(accountId: string, createdBy: string, prevState: any, formData: FormData) {
   const db = getFirestore(adminApp);
   const accountRef = db.doc(`accounts/${accountId}`);
+  let rentalDocRef;
   
   try {
     const newSequentialId = await db.runTransaction(async (transaction) => {
@@ -576,7 +577,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
     }
     
-    const rentalDocRef = await rentalsRef.add({
+    rentalDocRef = await rentalsRef.add({
       ...rentalData,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -610,9 +611,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             };
             await syncOsToGoogleCalendarAction(createdBy, populatedRentalForSync);
         }
-    } catch (syncError) {
-        console.error("Failed to sync new rental to Google Calendar:", syncError);
-        // Do not throw or return an error to the client, as the main operation succeeded.
+    } catch (syncError: any) {
+        console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
+        return { message: 'error', error: syncError.message || 'Falha ao sincronizar com Google Agenda.' };
     }
 
 
@@ -755,11 +756,11 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     try {
-        const rentalDoc = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
+        const rentalRef = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
         
-        const rentalBeforeUpdate = (await rentalDoc.get()).data() as Rental;
+        const rentalBeforeUpdate = (await rentalRef.get()).data() as Rental;
         
-        await rentalDoc.update({
+        await rentalRef.update({
           ...updateData,
           updatedAt: FieldValue.serverTimestamp(),
         });
@@ -846,6 +847,7 @@ export async function deleteAttachmentAction(accountId: string, itemId: string, 
 export async function createOperationAction(accountId: string, createdBy: string, prevState: any, formData: FormData) {
   const db = getFirestore(adminApp);
   const accountRef = db.doc(`accounts/${accountId}`);
+  let opDocRef;
   
   try {
     const newSequentialId = await db.runTransaction(async (transaction) => {
@@ -922,7 +924,7 @@ export async function createOperationAction(accountId: string, createdBy: string
 
     const finalData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined));
 
-    const opDocRef = await db.collection(`accounts/${accountId}/operations`).add({
+    opDocRef = await db.collection(`accounts/${accountId}/operations`).add({
       ...finalData,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -962,9 +964,9 @@ export async function createOperationAction(accountId: string, createdBy: string
             };
             await syncOsToGoogleCalendarAction(createdBy, populatedOpForSync);
         }
-    } catch(syncError) {
-        console.error("Failed to sync new operation to Google Calendar:", syncError);
-        // Do not throw, main action succeeded
+    } catch(syncError: any) {
+        console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
+        return { message: 'error', error: syncError.message || 'Falha ao sincronizar com Google Agenda.' };
     }
 
 
@@ -1734,6 +1736,17 @@ export async function disconnectGoogleCalendarAction(userId: string) {
     }
 }
 
+function toRfc3339(dateValue: any): string | undefined {
+    if (!dateValue) return undefined;
+    try {
+        const d = new Date(dateValue);
+        if (isNaN(d.getTime())) return undefined;
+        return d.toISOString();
+    } catch (e) {
+        return undefined;
+    }
+}
+
 
 export async function syncOsToGoogleCalendarAction(userId: string, os: PopulatedRental | PopulatedOperation) {
     const userRef = adminDb.doc(`users/${userId}`);
@@ -1743,8 +1756,8 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
     const userData = userSnap.data() as UserAccount;
     const googleCalendar = userData.googleCalendar;
 
-    if (!googleCalendar || !googleCalendar.refreshToken) {
-        console.log(`Google Calendar não configurado para o usuário ${userId}. Pulando sincronização.`);
+    if (!googleCalendar || !googleCalendar.refreshToken || (googleCalendar as any).needsReauth) {
+        console.log(`Google Calendar não configurado ou necessita reautenticação para o usuário ${userId}. Pulando sincronização.`);
         return;
     }
 
@@ -1762,15 +1775,21 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         try {
             const { credentials } = await oAuth2Client.refreshAccessToken();
             
-            await userRef.update({
+            const updateData: { [key: string]: any } = {
                 'googleCalendar.accessToken': credentials.access_token,
                 'googleCalendar.expiryDate': credentials.expiry_date,
-            });
+                'googleCalendar.needsReauth': FieldValue.delete(),
+            };
+            if(credentials.refresh_token) {
+                 updateData['googleCalendar.refreshToken'] = credentials.refresh_token;
+            }
+            
+            await userRef.update(updateData);
             oAuth2Client.setCredentials(credentials);
         } catch (error: any) {
             console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error.response?.data || error.message);
-            await userRef.update({ 'googleCalendar': FieldValue.delete() });
-            console.log(`Refresh token for user ${userId} invalidated due to error.`);
+            await userRef.update({ 'googleCalendar.needsReauth': true });
+            console.log(`Integração para o usuário ${userId} marcada para reautenticação devido a erro no refresh token.`);
             return;
         }
     } else {
@@ -1783,91 +1802,87 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
 
     const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
 
-    let event;
+    let eventResource;
     const osType = os.itemType;
-    const eventId = `logiapp${osType}${os.id}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    let osRef;
 
     if (osType === 'rental') {
         const rental = os as PopulatedRental;
-        event = {
-            id: eventId,
+        osRef = adminDb.doc(`accounts/${rental.accountId}/rentals/${rental.id}`);
+        eventResource = {
             summary: `Aluguel: ${rental.client?.name} - Caçamba: ${rental.dumpster?.name}`,
             description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
             start: {
-                dateTime: rental.rentalDate,
+                dateTime: toRfc3339(rental.rentalDate),
                 timeZone: 'America/Sao_Paulo',
             },
             end: {
-                dateTime: rental.returnDate,
+                dateTime: toRfc3339(rental.returnDate),
                 timeZone: 'America/Sao_Paulo',
             },
         };
     } else {
         const operation = os as PopulatedOperation;
+        osRef = adminDb.doc(`accounts/${operation.accountId}/operations/${operation.id}`);
         const opTypes = operation.operationTypes.map(t => t.name).join(', ');
-        event = {
-            id: eventId,
+        eventResource = {
             summary: `${opTypes} - ${operation.client?.name}`,
             description: `<b>OS:</b> #${operation.sequentialId}\n<b>Cliente:</b> ${operation.client?.name}\n<b>Destino:</b> ${operation.destinationAddress}\n<b>Observações:</b> ${operation.observations || ''}`,
             start: {
-                dateTime: operation.startDate,
+                dateTime: toRfc3339(operation.startDate),
                 timeZone: 'America/Sao_Paulo',
             },
             end: {
-                dateTime: operation.endDate,
+                dateTime: toRfc3339(operation.endDate),
                 timeZone: 'America/Sao_Paulo',
             },
         };
     }
+    
+    if (!eventResource.start?.dateTime || !eventResource.end?.dateTime) {
+        throw new Error(`Datas inválidas para o evento do calendário da OS ${os.id}. Início: ${eventResource.start?.dateTime}, Fim: ${eventResource.end?.dateTime}`);
+    }
 
     try {
-        // Unified try block for get, update, and insert
-        try {
-            const existingEvent = await calendar.events.get({
-                calendarId: googleCalendar.calendarId || 'primary',
-                eventId: eventId,
-            });
+        const osDoc = await osRef.get();
+        const existingEventId = osDoc.data()?.googleCalendarEventId;
 
-            if (existingEvent) {
+        if (existingEventId) {
+            try {
                 await calendar.events.update({
                     calendarId: googleCalendar.calendarId || 'primary',
-                    eventId: eventId,
-                    requestBody: event,
+                    eventId: existingEventId,
+                    requestBody: eventResource,
                 });
-                console.log(`Evento ${eventId} atualizado no Google Calendar.`);
+                console.log(`Evento ${existingEventId} atualizado no Google Calendar.`);
+            } catch (updateError: any) {
+                if (updateError.code === 404) {
+                    console.log(`Evento ${existingEventId} não encontrado, criando um novo.`);
+                    const newEvent = await calendar.events.insert({
+                        calendarId: googleCalendar.calendarId || 'primary',
+                        requestBody: eventResource,
+                    });
+                    if (newEvent.data.id) {
+                        await osRef.update({ googleCalendarEventId: newEvent.data.id });
+                        console.log(`Novo evento ${newEvent.data.id} criado e salvo na OS.`);
+                    }
+                } else {
+                    throw updateError;
+                }
             }
-        } catch (error: any) {
-            if (error.code === 404) { // Event not found, so we insert it
-                await calendar.events.insert({
-                    calendarId: googleCalendar.calendarId || 'primary',
-                    requestBody: event,
-                });
-                console.log(`Evento ${eventId} criado no Google Calendar.`);
-            } else {
-                throw error; // Re-throw other errors to be caught by the outer block
+        } else {
+            const newEvent = await calendar.events.insert({
+                calendarId: googleCalendar.calendarId || 'primary',
+                requestBody: eventResource,
+            });
+            if (newEvent.data.id) {
+                await osRef.update({ googleCalendarEventId: newEvent.data.id });
+                console.log(`Novo evento ${newEvent.data.id} criado e salvo na OS.`);
             }
         }
     } catch (error: any) {
-        console.error(`Erro ao sincronizar OS ${os.id} com Google Calendar. Tentando atualizar token. Erro:`, error.response?.data || error.message);
-
-        // If it's an auth error, try to refresh the token.
-        if (error.code === 401 || error.code === 403) {
-            try {
-                const { credentials } = await oAuth2Client.refreshAccessToken();
-                await userRef.update({
-                    'googleCalendar.accessToken': credentials.access_token,
-                    'googleCalendar.expiryDate': credentials.expiry_date,
-                });
-                oAuth2Client.setCredentials(credentials);
-                console.log(`Token de acesso atualizado para o usuário ${userId}. Tentando novamente a sincronização.`);
-                // Retry the entire sync action now that the token is refreshed
-                await syncOsToGoogleCalendarAction(userId, os);
-            } catch (refreshError: any) {
-                console.error(`Falha crítica ao atualizar o token do Google para o usuário ${userId}. Desativando integração. Erro:`, refreshError.response?.data || refreshError.message);
-                // If refreshing the token fails, the refresh token is likely invalid. Disable the integration.
-                await userRef.update({ 'googleCalendar': FieldValue.delete() });
-            }
-        }
+        console.error(`Erro ao criar/atualizar evento no Google Calendar para a OS ${os.id}:`, error.response?.data || error.message || error);
+        throw error; // Re-throw to be caught by the calling function
     }
 }
 
@@ -2282,6 +2297,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
 
 
