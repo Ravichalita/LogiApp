@@ -1785,7 +1785,7 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
 
     let event;
     const osType = os.itemType;
-    const eventId = `logiapp${osType}${os.id}`.replace(/[^a-zA-Z0-9]/g, '');
+    const eventId = `logiapp${osType}${os.id}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
     if (osType === 'rental') {
         const rental = os as PopulatedRental;
