@@ -12,8 +12,14 @@ const toSerializableObject = (obj: any): any => {
     if (obj == null) return obj;
     if (typeof obj !== 'object') return obj;
 
-    if (obj.toDate && typeof obj.toDate === 'function') {
+    // Explicitly handle Firestore Timestamps by checking for _seconds and _nanoseconds
+    if (obj.hasOwnProperty('_seconds') && obj.hasOwnProperty('_nanoseconds') && typeof obj.toDate === 'function') {
         return obj.toDate().toISOString();
+    }
+    
+    // Also handle the case where it might already be a Date object from other server logic
+    if (obj instanceof Date) {
+        return obj.toISOString();
     }
     
     if (Array.isArray(obj)) {
@@ -28,6 +34,7 @@ const toSerializableObject = (obj: any): any => {
     }
     return newObj;
 }
+
 
 // Helper function to safely convert a Firestore document snapshot to a serializable object
 const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot | null | undefined): any => {
