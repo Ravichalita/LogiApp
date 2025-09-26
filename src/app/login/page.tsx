@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from "next/image";
@@ -30,7 +29,6 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Recovery logic specifically for the super admin
     if (email === SUPER_ADMIN_EMAIL) {
         try {
             await recoverSuperAdminAction();
@@ -110,19 +108,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="flex flex-col items-center">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-              <div className="mx-auto mb-1">
-                  <Link href="/" className="mr-6 flex items-center space-x-2">
-                  </Link>
-                  <Image src="/192x192.png" alt="LogiApp Logo" width={40} height={40} />
-              </div>
-            <CardTitle className="text-2xl font-bold text-primary">Login</CardTitle>
-            </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm lg:max-w-4xl lg:grid lg:grid-cols-2 rounded-lg shadow-lg overflow-hidden bg-card">
+        {/* Branding Section - Left */}
+        <div className="hidden lg:flex flex-col items-center justify-center bg-primary p-12 text-primary-foreground">
+          <Image src="/192x192.png" alt="LogiApp Logo" width={80} height={80} />
+          <h1 className="text-3xl font-bold mt-4">LogiApp</h1>
+          <p className="mt-2 text-center text-sm opacity-80">Gestão de Logística Simplificada</p>
+        </div>
+
+        {/* Form Section - Right */}
+        <div className="p-6 sm:p-8">
+            <div className="flex flex-col items-center lg:items-start">
+                 <Image src="/192x192.png" alt="LogiApp Logo" width={40} height={40} className="lg:hidden mb-4" />
+                <h2 className="text-2xl font-bold text-primary">Login</h2>
+                <p className="text-muted-foreground mt-2 text-center lg:text-left">Acesse sua conta para gerenciar suas operações.</p>
+            </div>
+            
+            <form onSubmit={handleLogin} className="space-y-4 mt-6">
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
                 <Input
@@ -148,19 +151,20 @@ export default function LoginPage() {
                 {isSubmitting ? <Spinner size="small" /> : 'Entrar'}
               </Button>
             </form>
-          </CardContent>
-          <CardFooter className="flex-col gap-4 text-center">
+          
+            <div className="mt-6 text-center">
               <Button variant="link" size="sm" onClick={handlePasswordReset} disabled={isResetting || isSubmitting}>
                   {isResetting ? <Spinner size="small" /> : 'Esqueci minha senha'}
               </Button>
-          </CardFooter>
-        </Card>
-        <div className="mt-4">
-          <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:text-primary hover:underline">
-              Política de Privacidade
-          </Link>
+            </div>
+
+            <div className="mt-4 text-center">
+              <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                  Política de Privacidade
+              </Link>
+            </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
