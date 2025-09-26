@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useCallback, useEffect, useRef, useState, useContext } from 'react';
@@ -53,7 +54,7 @@ export const AuthContext = createContext<AuthContextType>({
 });
 
 const nonAuthRoutes = ['/login', '/signup'];
-const publicRoutes = [...nonAuthRoutes, '/verify-email', '/restore-from-backup'];
+const publicRoutes = [...nonAuthRoutes, '/verify-email', '/restore-from-backup', '/privacy-policy'];
 
 // Define o email do Super Admin. Somente este usuário poderá criar novas contas de cliente.
 const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
@@ -358,14 +359,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading) return;
 
-    if (accountMissing) {
-        if (!pathname.startsWith('/restore-from-backup')) {
-            router.push('/restore-from-backup');
-        }
+    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+
+    if (accountMissing && !pathname.startsWith('/restore-from-backup')) {
+        router.push('/restore-from-backup');
         return;
     }
 
-    const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
 
     if (!user && !isPublicRoute) {
       router.push('/login');

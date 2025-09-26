@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Menu, CheckCircle, ExternalLink, Calendar, LogOutIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Menu, CheckCircle, ExternalLink, Calendar, LogOutIcon, Info } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -26,6 +26,7 @@ import { Home, Container, Users, Truck, Workflow, Map } from 'lucide-react';
 import { getGoogleAuthUrlAction, disconnectGoogleCalendarAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Spinner } from "./ui/spinner";
+import { AboutDialog } from "./about-dialog";
 
 
 const allNavLinks = [
@@ -180,6 +181,7 @@ export function Header({ className }: { className?: string }) {
                       <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
+                <AboutDialog />
               <DropdownMenuSeparator />
 
               {isGoogleCalendarConnected ? (
