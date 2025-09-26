@@ -181,9 +181,7 @@ export function Header({ className }: { className?: string }) {
                       <span>Sua Conta</span>
                   </Link>
               </DropdownMenuItem>
-                <AboutDialog />
               <DropdownMenuSeparator />
-
               {isGoogleCalendarConnected ? (
                 <>
                     <DropdownMenuItem disabled>
@@ -201,7 +199,8 @@ export function Header({ className }: { className?: string }) {
                     <span>Conectar Google Agenda</span>
                 </DropdownMenuItem>
               )}
-              
+              <DropdownMenuSeparator />
+              <AboutDialog />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
