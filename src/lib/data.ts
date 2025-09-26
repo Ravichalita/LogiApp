@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -13,7 +14,7 @@ import {
   DocumentData,
   orderBy,
 } from 'firebase/firestore';
-import { getFirebase } from './firebase-client';
+import { getFirebase } from '@/lib/firebase-client';
 import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType, CompletedRental, CompletedOperation } from './types';
 
 type Unsubscribe = () => void;
@@ -245,38 +246,55 @@ export function getPopulatedOperations(
             const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
 
             const opPromises = querySnapshot.docs.map(async (opDoc) => {
-                const opData = docToSerializable(opDoc) as Omit<Operation, 'id'>;
+                try {
+                    const opData = docToSerializable(opDoc) as Omit<Operation, 'id'>;
 
-                const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, opData.clientId));
-                const truckPromise = opData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, opData.truckId)) : Promise.resolve(null);
-                const driverPromise = opData.driverId ? getDoc(doc(db, `users`, opData.driverId)) : Promise.resolve(null);
+                    // Ensure required fields exist before fetching related docs
+                    if (!opData.clientId || !opData.driverId) {
+                        console.warn(`Skipping operation ${opDoc.id} due to missing clientId or driverId.`);
+                        return null; 
+                    }
 
-                const [clientSnap, truckSnap, driverSnap] = await Promise.all([clientPromise, truckPromise, driverPromise]);
+                    const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, opData.clientId));
+                    const truckPromise = opData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, opData.truckId)) : Promise.resolve(null);
+                    const driverPromise = getDoc(doc(db, `users`, opData.driverId));
 
-                const serializedData = docToSerializable(opDoc) as Operation;
-                
-                const populatedTypes = (opData.typeIds || []).map(id => ({
-                    id,
-                    name: opTypeMap.get(id) || 'Tipo desconhecido'
-                }));
+                    const [clientSnap, truckSnap, driverSnap] = await Promise.all([clientPromise, truckPromise, driverPromise]);
+                    
+                    // If a required document (client, driver) doesn't exist, we skip this operation
+                    if (!clientSnap.exists() || !driverSnap.exists()) {
+                        console.warn(`Skipping operation ${opDoc.id} because a required related document (client or driver) was not found.`);
+                        return null;
+                    }
 
-                return {
-                    ...serializedData,
-                    itemType: 'operation',
-                    client: docToSerializable(clientSnap) as Client | null,
-                    truck: docToSerializable(truckSnap) as Truck | null,
-                    driver: docToSerializable(driverSnap) as UserAccount | null,
-                    operationTypes: populatedTypes,
-                };
+                    const serializedData = docToSerializable(opDoc) as Operation;
+                    
+                    const populatedTypes = (opData.typeIds || []).map(id => ({
+                        id,
+                        name: opTypeMap.get(id) || 'Tipo desconhecido'
+                    }));
+
+                    return {
+                        ...serializedData,
+                        itemType: 'operation',
+                        client: docToSerializable(clientSnap) as Client | null,
+                        truck: docToSerializable(truckSnap) as Truck | null,
+                        driver: docToSerializable(driverSnap) as UserAccount | null,
+                        operationTypes: populatedTypes,
+                    };
+                } catch (individualError) {
+                     console.error(`Failed to process individual operation ${opDoc.id}:`, individualError);
+                    return null; // Return null for the failed operation
+                }
             });
 
-            const populatedOps = await Promise.all(opPromises);
+            const populatedOpsResults = await Promise.all(opPromises);
+            const validPopulatedOps = populatedOpsResults.filter((op): op is PopulatedOperation => op !== null);
             
             // Sort on the client side
-            const sortedOps = populatedOps
-              .filter((op): op is PopulatedOperation => !!op.client)
+            const sortedOps = validPopulatedOps
               .sort((a, b) => {
-                // Handle potential undefined createdAt by providing a fallback date.
+                // Handle potential undefined startDate by providing a fallback date.
                 const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
                 const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
                 return dateA - dateB; // Sort ascending by start time

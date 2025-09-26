@@ -111,49 +111,56 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-            <div className="mx-auto mb-1">
-                 <Link href="/" className="mr-6 flex items-center space-x-2">
-                 </Link>
-                 <Image src="/192x192.png" alt="LogiApp Logo" width={40} height={40} />
-            </div>
-          <CardTitle className="text-2xl font-bold text-primary">Login</CardTitle>
-          </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-             <Button type="submit" disabled={isSubmitting || isResetting} className="w-full">
-              {isSubmitting ? <Spinner size="small" /> : 'Entrar'}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex-col gap-4 text-center">
-            <Button variant="link" size="sm" onClick={handlePasswordReset} disabled={isResetting || isSubmitting}>
-                {isResetting ? <Spinner size="small" /> : 'Esqueci minha senha'}
-            </Button>
-        </CardFooter>
-      </Card>
+      <div className="flex flex-col items-center">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+              <div className="mx-auto mb-1">
+                  <Link href="/" className="mr-6 flex items-center space-x-2">
+                  </Link>
+                  <Image src="/192x192.png" alt="LogiApp Logo" width={40} height={40} />
+              </div>
+            <CardTitle className="text-2xl font-bold text-primary">Login</CardTitle>
+            </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={isSubmitting || isResetting} className="w-full">
+                {isSubmitting ? <Spinner size="small" /> : 'Entrar'}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter className="flex-col gap-4 text-center">
+              <Button variant="link" size="sm" onClick={handlePasswordReset} disabled={isResetting || isSubmitting}>
+                  {isResetting ? <Spinner size="small" /> : 'Esqueci minha senha'}
+              </Button>
+          </CardFooter>
+        </Card>
+        <div className="mt-4">
+          <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:text-primary hover:underline">
+              Política de Privacidade
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

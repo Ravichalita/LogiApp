@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
 import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
@@ -200,7 +200,7 @@ export default function OSPage() {
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [operations, setOperations] = useState<PopulatedOperation[]>([]);
   const [teamMembers, setTeamMembers] = useState<UserAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
@@ -209,57 +209,70 @@ export default function OSPage() {
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const dataLoadedRef = useRef(false);
 
   const permissions = userAccount?.permissions;
-  const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
-  const canAccessOperations = isSuperAdmin || permissions?.canAccessOperations;
-  const canAccessRoutes = isSuperAdmin || permissions?.canAccessRoutes;
-  const canEditRentals = isSuperAdmin || permissions?.canEditRentals;
-  const canEditOperations = isSuperAdmin || permissions?.canEditOperations;
-  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
-  const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
+  const canAccessRentals = isSuperAdmin || !!permissions?.canAccessRentals;
+  const canAccessOperations = isSuperAdmin || !!permissions?.canAccessOperations;
+  const canAccessRoutes = isSuperAdmin || !!permissions?.canAccessRoutes;
+  const canEditRentals = isSuperAdmin || !!permissions?.canEditRentals;
+  const canEditOperations = isSuperAdmin || !!permissions?.canEditOperations;
+  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || !!permissions?.canSeeServiceValue;
+  const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
 
-  
   useEffect(() => {
     if (authLoading) return;
-    if (!accountId || (!canAccessRentals && !canAccessOperations)) {
-      setLoading(false);
+    
+    const hasAccess = canAccessRentals || canAccessOperations;
+    if (!accountId || !hasAccess) {
+      setLoadingData(false);
       return;
     }
 
-    setLoading(true);
+    if (!dataLoadedRef.current) {
+        setLoadingData(true);
+    }
+    
     const isAdminView = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin';
     const userIdToFilter = isAdminView ? undefined : user?.uid;
 
     const unsubscribers: (() => void)[] = [];
 
+    const handleDataError = (err: Error) => {
+        console.error("Data subscription error:", err);
+        setError(err);
+        setLoadingData(false);
+    };
+
     if (canAccessRentals) {
-      if (canEditRentals && teamMembers.length === 0) {
+      if ((canEditRentals || isSuperAdmin) && teamMembers.length === 0) {
          fetchTeamMembers(accountId).then(setTeamMembers);
       }
       const unsub = getPopulatedRentals(
         accountId,
-        (data) => setRentals(data),
-        (err) => { console.error("Rental subscription error:", err); setError(err); },
+        (data) => { setRentals(data); dataLoadedRef.current = true; setLoadingData(false); },
+        handleDataError,
         userIdToFilter
       );
       unsubscribers.push(unsub);
     }
     
     if (canAccessOperations) {
-        if(teamMembers.length === 0) {
+        if((canEditOperations || isSuperAdmin) && teamMembers.length === 0) {
             fetchTeamMembers(accountId).then(setTeamMembers);
         }
         const unsub = getPopulatedOperations(
             accountId,
-            (data) => setOperations(data),
-            (err) => { console.error("Operation subscription error:", err); setError(err); },
+            (data) => { setOperations(data); dataLoadedRef.current = true; setLoadingData(false); },
+            handleDataError,
             userIdToFilter
-        )
+        );
         unsubscribers.push(unsub);
     }
-
-    setLoading(false);
+    
+    if (!canAccessRentals && !canAccessOperations) {
+        setLoadingData(false);
+    }
     
     return () => unsubscribers.forEach(unsub => unsub());
 
@@ -468,7 +481,48 @@ export default function OSPage() {
   };
 
 
-  const isLoading = authLoading || (loading && (canAccessRentals || canAccessOperations));
+  const isLoading = authLoading || loadingData;
+  const hasAnyAccess = canAccessRentals || canAccessOperations || isSuperAdmin;
+  
+  if (isLoading) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
+            <OSCardSkeleton />
+        </div>
+    )
+  }
+  
+  if (error) {
+       return (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
+             <div className="p-4 bg-destructive/10 rounded-full mb-4">
+                <ShieldAlert className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Carregamento</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+                Não foi possível carregar as ordens de serviço. Isso pode ser um problema nos dados de uma OS específica. Verifique os dados no servidor ou contate o suporte.
+            </p>
+             <Button onClick={() => window.location.reload()}>
+                Recarregar Página
+            </Button>
+        </div>
+    )
+  }
+
+  if (!hasAnyAccess) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Acesso Negado</AlertTitle>
+                <AlertDescription>
+                    Você não tem permissão para visualizar Ordens de Serviço.
+                </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
 
   const pageContent = (
     <>
@@ -845,46 +899,6 @@ export default function OSPage() {
     </>
   );
 
-  if (isLoading) {
-    return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
-            <OSCardSkeleton />
-        </div>
-    )
-  }
-  
-  if (error) {
-       return (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
-             <div className="p-4 bg-destructive/10 rounded-full mb-4">
-                <ShieldAlert className="h-10 w-10 text-destructive" />
-            </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-                Não foi possível carregar as ordens de serviço. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
-            </p>
-             <Button onClick={() => window.location.reload()}>
-                Recarregar Página
-            </Button>
-        </div>
-    )
-  }
-
-  if (!canAccessRentals && !canAccessOperations && !loading) {
-    return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <Alert variant="destructive">
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Acesso Negado</AlertTitle>
-                <AlertDescription>
-                    Você não tem permissão para visualizar Ordens de Serviço.
-                </AlertDescription>
-            </Alert>
-        </div>
-    )
-  }
-
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
        
@@ -917,4 +931,3 @@ export default function OSPage() {
   );
 }
 
-    
