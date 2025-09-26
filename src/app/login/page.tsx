@@ -109,7 +109,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-pattern p-4">
+    <main className="flex min-h-screen items-center justify-center honeycomb-bg p-4">
       <div className="relative z-10 w-full max-w-sm lg:max-w-4xl lg:grid lg:grid-cols-2 rounded-lg shadow-lg overflow-hidden bg-card/50 backdrop-blur-sm border border-white/20">
         {/* Branding Section - Left */}
         <div className="hidden lg:flex flex-col items-center justify-center bg-primary/80 p-12 text-primary-foreground">

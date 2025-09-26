@@ -80,12 +80,13 @@
 }
 
 @layer utilities {
-  main.bg-pattern {
+  .honeycomb-bg {
     @apply bg-background;
     position: relative;
     z-index: 1;
   }
-  main.bg-pattern::before {
+  .honeycomb-bg::before,
+  .honeycomb-bg::after {
     content: '';
     position: absolute;
     top: 0;
@@ -93,10 +94,12 @@
     right: 0;
     bottom: 0;
     background-image: url(/192x192.png);
-    background-repeat: space;
     background-size: 50px;
     opacity: 0.05;
     z-index: -1;
+  }
+   .honeycomb-bg::after {
+    background-position: 25px 25px;
   }
 }
 
