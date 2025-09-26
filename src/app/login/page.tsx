@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from "next/image";
@@ -114,7 +115,7 @@ export default function LoginPage() {
         <div className="hidden lg:flex flex-col items-center justify-center bg-primary p-12 text-primary-foreground">
           <Image src="/192x192.png" alt="LogiApp Logo" width={80} height={80} />
           <h1 className="text-3xl font-bold mt-4">LogiApp</h1>
-          <p className="mt-2 text-center text-sm opacity-80">Gestão de Logística Simplificada</p>
+          <p className="mt-2 text-center text-sm opacity-80">Gestão de Logistica Simplificada</p>
         </div>
 
         {/* Form Section - Right */}
@@ -125,7 +126,7 @@ export default function LoginPage() {
                     <h1 className="text-2xl font-bold mt-2 text-primary">LogiApp</h1>
                  </div>
                 <h2 className="text-2xl font-bold text-primary hidden lg:block">Login</h2>
-                <p className="text-muted-foreground mt-2">Acesse sua conta para gerenciar suas operações.</p>
+                <p className="text-muted-foreground mt-2">Gestão de Logistica Simplificada</p>
             </div>
             
             <form onSubmit={handleLogin} className="space-y-4 mt-6">
