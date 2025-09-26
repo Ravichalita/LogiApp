@@ -36,11 +36,18 @@ export function AboutDialog() {
             <p className="text-sm">
                 <strong>Versão:</strong> {appVersion}
             </p>
-            <Button asChild variant="link" className="p-0 h-auto">
-                 <Link href="/privacy-policy">
-                    Ver Política de Privacidade
-                </Link>
-            </Button>
+            <div className="flex flex-col items-start gap-2">
+                <Button asChild variant="link" className="p-0 h-auto">
+                    <Link href="/privacy-policy">
+                        Ver Política de Privacidade
+                    </Link>
+                </Button>
+                 <Button asChild variant="link" className="p-0 h-auto">
+                    <Link href="/terms-of-service">
+                        Ver Termos de Serviço
+                    </Link>
+                </Button>
+            </div>
         </div>
       </DialogContent>
     </Dialog>

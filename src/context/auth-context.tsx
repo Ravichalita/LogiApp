@@ -54,7 +54,7 @@ export const AuthContext = createContext<AuthContextType>({
 });
 
 const nonAuthRoutes = ['/login', '/signup'];
-const publicRoutes = [...nonAuthRoutes, '/verify-email', '/restore-from-backup', '/privacy-policy'];
+const publicRoutes = [...nonAuthRoutes, '/verify-email', '/restore-from-backup', '/privacy-policy', '/terms-of-service'];
 
 // Define o email do Super Admin. Somente este usuário poderá criar novas contas de cliente.
 const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
@@ -258,6 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     userData.permissions = {
                         canAccessRentals: true,
                         canAccessOperations: true,
+                        canAccessRoutes: true,
                         canAccessClients: true,
                         canAccessDumpsters: true,
                         canAccessFleet: true,
@@ -266,11 +267,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         canAccessNotificationsStudio: true,
                         canAccessSettings: true,
                         canEditRentals: true,
+                        canSeeServiceValue: true,
                         canEditOperations: true,
                         canEditDumpsters: true,
                         canEditFleet: true,
                         canAddClients: true,
                         canEditClients: true,
+                        canUseAttachments: true,
                     };
                 } else if (userData.role === 'admin') {
                     // If user is admin, fetch owner's permissions to ensure they are correct
