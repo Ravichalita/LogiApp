@@ -104,8 +104,8 @@ export default function TermsOfServicePage() {
                     </div>
 
                     <div className="space-y-2">
-                        <h2 className="text-xl font-semibold font-headline">11. Foro e Legislação Aplicável</h2>
-                        <p>Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da comarca de [cidade da sede da empresa responsável pelo LogiApp], com renúncia a qualquer outro, para dirimir controvérsias decorrentes destes Termos.</p>
+                        <h2 className="text-xl font-semibold font-headline">11.Legislação Aplicável</h2>
+                        <p>Estes Termos são regidos pelas leis da República Federativa do Brasil.</p>
                     </div>
 
                      <div className="space-y-2">
