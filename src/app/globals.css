@@ -93,8 +93,8 @@
     right: 0;
     bottom: 0;
     background-image: url(/192x192.png);
-    background-repeat: repeat;
-    background-size: 150px;
+    background-repeat: space;
+    background-size: 50px;
     opacity: 0.05;
     z-index: -1;
   }
