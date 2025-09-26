@@ -109,10 +109,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm lg:max-w-4xl lg:grid lg:grid-cols-2 rounded-lg shadow-lg overflow-hidden bg-card">
+    <main className="flex min-h-screen items-center justify-center bg-pattern p-4">
+      <div className="w-full max-w-sm lg:max-w-4xl lg:grid lg:grid-cols-2 rounded-lg shadow-lg overflow-hidden bg-card/50 backdrop-blur-sm border border-white/20">
         {/* Branding Section - Left */}
-        <div className="hidden lg:flex flex-col items-center justify-center bg-primary p-12 text-primary-foreground">
+        <div className="hidden lg:flex flex-col items-center justify-center bg-primary/80 p-12 text-primary-foreground">
           <Image src="/192x192.png" alt="LogiApp Logo" width={80} height={80} />
           <h1 className="text-3xl font-bold mt-4">LogiApp</h1>
           <p className="mt-2 text-center text-sm opacity-80">Gestão de Logistica Simplificada</p>
