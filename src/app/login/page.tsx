@@ -119,10 +119,13 @@ export default function LoginPage() {
 
         {/* Form Section - Right */}
         <div className="p-6 sm:p-8">
-            <div className="flex flex-col items-center lg:items-start">
-                 <Image src="/192x192.png" alt="LogiApp Logo" width={40} height={40} className="lg:hidden mb-4" />
-                <h2 className="text-2xl font-bold text-primary">Login</h2>
-                <p className="text-muted-foreground mt-2 text-center lg:text-left">Acesse sua conta para gerenciar suas operações.</p>
+            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+                 <div className="lg:hidden flex flex-col items-center mb-6">
+                    <Image src="/192x192.png" alt="LogiApp Logo" width={48} height={48} />
+                    <h1 className="text-2xl font-bold mt-2 text-primary">LogiApp</h1>
+                 </div>
+                <h2 className="text-2xl font-bold text-primary hidden lg:block">Login</h2>
+                <p className="text-muted-foreground mt-2">Acesse sua conta para gerenciar suas operações.</p>
             </div>
             
             <form onSubmit={handleLogin} className="space-y-4 mt-6">
