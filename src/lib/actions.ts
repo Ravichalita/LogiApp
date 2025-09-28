@@ -7,7 +7,7 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBasesSchema, OperationalCostSchema, UpdateOperationalCostsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBasesSchema, OperationalCostSchema, UpdateOperationalCostsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema, Dumpster } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType, OperationalCost, PopulatedRental, PopulatedOperation } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
@@ -534,8 +534,19 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
     }
     
+    let dumpsterIds: string[] = [];
+    if (rawData.dumpsterIds && typeof rawData.dumpsterIds === 'string') {
+        try {
+            dumpsterIds = JSON.parse(rawData.dumpsterIds);
+        } catch (e) {
+             console.error("Failed to parse dumpsterIds JSON");
+             return { message: 'error', error: "Formato de IDs de caçamba inválido."}
+        }
+    }
+
     const dataToValidate = {
         ...rawData,
+        dumpsterIds,
         value: Number(rawData.value),
         lumpSumValue: Number(rawData.lumpSumValue),
         travelCost: Number(rawData.travelCost),
@@ -562,18 +573,22 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     const rentalData = validatedFields.data;
 
     const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
-    const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
-    const existingRentalsSnap = await q.get();
+    // This check needs to be updated for multiple dumpsters
+    for (const dumpsterId of rentalData.dumpsterIds) {
+        const q = rentalsRef.where('dumpsterIds', 'array-contains', dumpsterId);
+        const existingRentalsSnap = await q.get();
 
-    const newRentalStart = new Date(rentalData.rentalDate);
-    const newRentalEnd = new Date(rentalData.returnDate);
+        const newRentalStart = new Date(rentalData.rentalDate);
+        const newRentalEnd = new Date(rentalData.returnDate);
 
-    for (const doc of existingRentalsSnap.docs) {
-        const existingRental = doc.data() as Rental;
-        const existingStart = new Date(existingRental.rentalDate);
-        const existingEnd = new Date(existingRental.returnDate);
-        if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
-            return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
+        for (const doc of existingRentalsSnap.docs) {
+            const existingRental = doc.data() as Rental;
+            const existingStart = new Date(existingRental.rentalDate);
+            const existingEnd = new Date(existingRental.returnDate);
+            if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
+                const dumpsterName = (await db.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).get()).data()?.name || dumpsterId;
+                return { message: `Conflito de agendamento. A caçamba ${dumpsterName} já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
+            }
         }
     }
     
@@ -582,13 +597,14 @@ export async function createRental(accountId: string, createdBy: string, prevSta
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
-    const dumpsterName = dumpsterSnap.data()?.name || 'Caçamba';
+    const dumpsterNames = (await Promise.all(
+        rentalData.dumpsterIds.map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get())
+    )).map(doc => doc.data()?.name || 'Caçamba').join(', ');
     
     await sendNotification({
         userId: rentalData.assignedTo,
         title: `Nova OS #${newSequentialId} Designada`,
-        body: `Você foi designado para a OS da ${dumpsterName}.`,
+        body: `Você foi designado para a OS da(s) caçamba(s): ${dumpsterNames}.`,
     });
 
     // Sync to Google Calendar if integrated
@@ -600,12 +616,15 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
             const truckSnap = rentalData.truckId ? await db.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : null;
 
+            const dumpsterDocs = await Promise.all(rentalData.dumpsterIds.map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get()));
+            const dumpsters = dumpsterDocs.map(d => ({id: d.id, ...d.data()}) as Dumpster);
+
             const populatedRentalForSync: PopulatedRental = {
                 id: rentalDocRef.id,
                 ...rentalData,
                 itemType: 'rental',
                 client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
-                dumpster: dumpsterSnap.exists ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as any : null,
+                dumpsters,
                 assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
                 truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
             };
@@ -650,15 +669,19 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
         // Fetch related data to store a complete snapshot
         const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
-        const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
+        
+        const dumpsterDocs = await Promise.all(
+            (rentalData.dumpsterIds || []).map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get())
+        );
+        const dumpsters = dumpsterDocs.map(d => ({id: d.id, ...d.data()}) as Dumpster);
 
         const rentalDate = new Date(rentalData.rentalDate);
         const returnDate = new Date(rentalData.returnDate);
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const rentalDays = Math.max(diffDays, 1);
-        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays;
+        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
         
         const completedRentalData = {
             ...rentalData,
@@ -669,7 +692,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
             accountId,
             // Store denormalized data for historical integrity
             client: clientSnap.exists ? clientSnap.data() : null,
-            dumpster: dumpsterSnap.exists ? dumpsterSnap.data() : null,
+            dumpsters: dumpsters,
             assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
         };
         
@@ -717,6 +740,14 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     const rawData = Object.fromEntries(formData.entries());
     const dataToValidate: Record<string, any> = { ...rawData };
     
+    if (rawData.dumpsterIds && typeof rawData.dumpsterIds === 'string') {
+        try {
+            dataToValidate.dumpsterIds = JSON.parse(rawData.dumpsterIds);
+        } catch (e) {
+            return { message: 'error', error: "Formato de IDs de caçamba inválido."}
+        }
+    }
+
     if (rawData.value !== undefined) {
         dataToValidate.value = Number(rawData.value);
     }
@@ -784,7 +815,11 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
                     const updatedRentalData = { ...rentalBeforeUpdate, ...updateData };
 
-                    const dumpsterSnap = await adminDb.doc(`accounts/${accountId}/dumpsters/${updatedRentalData.dumpsterId}`).get();
+                    const dumpsterDocs = await Promise.all(
+                        (updatedRentalData.dumpsterIds || []).map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get())
+                    );
+                    const dumpsters = dumpsterDocs.map(d => ({id: d.id, ...d.data()}) as Dumpster);
+
                     const assignedToSnap = userDoc;
                     const truckSnap = updatedRentalData.truckId ? await adminDb.doc(`accounts/${accountId}/trucks/${updatedRentalData.truckId}`).get() : null;
 
@@ -793,7 +828,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                         ...updatedRentalData,
                         itemType: 'rental',
                         client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
-                        dumpster: dumpsterSnap.exists ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as any : null,
+                        dumpsters,
                         assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
                         truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
                     };
@@ -1881,9 +1916,10 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
     if (osType === 'rental') {
         const rental = os as PopulatedRental;
         osRef = adminDb.doc(`accounts/${rental.accountId}/rentals/${rental.id}`);
+        const dumpsterNames = (rental.dumpsters || []).map(d => d.name).join(', ');
         eventResource = {
-            summary: `Aluguel: ${rental.client?.name} - Caçamba: ${rental.dumpster?.name}`,
-            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
+            summary: `Aluguel: ${rental.client?.name} - Caçamba(s): ${dumpsterNames}`,
+            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Caçambas:</b> ${dumpsterNames}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
             start: {
                 dateTime: toRfc3339(rental.rentalDate),
                 timeZone: 'America/Sao_Paulo',
@@ -2369,6 +2405,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
 
 
