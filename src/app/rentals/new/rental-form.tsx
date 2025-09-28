@@ -554,30 +554,49 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                     <DialogTitle>Selecione as Caçambas</DialogTitle>
                 </DialogHeader>
                  <div className="max-h-[60vh] overflow-y-auto p-1">
-                  {dumpsters.map(d => (
-                    <div key={d.id} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
-                      <Checkbox
-                        id={`dumpster-${d.id}`}
-                        checked={selectedDumpsterIds.includes(d.id)}
-                        onCheckedChange={() => handleDumpsterSelection(d.id)}
-                        disabled={d.status === 'Em Manutenção'}
-                      />
-                      <Label htmlFor={`dumpster-${d.id}`} className="w-full flex justify-between items-center cursor-pointer">
-                        <div>
-                          <p>{d.name} ({d.size}m³, {d.color})</p>
-                          {d.specialStatus && (
-                            <p className={cn("text-xs",
-                                d.specialStatus.toLowerCase().includes('alugada') ? 'text-destructive' :
-                                d.specialStatus.toLowerCase().includes('reservada') ? 'text-blue-600' :
-                                d.specialStatus.toLowerCase().includes('encerra hoje') ? 'text-yellow-600' :
-                                d.specialStatus.toLowerCase().includes('atraso') ? 'text-red-700 font-bold' :
-                                'text-muted-foreground'
-                            )}>{d.specialStatus}</p>
-                          )}
-                        </div>
-                      </Label>
-                    </div>
-                  ))}
+                    <Accordion type="multiple" className="w-full">
+                    {dumpsters.map(d => (
+                        <AccordionItem value={d.id} key={d.id} className="border-b-0">
+                             <div className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
+                                <Checkbox
+                                    id={`dumpster-${d.id}`}
+                                    checked={selectedDumpsterIds.includes(d.id)}
+                                    onCheckedChange={() => handleDumpsterSelection(d.id)}
+                                    disabled={d.status === 'Em Manutenção'}
+                                />
+                                <Label htmlFor={`dumpster-${d.id}`} className="w-full flex justify-between items-center cursor-pointer">
+                                    <div className="flex-grow">
+                                        <p>{d.name} ({d.size}m³, {d.color})</p>
+                                        {d.specialStatus && (
+                                            <p className={cn("text-xs",
+                                                d.specialStatus.toLowerCase().includes('alugada') ? 'text-destructive' :
+                                                d.specialStatus.toLowerCase().includes('reservada') ? 'text-blue-600' :
+                                                d.specialStatus.toLowerCase().includes('encerra hoje') ? 'text-yellow-600' :
+                                                d.specialStatus.toLowerCase().includes('atraso') ? 'text-red-700 font-bold' :
+                                                'text-muted-foreground'
+                                            )}>{d.specialStatus}</p>
+                                        )}
+                                    </div>
+                                    {d.schedules && d.schedules.length > 0 && (
+                                        <AccordionTrigger className="p-1 [&>svg]:h-4 [&>svg]:w-4" />
+                                    )}
+                                </Label>
+                             </div>
+                              {d.schedules && d.schedules.length > 0 && (
+                                 <AccordionContent>
+                                    <div className="pl-8 pr-2 py-1 space-y-1">
+                                        <h4 className="text-xs font-semibold text-muted-foreground">Próximos Agendamentos:</h4>
+                                        <ul className="list-disc pl-4 text-xs text-muted-foreground">
+                                            {d.schedules.map((schedule, i) => (
+                                                <li key={i}>{schedule}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                 </AccordionContent>
+                             )}
+                        </AccordionItem>
+                    ))}
+                    </Accordion>
                 </div>
                  <DialogFooter className="p-6 bg-muted/50 rounded-b-lg">
                     <Button onClick={() => setDumpsterSelectOpen(false)}>Confirmar</Button>
