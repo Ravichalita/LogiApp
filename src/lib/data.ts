@@ -13,7 +13,7 @@ import {
   Query,
   DocumentData,
   orderBy,
-  FieldPath,
+  documentId,
 } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase-client';
 import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType, CompletedRental, CompletedOperation } from './types';
@@ -183,7 +183,7 @@ export function getPopulatedRentals(
 
             let dumpstersMap = new Map<string, Dumpster>();
             if (allDumpsterIds.size > 0) {
-                const dumpsterQuery = query(collection(db, `accounts/${accountId}/dumpsters`), where(FieldPath.documentId(), 'in', Array.from(allDumpsterIds)));
+                const dumpsterQuery = query(collection(db, `accounts/${accountId}/dumpsters`), where(documentId(), 'in', Array.from(allDumpsterIds)));
                 const dumpsterSnaps = await getDocs(dumpsterQuery);
                 dumpsterSnaps.forEach(d => dumpstersMap.set(d.id, docToSerializable(d) as Dumpster));
             }
