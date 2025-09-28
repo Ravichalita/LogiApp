@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
@@ -568,10 +567,11 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                           <p>{d.name} ({d.size}m³, {d.color})</p>
                           {d.specialStatus && (
                             <p className={cn("text-xs",
-                                d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
-                                d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
-                                d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
-                                'text-red-500'
+                                d.specialStatus.includes('Alugada') ? 'text-destructive' :
+                                d.specialStatus.includes('Reservada') ? 'text-blue-600' :
+                                d.specialStatus.includes('Encerra hoje') ? 'text-yellow-600' :
+                                d.specialStatus.includes('Atraso') ? 'text-red-700 font-bold' :
+                                'text-muted-foreground'
                             )}>{d.specialStatus}</p>
                           )}
                         </div>
