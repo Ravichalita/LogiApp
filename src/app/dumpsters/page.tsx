@@ -129,7 +129,7 @@ export default function DumpstersPage() {
   }, [accountId, authLoading, canAccess, loading, router]);
 
  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
-    const today = startOfToday();
+    const today = new Date();
     const clientMap = new Map(clients.map(c => [c.id, c]));
 
     return dumpsters.map(d => {
@@ -147,14 +147,22 @@ export default function DumpstersPage() {
                 dumpsters: [d],
                 client: clientMap.get(r.clientId) || null,
                 assignedToUser: null // Not needed for this view
-            } as PopulatedRental))
+            } as unknown as PopulatedRental))
             .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
 
         enhancedDumpster.scheduledRentals = relevantRentals;
+        
+        const activeRental = relevantRentals.find(r => 
+            isWithinInterval(today, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) })
+        );
 
-        const activeRental = relevantRentals.find(r => isWithinInterval(today, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) }));
-        const overdueRental = relevantRentals.find(r => isAfter(today, parseISO(r.returnDate)));
-        const futureRentals = relevantRentals.filter(r => isAfter(parseISO(r.rentalDate), endOfDay(today)));
+        const overdueRental = relevantRentals.find(r => 
+            isAfter(startOfToday(), endOfDay(parseISO(r.returnDate)))
+        );
+
+        const futureRentals = relevantRentals.filter(r => 
+            isAfter(startOfToday(parseISO(r.rentalDate)), today)
+        );
         
         let baseStatus = '';
 
@@ -477,7 +485,3 @@ export default function DumpstersPage() {
     </div>
   );
 }
-
-
-
-
