@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition } from 'react';
@@ -139,14 +140,14 @@ export default function DumpstersPage() {
         }
 
         const relevantRentals: PopulatedRental[] = allRentals
-            .filter(r => r.dumpsterId === d.id)
+            .filter(r => r.dumpsterIds?.includes(d.id))
             .map(r => ({
                 ...r,
                 itemType: 'rental',
-                dumpster: d,
+                dumpsters: [d],
                 client: clientMap.get(r.clientId) || null,
                 assignedToUser: null // Not needed for this view
-            }))
+            } as PopulatedRental))
             .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
 
         enhancedDumpster.scheduledRentals = relevantRentals;
@@ -476,5 +477,6 @@ export default function DumpstersPage() {
     </div>
   );
 }
+
 
 

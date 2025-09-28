@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
-import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
+import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment, Dumpster } from '@/lib/types';
 import { format, isBefore, isAfter, isToday, parseISO, startOfToday, endOfDay, isWithinInterval, isSameDay } from 'date-fns';
 import {
   Accordion,
@@ -526,7 +527,7 @@ export default function OSPage() {
 
   const pageContent = (
     <>
-      <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1, width: '210mm', height: '297mm' }}>
+      <div style={{ display: 'none' }}>
         {combinedItems.map(item => (
             <OsPdfDocument key={`${item.itemType}-${item.id}`} item={item} />
         ))}
@@ -629,7 +630,9 @@ export default function OSPage() {
                                             </span>
                                             <CardHeader className="pb-4 pt-8">
                                                 <div className="flex items-start justify-between">
-                                                    <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
+                                                    <CardTitle className="text-xl font-headline">
+                                                        {(rental.dumpsters || []).map(d => d.name).join(', ')}
+                                                    </CardTitle>
                                                     <div className="flex flex-col items-end gap-1 ml-2">
                                                         <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                                                     </div>
@@ -930,4 +933,3 @@ export default function OSPage() {
     </div>
   );
 }
-

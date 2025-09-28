@@ -13,6 +13,7 @@ import {
   Query,
   DocumentData,
   orderBy,
+  FieldPath,
 } from 'firebase/firestore';
 import { getFirebase } from '@/lib/firebase-client';
 import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType, CompletedRental, CompletedOperation } from './types';
@@ -167,27 +168,49 @@ export function getPopulatedRentals(
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         try {
+            if (querySnapshot.empty) {
+                onData([]);
+                return;
+            }
+
+            const allDumpsterIds = new Set<string>();
+            querySnapshot.docs.forEach(doc => {
+                const data = doc.data() as Rental;
+                if (data.dumpsterIds && Array.isArray(data.dumpsterIds)) {
+                    data.dumpsterIds.forEach(id => allDumpsterIds.add(id));
+                }
+            });
+
+            let dumpstersMap = new Map<string, Dumpster>();
+            if (allDumpsterIds.size > 0) {
+                const dumpsterQuery = query(collection(db, `accounts/${accountId}/dumpsters`), where(FieldPath.documentId(), 'in', Array.from(allDumpsterIds)));
+                const dumpsterSnaps = await getDocs(dumpsterQuery);
+                dumpsterSnaps.forEach(d => dumpstersMap.set(d.id, docToSerializable(d) as Dumpster));
+            }
+
+
             const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
                 const rentalData = docToSerializable(rentalDoc) as Omit<Rental, 'id'>;
 
-                const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
                 const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
 
-                const [dumpsterSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, clientPromise, assignedToPromise]);
+                const [clientSnap, assignedToSnap] = await Promise.all([clientPromise, assignedToPromise]);
+
+                const rentalDumpsters = rentalData.dumpsterIds?.map(id => dumpstersMap.get(id)).filter(Boolean) as Dumpster[] || [];
 
                 return {
                     id: rentalDoc.id,
                     ...rentalData,
                     itemType: 'rental',
-                    dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+                    dumpsters: rentalDumpsters,
                     client: docToSerializable(clientSnap) as Client | null,
                     assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
                 };
             });
 
             const populatedRentals = await Promise.all(rentalPromises);
-            onData(populatedRentals.filter(r => r.client && r.dumpster && r.assignedToUser));
+            onData(populatedRentals.filter(r => r.client && r.dumpsters && r.assignedToUser) as PopulatedRental[]);
         } catch(e) {
             console.error("Error processing populated rentals:", e)
             if (e instanceof Error) {

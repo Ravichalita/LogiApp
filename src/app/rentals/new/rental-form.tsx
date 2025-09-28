@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
@@ -35,7 +34,9 @@ import { Separator } from '@/components/ui/separator';
 import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { useRouter } from 'next/navigation';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 const initialState = {
   errors: {},
@@ -110,7 +111,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const { toast } = useToast();
   const router = useRouter();
   
-  const [selectedDumpsterId, setSelectedDumpsterId] = useState<string | undefined>();
+  const [selectedDumpsterIds, setSelectedDumpsterIds] = useState<string[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(prefillData?.clientId);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
   const [assignedToId, setAssignedToId] = useState<string | undefined>(prefillData?.assignedTo || userAccount?.id);
@@ -155,7 +156,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const [clientSelectOpen, setClientSelectOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
-  const selectedDumpsterInfo = dumpsters.find(d => d.id === selectedDumpsterId);
 
   const [isRentalDateOpen, setIsRentalDateOpen] = useState(false);
   const [isReturnDateOpen, setIsReturnDateOpen] = useState(false);
@@ -166,7 +166,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
   // Financial calculations
   const rentalDays = returnDate && rentalDate ? differenceInCalendarDays(returnDate, rentalDate) + 1 : 0;
-  const totalRentalValue = billingType === 'lumpSum' ? lumpSumValue : value * rentalDays;
+  const totalRentalValue = billingType === 'lumpSum' ? lumpSumValue : value * rentalDays * selectedDumpsterIds.length;
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = totalRentalValue - totalOperationCost;
 
@@ -317,7 +317,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
             return;
         }
         
-        if (selectedDumpsterId) formData.set('dumpsterId', selectedDumpsterId);
+        formData.set('dumpsterIds', JSON.stringify(selectedDumpsterIds));
         if (selectedClientId) formData.set('clientId', selectedClientId);
         if (selectedTruckId) formData.set('truckId', selectedTruckId);
         if (assignedToId) formData.set('assignedTo', assignedToId);
@@ -414,20 +414,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         setPriceId(undefined);
     }
   };
-
-  const isDeliveryOnReturnDay = rentalDate && selectedDumpsterInfo?.disabledRanges.some(range => isSameDay(addDays(range.to, 1), rentalDate));
-
-  const getNextBookingDate = (): Date | null => {
-      if (!rentalDate || !selectedDumpsterInfo) return null;
-
-      const nextBooking = selectedDumpsterInfo.disabledRanges
-          .map(range => range.from)
-          .find(from => from > rentalDate);
-      
-      return nextBooking || null;
-  }
-
-  const nextBookingDate = getNextBookingDate();
   
   const handleClientSelect = (clientId: string) => {
     if (clientId === 'add-new-client') {
@@ -474,98 +460,130 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     ))
   );
 
+  const handleDumpsterSelection = (dumpsterId: string) => {
+    setSelectedDumpsterIds((prev) =>
+      prev.includes(dumpsterId)
+        ? prev.filter((id) => id !== dumpsterId)
+        : [...prev, dumpsterId]
+    );
+  };
+
+  const getCombinedDisabledDates = () => {
+    if (selectedDumpsterIds.length === 0) return [];
+    
+    // Find intersections of available dates
+    let availableDates: Date[] | null = null;
+
+    selectedDumpsterIds.forEach(id => {
+      const dumpster = dumpsters.find(d => d.id === id);
+      if (!dumpster) return;
+
+      const dumpsterAvailableDates = getAvailableDatesForDumpster(dumpster);
+      
+      if (availableDates === null) {
+        availableDates = dumpsterAvailableDates;
+      } else {
+        availableDates = availableDates.filter(date => 
+          dumpsterAvailableDates.some(d => isSameDay(d, date))
+        );
+      }
+    });
+
+    // Create disabled ranges from the inverted available dates
+    const today = startOfToday();
+    const futureLimit = addDays(today, 365);
+    const disabled = [];
+    let currentDate = today;
+
+    while (currentDate <= futureLimit) {
+      if (!availableDates?.some(d => isSameDay(d, currentDate))) {
+        disabled.push(new Date(currentDate));
+      }
+      currentDate = addDays(currentDate, 1);
+    }
+
+    return disabled;
+  };
+  
+  const getAvailableDatesForDumpster = (dumpster: DumpsterForForm): Date[] => {
+      const today = startOfToday();
+      const futureLimit = addDays(today, 365); // Check for the next year
+      const available: Date[] = [];
+      let currentDate = today;
+
+      while (currentDate <= futureLimit) {
+          const isDisabled = dumpster.disabledRanges.some(range => isWithinInterval(currentDate, range));
+          if (!isDisabled) {
+              available.push(new Date(currentDate));
+          }
+          currentDate = addDays(currentDate, 1);
+      }
+      return available;
+  };
+
+  const combinedDisabledDates = getCombinedDisabledDates();
+
+  const selectedDumpsters = dumpsters.filter(d => selectedDumpsterIds.includes(d.id));
+
   return (
     <form action={handleFormAction} className="space-y-6">
       {swapOriginId && <input type="hidden" name="swapOriginId" value={swapOriginId} />}
        <div className="space-y-2">
-            <Label htmlFor="dumpsterId">Caçamba</Label>
-            <Popover open={dumpsterSelectOpen} onOpenChange={setDumpsterSelectOpen}>
-                <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={dumpsterSelectOpen}
-                    className="w-full justify-between"
-                >
-                    {selectedDumpsterId
-                    ? dumpsters.find((d) => d.id === selectedDumpsterId)?.name
-                    : "Selecione uma caçamba"}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                        <CommandInput placeholder="Buscar caçamba..." />
-                        <CommandEmpty>Nenhuma caçamba encontrada.</CommandEmpty>
-                        <CommandList>
-                             <CommandGroup>
-                                <Accordion type="multiple" className="w-full">
-                                {dumpsters.map(d => {
-                                    const hasMultipleSchedules = d.schedules.length >= 2;
-                                    if (hasMultipleSchedules) {
-                                        return (
-                                            <AccordionItem value={d.id} key={d.id} className="border-b-0">
-                                                 <AccordionTrigger className="text-xs font-normal px-2 py-1.5 hover:no-underline hover:bg-accent rounded-sm">
-                                                    <div className="flex justify-between w-full pr-2">
-                                                        <span>{d.name} ({d.size}m³, {d.color})</span>
-                                                        <span className="text-blue-500 font-semibold">Verificar</span>
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="p-2 pl-4">
-                                                    <div className="space-y-1">
-                                                        <p className="text-xs font-bold text-muted-foreground">Agendamentos:</p>
-                                                        {d.schedules.map((schedule, i) => (
-                                                            <p key={i} className="text-xs">{schedule}</p>
-                                                        ))}
-                                                         <Button 
-                                                            size="sm" 
-                                                            variant="link"
-                                                            className="h-auto p-0 text-xs mt-1"
-                                                            onClick={() => {
-                                                                setSelectedDumpsterId(d.id);
-                                                                setDumpsterSelectOpen(false);
-                                                            }}
-                                                         >
-                                                             Selecionar mesmo assim
-                                                         </Button>
-                                                    </div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        )
-                                    }
-                                    return (
-                                        <CommandItem
-                                            key={d.id}
-                                            value={`${d.name} ${d.size} ${d.color} ${d.specialStatus || ''}`}
-                                            disabled={d.status === 'Em Manutenção'}
-                                            onSelect={() => {
-                                                setSelectedDumpsterId(d.id);
-                                                setDumpsterSelectOpen(false);
-                                            }}
-                                            className="flex justify-between w-full"
-                                        >
-                                            <span>{d.name} ({d.size}m³, {d.color})</span>
-                                             {d.specialStatus && (
-                                                <span className={cn(
-                                                "text-xs ml-4 font-semibold",
-                                                d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
-                                                d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
-                                                d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
-                                                'text-red-500'
-                                                )}>
-                                                {d.specialStatus}
-                                                </span>
-                                            )}
-                                        </CommandItem>
-                                    )
-                                })}
-                                </Accordion>
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-          {errors?.dumpsterId && <p className="text-sm font-medium text-destructive">{errors.dumpsterId[0]}</p>}
+            <Label htmlFor="dumpsterId">Caçamba(s)</Label>
+            <Dialog open={dumpsterSelectOpen} onOpenChange={setDumpsterSelectOpen}>
+                <DialogTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={dumpsterSelectOpen}
+                        className="w-full justify-between"
+                    >
+                        <span className="truncate">
+                        {selectedDumpsterIds.length > 0
+                        ? dumpsters
+                            .filter(d => selectedDumpsterIds.includes(d.id))
+                            .map(d => d.name)
+                            .join(', ')
+                        : "Selecione uma ou mais caçambas"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Selecione as Caçambas</DialogTitle>
+                </DialogHeader>
+                 <div className="max-h-[60vh] overflow-y-auto p-1">
+                  {dumpsters.map(d => (
+                    <div key={d.id} className="flex items-center space-x-2 p-2 hover:bg-muted/50 rounded-md">
+                      <Checkbox
+                        id={`dumpster-${d.id}`}
+                        checked={selectedDumpsterIds.includes(d.id)}
+                        onCheckedChange={() => handleDumpsterSelection(d.id)}
+                        disabled={d.status === 'Em Manutenção'}
+                      />
+                      <Label htmlFor={`dumpster-${d.id}`} className="w-full flex justify-between items-center cursor-pointer">
+                        <div>
+                          <p>{d.name} ({d.size}m³, {d.color})</p>
+                          {d.specialStatus && (
+                            <p className={cn("text-xs",
+                                d.specialStatus.startsWith('Alugada') ? 'text-destructive' :
+                                d.specialStatus.startsWith('Reservada') ? 'text-muted-foreground' :
+                                d.specialStatus.startsWith('Encerra hoje') ? 'text-yellow-600 dark:text-yellow-400' :
+                                'text-red-500'
+                            )}>{d.specialStatus}</p>
+                          )}
+                        </div>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                 <DialogFooter className="p-6 bg-muted/50 rounded-b-lg">
+                    <Button onClick={() => setDumpsterSelectOpen(false)}>Confirmar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          {errors?.dumpsterIds && <p className="text-sm font-medium text-destructive">{errors.dumpsterIds[0]}</p>}
         </div>
 
         <div className="space-y-2">
@@ -786,7 +804,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                     }
                     setIsRentalDateOpen(false);
                 }}
-                disabled={selectedDumpsterInfo?.disabledRanges}
+                disabled={combinedDisabledDates}
                 initialFocus
                 locale={ptBR}
               />
@@ -822,7 +840,8 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                     if (!rentalDate || isBeforeDate(date, rentalDate)) {
                         return true;
                     }
-                    if (nextBookingDate && date >= nextBookingDate) {
+                    // Check against combined disabled dates
+                    if(combinedDisabledDates.some(disabledDate => isSameDay(date, disabledDate))) {
                         return true;
                     }
                     return false;
@@ -837,24 +856,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       </div>
       
        <div className="pt-2 space-y-2">
-          {isDeliveryOnReturnDay && (
-              <Alert variant="warning">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Atenção: Giro Rápido!</AlertTitle>
-                  <AlertDescription>
-                     A entrega coincide com a data de retirada de outro aluguel para esta caçamba.
-                  </AlertDescription>
-              </Alert>
-          )}
-          {nextBookingDate && (
-             <Alert variant="info">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Disponibilidade Limitada</AlertTitle>
-                  <AlertDescription>
-                    Esta caçamba já tem um agendamento futuro a partir de {format(nextBookingDate, "dd/MM/yyyy", { locale: ptBR })}. A data de retirada deve ser anterior a isso.
-                  </AlertDescription>
-              </Alert>
-          )}
        </div>
       
       <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>

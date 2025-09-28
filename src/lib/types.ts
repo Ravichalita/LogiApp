@@ -277,7 +277,7 @@ export const UpdateDumpsterSchema = DumpsterSchema.extend({
 
 export const RentalSchema = z.object({
   sequentialId: z.number().int().positive(),
-  dumpsterId: z.string({ required_error: "Selecione uma caçamba." }),
+  dumpsterIds: z.array(z.string()).min(1, { message: "Selecione pelo menos uma caçamba." }),
   clientId: z.string({ required_error: "Selecione um cliente." }),
   truckId: z.string().optional(),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
@@ -317,6 +317,8 @@ const UpdateRentalPeriodSchema = z.object({
 
 export const UpdateRentalSchema = z.object({
     id: z.string(),
+    dumpsterIds: z.array(z.string()).min(1, { message: "Selecione pelo menos uma caçamba." }).optional(),
+    clientId: z.string().optional(),
     truckId: z.string().optional(),
     rentalDate: z.string().optional(),
     returnDate: z.string().optional(),
@@ -418,12 +420,12 @@ export type Client = z.infer<typeof ClientSchema> & { id: string; accountId: str
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string };
-export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
+export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate' | 'dumpsterId'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
     accountId: string;
     client?: Client | null;
-    dumpster?: Dumpster | null;
+    dumpsters?: Dumpster[] | null;
     assignedToUser?: UserAccount | null;
     attachments?: Attachment[];
 };
@@ -438,10 +440,10 @@ export type EnhancedDumpster = Dumpster & {
     derivedStatus: string;
     scheduledRentals: PopulatedRental[];
 };
-export type PopulatedRental = Omit<Rental, 'dumpsterId' | 'clientId' | 'assignedTo'> & {
+export type PopulatedRental = Omit<Rental, 'dumpsterIds' | 'clientId' | 'assignedTo'> & {
     id: string;
     itemType: 'rental';
-    dumpster: Dumpster | null;
+    dumpsters: Dumpster[] | null;
     truck: Truck | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
@@ -455,9 +457,9 @@ export type PopulatedOperation = Operation & {
     createdAt?: Timestamp | string; // Allow string for serialized data
     completedAt?: string; // Serialized ISO string for completed operations
 };
-export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterId' | 'clientId'> & {
+export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterIds' | 'clientId'> & {
     id: string;
-    dumpster: Dumpster | null;
+    dumpsters: Dumpster[] | null;
     client: Client | null;
 };
 export type AdminClientView = {
