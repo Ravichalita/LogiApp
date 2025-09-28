@@ -1,4 +1,5 @@
 
+
 import { z } from 'zod';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -116,7 +117,6 @@ export const PermissionsSchema = z.object({
     canAccessFinance: z.boolean().default(false),
     canAccessNotificationsStudio: z.boolean().default(false),
     canUseAttachments: z.boolean().default(false),
-    canSeeServiceValue: z.boolean().default(false),
     
     // Actions Access
     canEditRentals: z.boolean().default(false),
@@ -160,7 +160,6 @@ export const AttachmentSchema = z.object({
     name: z.string(),
     type: z.string(),
     uploadedAt: z.string(),
-    path: z.string(),
 });
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
@@ -251,7 +250,6 @@ export const ClientSchema = z.object({
   latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
   longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   observations: z.string().optional(),
-  createdAt: z.custom<FieldValue | Timestamp | string>().optional(),
 });
 
 export const UpdateClientSchema = ClientSchema.extend({
@@ -279,7 +277,6 @@ export const RentalSchema = z.object({
   sequentialId: z.number().int().positive(),
   dumpsterIds: z.array(z.string()).min(1, { message: "Selecione pelo menos uma caçamba." }),
   clientId: z.string({ required_error: "Selecione um cliente." }),
-  truckId: z.string().optional(),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
   startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }),
@@ -317,9 +314,6 @@ const UpdateRentalPeriodSchema = z.object({
 
 export const UpdateRentalSchema = z.object({
     id: z.string(),
-    dumpsterIds: z.array(z.string()).min(1, { message: "Selecione pelo menos uma caçamba." }).optional(),
-    clientId: z.string().optional(),
-    truckId: z.string().optional(),
     rentalDate: z.string().optional(),
     returnDate: z.string().optional(),
     startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }).optional(),
@@ -358,12 +352,6 @@ export const CompletedRentalSchema = RentalSchema.extend({
     totalValue: z.number().positive(),
 });
 
-const GoogleCalendarInfoSchema = z.object({
-    accessToken: z.string(),
-    refreshToken: z.string(),
-    expiryDate: z.number(),
-    calendarId: z.string(),
-});
 
 export const UserAccountSchema = z.object({
   id: z.string(),
@@ -380,7 +368,6 @@ export const UserAccountSchema = z.object({
   fcmTokens: z.array(z.string()).optional(),
   hasSeenWelcome: z.boolean().optional(),
   firstAccessAt: z.string().optional(),
-  googleCalendar: GoogleCalendarInfoSchema.optional(),
 });
 
 export const UpdateUserProfileSchema = z.object({
@@ -416,18 +403,18 @@ export const RentalPricesSchema = z.object({
 
 
 // #region TypeScript Types
-export type Client = z.infer<typeof ClientSchema> & { id: string; accountId: string; createdAt?: string | Timestamp };
+export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string };
-export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate' | 'dumpsterId'> & { 
+export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
     accountId: string;
     client?: Client | null;
-    dumpsters?: Dumpster[] | null;
+    dumpster?: Dumpster | null;
     assignedToUser?: UserAccount | null;
-    attachments?: Attachment[];
+    attachments?: z.infer<typeof AttachmentSchema>[];
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
@@ -436,19 +423,16 @@ export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
-export type EnhancedDumpster = Dumpster & { 
-    derivedStatus: string;
-    scheduledRentals: PopulatedRental[];
-};
+export type EnhancedDumpster = Dumpster & { derivedStatus: string };
 export type PopulatedRental = Omit<Rental, 'dumpsterIds' | 'clientId' | 'assignedTo'> & {
     id: string;
     itemType: 'rental';
     dumpsters: Dumpster[] | null;
-    truck: Truck | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
 };
 export type PopulatedOperation = Operation & {
+    id: string;
     itemType: 'operation';
     operationTypes: {id: string, name: string}[];
     client: Client | null;
