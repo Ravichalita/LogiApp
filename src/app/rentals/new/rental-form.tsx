@@ -567,10 +567,10 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                           <p>{d.name} ({d.size}m³, {d.color})</p>
                           {d.specialStatus && (
                             <p className={cn("text-xs",
-                                d.specialStatus.includes('Alugada') ? 'text-destructive' :
-                                d.specialStatus.includes('Reservada') ? 'text-blue-600' :
-                                d.specialStatus.includes('Encerra hoje') ? 'text-yellow-600' :
-                                d.specialStatus.includes('Atraso') ? 'text-red-700 font-bold' :
+                                d.specialStatus.toLowerCase().includes('alugada') ? 'text-destructive' :
+                                d.specialStatus.toLowerCase().includes('reservada') ? 'text-blue-600' :
+                                d.specialStatus.toLowerCase().includes('encerra hoje') ? 'text-yellow-600' :
+                                d.specialStatus.toLowerCase().includes('atraso') ? 'text-red-700 font-bold' :
                                 'text-muted-foreground'
                             )}>{d.specialStatus}</p>
                           )}
