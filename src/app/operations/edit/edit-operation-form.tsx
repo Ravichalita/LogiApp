@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/accordion";
 import { getDirectionsAction, geocodeAddress } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CostsDialog } from '../../new/costs-dialog';
-import { OperationTypeDialog } from '../../new/operation-type-dialog';
+import { CostsDialog } from './costs-dialog';
+import { OperationTypeDialog } from './operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
