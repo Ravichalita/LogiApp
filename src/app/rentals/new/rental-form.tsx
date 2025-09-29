@@ -46,7 +46,7 @@ const initialState = {
 export type DumpsterForForm = Dumpster & { 
   specialStatus?: string;
   disabled: boolean;
-  disabledRanges: { from: Date; to: Date }[];
+  disabledRanges: { start: Date; end: Date }[];
   schedules: string[];
 };
 
@@ -102,6 +102,29 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
         return <Cloudy className="h-5 w-5" />;
     }
     return <Sun className="h-5 w-5" />;
+};
+
+const isRangeContains = (range: { start?: Date, end?: Date, from?: Date, to?: Date }, date: Date) => {
+    const start = range.start ?? range.from;
+    const end = range.end ?? range.to;
+    if (!start || !end) return false;
+    return isWithinInterval(date, { start, end });
+};
+
+const getAvailableDatesForDumpster = (dumpster: DumpsterForForm): Date[] => {
+    const today = startOfToday();
+    const futureLimit = addDays(today, 365); // Check for the next year
+    const available: Date[] = [];
+    let currentDate = today;
+
+    while (currentDate <= futureLimit) {
+        const isDisabled = dumpster.disabledRanges.some(range => isRangeContains(range, currentDate));
+        if (!isDisabled) {
+            available.push(new Date(currentDate));
+        }
+        currentDate = addDays(currentDate, 1);
+    }
+    return available;
 };
 
 
@@ -504,22 +527,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
     return disabled;
   };
-  
-  const getAvailableDatesForDumpster = (dumpster: DumpsterForForm): Date[] => {
-      const today = startOfToday();
-      const futureLimit = addDays(today, 365); // Check for the next year
-      const available: Date[] = [];
-      let currentDate = today;
-
-      while (currentDate <= futureLimit) {
-          const isDisabled = dumpster.disabledRanges.some(range => isWithinInterval(currentDate, range));
-          if (!isDisabled) {
-              available.push(new Date(currentDate));
-          }
-          currentDate = addDays(currentDate, 1);
-      }
-      return available;
-  };
 
   const combinedDisabledDates = getCombinedDisabledDates();
 
@@ -527,7 +534,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
   return (
     <form action={handleFormAction} className="space-y-6">
-      {swapOriginId && <input type="hidden" name="swapOriginId" value={swapOriginId} />}
        <div className="space-y-2">
             <Label htmlFor="dumpsterId">Caçamba(s)</Label>
             <Dialog open={dumpsterSelectOpen} onOpenChange={setDumpsterSelectOpen}>
@@ -556,7 +562,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                  <div className="max-h-[60vh] overflow-y-auto p-1">
                     <Accordion type="multiple" className="w-full">
                         {dumpsters.map(d => {
-                          console.log('Renderizando caçamba no dialog:', d.name, 'specialStatus:', d.specialStatus);
                           return (
                             <AccordionItem value={d.id} key={d.id} className="border-b">
                               <div className="flex items-center w-full p-2 hover:bg-muted/50 rounded-md">

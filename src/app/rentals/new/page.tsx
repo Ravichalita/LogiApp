@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account, PopulatedOperation, CompletedRental, CompletedOperation } from '@/lib/types';
-import { isAfter, isToday, parseISO, startOfToday, format, isWithinInterval, isBefore, endOfDay, subDays, differenceInDays } from 'date-fns';
+import { isAfter, isToday, parseISO, startOfToday, format, isWithinInterval, isBefore, endOfDay, subDays, differenceInDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 
@@ -84,33 +84,42 @@ function NewRentalPageContent() {
   }, [accountId]);
 
 
- const dumpstersForForm = useMemo((): DumpsterForForm[] => {
+  const dumpstersForForm = useMemo((): DumpsterForForm[] => {
     const today = startOfToday();
-
-    const result = dumpsters.map(d => {
+  
+    const toDate = (v: any): Date | null => {
+      if (!v) return null;
+      if (typeof v === 'string') return parseISO(v);
+      if (v?.toDate) return v.toDate();
+      if (v instanceof Date) return v;
+      return new Date(v);
+    };
+  
+    return dumpsters.map(d => {
       if (d.status === 'Em Manutenção') {
-        console.log('Caçamba em manutenção:', d.name);
         return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [], schedules: [] };
       }
-
+  
       const dumpsterRentals = allRentals
-        .filter(r => r.dumpsterIds.includes(d.id))
-        .sort((a, b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
-
+        .map(r => ({ ...r, _rentalStart: toDate(r.rentalDate), _rentalEnd: toDate(r.returnDate) }))
+        .filter(r => r.dumpsterIds?.includes(d.id))
+        .filter(r => r._rentalStart && r._rentalEnd)
+        .sort((a, b) => (a._rentalStart!.getTime() - b._rentalStart!.getTime()));
+  
       const activeRental = dumpsterRentals.find(r =>
-        isWithinInterval(today, { start: startOfToday(parseISO(r.rentalDate)), end: endOfDay(parseISO(r.returnDate)) })
+        isWithinInterval(today, { start: startOfDay(r._rentalStart!), end: endOfDay(r._rentalEnd!) })
       );
-      
-      const overdueRental = dumpsterRentals.find(r => !activeRental && isAfter(today, endOfDay(parseISO(r.returnDate))));
-
+  
+      const overdueRental = dumpsterRentals.find(r => !activeRental && isAfter(today, endOfDay(r._rentalEnd!)));
+  
       const futureRentals = dumpsterRentals.filter(r =>
-        isAfter(startOfToday(parseISO(r.rentalDate)), today)
+        isAfter(startOfDay(r._rentalStart!), today)
       );
-
+  
       let specialStatus = 'Disponível';
-
+  
       if (activeRental) {
-        if (isToday(parseISO(activeRental.returnDate))) {
+        if (isToday(activeRental._rentalEnd!)) {
           specialStatus = 'Encerra hoje';
         } else {
           specialStatus = 'Alugada';
@@ -120,41 +129,30 @@ function NewRentalPageContent() {
       } else if (futureRentals.length > 0) {
         specialStatus = 'Agendada';
       }
-
+  
       const disabledRanges = dumpsterRentals.map(r => ({
-        from: startOfToday(parseISO(r.rentalDate)),
-        to: endOfDay(parseISO(r.returnDate)),
-      })).filter(range => range.to >= range.from);
-
+        start: startOfDay(r._rentalStart!),
+        end: endOfDay(r._rentalEnd!),
+      })).filter(range => range.end >= range.start);
+  
       const schedules = dumpsterRentals.map(r => {
-        const start = parseISO(r.rentalDate);
-        const end = parseISO(r.returnDate);
+        const start = r._rentalStart!;
+        const end = r._rentalEnd!;
         let scheduleStatus = 'Reservada';
-        if (isWithinInterval(today, { start, end })) {
+        if (isWithinInterval(today, { start: startOfDay(start), end: endOfDay(end) })) {
           scheduleStatus = 'Alugada';
         }
         return `${scheduleStatus} de ${format(start, 'dd/MM', { locale: ptBR })} a ${format(end, 'dd/MM', { locale: ptBR })}`;
       });
-      
-      console.log(`Caçamba ${d.name}:`, {
-        specialStatus,
-        hasActiveRental: !!activeRental,
-        hasOverdueRental: !!overdueRental,
-        futureRentalsCount: futureRentals.length,
-        totalRentals: dumpsterRentals.length
-      });
-
+  
       return {
         ...d,
-        disabled: d.status === 'Em Manutenção',
+        disabled: d.status === 'Em Manutenção' || !!activeRental || !!overdueRental,
         specialStatus,
         disabledRanges,
         schedules,
       };
     });
-    
-    console.log('dumpstersForForm resultado:', result);
-    return result;
   }, [dumpsters, allRentals]);
 
   const classifiedClients = useMemo(() => {
