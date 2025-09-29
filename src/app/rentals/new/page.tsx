@@ -115,9 +115,9 @@ function NewRentalPageContent() {
       const futureRentals = dumpsterRentals.filter(r =>
         isAfter(startOfDay(r._rentalStart!), today)
       );
-  
+
       let specialStatus = 'Disponível';
-  
+
       if (activeRental) {
         if (isToday(activeRental._rentalEnd!)) {
           specialStatus = 'Encerra hoje';
@@ -147,7 +147,7 @@ function NewRentalPageContent() {
   
       return {
         ...d,
-        disabled: d.status === 'Em Manutenção' || !!activeRental || !!overdueRental,
+        disabled: d.status === 'Em Manutenção',
         specialStatus,
         disabledRanges,
         schedules,
