@@ -99,6 +99,8 @@ function NewRentalPageContent() {
       const activeRental = dumpsterRentals.find(r =>
         isWithinInterval(today, { start: startOfToday(parseISO(r.rentalDate)), end: endOfDay(parseISO(r.returnDate)) })
       );
+      
+      const overdueRental = dumpsterRentals.find(r => isAfter(today, endOfDay(parseISO(r.returnDate))));
 
       const futureRentals = dumpsterRentals.filter(r =>
         isAfter(startOfToday(parseISO(r.rentalDate)), today)
@@ -109,13 +111,13 @@ function NewRentalPageContent() {
       if (activeRental) {
         if (isToday(parseISO(activeRental.returnDate))) {
           specialStatus = 'Encerra hoje';
-        } else if (isAfter(today, parseISO(activeRental.returnDate))) {
-          specialStatus = 'Em Atraso';
         } else {
           specialStatus = 'Alugada';
         }
+      } else if (overdueRental) {
+        specialStatus = 'Em Atraso';
       } else if (futureRentals.length > 0) {
-        specialStatus = `Agendada`;
+        specialStatus = 'Agendada';
       }
 
 
