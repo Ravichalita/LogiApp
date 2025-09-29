@@ -171,10 +171,7 @@ export default function ClientsPage() {
             setCompletedRentals(completedRentalsData);
             setCompletedOperations(completedOpsData);
         }).finally(() => {
-             // We can set loading to false after all initial fetches are done.
-            if(allClients.length > 0 || activeRentals.length > 0 || activeOperations.length > 0) {
-                 setLoading(false);
-            }
+            setLoading(false);
         });
 
       return () => {
