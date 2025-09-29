@@ -100,7 +100,7 @@ function NewRentalPageContent() {
         isWithinInterval(today, { start: startOfToday(parseISO(r.rentalDate)), end: endOfDay(parseISO(r.returnDate)) })
       );
       
-      const overdueRental = dumpsterRentals.find(r => isAfter(today, endOfDay(parseISO(r.returnDate))));
+      const overdueRental = dumpsterRentals.find(r => !activeRental && isAfter(today, endOfDay(parseISO(r.returnDate))));
 
       const futureRentals = dumpsterRentals.filter(r =>
         isAfter(startOfToday(parseISO(r.rentalDate)), today)
