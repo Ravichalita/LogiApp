@@ -28,8 +28,8 @@ import {
 } from "@/components/ui/accordion";
 import { getDirectionsAction, getWeatherForecastAction, geocodeAddress } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CostsDialog } from '../../new/costs-dialog';
-import { OperationTypeDialog } from '../../new/operation-type-dialog';
+import { CostsDialog } from '@/app/operations/new/costs-dialog';
+import { OperationTypeDialog } from '@/app/operations/new/operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
