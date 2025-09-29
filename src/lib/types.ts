@@ -431,7 +431,7 @@ export type UserStatus = UserAccount['status'];
 export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
-export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
+export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje' | 'Em Atraso';
 export type EnhancedDumpster = Dumpster & { derivedStatus: string, scheduledRentals: PopulatedRental[] };
 export type PopulatedRental = Omit<Rental, 'clientId' | 'assignedTo'> & {
     id: string;

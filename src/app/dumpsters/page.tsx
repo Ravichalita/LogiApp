@@ -67,12 +67,13 @@ function DumpsterTableSkeleton() {
     );
 }
 
-const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[] = [
+const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' | 'Em Atraso' }[] = [
     { label: "Todas", value: 'Todos' },
     { label: "Disponível", value: 'Disponível' },
     { label: "Alugada", value: 'Alugada' },
     { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Reservada", value: 'Reservada' },
+    { label: "Em Atraso", value: 'Em Atraso' },
     { label: "Em Manutenção", value: 'Em Manutenção' },
 ];
 
@@ -83,7 +84,7 @@ export default function DumpstersPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos'>('Todos');
+  const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos' | 'Em Atraso'>('Todos');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
@@ -163,14 +164,15 @@ export default function DumpstersPage() {
 
         d.scheduledRentals.sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
 
+        const now = new Date();
         const activeRental = d.scheduledRentals.find(r => 
-            isWithinInterval(today, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) })
+            isWithinInterval(now, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) })
         );
         const overdueRental = d.scheduledRentals.find(r => 
-            isAfter(startOfToday(), endOfDay(parseISO(r.returnDate)))
+            isAfter(startOfToday(), endOfDay(parseISO(r.returnDate))) && !activeRental
         );
         const futureRentals = d.scheduledRentals.filter(r => 
-            isAfter(startOfToday(parseISO(r.rentalDate)), today)
+            isAfter(startOfToday(parseISO(r.rentalDate)), now)
         );
         
         let baseStatus = '';
@@ -201,7 +203,7 @@ export default function DumpstersPage() {
         if (statusFilter === 'Reservada') {
             result = result.filter(d => d.derivedStatus.startsWith('Reservada para'));
         } else {
-            result = result.filter(d => d.derivedStatus === statusFilter);
+            result = result.filter(d => d.derivedStatus.startsWith(statusFilter));
         }
     }
 

@@ -609,61 +609,70 @@ export default function OSPage() {
 
                         return (
                             <DraggableActionCard 
-                                key={uniqueKey}
-                                actions={
-                                     <RentalCardActions rental={rental} status={status} />
-                                }
-                            >
-                                <Accordion type="single" collapsible className="w-full">
-                                    <AccordionItem value={rental.id} className="border-none">
-                                        <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                            <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
-                                                AL{rental.sequentialId}
-                                            </span>
-                                            <CardHeader className="pb-4 pt-8">
-                                                <div className="flex items-start justify-between">
+                            key={uniqueKey}
+                            actions={
+                                <>
+                                    {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('edit', rental)}><Edit className="h-6 w-6" /> Editar</Button>}
+                                    <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', rental)}> <CheckCircle className="h-6 w-6" /> Finalizar</Button>
+                                    <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone || '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
+                                    </a>
+                                    {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('swap', rental)}><ArrowRightLeft className="h-6 w-6" /> Trocar</Button>}
+                                    <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('pdf', rental)}><Download className="h-6 w-6" /> Baixar PDF</Button>
+                                    {canEditRentals && <Button variant="destructive" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('delete', rental)}><Trash2 className="h-6 w-6" /> Excluir</Button>}
+                                </>
+                            }
+                        >
+                            <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value={rental.id} className="border-none">
+                                    <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                                        <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
+                                            AL{rental.sequentialId}
+                                        </span>
+                                        <CardHeader className="pb-4 pt-8">
+                                             <div className="flex items-start justify-between">
                                                     <CardTitle className="text-xl font-headline">
-                                                        {(rental.dumpsters || []).map(d => d.name).join(', ')}
+                                                    {(rental.dumpsters || []).map(d => d.name).join(', ')}
                                                     </CardTitle>
                                                     <div className="flex flex-col items-end gap-1 ml-2">
-                                                        <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                                    <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                                </div>
+                                            </div>
+                                            <CardDescription className="text-sm mt-4">
+                                                <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Building className="h-4 w-4"/> {rental.client?.name}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User className="h-4 w-4"/>
+                                                            {canEditRentals && rental.assignedToUser ? (
+                                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                                                    {rental.assignedToUser.name}
+                                                                </EditAssignedUserDialog>
+                                                            ) : (
+                                                                <span>{rental.assignedToUser?.name}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1.5 text-left md:text-right">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Calendar className="h-4 w-4"/>
+                                                            <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <CardDescription className="text-sm mt-4">
-                                                    <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Building className="h-4 w-4"/> {rental.client?.name}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <User className="h-4 w-4"/>
-                                                                {canEditRentals && rental.assignedToUser ? (
-                                                                    <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                                        {rental.assignedToUser.name}
-                                                                    </EditAssignedUserDialog>
-                                                                ) : (
-                                                                    <span>{rental.assignedToUser?.name}</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-1.5 text-left md:text-right">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Calendar className="h-4 w-4"/>
-                                                                <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
-                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                            </AccordionTrigger>
-                                            <AccordionContent className="p-6 pt-4">
-                                                <RentalCardActions rental={rental} status={status} />
-                                            </AccordionContent>
-                                        </Card>
-                                    </AccordionItem>
-                                </Accordion>
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                        </AccordionTrigger>
+                                        <AccordionContent className="p-6 pt-4">
+                                            <RentalCardActions rental={rental} status={status} />
+                                        </AccordionContent>
+                                    </Card>
+                                </AccordionItem>
+                            </Accordion>
                             </DraggableActionCard>
                         )
                     } else {
