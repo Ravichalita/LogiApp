@@ -109,15 +109,15 @@ function NewRentalPageContent() {
       if (activeRental) {
         if (isToday(parseISO(activeRental.returnDate))) {
           specialStatus = 'Encerra hoje';
+        } else if (isAfter(today, parseISO(activeRental.returnDate))) {
+          specialStatus = 'Em Atraso';
         } else {
           specialStatus = 'Alugada';
         }
-        if (futureRentals.length > 0) {
-          specialStatus += ' / Agendada';
-        }
       } else if (futureRentals.length > 0) {
-        specialStatus = 'Agendada';
+        specialStatus = `Agendada`;
       }
+
 
       const disabledRanges = dumpsterRentals.map(r => ({
         from: startOfToday(parseISO(r.rentalDate)),
