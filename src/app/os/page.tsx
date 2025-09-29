@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -527,7 +526,7 @@ export default function OSPage() {
 
   const pageContent = (
     <>
-      <div style={{ display: 'none' }}>
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, opacity: 0 }}>
         {combinedItems.map(item => (
             <OsPdfDocument key={`${item.itemType}-${item.id}`} item={item} />
         ))}

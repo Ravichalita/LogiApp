@@ -51,11 +51,11 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
     const responsibleName = isRental ? rental?.assignedToUser?.name : operation?.driver?.name;
 
     const rentalDays = rental ? Math.max(differenceInCalendarDays(parseISO(rental.returnDate), parseISO(rental.rentalDate)) + 1, 1) : 0;
-    const totalRentalValue = rental ? (rental.billingType === 'lumpSum' ? (rental.lumpSumValue || 0) : rental.value * rentalDays) : 0;
+    const totalRentalValue = rental ? (rental.billingType === 'lumpSum' ? (rental.lumpSumValue || 0) : rental.value * rentalDays * (rental.dumpsters?.length || 1)) : 0;
 
 
     return (
-        <div id={pdfContainerId} className="bg-white p-8 font-sans" style={{ fontFamily: 'Arial, sans-serif' }}>
+        <div id={pdfContainerId} className="bg-white p-8 font-sans" style={{ width: '210mm', height: '297mm', fontFamily: 'Arial, sans-serif' }}>
             {/* Header */}
             <div className="flex justify-between items-center border-b-2 border-gray-200 pb-4">
                 <div className="flex items-center gap-4">
@@ -97,7 +97,7 @@ export function OsPdfDocument({ item }: OsPdfDocumentProps) {
                 <div className="grid grid-cols-2 gap-4">
                     {isRental ? (
                         <>
-                            <InfoField label="Caçamba" value={`${rental?.dumpster?.name} (${rental?.dumpster?.size}m³)`} />
+                            <InfoField label="Caçamba(s)" value={(rental?.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ')} />
                             <InfoField label="Período do Aluguel" value={`${formatDate(rental!.rentalDate)} a ${formatDate(rental!.returnDate)}`} />
                             {rental?.billingType === 'lumpSum' ? (
                                 <InfoField label="Valor da Empreitada" value={formatCurrency(rental!.lumpSumValue)} />
