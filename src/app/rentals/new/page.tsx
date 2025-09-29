@@ -87,8 +87,9 @@ function NewRentalPageContent() {
  const dumpstersForForm = useMemo((): DumpsterForForm[] => {
     const today = startOfToday();
 
-    return dumpsters.map(d => {
+    const result = dumpsters.map(d => {
       if (d.status === 'Em Manutenção') {
+        console.log('Caçamba em manutenção:', d.name);
         return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [], schedules: [] };
       }
 
@@ -120,7 +121,6 @@ function NewRentalPageContent() {
         specialStatus = 'Agendada';
       }
 
-
       const disabledRanges = dumpsterRentals.map(r => ({
         from: startOfToday(parseISO(r.rentalDate)),
         to: endOfDay(parseISO(r.returnDate)),
@@ -135,6 +135,14 @@ function NewRentalPageContent() {
         }
         return `${scheduleStatus} de ${format(start, 'dd/MM', { locale: ptBR })} a ${format(end, 'dd/MM', { locale: ptBR })}`;
       });
+      
+      console.log(`Caçamba ${d.name}:`, {
+        specialStatus,
+        hasActiveRental: !!activeRental,
+        hasOverdueRental: !!overdueRental,
+        futureRentalsCount: futureRentals.length,
+        totalRentals: dumpsterRentals.length
+      });
 
       return {
         ...d,
@@ -144,6 +152,9 @@ function NewRentalPageContent() {
         schedules,
       };
     });
+    
+    console.log('dumpstersForForm resultado:', result);
+    return result;
   }, [dumpsters, allRentals]);
 
   const classifiedClients = useMemo(() => {
