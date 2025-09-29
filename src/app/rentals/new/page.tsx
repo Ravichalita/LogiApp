@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useMemo, Suspense } from 'react';
@@ -95,16 +94,29 @@ function NewRentalPageContent() {
         }
         
         const dumpsterRentals = allRentals
-            .filter(r => r.dumpsterId === d.id)
+            .filter(r => r.dumpsterIds.includes(d.id))
             .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)))
             .sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
+        
+        // Find operations that might be using this dumpster
+        // Note: This assumes operations might "use" a dumpster, which isn't explicitly in the schema
+        // This is a placeholder for a more complex logic if operations can reserve dumpsters.
+        // For now, we mainly rely on rentals.
+        const dumpsterOperations = allOperations
+            .filter(op => {
+                // This is a simplified check. You might need a more specific way
+                // to link operations to dumpsters if that's a feature.
+                // For example, if an operation's description mentions a dumpster ID.
+                return false; 
+            });
+
 
         const disabledRanges = dumpsterRentals.map(r => {
             const rentalStart = startOfToday(parseISO(r.rentalDate));
             const rentalEnd = endOfDay(parseISO(r.returnDate));
             return {
                 from: rentalStart,
-                to: subDays(rentalEnd, 1),
+                to: rentalEnd, // Block the entire duration
             }
         }).filter(range => range.to >= range.from);
 
@@ -145,7 +157,7 @@ function NewRentalPageContent() {
           schedules,
         };
       });
-  }, [dumpsters, allRentals]);
+  }, [dumpsters, allRentals, allOperations]);
 
   const classifiedClients = useMemo(() => {
     const today = new Date();

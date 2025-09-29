@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useTransition } from 'react';
@@ -132,66 +131,66 @@ export default function DumpstersPage() {
     const today = new Date();
     const clientMap = new Map(clients.map(c => [c.id, c]));
 
-    return dumpsters.map(d => {
-        const enhancedDumpster: EnhancedDumpster = { ...d, derivedStatus: d.status, scheduledRentals: [] };
+    const dumpstersMap = new Map<string, EnhancedDumpster>(
+      dumpsters.map(d => [d.id, { ...d, derivedStatus: d.status, scheduledRentals: [] }])
+    );
 
+    allRentals.forEach(rental => {
+        const rentalClient = clientMap.get(rental.clientId);
+        if (!rentalClient) return;
+
+        (rental.dumpsterIds || []).forEach(dumpsterId => {
+            const dumpster = dumpstersMap.get(dumpsterId);
+            if (dumpster) {
+                 const populatedRental = {
+                    ...rental,
+                    itemType: 'rental',
+                    dumpsters: [], // Simplified for this context
+                    client: rentalClient,
+                    assignedToUser: null // Not needed for this view
+                } as unknown as PopulatedRental;
+
+                dumpster.scheduledRentals.push(populatedRental);
+            }
+        });
+    });
+
+    dumpstersMap.forEach(d => {
         if (d.status === 'Em Manutenção') {
-            return enhancedDumpster;
+            d.derivedStatus = 'Em Manutenção';
+            return;
         }
 
-        const relevantRentals: PopulatedRental[] = allRentals
-            .filter(r => r.dumpsterIds?.includes(d.id))
-            .map(r => ({
-                ...r,
-                itemType: 'rental',
-                dumpsters: [d],
-                client: clientMap.get(r.clientId) || null,
-                assignedToUser: null // Not needed for this view
-            } as unknown as PopulatedRental))
-            .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
+        d.scheduledRentals.sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
 
-        enhancedDumpster.scheduledRentals = relevantRentals;
-        
-        const activeRental = relevantRentals.find(r => 
+        const activeRental = d.scheduledRentals.find(r => 
             isWithinInterval(today, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) })
         );
-
-        const overdueRental = relevantRentals.find(r => 
+        const overdueRental = d.scheduledRentals.find(r => 
             isAfter(startOfToday(), endOfDay(parseISO(r.returnDate)))
         );
-
-        const futureRentals = relevantRentals.filter(r => 
+        const futureRentals = d.scheduledRentals.filter(r => 
             isAfter(startOfToday(parseISO(r.rentalDate)), today)
         );
         
         let baseStatus = '';
-
         if (overdueRental) {
             baseStatus = 'Em Atraso';
         } else if (activeRental) {
-            if (isToday(parseISO(activeRental.returnDate))) {
-                baseStatus = 'Encerra hoje';
-            } else {
-                baseStatus = 'Alugada';
-            }
+            baseStatus = isToday(parseISO(activeRental.returnDate)) ? 'Encerra hoje' : 'Alugada';
         }
         
         if (futureRentals.length > 0) {
             const nextBookingDate = format(parseISO(futureRentals[0].rentalDate), "dd/MM/yy");
-            if (baseStatus) {
-                enhancedDumpster.derivedStatus = `${baseStatus} / Agendada`;
-            } else {
-                enhancedDumpster.derivedStatus = `Reservada para ${nextBookingDate}`;
-            }
+            d.derivedStatus = baseStatus ? `${baseStatus} / Agendada` : `Reservada para ${nextBookingDate}`;
         } else if (baseStatus) {
-            enhancedDumpster.derivedStatus = baseStatus;
+            d.derivedStatus = baseStatus;
         } else {
-            enhancedDumpster.derivedStatus = 'Disponível';
+            d.derivedStatus = 'Disponível';
         }
+    });
 
-        return enhancedDumpster;
-    }).sort((a, b) => a.name.localeCompare(b.name));
-
+    return Array.from(dumpstersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 }, [dumpsters, allRentals, clients]);
 
 

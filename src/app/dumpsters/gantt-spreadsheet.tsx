@@ -45,7 +45,7 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
       .map(dumpster => {
         const dailyStatuses = dates.map(date => {
           const rentalOnDate = rentals.find(r =>
-            r.dumpsterId === dumpster.id &&
+            r.dumpsterIds.includes(dumpster.id) &&
             isWithinInterval(date, { start: parseISO(r.rentalDate), end: parseISO(r.returnDate) })
           );
 
