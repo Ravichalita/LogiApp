@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { OperationForm } from './operation-form';
 import { useAuth } from '@/context/auth-context';
 import type { Client, UserAccount, Truck, Account, OperationType, PopulatedOperation, PopulatedRental, Rental, CompletedRental, CompletedOperation } from '@/lib/types';
-import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations, getRentals } from '@/lib/data';
+import { fetchClients, fetchTeamMembers, getTrucks, getAccount, getPopulatedOperations, getRentals, fetchAccount } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link } from 'lucide-react';
