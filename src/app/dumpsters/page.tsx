@@ -169,22 +169,26 @@ export default function DumpstersPage() {
             isWithinInterval(now, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) })
         );
         const overdueRental = d.scheduledRentals.find(r => 
-            isAfter(startOfToday(), endOfDay(parseISO(r.returnDate))) && !activeRental
+            !activeRental && isAfter(startOfToday(), endOfDay(parseISO(r.returnDate)))
         );
         const futureRentals = d.scheduledRentals.filter(r => 
-            isAfter(startOfToday(parseISO(r.rentalDate)), now)
+            isAfter(parseISO(r.rentalDate), activeRental ? endOfDay(parseISO(activeRental.returnDate)) : now)
         );
         
         let baseStatus = '';
-        if (overdueRental) {
-            baseStatus = 'Em Atraso';
-        } else if (activeRental) {
-            baseStatus = isToday(parseISO(activeRental.returnDate)) ? 'Encerra hoje' : 'Alugada';
+        if (activeRental) {
+             baseStatus = isToday(parseISO(activeRental.returnDate)) ? 'Encerra hoje' : 'Alugada';
+        } else if (overdueRental) {
+             baseStatus = 'Em Atraso';
         }
         
         if (futureRentals.length > 0) {
             const nextBookingDate = format(parseISO(futureRentals[0].rentalDate), "dd/MM/yy");
-            d.derivedStatus = baseStatus ? `${baseStatus} / Agendada` : `Reservada para ${nextBookingDate}`;
+            if (baseStatus) {
+                d.derivedStatus = `${baseStatus} / Agendada`;
+            } else {
+                 d.derivedStatus = `Reservada para ${nextBookingDate}`;
+            }
         } else if (baseStatus) {
             d.derivedStatus = baseStatus;
         } else {
@@ -486,3 +490,5 @@ export default function DumpstersPage() {
     </div>
   );
 }
+
+    
