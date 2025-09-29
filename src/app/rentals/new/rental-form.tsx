@@ -592,12 +592,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                                       <Label htmlFor={`dumpster-${d.id}`} className="w-full cursor-pointer">
                                           <p className="font-semibold">{d.name} <span className="font-normal text-muted-foreground">({d.size}m³, {d.color})</span></p>
                                           {d.specialStatus && (
-                                              <p className={cn("text-xs", {
-                                                  'text-destructive': d.specialStatus === 'Alugada' || d.specialStatus === 'Em Atraso',
-                                                  'text-blue-600': d.specialStatus === 'Agendada',
-                                                  'text-yellow-600': d.specialStatus === 'Encerra hoje',
-                                                  'text-muted-foreground': d.specialStatus === 'Disponível' || d.specialStatus === 'Em Manutenção'
-                                              })}>{d.specialStatus}</p>
+                                                <p className={cn("text-xs", {
+                                                    'text-destructive': d.specialStatus === 'Alugada' || d.specialStatus === 'Em Atraso',
+                                                    'text-blue-600': d.specialStatus === 'Agendada',
+                                                    'text-yellow-600': d.specialStatus === 'Encerra hoje',
+                                                    'text-muted-foreground': d.specialStatus === 'Disponível' || d.specialStatus === 'Em Manutenção'
+                                                })}>{d.specialStatus}</p>
                                           )}
                                       </Label>
                                   </div>
