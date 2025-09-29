@@ -114,6 +114,7 @@ export const PermissionsSchema = z.object({
     
     // Feature Access
     canAccessFinance: z.boolean().default(false),
+    canSeeServiceValue: z.boolean().default(false),
     canAccessNotificationsStudio: z.boolean().default(false),
     canUseAttachments: z.boolean().default(false),
     

@@ -217,7 +217,8 @@ export default function OSPage() {
   const canAccessRoutes = isSuperAdmin || !!permissions?.canAccessRoutes;
   const canEditRentals = isSuperAdmin || !!permissions?.canEditRentals;
   const canEditOperations = isSuperAdmin || !!permissions?.canEditOperations;
-  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || !!permissions?.canAccessFinance;
+  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canAccessFinance;
+  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
   const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
   const isViewer = userAccount?.role === 'viewer';
 
@@ -772,7 +773,7 @@ export default function OSPage() {
                                                     )}
                                                     <Separator />
 
-                                                    {canSeeFinance && (
+                                                    {canSeeServiceValue && (
                                                         <div className="flex items-center gap-2 pt-2">
                                                             <DollarSign className="h-4 w-4 text-muted-foreground" />
                                                             <span className="font-medium">Valor do Serviço:</span>
