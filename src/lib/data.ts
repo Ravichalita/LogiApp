@@ -26,7 +26,6 @@ const docToSerializable = (doc: DocumentData | null | undefined): any => {
   if (!doc || !doc.exists()) {
     return null;
   }
-  const { db } = getFirebase();
   const data = doc.data();
   const serializableData: { [key: string]: any } = { id: doc.id };
 

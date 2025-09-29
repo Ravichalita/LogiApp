@@ -2,7 +2,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { getClients, getRentals, getCompletedRentals, getPopulatedOperations, getCompletedOperations } from '@/lib/data';
+import { getClients, getRentals, getPopulatedOperations } from '@/lib/data';
+import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { ClientActions } from './client-actions';
 import {
   Accordion,
@@ -158,22 +159,28 @@ export default function ClientsPage() {
     }
 
     if (accountId && db) {
-      const unsubscribeClients = getClients(accountId, setAllClients);
-      const unsubscribeRentals = getRentals(accountId, setActiveRentals);
-      const unsubscribeCompletedRentals = getCompletedRentals(accountId, setCompletedRentals);
-      const unsubscribeOps = getPopulatedOperations(accountId, setActiveOperations, console.error);
-      const unsubscribeCompletedOps = getCompletedOperations(accountId, setCompletedOperations);
-      
-      Promise.all([
-          new Promise(resolve => onSnapshot(collection(db, `accounts/${accountId}/clients`), () => resolve(true))),
-      ]).then(() => setLoading(false));
+        setLoading(true);
+        const unsubscribeClients = getClients(accountId, setAllClients);
+        const unsubscribeRentals = getRentals(accountId, setActiveRentals);
+        const unsubscribeOps = getPopulatedOperations(accountId, setActiveOperations, console.error);
+
+        Promise.all([
+            getCompletedRentals(accountId),
+            getCompletedOperations(accountId)
+        ]).then(([completedRentalsData, completedOpsData]) => {
+            setCompletedRentals(completedRentalsData);
+            setCompletedOperations(completedOpsData);
+        }).finally(() => {
+             // We can set loading to false after all initial fetches are done.
+            if(allClients.length > 0 || activeRentals.length > 0 || activeOperations.length > 0) {
+                 setLoading(false);
+            }
+        });
 
       return () => {
         unsubscribeClients();
         unsubscribeRentals();
-        unsubscribeCompletedRentals();
         unsubscribeOps();
-        unsubscribeCompletedOps();
       };
     } else {
       setAllClients([]);
