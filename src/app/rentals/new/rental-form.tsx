@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -47,7 +47,7 @@ export type DumpsterForForm = Dumpster & {
   specialStatus?: string;
   disabled: boolean;
   disabledRanges: { start: Date; end: Date }[];
-  schedules: string[];
+  schedules: { rentalDate: string, returnDate: string, text: string }[];
 };
 
 function SubmitButton({ isPending }: { isPending: boolean }) {
@@ -104,27 +104,27 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
     return <Sun className="h-5 w-5" />;
 };
 
-const isRangeContains = (range: { start?: Date, end?: Date, from?: Date, to?: Date }, date: Date) => {
-    const start = range.start ?? range.from;
-    const end = range.end ?? range.to;
+const isRangeContains = (range: { start?: Date, end?: Date }, date: Date) => {
+    const start = range.start;
+    const end = range.end;
     if (!start || !end) return false;
     return isWithinInterval(date, { start, end });
 };
 
 const getAvailableDatesForDumpster = (dumpster: DumpsterForForm): Date[] => {
-    const today = startOfToday();
-    const futureLimit = addDays(today, 365); // Check for the next year
-    const available: Date[] = [];
-    let currentDate = today;
+  const today = startOfToday();
+  const futureLimit = addDays(today, 365); // Check for the next year
+  const available: Date[] = [];
+  let currentDate = today;
 
-    while (currentDate <= futureLimit) {
-        const isDisabled = dumpster.disabledRanges.some(range => isRangeContains(range, currentDate));
-        if (!isDisabled) {
-            available.push(new Date(currentDate));
-        }
-        currentDate = addDays(currentDate, 1);
+  while (currentDate <= futureLimit) {
+    const isDisabled = dumpster.disabledRanges.some(range => isRangeContains(range, currentDate));
+    if (!isDisabled) {
+      available.push(new Date(currentDate));
     }
-    return available;
+    currentDate = addDays(currentDate, 1);
+  }
+  return available;
 };
 
 
@@ -174,6 +174,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+  const [sameDaySwapWarning, setSameDaySwapWarning] = useState<string | null>(null);
 
   const [dumpsterSelectOpen, setDumpsterSelectOpen] = useState(false);
   const [clientSelectOpen, setClientSelectOpen] = useState(false);
@@ -292,6 +293,23 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
     fetchRouteInfo();
   }, [startLocation, deliveryLocation, rentalDate, account, selectedBaseId]);
+  
+  useEffect(() => {
+    setSameDaySwapWarning(null);
+    if (!rentalDate || selectedDumpsterIds.length === 0) return;
+
+    const dumpstersWithSameDayReturn = dumpsters
+      .filter(d => selectedDumpsterIds.includes(d.id))
+      .filter(d => 
+        d.schedules.some(s => isSameDay(parseISO(s.returnDate), rentalDate))
+      );
+
+    if (dumpstersWithSameDayReturn.length > 0) {
+        const names = dumpstersWithSameDayReturn.map(d => d.name).join(', ');
+        setSameDaySwapWarning(`A(s) caçamba(s) ${names} será(ão) devolvida(s) no mesmo dia. Planeje a logística de acordo.`);
+    }
+  }, [rentalDate, selectedDumpsterIds, dumpsters]);
+
   
   const handleBaseSelect = (baseId: string) => {
     setSelectedBaseId(baseId);
@@ -495,31 +513,30 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     if (selectedDumpsterIds.length === 0) return [];
     
     // Find intersections of available dates
-    let availableDates: Date[] | null = null;
+    let availableDatesSet: Set<string> | null = null;
 
     selectedDumpsterIds.forEach(id => {
       const dumpster = dumpsters.find(d => d.id === id);
       if (!dumpster) return;
 
       const dumpsterAvailableDates = getAvailableDatesForDumpster(dumpster);
+      const dumpsterAvailableDateStrings = new Set(dumpsterAvailableDates.map(d => d.toISOString().split('T')[0]));
       
-      if (availableDates === null) {
-        availableDates = dumpsterAvailableDates;
+      if (availableDatesSet === null) {
+        availableDatesSet = dumpsterAvailableDateStrings;
       } else {
-        availableDates = availableDates.filter(date => 
-          dumpsterAvailableDates.some(d => isSameDay(d, date))
-        );
+        availableDatesSet = new Set([...availableDatesSet].filter(dateStr => dumpsterAvailableDateStrings.has(dateStr)));
       }
     });
 
     // Create disabled ranges from the inverted available dates
     const today = startOfToday();
     const futureLimit = addDays(today, 365);
-    const disabled = [];
+    const disabled: Date[] = [];
     let currentDate = today;
 
     while (currentDate <= futureLimit) {
-      if (!availableDates?.some(d => isSameDay(d, currentDate))) {
+      if (!availableDatesSet?.has(currentDate.toISOString().split('T')[0])) {
         disabled.push(new Date(currentDate));
       }
       currentDate = addDays(currentDate, 1);
@@ -594,7 +611,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                                           <h4 className="text-xs font-semibold text-muted-foreground">Próximos Agendamentos:</h4>
                                           <ul className="list-disc pl-4 text-xs text-muted-foreground">
                                               {d.schedules.map((schedule, i) => (
-                                                  <li key={i}>{schedule}</li>
+                                                  <li key={i}>{schedule.text}</li>
                                               ))}
                                           </ul>
                                       </div>
@@ -824,7 +841,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                 onSelect={(date) => {
                     if (date) {
                         setRentalDate(date);
-                        setReturnDate(addDays(date, 2));
+                        if (!returnDate || isBeforeDate(returnDate, date)) {
+                            setReturnDate(addDays(date, 2));
+                        }
                     } else {
                         setRentalDate(undefined);
                         setReturnDate(undefined);
@@ -838,6 +857,14 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
             </PopoverContent>
           </Popover>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
+           {sameDaySwapWarning && (
+            <Alert variant="warning" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {sameDaySwapWarning}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
         <div className="space-y-2">
           <Label>Data de Retirada (Prevista)</Label>
@@ -867,8 +894,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                     if (!rentalDate || isBeforeDate(date, rentalDate)) {
                         return true;
                     }
-                    // Check against combined disabled dates
-                    if(combinedDisabledDates.some(disabledDate => isSameDay(date, disabledDate))) {
+                    if (combinedDisabledDates.some(disabledDate => isSameDay(date, disabledDate))) {
                         return true;
                     }
                     return false;
@@ -881,9 +907,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>
-      
-       <div className="pt-2 space-y-2">
-       </div>
       
       <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
         <AccordionItem value="per-day">
