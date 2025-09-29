@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map as MapIcon, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip, Warehouse } from 'lucide-react';
+import { CalendarIcon, ChevronDown, PenLine, Clock, Route, DollarSign, TrendingUp, TrendingDown, Map as MapIcon, Sun, Cloudy, CloudRain, Snowflake, Thermometer, MapPin, AlertCircle, Upload, File as FileIcon, X, Paperclip, Warehouse, Plus, ChevronsUpDown, Check, Star, Building, ShieldCheck, User } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set, parseISO, addHours, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -27,20 +27,29 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getDirectionsAction, geocodeAddress } from '@/lib/data-server-actions';
+import { getDirectionsAction, getWeatherForecastAction, geocodeAddress } from '@/lib/data-server-actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CostsDialog } from './costs-dialog';
-import { OperationTypeDialog } from './operation-type-dialog';
+import { CostsDialog } from '../new/costs-dialog';
+import { OperationTypeDialog } from '../new/operation-type-dialog';
 import { MapDialog } from '@/components/map-dialog';
 import { Separator } from '@/components/ui/separator';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getFirebase } from '@/lib/firebase-client';
 import { Progress } from '@/components/ui/progress';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
+import { useRouter } from 'next/navigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 
 interface EditOperationFormProps {
   operation: PopulatedOperation;
   clients: Client[];
+  classifiedClients: {
+    newClients: Client[];
+    activeClients: Client[];
+    completedClients: Client[];
+    unservedClients: Client[];
+  };
   team: UserAccount[];
   trucks: Truck[];
   operations: PopulatedOperation[];
@@ -66,17 +75,35 @@ const formatCurrency = (value: number | undefined | null) => {
     }).format(value);
 }
 
-export function EditOperationForm({ operation, clients, team, trucks, operations, operationTypes, account }: EditOperationFormProps) {
+const WeatherIcon = ({ condition }: { condition: string }) => {
+    const lowerCaseCondition = condition.toLowerCase();
+    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
+        return <CloudRain className="h-5 w-5" />;
+    }
+    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
+        return <Snowflake className="h-5 w-5" />;
+    }
+    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
+        return <Cloudy className="h-5 w-5" />;
+    }
+    return <Sun className="h-5 w-5" />;
+};
+
+export function EditOperationForm({ operation, clients, classifiedClients, team, trucks, operations, operationTypes, account }: EditOperationFormProps) {
   const { accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
   const { toast } = useToast();
+  const router = useRouter();
 
   // State initialization from operation prop
   const [startDate, setStartDate] = useState<Date | undefined>(operation.startDate ? parseISO(operation.startDate) : undefined);
   const [startTime, setStartTime] = useState<string>(operation.startDate ? format(parseISO(operation.startDate), 'HH:mm') : '');
   const [endDate, setEndDate] = useState<Date | undefined>(operation.endDate ? parseISO(operation.endDate) : undefined);
   const [endTime, setEndTime] = useState<string>(operation.endDate ? format(parseISO(operation.endDate), 'HH:mm') : '');
+  
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
+  const [isEndDateOpen, setIsEndDateOpen] = useState(false);
 
   const [startAddress, setStartAddress] = useState(operation.startAddress);
   const [startLocation, setStartLocation] = useState<Omit<Location, 'address'> | null>(
@@ -93,6 +120,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   );
   
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(operation.truckId);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(operation.clientId);
   const [selectedOperationTypeIds, setSelectedOperationTypeIds] = useState<string[]>(operation.typeIds || []);
   const [baseValue, setBaseValue] = useState(operation.value || 0);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>(operation.additionalCosts || []);
@@ -101,12 +129,16 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   const selectedBase = account?.bases?.find(b => b.address === startAddress);
   const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(selectedBase?.id);
 
-  const [directions, setDirections] = useState<{ distance: string, duration: string } | null>(null);
+  const [directions, setDirections] = useState<{ distanceMeters: number; distance: string, duration: string } | null>(null);
+  const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+  const [clientSelectOpen, setClientSelectOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
 
 
-  const totalOperationCost = additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
+  const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
@@ -132,26 +164,32 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   
   useEffect(() => {
     const fetchRouteInfo = async () => {
-      if (startLocation && destinationLocation) {
+      if (startLocation && destinationLocation && startDate) {
         setIsFetchingInfo(true);
         setDirections(null);
+        setWeather(null);
         setTravelCost(null);
         try {
-          const directionsResult = await getDirectionsAction(startLocation, destinationLocation);
+          const [directionsResult, weatherResult] = await Promise.all([
+             getDirectionsAction(startLocation, destinationLocation),
+             getWeatherForecastAction(destinationLocation, startDate),
+          ]);
+          
           if (directionsResult) {
             setDirections(directionsResult);
-            // Calculate Travel Cost for Poliguindaste
-            const poliguindasteType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
+            const truck = trucks.find(t => t.id === selectedTruckId);
+            const truckType = account?.truckTypes.find(t => t.name === truck?.type);
 
-            if (poliguindasteType && selectedBaseId) {
-                const costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === poliguindasteType.id);
+            if (truckType) {
+                let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
+                // Fallback: If no specific base config, find any config for this truck type.
+                if (!costConfig) {
+                    costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
+                }
                 const costPerKm = costConfig?.value || 0;
                 
-                if (costPerKm > 0) {
-                    const distanceMeters = directionsResult.distanceMeters;
-                    if (!isNaN(distanceMeters)) {
-                        setTravelCost((distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
-                    }
+                if (costPerKm > 0 && directionsResult.distanceMeters) {
+                    setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
                 } else {
                     setTravelCost(0);
                 }
@@ -159,6 +197,9 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                 setTravelCost(0);
             }
           }
+           if (weatherResult) {
+              setWeather(weatherResult);
+           }
         } catch (error) {
           console.error(error);
         } finally {
@@ -166,12 +207,13 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
         }
       } else {
           setDirections(null);
+          setWeather(null);
           setTravelCost(null);
       }
     };
 
     fetchRouteInfo();
-  }, [startLocation, destinationLocation, account, selectedBaseId]);
+  }, [startLocation, destinationLocation, startDate, account, selectedBaseId, selectedTruckId, trucks]);
 
   const handleStartLocationSelect = (selectedLocation: Location) => {
     setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -231,7 +273,51 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
           }
       }
   };
+  
+  const handleClientSelect = (clientId: string) => {
+      if (clientId === 'add-new-client') {
+          router.push('/clients/new');
+          return;
+      }
+      setSelectedClientId(clientId);
+      setClientSelectOpen(false);
+  }
 
+  const filterClients = (clients: Client[], search: string) => {
+    if (!search) return clients;
+    return clients.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
+  }
+
+  const filteredNewClients = filterClients(classifiedClients.newClients, clientSearch);
+  const filteredActiveClients = filterClients(classifiedClients.activeClients, clientSearch);
+  const filteredCompletedClients = filterClients(classifiedClients.completedClients, clientSearch);
+  const filteredUnservedClients = filterClients(classifiedClients.unservedClients, clientSearch);
+
+  useEffect(() => {
+    if (clientSearch) {
+        const groupsToOpen: string[] = [];
+        if (filteredCompletedClients.length > 0) groupsToOpen.push('completed');
+        if (filteredUnservedClients.length > 0) groupsToOpen.push('unserved');
+        setOpenAccordionGroups(groupsToOpen);
+    } else {
+        setOpenAccordionGroups([]);
+    }
+  }, [clientSearch, filteredCompletedClients.length, filteredUnservedClients.length]);
+  
+  const renderClientList = (clientList: Client[], icon: React.ReactNode) => (
+    clientList.map(c => (
+      <CommandItem
+        key={c.id}
+        value={c.name}
+        onSelect={() => handleClientSelect(c.id)}
+      >
+        <div className="flex items-center gap-2">
+            {icon}
+            {c.name}
+        </div>
+      </CommandItem>
+    ))
+  );
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
@@ -241,6 +327,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
       }
       
       formData.set('id', operation.id);
+      if (selectedClientId) formData.set('clientId', selectedClientId);
 
       const combineDateTime = (date: Date | undefined, time: string): string | undefined => {
         if (!date || !time) return undefined;
@@ -298,7 +385,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
   return (
     <form action={handleFormAction} className="space-y-6">
       <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="type" className="text-muted-foreground">Tipo de Operação</Label>
             <OperationTypeDialog
@@ -318,14 +405,64 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
 
           <div className="space-y-2">
             <Label htmlFor="clientId" className="text-muted-foreground">Cliente</Label>
-            <Select name="clientId" defaultValue={operation.clientId} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+             <Dialog open={clientSelectOpen} onOpenChange={setClientSelectOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                       {selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : 'Selecione um cliente'}
+                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="p-0">
+                    <DialogHeader className="p-4 pb-0">
+                        <DialogTitle>Selecionar Cliente</DialogTitle>
+                    </DialogHeader>
+                    <Command>
+                         <CommandInput placeholder="Buscar cliente..." value={clientSearch} onValueChange={setClientSearch}/>
+                         <CommandList className="max-h-[60vh]">
+                            <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                             {filteredNewClients.length > 0 && (
+                                <CommandGroup heading="Novos Clientes">
+                                    {renderClientList(filteredNewClients, <Star className="h-4 w-4 mr-2" />)}
+                                </CommandGroup>
+                            )}
+                            {filteredActiveClients.length > 0 && (
+                                <CommandGroup heading="Em Atendimento">
+                                    {renderClientList(filteredActiveClients, <Building className="h-4 w-4 mr-2" />)}
+                                </CommandGroup>
+                            )}
+                            <Accordion type="multiple" className="w-full" value={openAccordionGroups} onValueChange={setOpenAccordionGroups}>
+                                {filteredCompletedClients.length > 0 && (
+                                    <AccordionItem value="completed">
+                                        <AccordionTrigger className="px-2 text-sm font-semibold text-muted-foreground">Concluídos</AccordionTrigger>
+                                        <AccordionContent className="p-1">
+                                            <CommandGroup>
+                                                {renderClientList(filteredCompletedClients, <ShieldCheck className="h-4 w-4 mr-2" />)}
+                                            </CommandGroup>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+                                {filteredUnservedClients.length > 0 && (
+                                     <AccordionItem value="unserved">
+                                        <AccordionTrigger className="px-2 text-sm font-semibold text-muted-foreground">Não Atendidos</AccordionTrigger>
+                                        <AccordionContent className="p-1">
+                                            <CommandGroup>
+                                                 {renderClientList(filteredUnservedClients, <User className="h-4 w-4 mr-2" />)}
+                                            </CommandGroup>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                )}
+                            </Accordion>
+                         </CommandList>
+                         <CommandSeparator />
+                          <CommandGroup>
+                             <CommandItem onSelect={() => handleClientSelect('add-new-client')} className="text-primary focus:bg-primary/10 focus:text-primary">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Novo Cliente
+                            </CommandItem>
+                         </CommandGroup>
+                    </Command>
+                </DialogContent>
+            </Dialog>
             {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
           </div>
         </div>
@@ -346,7 +483,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
 
           <div className="space-y-2">
             <Label htmlFor="truckId" className="text-muted-foreground">Caminhão</Label>
-            <Select name="truckId" onValueChange={handleTruckChange} defaultValue={operation.truckId} required>
+            <Select name="truckId" onValueChange={handleTruckChange} defaultValue={operation.truckId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um caminhão" />
               </SelectTrigger>
@@ -363,7 +500,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
         <div className="space-y-2">
           <Label className="text-muted-foreground">Início da Operação</Label>
           <div className="flex items-center gap-2">
-            <Popover>
+            <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
               <PopoverTrigger asChild>
                 <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")} disabled={!selectedTruckId}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
@@ -371,7 +508,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={ptBR} />
+                <Calendar mode="single" selected={startDate} onSelect={(date) => { setStartDate(date); setIsStartDateOpen(false); }} initialFocus locale={ptBR} />
               </PopoverContent>
             </Popover>
             <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-auto" disabled={!selectedTruckId}/>
@@ -389,7 +526,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                      <div className="space-y-2">
                         <Label>Término (Previsão)</Label>
                         <div className="flex items-center gap-2">
-                            <Popover>
+                            <Popover open={isEndDateOpen} onOpenChange={setIsEndDateOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
                                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -397,7 +534,7 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
-                                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={ptBR} />
+                                <Calendar mode="single" selected={endDate} onSelect={(date) => { setEndDate(date); setIsEndDateOpen(false); }} initialFocus locale={ptBR} />
                             </PopoverContent>
                             </Popover>
                             <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-auto" />
@@ -455,14 +592,14 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
       {isFetchingInfo && (
         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Spinner size="small" />
-          Calculando rota...
+          Calculando rota e previsão do tempo...
         </div>
       )}
       
-       {(directions || travelCost) && startLocation && destinationLocation && (
+       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && !isFetchingInfo && (
           <div className="relative">
              <Alert variant="info" className="flex-grow flex flex-col gap-4">
-               <AlertTitle>Informações da Rota</AlertTitle>
+               <AlertTitle>Informações da Rota e Clima</AlertTitle>
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 {directions && (
                     <>
@@ -475,6 +612,14 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                         <span className="font-bold">{directions.duration}</span>
                     </div>
                     </>
+                )}
+                 {weather && (
+                    <div className="text-center">
+                    <div className="flex items-center gap-2 text-sm">
+                        <WeatherIcon condition={weather.condition} />
+                        <span className="font-bold">{weather.tempC}°C</span>
+                    </div>
+                    </div>
                 )}
                  {(travelCost !== null && travelCost > 0) && (
                     <div className="flex items-center gap-2 text-sm">
@@ -498,17 +643,9 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
         )}
 
       <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="grid grid-cols-2 gap-4 items-end">
-            <div className="grid gap-2">
-              <Label className="text-muted-foreground">Custos Adicionais</Label>
-              <CostsDialog costs={additionalCosts} onSave={setAdditionalCosts}>
-                  <Button type="button" variant="outline" className="w-full">
-                      {additionalCosts.length > 0 ? `Editar Custos (${additionalCosts.length})` : 'Adicionar Custos'}
-                  </Button>
-              </CostsDialog>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="value" className="text-muted-foreground">Valor do Serviço</Label>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-muted-foreground">Valor do Serviço:</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 <Input
@@ -517,9 +654,16 @@ export function EditOperationForm({ operation, clients, team, trucks, operations
                   value={formatCurrencyForInput((baseValue * 100).toString())}
                   onChange={handleBaseValueChange}
                   placeholder="0,00"
-                  className="pl-8 text-right font-bold"
+                  className="pl-8 text-right font-bold w-32"
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <CostsDialog costs={additionalCosts} onSave={setAdditionalCosts}>
+                  <Button type="button" variant="outline" className="w-full">
+                      {additionalCosts.length > 0 ? `Editar Custos (${additionalCosts.length})` : 'Adicionar Custos'}
+                  </Button>
+              </CostsDialog>
             </div>
         </div>
         {additionalCosts.length > 0 && (
