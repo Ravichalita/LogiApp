@@ -85,79 +85,74 @@ function NewRentalPageContent() {
 
 
   const dumpstersForForm = useMemo((): DumpsterForForm[] => {
-    const today = startOfToday();
+        const today = startOfToday();
+        
+        return dumpsters.map(d => {
+            if (d.status === 'Em Manutenção') {
+                return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [], schedules: [] };
+            }
 
-    return dumpsters
-      .map(d => {
-        if (d.status === 'Em Manutenção') {
-          return { ...d, specialStatus: "Em Manutenção", disabled: true, disabledRanges: [], schedules: [] };
-        }
-        
-        const dumpsterRentals = allRentals
-            .filter(r => r.dumpsterIds.includes(d.id))
-            .filter(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)))
-            .sort((a,b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
-        
-        // Find operations that might be using this dumpster
-        // Note: This assumes operations might "use" a dumpster, which isn't explicitly in the schema
-        // This is a placeholder for a more complex logic if operations can reserve dumpsters.
-        // For now, we mainly rely on rentals.
-        const dumpsterOperations = allOperations
-            .filter(op => {
-                // This is a simplified check. You might need a more specific way
-                // to link operations to dumpsters if that's a feature.
-                // For example, if an operation's description mentions a dumpster ID.
-                return false; 
+            const dumpsterRentals = allRentals
+                .filter(r => r.dumpsterIds.includes(d.id))
+                .sort((a, b) => parseISO(a.rentalDate).getTime() - parseISO(b.rentalDate).getTime());
+
+            const activeRental = dumpsterRentals.find(r => 
+                isWithinInterval(today, { start: startOfToday(parseISO(r.rentalDate)), end: endOfDay(parseISO(r.returnDate)) })
+            );
+
+            const overdueRental = !activeRental 
+                ? dumpsterRentals.find(r => isAfter(today, endOfDay(parseISO(r.returnDate)))) 
+                : undefined;
+
+            const futureRentals = dumpsterRentals.filter(r => 
+                isAfter(startOfToday(parseISO(r.rentalDate)), activeRental ? endOfDay(parseISO(activeRental.returnDate)) : today)
+            );
+
+            let baseStatus = '';
+            if (activeRental) {
+                baseStatus = isToday(parseISO(activeRental.returnDate)) ? 'Encerra hoje' : 'Alugada';
+            } else if (overdueRental) {
+                baseStatus = 'Em Atraso';
+            }
+
+            let specialStatus = '';
+            if (futureRentals.length > 0) {
+                const nextBookingDate = format(parseISO(futureRentals[0].rentalDate), "dd/MM/yy");
+                if (baseStatus) {
+                    specialStatus = `${baseStatus} / Agendada`;
+                } else {
+                    specialStatus = `Reservada para ${nextBookingDate}`;
+                }
+            } else if (baseStatus) {
+                specialStatus = baseStatus;
+            } else {
+                specialStatus = 'Disponível';
+            }
+            
+            const disabledRanges = dumpsterRentals.map(r => ({
+                from: startOfToday(parseISO(r.rentalDate)),
+                to: endOfDay(parseISO(r.returnDate)),
+            })).filter(range => range.to >= range.from);
+
+             const schedules = dumpsterRentals.map(r => {
+               const start = parseISO(r.rentalDate);
+               const end = parseISO(r.returnDate);
+               let scheduleStatus = 'Reservada';
+               if (isWithinInterval(today, { start, end })) {
+                 scheduleStatus = 'Alugada';
+               }
+               return `${scheduleStatus} de ${format(start, 'dd/MM', {locale: ptBR})} a ${format(end, 'dd/MM', {locale: ptBR})}`
             });
 
-
-        const disabledRanges = dumpsterRentals.map(r => {
-            const rentalStart = startOfToday(parseISO(r.rentalDate));
-            const rentalEnd = endOfDay(parseISO(r.returnDate));
             return {
-                from: rentalStart,
-                to: rentalEnd, // Block the entire duration
-            }
-        }).filter(range => range.to >= range.from);
-
-        const currentOrNextRental = dumpsterRentals.find(r => isAfter(endOfDay(parseISO(r.returnDate)), today) || isToday(parseISO(r.returnDate)));
-
-        let specialStatus: string | undefined = undefined;
-        
-        if (currentOrNextRental) {
-            const rentalStart = startOfToday(parseISO(currentOrNextRental.rentalDate));
-            const rentalEnd = endOfDay(parseISO(currentOrNextRental.returnDate));
-
-            if (isWithinInterval(today, { start: rentalStart, end: rentalEnd })) {
-                 if (isToday(rentalEnd)) {
-                    specialStatus = `Encerra hoje`;
-                 } else {
-                    specialStatus = `Alugada até ${format(rentalEnd, 'dd/MM/yy', {locale: ptBR})}`;
-                 }
-            } else if (isBefore(today, rentalStart)) {
-                specialStatus = `Reservada para ${format(rentalStart, 'dd/MM/yy', {locale: ptBR})}`;
-            }
-        }
-        
-        const schedules = dumpsterRentals.map(r => {
-           const start = parseISO(r.rentalDate);
-           const end = parseISO(r.returnDate);
-           let scheduleStatus = 'Reservada';
-           if (isWithinInterval(today, { start, end })) {
-             scheduleStatus = 'Alugada';
-           }
-           return `${scheduleStatus} de ${format(start, 'dd/MM', {locale: ptBR})} a ${format(end, 'dd/MM', {locale: ptBR})}`
+                ...d,
+                disabled: d.status === 'Em Manutenção',
+                specialStatus,
+                disabledRanges,
+                schedules,
+            };
         });
-        
-        return { 
-          ...d, 
-          disabled: d.status === 'Em Manutenção',
-          specialStatus,
-          disabledRanges,
-          schedules,
-        };
-      });
-  }, [dumpsters, allRentals, allOperations]);
+    }, [dumpsters, allRentals]);
 
   const classifiedClients = useMemo(() => {
     const today = new Date();
