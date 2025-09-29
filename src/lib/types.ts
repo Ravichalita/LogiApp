@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -160,6 +159,7 @@ export const AttachmentSchema = z.object({
     name: z.string(),
     type: z.string(),
     uploadedAt: z.string(),
+    path: z.string(),
 });
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
@@ -277,6 +277,7 @@ export const RentalSchema = z.object({
   sequentialId: z.number().int().positive(),
   dumpsterIds: z.array(z.string()).min(1, { message: "Selecione pelo menos uma caçamba." }),
   clientId: z.string({ required_error: "Selecione um cliente." }),
+  truckId: z.string().optional(),
   rentalDate: z.string({ required_error: "A data de entrega é obrigatória." }),
   returnDate: z.string({ required_error: "A data de retirada é obrigatória." }),
   startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }),
@@ -327,6 +328,7 @@ export const UpdateRentalSchema = z.object({
       z.coerce.number().min(0, "O valor deve ser zero ou maior.")
     ).optional(),
     assignedTo: z.string().optional(),
+    truckId: z.string().optional(),
     observations: z.string().optional(),
     attachments: z.array(AttachmentSchema).optional(),
     additionalCosts: z.array(AdditionalCostSchema).optional(),
@@ -368,6 +370,12 @@ export const UserAccountSchema = z.object({
   fcmTokens: z.array(z.string()).optional(),
   hasSeenWelcome: z.boolean().optional(),
   firstAccessAt: z.string().optional(),
+  googleCalendar: z.object({
+      accessToken: z.string(),
+      expiryDate: z.number(),
+      refreshToken: z.string(),
+      calendarId: z.string().optional(),
+  }).optional(),
 });
 
 export const UpdateUserProfileSchema = z.object({
@@ -403,16 +411,16 @@ export const RentalPricesSchema = z.object({
 
 
 // #region TypeScript Types
-export type Client = z.infer<typeof ClientSchema> & { id: string, accountId: string };
+export type Client = z.infer<typeof ClientSchema> & { id: string, createdAt: any };
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
-export type Rental = z.infer<typeof RentalSchema> & { id: string };
+export type Rental = z.infer<typeof RentalSchema> & { id: string, truckId?: string };
 export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
     id: string; 
     completedDate: string; // Serialized as ISO string
     accountId: string;
     client?: Client | null;
-    dumpster?: Dumpster | null;
+    dumpsters?: Dumpster[] | null; // Changed from dumpster to dumpsters
     assignedToUser?: UserAccount | null;
     attachments?: z.infer<typeof AttachmentSchema>[];
 };
@@ -423,10 +431,11 @@ export type Location = { lat: number; lng: number; address: string; };
 
 // Derived/Enhanced Types for UI
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje';
-export type EnhancedDumpster = Dumpster & { derivedStatus: string };
-export type PopulatedRental = Omit<Rental, 'dumpsterIds' | 'clientId' | 'assignedTo'> & {
+export type EnhancedDumpster = Dumpster & { derivedStatus: string, scheduledRentals: PopulatedRental[] };
+export type PopulatedRental = Omit<Rental, 'clientId' | 'assignedTo'> & {
     id: string;
     itemType: 'rental';
+    truck?: Truck | null;
     dumpsters: Dumpster[] | null;
     client: Client | null;
     assignedToUser: UserAccount | null;
@@ -441,9 +450,8 @@ export type PopulatedOperation = Operation & {
     createdAt?: Timestamp | string; // Allow string for serialized data
     completedAt?: string; // Serialized ISO string for completed operations
 };
-export type PopulatedCompletedRental = Omit<CompletedRental, 'dumpsterIds' | 'clientId'> & {
+export type PopulatedCompletedRental = Omit<CompletedRental, 'clientId'> & {
     id: string;
-    dumpsters: Dumpster[] | null;
     client: Client | null;
 };
 export type AdminClientView = {

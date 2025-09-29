@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RentalCardActions } from '@/app/rentals/rental-card-actions';
 import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip, Sparkles, MapPinned, ArrowRightLeft, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -52,6 +51,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { RentalCardActions } from '../rentals/rental-card-actions';
 
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
@@ -61,7 +61,7 @@ type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em A
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info', order: number } {
-  const today = startOfToday(new Date());
+  const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
 
@@ -217,8 +217,10 @@ export default function OSPage() {
   const canAccessRoutes = isSuperAdmin || !!permissions?.canAccessRoutes;
   const canEditRentals = isSuperAdmin || !!permissions?.canEditRentals;
   const canEditOperations = isSuperAdmin || !!permissions?.canEditOperations;
-  const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || !!permissions?.canSeeServiceValue;
+  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || !!permissions?.canAccessFinance;
   const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
+  const isViewer = userAccount?.role === 'viewer';
+
 
   useEffect(() => {
     if (authLoading) return;
@@ -526,7 +528,7 @@ export default function OSPage() {
 
   const pageContent = (
     <>
-      <div style={{ position: 'fixed', left: '-9999px', top: 0, opacity: 0 }}>
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, opacity: 0, zIndex: -1 }}>
         {combinedItems.map(item => (
             <OsPdfDocument key={`${item.itemType}-${item.id}`} item={item} />
         ))}
@@ -603,22 +605,12 @@ export default function OSPage() {
                     if (item.itemType === 'rental') {
                         const rental = item as PopulatedRental;
                         const status = getRentalStatus(rental);
-                        const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
 
                         return (
                             <DraggableActionCard 
                                 key={uniqueKey}
                                 actions={
-                                    <>
-                                        {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('edit', rental)}><Edit className="h-6 w-6" /> Editar</Button>}
-                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', rental)} disabled={isFinalizeDisabled}><CheckCircle className="h-6 w-6" /> Finalizar</Button>
-                                        <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone || '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex">
-                                            <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
-                                        </a>
-                                        {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('swap', rental)}><ArrowRightLeft className="h-6 w-6" /> Trocar</Button>}
-                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('pdf', rental)}><Download className="h-6 w-6" /> Baixar PDF</Button>
-                                        {canEditRentals && <Button variant="destructive" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('delete', rental)}><Trash2 className="h-6 w-6" /> Excluir</Button>}
-                                    </>
+                                     <RentalCardActions rental={rental} status={status} />
                                 }
                             >
                                 <Accordion type="single" collapsible className="w-full">
@@ -780,13 +772,11 @@ export default function OSPage() {
                                                     )}
                                                     <Separator />
 
-                                                    {canSeeServiceValue && (
-                                                        <div className="space-y-4">
-                                                            <div className="flex items-center gap-2 pt-2">
-                                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                                <span className="font-medium">Valor do Serviço:</span>
-                                                                <span className="font-bold">{formatCurrency(op.value)}</span>
-                                                            </div>
+                                                    {canSeeFinance && (
+                                                        <div className="flex items-center gap-2 pt-2">
+                                                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                            <span className="font-medium">Valor do Serviço:</span>
+                                                            <span className="font-bold">{formatCurrency(op.value)}</span>
                                                         </div>
                                                     )}
                                                     
