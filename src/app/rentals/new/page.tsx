@@ -114,14 +114,14 @@ function NewRentalPageContent() {
         } else if (overdueRental) {
             baseStatus = 'Em Atraso';
         }
-
+        
         let specialStatus = '';
         if (futureRentals.length > 0) {
             const nextBookingDate = format(parseISO(futureRentals[0].rentalDate), "dd/MM/yy");
             if (baseStatus) {
                 specialStatus = `${baseStatus} / Agendada`;
             } else {
-                specialStatus = `Reservada para ${nextBookingDate}`;
+                specialStatus = `Agendada para ${nextBookingDate}`;
             }
         } else if (baseStatus) {
             specialStatus = baseStatus;
@@ -258,5 +258,3 @@ export default function NewRentalPage() {
         </Suspense>
     )
 }
-
-    
