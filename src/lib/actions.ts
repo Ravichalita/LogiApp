@@ -11,7 +11,7 @@ import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, Upda
 import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType, OperationalCost, PopulatedRental, PopulatedOperation } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
-import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
+import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set, isSameDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
@@ -585,8 +585,8 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             const existingStart = parseISO(existingRental.rentalDate);
             const existingEnd = parseISO(existingRental.returnDate);
             
-            // Conflict if new one starts before old one ends AND new one ends after old one starts
-            // Allow same-day swap: A new rental can start on the same day an old one ends.
+            // A conflict occurs if the new rental starts *before* the existing one ends.
+            // A new rental starting on the exact same day an old one ends is allowed.
             if (isBefore(newRentalStart, existingEnd) && isAfter(newRentalEnd, existingStart)) {
                 const dumpsterName = (await db.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).get()).data()?.name || dumpsterId;
                 return { message: `Conflito de agendamento. A caçamba ${dumpsterName} já está reservada para o período de ${format(existingStart, 'dd/MM/yy')} a ${format(existingEnd, 'dd/MM/yy')}.` };
@@ -2407,6 +2407,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
 
 
