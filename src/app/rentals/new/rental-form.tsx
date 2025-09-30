@@ -104,30 +104,6 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
     return <Sun className="h-5 w-5" />;
 };
 
-const isRangeContains = (range: { start?: Date, end?: Date }, date: Date) => {
-    const start = range.start;
-    const end = range.end;
-    if (!start || !end) return false;
-    return isWithinInterval(date, { start, end });
-};
-
-const getAvailableDatesForDumpster = (dumpster: DumpsterForForm): Date[] => {
-  const today = startOfToday();
-  const futureLimit = addDays(today, 365); // Check for the next year
-  const available: Date[] = [];
-  let currentDate = today;
-
-  while (currentDate <= futureLimit) {
-    const isDisabled = dumpster.disabledRanges.some(range => isRangeContains(range, currentDate));
-    if (!isDisabled) {
-      available.push(new Date(currentDate));
-    }
-    currentDate = addDays(currentDate, 1);
-  }
-  return available;
-};
-
-
 export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account, prefillData, swapOriginId }: RentalFormProps) {
   const { accountId, user, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
@@ -306,7 +282,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
     if (dumpstersWithSameDayReturn.length > 0) {
         const names = dumpstersWithSameDayReturn.map(d => d.name).join(', ');
-        setSameDaySwapWarning(`A(s) caçamba(s) ${names} será(ão) devolvida(s) no mesmo dia. Planeje a logística de acordo.`);
+        setSameDaySwapWarning(`A(s) caçamba(s) ${names} será(ão) devolvida(s) neste dia. Planeje a logística de acordo.`);
     }
   }, [rentalDate, selectedDumpsterIds, dumpsters]);
 
@@ -512,38 +488,64 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const getCombinedDisabledDates = () => {
     if (selectedDumpsterIds.length === 0) return [];
     
-    // Find intersections of available dates
-    let availableDatesSet: Set<string> | null = null;
+    // Create a Set of all dates between today and 1 year from now
+    const allDates = new Set<string>();
+    let currentDate = startOfToday();
+    const futureLimit = addDays(currentDate, 365);
+    while (currentDate <= futureLimit) {
+        allDates.add(currentDate.toISOString().split('T')[0]);
+        currentDate = addDays(currentDate, 1);
+    }
 
+    // For each selected dumpster, find its available dates and intersect with the accumulated set
     selectedDumpsterIds.forEach(id => {
       const dumpster = dumpsters.find(d => d.id === id);
       if (!dumpster) return;
 
-      const dumpsterAvailableDates = getAvailableDatesForDumpster(dumpster);
-      const dumpsterAvailableDateStrings = new Set(dumpsterAvailableDates.map(d => d.toISOString().split('T')[0]));
+      const availableDatesForDumpster = new Set(
+          getAvailableDatesForDumpster(dumpster).map(d => d.toISOString().split('T')[0])
+      );
       
-      if (availableDatesSet === null) {
-        availableDatesSet = dumpsterAvailableDateStrings;
-      } else {
-        availableDatesSet = new Set([...availableDatesSet].filter(dateStr => dumpsterAvailableDateStrings.has(dateStr)));
+      for (const date of Array.from(allDates)) {
+          if (!availableDatesForDumpster.has(date)) {
+              allDates.delete(date);
+          }
       }
     });
 
-    // Create disabled ranges from the inverted available dates
-    const today = startOfToday();
-    const futureLimit = addDays(today, 365);
-    const disabled: Date[] = [];
-    let currentDate = today;
-
+    // The disabled dates are all dates in the range that are NOT in the final 'allDates' set
+    const disabledDates: Date[] = [];
+    currentDate = startOfToday();
     while (currentDate <= futureLimit) {
-      if (!availableDatesSet?.has(currentDate.toISOString().split('T')[0])) {
-        disabled.push(new Date(currentDate));
-      }
-      currentDate = addDays(currentDate, 1);
+        if (!allDates.has(currentDate.toISOString().split('T')[0])) {
+            disabledDates.push(new Date(currentDate));
+        }
+        currentDate = addDays(currentDate, 1);
     }
 
-    return disabled;
+    return disabledDates;
   };
+  
+  const getAvailableDatesForDumpster = (dumpster: DumpsterForForm): Date[] => {
+    const today = startOfToday();
+    const futureLimit = addDays(today, 365); 
+    const available: Date[] = [];
+    let currentDate = today;
+
+    const isRangeContains = (range: { start: Date, end: Date }, date: Date) => {
+        return isWithinInterval(date, { start: range.start, end: range.end });
+    };
+
+    while (currentDate <= futureLimit) {
+        const isDisabled = dumpster.disabledRanges.some(range => isRangeContains(range, currentDate));
+        if (!isDisabled) {
+            available.push(new Date(currentDate));
+        }
+        currentDate = addDays(currentDate, 1);
+    }
+    return available;
+};
+
 
   const combinedDisabledDates = getCombinedDisabledDates();
 
@@ -587,7 +589,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                                           id={`dumpster-${d.id}`}
                                           checked={selectedDumpsterIds.includes(d.id)}
                                           onCheckedChange={() => handleDumpsterSelection(d.id)}
-                                          disabled={d.disabled}
+                                          disabled={d.status === 'Em Manutenção'}
                                       />
                                       <Label htmlFor={`dumpster-${d.id}`} className="w-full cursor-pointer">
                                           <p className="font-semibold">{d.name} <span className="font-normal text-muted-foreground">({d.size}m³, {d.color})</span></p>
@@ -894,10 +896,11 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                     if (!rentalDate || isBeforeDate(date, rentalDate)) {
                         return true;
                     }
-                    if (combinedDisabledDates.some(disabledDate => isSameDay(date, disabledDate))) {
-                        return true;
-                    }
-                    return false;
+                    // A date is disabled if it's part of *any* selected dumpster's unavailable ranges
+                    const isUnavailable = selectedDumpsters.some(dumpster => 
+                        dumpster.disabledRanges.some(range => isWithinInterval(date, { start: range.start, end: range.end }))
+                    );
+                    return isUnavailable;
                 }}
                 initialFocus
                 locale={ptBR}

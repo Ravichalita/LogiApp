@@ -573,21 +573,23 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     const rentalData = validatedFields.data;
 
     const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
-    // This check needs to be updated for multiple dumpsters
     for (const dumpsterId of rentalData.dumpsterIds) {
         const q = rentalsRef.where('dumpsterIds', 'array-contains', dumpsterId);
         const existingRentalsSnap = await q.get();
 
-        const newRentalStart = new Date(rentalData.rentalDate);
-        const newRentalEnd = new Date(rentalData.returnDate);
+        const newRentalStart = parseISO(rentalData.rentalDate);
+        const newRentalEnd = parseISO(rentalData.returnDate);
 
         for (const doc of existingRentalsSnap.docs) {
             const existingRental = doc.data() as Rental;
-            const existingStart = new Date(existingRental.rentalDate);
-            const existingEnd = new Date(existingRental.returnDate);
-            if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
+            const existingStart = parseISO(existingRental.rentalDate);
+            const existingEnd = parseISO(existingRental.returnDate);
+            
+            // Conflict if new one starts before old one ends AND new one ends after old one starts
+            // Allow same-day swap: A new rental can start on the same day an old one ends.
+            if (isBefore(newRentalStart, existingEnd) && isAfter(newRentalEnd, existingStart)) {
                 const dumpsterName = (await db.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).get()).data()?.name || dumpsterId;
-                return { message: `Conflito de agendamento. A caçamba ${dumpsterName} já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
+                return { message: `Conflito de agendamento. A caçamba ${dumpsterName} já está reservada para o período de ${format(existingStart, 'dd/MM/yy')} a ${format(existingEnd, 'dd/MM/yy')}.` };
             }
         }
     }
@@ -2405,6 +2407,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
 
 
