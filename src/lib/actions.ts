@@ -572,29 +572,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     const rentalData = validatedFields.data;
 
-    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
-    for (const dumpsterId of rentalData.dumpsterIds) {
-        const q = rentalsRef.where('dumpsterIds', 'array-contains', dumpsterId);
-        const existingRentalsSnap = await q.get();
-
-        const newRentalStart = parseISO(rentalData.rentalDate);
-        const newRentalEnd = parseISO(rentalData.returnDate);
-
-        for (const doc of existingRentalsSnap.docs) {
-            const existingRental = doc.data() as Rental;
-            const existingStart = parseISO(existingRental.rentalDate);
-            const existingEnd = parseISO(existingRental.returnDate);
-            
-            // A conflict occurs if the new rental starts *before* the existing one ends.
-            // A new rental starting on the exact same day an old one ends is allowed.
-            if (isBefore(newRentalStart, existingEnd) && isAfter(newRentalEnd, existingStart)) {
-                const dumpsterName = (await db.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).get()).data()?.name || dumpsterId;
-                return { message: `Conflito de agendamento. A caçamba ${dumpsterName} já está reservada para o período de ${format(existingStart, 'dd/MM/yy')} a ${format(existingEnd, 'dd/MM/yy')}.` };
-            }
-        }
-    }
-    
-    rentalDocRef = await rentalsRef.add({
+    rentalDocRef = await db.collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
       createdAt: FieldValue.serverTimestamp(),
     });
@@ -2407,6 +2385,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
 
 
 
