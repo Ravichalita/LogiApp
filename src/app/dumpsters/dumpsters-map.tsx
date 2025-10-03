@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { EnhancedDumpster } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { X } from 'lucide-react';
 
 const containerStyle = {
   width: '100%',
@@ -206,10 +207,14 @@ export function DumpstersMap({ dumpsters }: DumpstersMapProps) {
         <InfoWindow
           position={activeMarker.position}
           onCloseClick={handleInfoWindowClose}
+          options={{ disableAutoPan: true }}
         >
-          <div className="p-1 space-y-2 text-black max-h-48 overflow-y-auto">
+          <div className="p-1 space-y-2 text-black max-h-48 overflow-y-auto relative">
+             <button onClick={handleInfoWindowClose} className="absolute top-0 right-0 p-1 bg-transparent border-none cursor-pointer text-black">
+                <X size={16} />
+             </button>
              {activeMarker.dumpsters.map((d, index) => (
-                <div key={index} className="border-b last:border-b-0 pb-2 mb-2">
+                <div key={index} className="border-b last:border-b-0 pb-2 mb-2 pr-4">
                      <h3 className="font-bold">{d.dumpsterName}</h3>
                      <p className="text-sm">Cliente: {d.clientName}</p>
                      <p className="text-sm">Status: {d.status}</p>
