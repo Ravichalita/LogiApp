@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
@@ -192,7 +191,10 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
     }
 
     try {
-        const canvas = await html2canvas(pdfContainer, { scale: 2 });
+        const canvas = await html2canvas(pdfContainer, { useCORS: true, scale: 2 });
+        if (canvas.width === 0 || canvas.height === 0) {
+          throw new Error('Canvas gerado está vazio. Verifique se o conteúdo do PDF está visível.');
+        }
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -213,9 +215,10 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
 
   return (
     <>
-     <div style={{ display: 'none' }}>
-        <OsPdfDocument item={rental} />
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
+         <OsPdfDocument item={rental} owner={account?.ownerId ? { id: account.ownerId } as any : undefined} />
       </div>
+
       <div className="flex flex-col gap-4 h-full px-1">
         <div className="space-y-4">
            <div className="space-y-2">
@@ -243,15 +246,6 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                     </AccordionItem>
                 </Accordion>
             </div>
-
-          <div className="space-y-2">
-              <div>
-                <span className="text-sm text-muted-foreground">Período</span>
-                <p className="font-semibold text-base whitespace-nowrap">
-                    {format(parseISO(rental.rentalDate), "dd/MM/yy", { locale: ptBR })} - {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}
-                </p>
-              </div>
-          </div>
 
           {canSeeServiceValue && (
             <div className="space-y-2">

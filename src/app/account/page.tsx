@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useAuth } from '@/context/auth-context';
@@ -22,12 +23,12 @@ export default function AccountPage() {
     
     if (loading || !userAccount) {
         return (
-             <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
+             <div className="container mx-auto max-w-4xl py-8 px-4 md:px-6">
                  <div className="space-y-4">
                      <Skeleton className="h-8 w-1/4" />
                      <Skeleton className="h-5 w-1/2" />
                      <div className="pt-6">
-                        <Skeleton className="h-40 w-full" />
+                        <Skeleton className="h-96 w-full" />
                      </div>
                  </div>
             </div>
@@ -35,7 +36,7 @@ export default function AccountPage() {
     }
 
     return (
-        <div className="container mx-auto max-w-2xl py-8 px-4 md:px-6">
+        <div className="container mx-auto max-w-4xl py-8 px-4 md:px-6">
             <div className="mb-8">
                 <h1 className="text-3xl font-headline font-bold">Sua Conta</h1>
                 <p className="text-muted-foreground mt-1">Gerencie suas informações pessoais e de acesso.</p>
@@ -44,9 +45,9 @@ export default function AccountPage() {
             <div className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Detalhes do Perfil</CardTitle>
+                        <CardTitle>Dados Cadastrais</CardTitle>
                         <CardDescription>
-                            Mantenha seus dados de contato atualizados.
+                            Mantenha seus dados de contato e de perfil atualizados.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

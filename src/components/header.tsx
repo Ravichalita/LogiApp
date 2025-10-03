@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -158,10 +158,14 @@ export function Header({ className }: { className?: string }) {
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-9 w-9">
-                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    <UserIcon className="h-5 w-5" />
-                  </AvatarFallback>
+                 <Avatar className="h-9 w-9">
+                    {userAccount?.avatarUrl ? (
+                        <AvatarImage src={userAccount.avatarUrl} alt={userAccount.name} />
+                    ) : (
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                            <UserIcon className="h-5 w-5" />
+                        </AvatarFallback>
+                    )}
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

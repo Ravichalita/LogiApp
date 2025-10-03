@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -52,9 +53,10 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { RentalCardActions } from '../rentals/rental-card-actions';
+import { ScheduleSwapDialog } from '../rentals/schedule-swap-dialog';
 
 
-type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
+type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje' | 'Trocar';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
 type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em Atraso';
 
@@ -64,7 +66,11 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
+  const swapDate = rental.swapDate ? parseISO(rental.swapDate) : null;
 
+  if (swapDate && isToday(swapDate)) {
+    return { text: 'Trocar', variant: 'destructive', order: 0 };
+  }
   if (isAfter(today, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
@@ -120,8 +126,8 @@ const formatDateRange = (start?: string, end?: string) => {
         const startDate = parseISO(start);
         const endDate = parseISO(end);
         
-        const startFormat = isToday(startDate) ? "'Hoje às' HH:mm" : "dd/MM/yy 'às' HH:mm";
-        const endFormat = isToday(endDate) ? "'Hoje às' HH:mm" : "dd/MM/yy 'às' HH:mm";
+        const startFormat = "dd/MM/yy 'às' HH:mm";
+        const endFormat = "dd/MM/yy 'às' HH:mm";
         
         return `${format(startDate, startFormat, { locale: ptBR })} - ${format(endDate, endFormat, { locale: ptBR })}`;
     } catch (error) {
@@ -191,6 +197,7 @@ const statusFilterOptions: { label: string; value: StatusFilter }[] = [
     { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerram Hoje", value: 'Encerra hoje' },
     { label: "Em Atraso", value: 'Em Atraso' },
+    { label: "Trocar", value: 'Trocar' },
 ];
 
 
@@ -207,6 +214,7 @@ export default function OSPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+  const [ownerAvatarDataUri, setOwnerAvatarDataUri] = useState<string | undefined>();
   const router = useRouter();
   const { toast } = useToast();
   const dataLoadedRef = useRef(false);
@@ -217,7 +225,6 @@ export default function OSPage() {
   const canAccessRoutes = isSuperAdmin || !!permissions?.canAccessRoutes;
   const canEditRentals = isSuperAdmin || !!permissions?.canEditRentals;
   const canEditOperations = isSuperAdmin || !!permissions?.canEditOperations;
-  const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canAccessFinance;
   const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
   const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
   const isViewer = userAccount?.role === 'viewer';
@@ -247,10 +254,11 @@ export default function OSPage() {
         setLoadingData(false);
     };
 
+    if (teamMembers.length === 0) {
+        fetchTeamMembers(accountId).then(setTeamMembers);
+    }
+    
     if (canAccessRentals) {
-      if ((canEditRentals || isSuperAdmin) && teamMembers.length === 0) {
-         fetchTeamMembers(accountId).then(setTeamMembers);
-      }
       const unsub = getPopulatedRentals(
         accountId,
         (data) => { setRentals(data); dataLoadedRef.current = true; setLoadingData(false); },
@@ -261,9 +269,6 @@ export default function OSPage() {
     }
     
     if (canAccessOperations) {
-        if((canEditOperations || isSuperAdmin) && teamMembers.length === 0) {
-            fetchTeamMembers(accountId).then(setTeamMembers);
-        }
         const unsub = getPopulatedOperations(
             accountId,
             (data) => { setOperations(data); dataLoadedRef.current = true; setLoadingData(false); },
@@ -349,6 +354,43 @@ export default function OSPage() {
 
   }, [rentals, operations, searchTerm, osTypeFilter, statusFilter, canAccessRentals, canAccessOperations, selectedDate]);
   
+  const owner = useMemo(() => teamMembers.find(m => m.role === 'owner'), [teamMembers]);
+
+  useEffect(() => {
+    if (!owner?.avatarUrl) {
+      setOwnerAvatarDataUri(undefined);
+      return;
+    }
+
+    const controller = new AbortController();
+    const toDataURL = async (url: string) => {
+      try {
+        const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('fetch failed: ' + res.status);
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+             console.error('Erro ao converter avatar para dataURI', err);
+        }
+        return undefined;
+      }
+    };
+
+    let mounted = true;
+    toDataURL(owner.avatarUrl).then(uri => { if (mounted) setOwnerAvatarDataUri(uri); });
+
+    return () => { 
+        mounted = false; 
+        controller.abort(); 
+    };
+  }, [owner?.avatarUrl]);
+
   const handleTypeFilterChange = (type: OsTypeFilter) => {
     setOsTypeFilter(type);
     setStatusFilter('Todas'); // Reset status filter when type changes
@@ -432,18 +474,28 @@ export default function OSPage() {
         break;
       }
       case 'pdf': {
-        const osId = `${isRental ? 'AL' : 'OP'}${item.sequentialId}`;
         const pdfContainerId = `pdf-${isRental ? 'al' : 'op'}-${item.id}`;
         const pdfContainer = document.getElementById(pdfContainerId);
         if (!pdfContainer) {
             toast({ title: "Erro", description: "Container do PDF não encontrado.", variant: "destructive" });
             return;
         }
-        const canvas = await html2canvas(pdfContainer, { scale: 2 });
+
+        const canvas = await html2canvas(pdfContainer, { useCORS: true, scale: 2 });
+        if (canvas.width === 0 || canvas.height === 0) {
+            toast({ title: "Erro de Renderização", description: "Não foi possível gerar a imagem para o PDF. Tente novamente.", variant: "destructive" });
+            return;
+        }
+        
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        pdf.addImage(canvas, 'PNG', 0, 0, pdfWidth, (canvas.height * pdfWidth) / canvas.width);
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight);
+        
+        const osId = `${isRental ? 'AL' : 'OP'}${item.sequentialId}`;
         pdf.save(`OS_${osId}.pdf`);
+
         break;
       }
       case 'delete': {
@@ -529,11 +581,17 @@ export default function OSPage() {
 
   const pageContent = (
     <>
-      <div style={{ position: 'fixed', left: '-9999px', top: 0, opacity: 0, zIndex: -1 }}>
+      {/* Hidden container for PDF rendering */}
+       <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
         {combinedItems.map(item => (
-            <OsPdfDocument key={`${item.itemType}-${item.id}`} item={item} />
+            <OsPdfDocument
+              key={`pdf-doc-${item.id}`}
+              item={item}
+              owner={owner}
+            />
         ))}
       </div>
+
       <div className="space-y-4 mb-6">
         <div className="flex flex-col md:flex-row gap-2">
             <div className="relative flex-grow">
@@ -655,10 +713,18 @@ export default function OSPage() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-1.5 text-left md:text-right">
+                                                     <div className="flex flex-col items-start md:items-end gap-1.5">
                                                         <div className="flex items-center gap-1.5">
                                                             <Calendar className="h-4 w-4"/>
-                                                            <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
+                                                            <span>{formatDateRange(rental.rentalDate, rental.returnDate)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {rental.swapDate && (
+                                                                <p className="text-xs font-semibold text-blue-600">
+                                                                    Troca agendada para: {format(parseISO(rental.swapDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                                </p>
+                                                            )}
+                                                            <ScheduleSwapDialog rental={rental} />
                                                         </div>
                                                     </div>
                                                 </div>

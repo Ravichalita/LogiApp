@@ -132,7 +132,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   );
 
   const [rentalDate, setRentalDate] = useState<Date | undefined>(prefillData ? new Date() : undefined);
+  const [rentalTime, setRentalTime] = useState<string>('08:00');
   const [returnDate, setReturnDate] = useState<Date | undefined>(prefillData ? addDays(new Date(), 2) : undefined);
+  const [returnTime, setReturnTime] = useState<string>('18:00');
   
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState(prefillData?.value || 0); // Store value as a number
@@ -333,6 +335,15 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
             toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
             return;
         }
+
+        const combineDateTime = (date: Date | undefined, time: string): string | undefined => {
+            if (!date || !time) return undefined;
+            const [hours, minutes] = time.split(':').map(Number);
+            return set(date, { hours, minutes }).toISOString();
+        };
+
+        const finalRentalDate = combineDateTime(rentalDate, rentalTime);
+        const finalReturnDate = combineDateTime(returnDate, returnTime);
         
         formData.set('dumpsterIds', JSON.stringify(selectedDumpsterIds));
         if (selectedClientId) formData.set('clientId', selectedClientId);
@@ -351,8 +362,8 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           formData.set('longitude', String(deliveryLocation.lng));
         }
         
-        if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
-        if (returnDate) formData.set('returnDate', returnDate.toISOString());
+        if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
+        if (finalReturnDate) formData.set('returnDate', finalReturnDate);
         
         formData.set('billingType', billingType);
         formData.set('value', String(value));
@@ -823,41 +834,44 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Data de Entrega</Label>
-          <Popover open={isRentalDateOpen} onOpenChange={setIsRentalDateOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !rentalDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {rentalDate ? format(rentalDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={rentalDate}
-                onSelect={(date) => {
-                    if (date) {
-                        setRentalDate(date);
-                        if (!returnDate || isBeforeDate(returnDate, date)) {
-                            setReturnDate(addDays(date, 2));
-                        }
-                    } else {
-                        setRentalDate(undefined);
-                        setReturnDate(undefined);
-                    }
-                    setIsRentalDateOpen(false);
-                }}
-                disabled={combinedDisabledDates}
-                initialFocus
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <Popover open={isRentalDateOpen} onOpenChange={setIsRentalDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !rentalDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {rentalDate ? format(rentalDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={rentalDate}
+                  onSelect={(date) => {
+                      if (date) {
+                          setRentalDate(date);
+                          if (!returnDate || isBeforeDate(returnDate, date)) {
+                              setReturnDate(addDays(date, 2));
+                          }
+                      } else {
+                          setRentalDate(undefined);
+                          setReturnDate(undefined);
+                      }
+                      setIsRentalDateOpen(false);
+                  }}
+                  disabled={combinedDisabledDates}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-auto" />
+          </div>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
            {sameDaySwapWarning && (
             <Alert variant="warning" className="mt-2">
@@ -870,43 +884,45 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         </div>
         <div className="space-y-2">
           <Label>Data de Retirada (Prevista)</Label>
-          <Popover open={isReturnDateOpen} onOpenChange={setIsReturnDateOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !returnDate && "text-muted-foreground"
-                )}
-                disabled={!rentalDate}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={returnDate}
-                onSelect={(date) => {
-                    setReturnDate(date);
-                    setIsReturnDateOpen(false);
-                }}
-                disabled={(date) => {
-                    if (!rentalDate || isBeforeDate(date, rentalDate)) {
-                        return true;
-                    }
-                    // A date is disabled if it's part of *any* selected dumpster's unavailable ranges
-                    const isUnavailable = selectedDumpsters.some(dumpster => 
-                        dumpster.disabledRanges.some(range => isWithinInterval(date, { start: range.start, end: range.end }))
-                    );
-                    return isUnavailable;
-                }}
-                initialFocus
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <Popover open={isReturnDateOpen} onOpenChange={setIsReturnDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !returnDate && "text-muted-foreground"
+                  )}
+                  disabled={!rentalDate}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={returnDate}
+                  onSelect={(date) => {
+                      setReturnDate(date);
+                      setIsReturnDateOpen(false);
+                  }}
+                  disabled={(date) => {
+                      if (!rentalDate || isBeforeDate(date, rentalDate)) {
+                          return true;
+                      }
+                      const isUnavailable = selectedDumpsters.some(dumpster => 
+                          dumpster.disabledRanges.some(range => isWithinInterval(date, { start: range.start, end: range.end }))
+                      );
+                      return isUnavailable;
+                  }}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="w-auto" />
+          </div>
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>

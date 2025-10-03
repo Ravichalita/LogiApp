@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -355,6 +356,8 @@ function getPayloadConfigFromPayload(
     : config[key as keyof typeof config]
 }
 
+const BarChart = RechartsPrimitive.BarChart;
+
 export {
   ChartContainer,
   ChartTooltip,
@@ -362,4 +365,5 @@ export {
   ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  BarChart,
 }

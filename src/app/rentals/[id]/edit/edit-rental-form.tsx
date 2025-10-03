@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, isBefore as isBeforeDate, parseISO, startOfToday, addDays, isSameDay, differenceInCalendarDays } from 'date-fns';
+import { format, isBefore as isBeforeDate, parseISO, startOfToday, addDays, isSameDay, differenceInCalendarDays, set } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -82,7 +82,9 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(rental.truckId);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
   const [rentalDate, setRentalDate] = useState<Date | undefined>(parseISO(rental.rentalDate));
+  const [rentalTime, setRentalTime] = useState<string>(format(parseISO(rental.rentalDate), 'HH:mm'));
   const [returnDate, setReturnDate] = useState<Date | undefined>(parseISO(rental.returnDate));
+  const [returnTime, setReturnTime] = useState<string>(format(parseISO(rental.returnDate), 'HH:mm'));
   const [deliveryLocation, setDeliveryLocation] = useState<Omit<Location, 'address'> | null>(
     rental.latitude && rental.longitude ? { lat: rental.latitude, lng: rental.longitude } : null
   );
@@ -227,6 +229,15 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
             toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
             return;
         }
+
+        const combineDateTime = (date: Date | undefined, time: string): string | undefined => {
+            if (!date || !time) return undefined;
+            const [hours, minutes] = time.split(':').map(Number);
+            return set(date, { hours, minutes }).toISOString();
+        };
+
+        const finalRentalDate = combineDateTime(rentalDate, rentalTime);
+        const finalReturnDate = combineDateTime(returnDate, returnTime);
         
         formData.set('id', rental.id);
         if (selectedTruckId) formData.set('truckId', selectedTruckId);
@@ -237,8 +248,8 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         }
 
         formData.set('deliveryAddress', deliveryAddress);
-        if (rentalDate) formData.set('rentalDate', rentalDate.toISOString());
-        if (returnDate) formData.set('returnDate', returnDate.toISOString());
+        if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
+        if (finalReturnDate) formData.set('returnDate', finalReturnDate);
         if (deliveryLocation) {
           formData.set('latitude', String(deliveryLocation.lat));
           formData.set('longitude', String(deliveryLocation.lng));
@@ -317,12 +328,12 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   return (
     <form action={handleFormAction} className="space-y-6">
         <input type="hidden" name="clientId" value={rental.clientId} />
-        <input type="hidden" name="dumpsterId" value={rental.dumpsterId} />
+        <input type="hidden" name="dumpsterIds" value={JSON.stringify(rental.dumpsterIds)} />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-            <Label>Caçamba</Label>
-            <Input value={`${rental.dumpster?.name} (${rental.dumpster?.size}m³)`} disabled />
+            <Label>Caçamba(s)</Label>
+            <Input value={(rental.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ')} disabled />
         </div>
 
         <div className="space-y-2">
@@ -460,58 +471,64 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Data de Entrega</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !rentalDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {rentalDate ? format(rentalDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={rentalDate}
-                onSelect={setRentalDate}
-                initialFocus
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !rentalDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {rentalDate ? format(rentalDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={rentalDate}
+                  onSelect={setRentalDate}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+             <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-auto" />
+          </div>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
         </div>
         <div className="space-y-2">
           <Label>Data de Retirada (Prevista)</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !returnDate && "text-muted-foreground"
-                )}
-                disabled={!rentalDate}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={returnDate}
-                onSelect={setReturnDate}
-                disabled={(date) => rentalDate ? isBeforeDate(date, rentalDate) : true}
-                initialFocus
-                locale={ptBR}
-              />
-            </PopoverContent>
-          </Popover>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !returnDate && "text-muted-foreground"
+                  )}
+                  disabled={!rentalDate}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {returnDate ? format(returnDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={returnDate}
+                  onSelect={setReturnDate}
+                  disabled={(date) => rentalDate ? isBeforeDate(date, rentalDate) : true}
+                  initialFocus
+                  locale={ptBR}
+                />
+              </PopoverContent>
+            </Popover>
+            <Input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="w-auto" />
+          </div>
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>

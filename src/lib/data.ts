@@ -321,8 +321,8 @@ export function getPopulatedOperations(
 
 // #region Team Data
 export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
-  if (!accountId) {
-    callback([]);
+  if (!accountId || !callback) {
+    if (callback) callback([]);
     return () => {};
   }
   const { db } = getFirebase();
