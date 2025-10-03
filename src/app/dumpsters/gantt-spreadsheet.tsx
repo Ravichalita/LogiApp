@@ -39,8 +39,10 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
 
     const clientMap = new Map(clients.map(c => [c.id, c.name]));
 
+    const scheduledDumpsterIds = new Set(rentals.flatMap(r => r.dumpsterIds));
+
     const data = dumpsters
-      .filter(d => d.status !== 'Em Manutenção')
+      .filter(d => d.status !== 'Em Manutenção' && scheduledDumpsterIds.has(d.id))
       .sort((a,b) => a.name.localeCompare(b.name))
       .map(dumpster => {
         const dailyStatuses = dates.map(date => {
@@ -64,8 +66,8 @@ export function GanttSpreadsheet({ dumpsters, rentals, clients }: GanttSpreadshe
     return { dateHeaders, dumpsterData: data };
   }, [dumpsters, rentals, clients]);
 
-  if (dumpsters.length === 0) {
-    return <div className="flex items-center justify-center h-[200px] text-muted-foreground bg-muted rounded-md">Nenhuma caçamba para exibir na planilha.</div>;
+  if (dumpsterData.length === 0) {
+    return <div className="flex items-center justify-center h-[200px] text-muted-foreground bg-muted rounded-md">Nenhuma caçamba agendada para exibir na planilha.</div>;
   }
 
   const getStatusStyle = (status: string, color: DumpsterColor): React.CSSProperties => {
