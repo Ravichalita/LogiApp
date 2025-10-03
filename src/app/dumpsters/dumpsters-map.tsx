@@ -207,7 +207,7 @@ export function DumpstersMap({ dumpsters }: DumpstersMapProps) {
           position={activeMarker.position}
           onCloseClick={handleInfoWindowClose}
         >
-          <div className="p-1 space-y-2 text-gray-800 max-h-48 overflow-y-auto">
+          <div className="p-1 space-y-2 text-foreground max-h-48 overflow-y-auto">
              {activeMarker.dumpsters.map((d, index) => (
                 <div key={index} className="border-b last:border-b-0 pb-2 mb-2">
                      <h3 className="font-bold">{d.dumpsterName}</h3>
