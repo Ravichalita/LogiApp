@@ -27,7 +27,7 @@ const screenPermissionLabels: Partial<Record<keyof Permissions, string>> = {
 
 const featurePermissionLabels: Partial<Record<keyof Permissions, string>> = {
   canAccessFinance: 'Acessar Histórico Financeiro',
-  canSeeServiceValue: 'Visualizar Valor do Serviço',
+  canSeeServiceValue: 'Visualizar Valores das OSs',
   canAccessNotificationsStudio: 'Notificações Personalizadas',
   canUseAttachments: 'Gerenciar Anexos',
 };

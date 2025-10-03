@@ -30,7 +30,6 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Recovery logic specifically for the super admin
     if (email === SUPER_ADMIN_EMAIL) {
         try {
             await recoverSuperAdminAction();
@@ -110,50 +109,66 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-            <div className="mx-auto mb-1">
-                 <Link href="/" className="mr-6 flex items-center space-x-2">
-                 </Link>
-                 <Image src="/192x192.png" alt="LogiApp Logo" width={40} height={40} />
+    <main className="flex min-h-screen items-center justify-center honeycomb-bg p-4">
+      <div className="relative z-10 w-full max-w-sm lg:max-w-4xl lg:grid lg:grid-cols-2 rounded-lg shadow-lg overflow-hidden bg-card/50 backdrop-blur-sm border border-white/20">
+        {/* Branding Section - Left */}
+        <div className="hidden lg:flex flex-col items-center justify-center bg-primary/80 p-12 text-primary-foreground">
+          <Image src="/192x192.png" alt="LogiApp Logo" width={80} height={80} />
+          <h1 className="text-3xl font-bold mt-4">LogiApp</h1>
+          <p className="mt-2 text-center text-sm opacity-80">Gestão de Logistica Simplificada</p>
+        </div>
+
+        {/* Form Section - Right */}
+        <div className="p-6 sm:p-8">
+            <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+                 <div className="lg:hidden flex flex-col items-center mb-6">
+                    <Image src="/192x192.png" alt="LogiApp Logo" width={48} height={48} />
+                    <h1 className="text-2xl font-bold mt-2 text-primary">LogiApp</h1>
+                 </div>
+                <h2 className="text-2xl font-bold text-primary hidden lg:block">Login</h2>
+                <p className="text-muted-foreground mt-2">Gestão de Logistica Simplificada</p>
             </div>
-          <CardTitle className="text-2xl font-bold text-primary">Login</CardTitle>
-          </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
-                required
-              />
+            
+            <form onSubmit={handleLogin} className="space-y-4 mt-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={isSubmitting || isResetting} className="w-full">
+                {isSubmitting ? <Spinner size="small" /> : 'Entrar'}
+              </Button>
+            </form>
+          
+            <div className="mt-6 text-center">
+              <Button variant="link" size="sm" onClick={handlePasswordReset} disabled={isResetting || isSubmitting}>
+                  {isResetting ? <Spinner size="small" /> : 'Esqueci minha senha'}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+
+            <div className="mt-4 text-center">
+              <Link href="/privacy-policy" className="text-xs text-muted-foreground hover:text-primary hover:underline">
+                  Política de Privacidade
+              </Link>
             </div>
-             <Button type="submit" disabled={isSubmitting || isResetting} className="w-full">
-              {isSubmitting ? <Spinner size="small" /> : 'Entrar'}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex-col gap-4 text-center">
-            <Button variant="link" size="sm" onClick={handlePasswordReset} disabled={isResetting || isSubmitting}>
-                {isResetting ? <Spinner size="small" /> : 'Esqueci minha senha'}
-            </Button>
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+      </div>
+    </main>
   );
 }

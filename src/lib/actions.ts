@@ -7,11 +7,11 @@ import { adminAuth, adminDb, adminApp } from './firebase-admin';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBasesSchema, OperationalCostSchema, UpdateOperationalCostsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema } from './types';
+import { ClientSchema, DumpsterSchema, RentalSchema, CompletedRentalSchema, UpdateClientSchema, UpdateDumpsterSchema, UpdateRentalSchema, SignupSchema, UserAccountSchema, PermissionsSchema, RentalPriceSchema, RentalPrice, UpdateBackupSettingsSchema, UpdateUserProfileSchema, Rental, AttachmentSchema, TruckSchema, UpdateTruckSchema, OperationSchema, UpdateOperationSchema, UpdateBasesSchema, OperationalCostSchema, UpdateOperationalCostsSchema, OperationTypeSchema, SuperAdminCreationSchema, TruckTypeSchema, UploadedImage, UploadedImageSchema, Dumpster } from './types';
 import type { UserAccount, UserRole, UserStatus, Permissions, Account, Operation, AdditionalCost, Truck, Attachment, TruckType, OperationalCost, PopulatedRental, PopulatedOperation } from './types';
 import { ensureUserDocument } from './data-server';
 import { sendNotification } from './notifications';
-import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set } from 'date-fns';
+import { addDays, isBefore, isAfter, isToday, parseISO, startOfToday, format, set, isSameDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
@@ -86,7 +86,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
       return successState;
 
   } catch (e) {
-      return { ...prevState, message: handleFirebaseError(e) };
+      return { message: 'error', error: handleFirebaseError(e) };
   }
 }
 
@@ -374,16 +374,21 @@ export async function updateUserProfileAction(userId: string, prevState: any, fo
     if (!validatedFields.success) {
         return { message: 'error', error: JSON.stringify(validatedFields.error.flatten().fieldErrors) };
     }
+    
+    const { ...updateData } = validatedFields.data;
 
     try {
         const userRef = getFirestore(adminApp).doc(`users/${userId}`);
         await userRef.update({
-            ...validatedFields.data,
+            ...updateData,
             updatedAt: FieldValue.serverTimestamp(),
         });
         
         if (validatedFields.data.name) {
             await adminAuth.updateUser(userId, { displayName: validatedFields.data.name });
+        }
+        if (validatedFields.data.avatarUrl) {
+             await adminAuth.updateUser(userId, { photoURL: validatedFields.data.avatarUrl });
         }
 
         revalidatePath('/account');
@@ -534,8 +539,19 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
     }
     
+    let dumpsterIds: string[] = [];
+    if (rawData.dumpsterIds && typeof rawData.dumpsterIds === 'string') {
+        try {
+            dumpsterIds = JSON.parse(rawData.dumpsterIds);
+        } catch (e) {
+             console.error("Failed to parse dumpsterIds JSON");
+             return { message: 'error', error: "Formato de IDs de caçamba inválido."}
+        }
+    }
+
     const dataToValidate = {
         ...rawData,
+        dumpsterIds,
         value: Number(rawData.value),
         lumpSumValue: Number(rawData.lumpSumValue),
         travelCost: Number(rawData.travelCost),
@@ -561,34 +577,19 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     const rentalData = validatedFields.data;
 
-    const rentalsRef = db.collection(`accounts/${accountId}/rentals`);
-    const q = rentalsRef.where('dumpsterId', '==', rentalData.dumpsterId);
-    const existingRentalsSnap = await q.get();
-
-    const newRentalStart = new Date(rentalData.rentalDate);
-    const newRentalEnd = new Date(rentalData.returnDate);
-
-    for (const doc of existingRentalsSnap.docs) {
-        const existingRental = doc.data() as Rental;
-        const existingStart = new Date(existingRental.rentalDate);
-        const existingEnd = new Date(existingRental.returnDate);
-        if (newRentalStart < existingEnd && newRentalEnd > existingStart) {
-            return { message: `Conflito de agendamento. Esta caçamba já está reservada para o período de ${existingStart.toLocaleDateString('pt-BR')} a ${existingEnd.toLocaleDateString('pt-BR')}.` };
-        }
-    }
-    
-    rentalDocRef = await rentalsRef.add({
+    rentalDocRef = await db.collection(`accounts/${accountId}/rentals`).add({
       ...rentalData,
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
-    const dumpsterName = dumpsterSnap.data()?.name || 'Caçamba';
+    const dumpsterNames = (await Promise.all(
+        rentalData.dumpsterIds.map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get())
+    )).map(doc => doc.data()?.name || 'Caçamba').join(', ');
     
     await sendNotification({
         userId: rentalData.assignedTo,
         title: `Nova OS #${newSequentialId} Designada`,
-        body: `Você foi designado para a OS da ${dumpsterName}.`,
+        body: `Você foi designado para a OS da(s) caçamba(s): ${dumpsterNames}.`,
     });
 
     // Sync to Google Calendar if integrated
@@ -600,12 +601,15 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
             const truckSnap = rentalData.truckId ? await db.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : null;
 
+            const dumpsterDocs = await Promise.all(rentalData.dumpsterIds.map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get()));
+            const dumpsters = dumpsterDocs.map(d => ({id: d.id, ...d.data()}) as Dumpster);
+
             const populatedRentalForSync: PopulatedRental = {
                 id: rentalDocRef.id,
                 ...rentalData,
                 itemType: 'rental',
                 client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
-                dumpster: dumpsterSnap.exists ? { id: dumpsterSnap.id, ...dumpsterSnap.data() } as any : null,
+                dumpsters,
                 assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
                 truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
             };
@@ -650,15 +654,19 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
         // Fetch related data to store a complete snapshot
         const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
-        const dumpsterSnap = await db.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToSnap = await db.doc(`users/${rentalData.assignedTo}`).get();
+        
+        const dumpsterDocs = await Promise.all(
+            (rentalData.dumpsterIds || []).map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get())
+        );
+        const dumpsters = dumpsterDocs.map(d => ({id: d.id, ...d.data()}) as Dumpster);
 
         const rentalDate = new Date(rentalData.rentalDate);
         const returnDate = new Date(rentalData.returnDate);
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const rentalDays = Math.max(diffDays, 1);
-        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays;
+        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
         
         const completedRentalData = {
             ...rentalData,
@@ -669,7 +677,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
             accountId,
             // Store denormalized data for historical integrity
             client: clientSnap.exists ? clientSnap.data() : null,
-            dumpster: dumpsterSnap.exists ? dumpsterSnap.data() : null,
+            dumpsters: dumpsters,
             assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
         };
         
@@ -717,6 +725,14 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     const rawData = Object.fromEntries(formData.entries());
     const dataToValidate: Record<string, any> = { ...rawData };
     
+    if (rawData.dumpsterIds && typeof rawData.dumpsterIds === 'string') {
+        try {
+            dataToValidate.dumpsterIds = JSON.parse(rawData.dumpsterIds);
+        } catch (e) {
+            return { message: 'error', error: "Formato de IDs de caçamba inválido."}
+        }
+    }
+
     if (rawData.value !== undefined) {
         dataToValidate.value = Number(rawData.value);
     }
@@ -749,7 +765,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     
     const { id, ...rentalData } = validatedFields.data;
     
-    const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined && v !== null));
+    const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined));
 
     if (Object.keys(updateData).length === 0) {
         return { message: 'success', info: 'Nenhum campo para atualizar.' };
@@ -764,19 +780,32 @@ export async function updateRentalAction(accountId: string, prevState: any, form
           ...updateData,
           updatedAt: FieldValue.serverTimestamp(),
         });
+        
+        const updatedRentalData = { ...rentalBeforeUpdate, ...updateData };
+
+        const fullUpdatedRental: PopulatedRental = {
+            id,
+            itemType: 'rental',
+            ...updatedRentalData,
+            client: (await adminDb.doc(`accounts/${accountId}/clients/${updatedRentalData.clientId}`).get()).data() as any,
+            dumpsters: await Promise.all((updatedRentalData.dumpsterIds || []).map(async dId => (await adminDb.doc(`accounts/${accountId}/dumpsters/${dId}`).get()).data() as any)),
+            assignedToUser: (await adminDb.doc(`users/${updatedRentalData.assignedTo}`).get()).data() as any,
+            truck: updatedRentalData.truckId ? (await adminDb.doc(`accounts/${accountId}/trucks/${updatedRentalData.truckId}`).get()).data() as any : null,
+        };
 
         if (updateData.assignedTo && updateData.assignedTo !== rentalBeforeUpdate.assignedTo) {
-            const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${rentalBeforeUpdate.clientId}`).get();
-            const clientName = clientSnap.data()?.name || 'Cliente';
-
             await sendNotification({
                 userId: updateData.assignedTo,
                 title: 'Você foi designado para uma OS',
-                body: `Você agora é o responsável pela OS para ${clientName}.`,
+                body: `Você agora é o responsável pela OS para ${fullUpdatedRental.client?.name}.`,
             });
         }
         
-        revalidatePath('/');
+        // Always sync calendar on any relevant update
+        if (updatedRentalData.assignedTo) {
+            await syncOsToGoogleCalendarAction(updatedRentalData.assignedTo, fullUpdatedRental);
+        }
+        
         revalidatePath('/os');
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) as string };
@@ -1748,6 +1777,51 @@ function toRfc3339(dateValue: any): string | undefined {
 }
 
 
+async function syncCalendarEvent(
+    calendar: any,
+    calendarId: string,
+    osRef: FirebaseFirestore.DocumentReference,
+    eventIdField: 'googleCalendarEventId' | 'googleCalendarSwapEventId',
+    eventResource: any
+) {
+    const osDoc = await osRef.get();
+    const existingEventId = osDoc.data()?.[eventIdField];
+
+    if (existingEventId) {
+        try {
+            await calendar.events.update({
+                calendarId: calendarId,
+                eventId: existingEventId,
+                requestBody: eventResource,
+            });
+            console.log(`Evento ${existingEventId} (${eventIdField}) atualizado.`);
+        } catch (updateError: any) {
+            if (updateError.code === 404) {
+                const newEvent = await calendar.events.insert({
+                    calendarId: calendarId,
+                    requestBody: eventResource,
+                });
+                if (newEvent.data.id) {
+                    await osRef.update({ [eventIdField]: newEvent.data.id });
+                    console.log(`Novo evento ${newEvent.data.id} (${eventIdField}) criado.`);
+                }
+            } else {
+                throw updateError;
+            }
+        }
+    } else {
+        const newEvent = await calendar.events.insert({
+            calendarId: calendarId,
+            requestBody: eventResource,
+        });
+        if (newEvent.data.id) {
+            await osRef.update({ [eventIdField]: newEvent.data.id });
+            console.log(`Novo evento ${newEvent.data.id} (${eventIdField}) criado.`);
+        }
+    }
+}
+
+
 export async function syncOsToGoogleCalendarAction(userId: string, os: PopulatedRental | PopulatedOperation) {
     const userRef = adminDb.doc(`users/${userId}`);
     const userSnap = await userRef.get();
@@ -1767,122 +1841,64 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         process.env.GOOGLE_REDIRECT_URI
     );
     
-    oAuth2Client.setCredentials({
-        refresh_token: googleCalendar.refreshToken,
-    });
+    oAuth2Client.setCredentials({ refresh_token: googleCalendar.refreshToken });
     
-    if (!googleCalendar.accessToken || !googleCalendar.expiryDate || googleCalendar.expiryDate < (Date.now() + 60000)) {
-        try {
-            const { credentials } = await oAuth2Client.refreshAccessToken();
-            
-            const updateData: { [key: string]: any } = {
-                'googleCalendar.accessToken': credentials.access_token,
-                'googleCalendar.expiryDate': credentials.expiry_date,
-                'googleCalendar.needsReauth': FieldValue.delete(),
-            };
-            if(credentials.refresh_token) {
-                 updateData['googleCalendar.refreshToken'] = credentials.refresh_token;
-            }
-            
-            await userRef.update(updateData);
-            oAuth2Client.setCredentials(credentials);
-        } catch (error: any) {
-            console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error.response?.data || error.message);
-            await userRef.update({ 'googleCalendar.needsReauth': true });
-            console.log(`Integração para o usuário ${userId} marcada para reautenticação devido a erro no refresh token.`);
-            return;
-        }
-    } else {
-        oAuth2Client.setCredentials({
-            access_token: googleCalendar.accessToken,
-            refresh_token: googleCalendar.refreshToken,
+    try {
+        const { credentials } = await oAuth2Client.refreshAccessToken();
+        oAuth2Client.setCredentials(credentials);
+        await userRef.update({
+            'googleCalendar.accessToken': credentials.access_token,
+            'googleCalendar.expiryDate': credentials.expiry_date,
+            'googleCalendar.needsReauth': FieldValue.delete(),
         });
+    } catch (error: any) {
+        console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error.response?.data || error.message);
+        await userRef.update({ 'googleCalendar.needsReauth': true });
+        console.log(`Integração para o usuário ${userId} marcada para reautenticação.`);
+        return;
     }
-
 
     const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+    const calendarId = googleCalendar.calendarId || 'primary';
 
-    let eventResource;
-    const osType = os.itemType;
-    let osRef;
-
-    if (osType === 'rental') {
+    if (os.itemType === 'rental') {
         const rental = os as PopulatedRental;
-        osRef = adminDb.doc(`accounts/${rental.accountId}/rentals/${rental.id}`);
-        eventResource = {
-            summary: `Aluguel: ${rental.client?.name} - Caçamba: ${rental.dumpster?.name}`,
-            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
-            start: {
-                dateTime: toRfc3339(rental.rentalDate),
-                timeZone: 'America/Sao_Paulo',
-            },
-            end: {
-                dateTime: toRfc3339(rental.returnDate),
-                timeZone: 'America/Sao_Paulo',
-            },
+        const osRef = adminDb.doc(`accounts/${rental.accountId}/rentals/${rental.id}`);
+        const dumpsterNames = (rental.dumpsters || []).map(d => d.name).join(', ');
+
+        // --- Sync Main Rental Event ---
+        const mainEventResource = {
+            summary: `Aluguel: ${rental.client?.name} - Caçamba(s): ${dumpsterNames}`,
+            description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Caçambas:</b> ${dumpsterNames}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
+            start: { dateTime: toRfc3339(rental.rentalDate), timeZone: 'America/Sao_Paulo' },
+            end: { dateTime: toRfc3339(rental.returnDate), timeZone: 'America/Sao_Paulo' },
         };
-    } else {
+        await syncCalendarEvent(calendar, calendarId, osRef, 'googleCalendarEventId', mainEventResource);
+
+        // --- Sync Swap Event ---
+        if (rental.swapDate) {
+            const swapDateTime = parseISO(rental.swapDate);
+            const swapEventResource = {
+                summary: `Troca de Caçamba: ${rental.client?.name}`,
+                description: `Troca agendada para a OS #${rental.sequentialId} no endereço ${rental.deliveryAddress}.`,
+                start: { dateTime: toRfc3339(swapDateTime), timeZone: 'America/Sao_Paulo' },
+                end: { dateTime: toRfc3339(set(swapDateTime, { minutes: swapDateTime.getMinutes() + 30 })), timeZone: 'America/Sao_Paulo' }, // Assuming 30 min duration
+            };
+            await syncCalendarEvent(calendar, calendarId, osRef, 'googleCalendarSwapEventId', swapEventResource);
+        }
+
+    } else { // 'operation'
         const operation = os as PopulatedOperation;
-        osRef = adminDb.doc(`accounts/${operation.accountId}/operations/${operation.id}`);
+        const osRef = adminDb.doc(`accounts/${operation.accountId}/operations/${operation.id}`);
         const opTypes = operation.operationTypes.map(t => t.name).join(', ');
-        eventResource = {
+        
+        const eventResource = {
             summary: `${opTypes} - ${operation.client?.name}`,
             description: `<b>OS:</b> #${operation.sequentialId}\n<b>Cliente:</b> ${operation.client?.name}\n<b>Destino:</b> ${operation.destinationAddress}\n<b>Observações:</b> ${operation.observations || ''}`,
-            start: {
-                dateTime: toRfc3339(operation.startDate),
-                timeZone: 'America/Sao_Paulo',
-            },
-            end: {
-                dateTime: toRfc3339(operation.endDate),
-                timeZone: 'America/Sao_Paulo',
-            },
+            start: { dateTime: toRfc3339(operation.startDate), timeZone: 'America/Sao_Paulo' },
+            end: { dateTime: toRfc3339(operation.endDate), timeZone: 'America/Sao_Paulo' },
         };
-    }
-    
-    if (!eventResource.start?.dateTime || !eventResource.end?.dateTime) {
-        throw new Error(`Datas inválidas para o evento do calendário da OS ${os.id}. Início: ${eventResource.start?.dateTime}, Fim: ${eventResource.end?.dateTime}`);
-    }
-
-    try {
-        const osDoc = await osRef.get();
-        const existingEventId = osDoc.data()?.googleCalendarEventId;
-
-        if (existingEventId) {
-            try {
-                await calendar.events.update({
-                    calendarId: googleCalendar.calendarId || 'primary',
-                    eventId: existingEventId,
-                    requestBody: eventResource,
-                });
-                console.log(`Evento ${existingEventId} atualizado no Google Calendar.`);
-            } catch (updateError: any) {
-                if (updateError.code === 404) {
-                    console.log(`Evento ${existingEventId} não encontrado, criando um novo.`);
-                    const newEvent = await calendar.events.insert({
-                        calendarId: googleCalendar.calendarId || 'primary',
-                        requestBody: eventResource,
-                    });
-                    if (newEvent.data.id) {
-                        await osRef.update({ googleCalendarEventId: newEvent.data.id });
-                        console.log(`Novo evento ${newEvent.data.id} criado e salvo na OS.`);
-                    }
-                } else {
-                    throw updateError;
-                }
-            }
-        } else {
-            const newEvent = await calendar.events.insert({
-                calendarId: googleCalendar.calendarId || 'primary',
-                requestBody: eventResource,
-            });
-            if (newEvent.data.id) {
-                await osRef.update({ googleCalendarEventId: newEvent.data.id });
-                console.log(`Novo evento ${newEvent.data.id} criado e salvo na OS.`);
-            }
-        }
-    } catch (error: any) {
-        console.error(`Erro ao criar/atualizar evento no Google Calendar para a OS ${os.id}:`, error.response?.data || error.message || error);
-        throw error; // Re-throw to be caught by the calling function
+         await syncCalendarEvent(calendar, calendarId, osRef, 'googleCalendarEventId', eventResource);
     }
 }
 
@@ -2315,6 +2331,12 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
+
+
+
+
+
 
 
 

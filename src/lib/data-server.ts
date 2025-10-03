@@ -96,9 +96,11 @@ export async function ensureUserDocument(
                 determinedAccountId = uid; // The first user's UID becomes the account ID
                 role = isSuperAdminCreation ? 'superadmin' : 'owner';
                 
+                // Owners and Super Admins get all permissions by default
                 permissions = PermissionsSchema.parse({
                     canAccessRentals: true,
                     canAccessOperations: true,
+                    canAccessRoutes: true,
                     canAccessClients: true,
                     canAccessDumpsters: true,
                     canAccessFleet: true,
@@ -112,6 +114,7 @@ export async function ensureUserDocument(
                     canEditFleet: true,
                     canAddClients: true,
                     canEditClients: true,
+                    canUseAttachments: true,
                 });
                 
                 const newAccountRef = firestore.doc(`accounts/${determinedAccountId}`);

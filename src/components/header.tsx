@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Menu, CheckCircle, ExternalLink, Calendar, LogOutIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Menu, CheckCircle, ExternalLink, Calendar, LogOutIcon, Info } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DesktopHeaderActions, MobileHeaderActions } from "./header-actions";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -27,6 +27,7 @@ import { Home, Container, Users, Truck, Workflow, Map } from 'lucide-react';
 import { getGoogleAuthUrlAction, disconnectGoogleCalendarAction } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Spinner } from "./ui/spinner";
+import { AboutDialog } from "./about-dialog";
 
 
 const allNavLinks = [
@@ -159,10 +160,14 @@ export function Header({ className }: { className?: string }) {
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-9 w-9">
-                   <AvatarFallback className="bg-primary text-primary-foreground">
-                    <UserIcon className="h-5 w-5" />
-                  </AvatarFallback>
+                 <Avatar className="h-9 w-9">
+                    {userAccount?.avatarUrl ? (
+                        <AvatarImage src={userAccount.avatarUrl} alt={userAccount.name} />
+                    ) : (
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                            <UserIcon className="h-5 w-5" />
+                        </AvatarFallback>
+                    )}
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
@@ -183,7 +188,6 @@ export function Header({ className }: { className?: string }) {
                   </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-
               {isGoogleCalendarConnected ? (
                 <>
                     <DropdownMenuItem disabled>
@@ -201,7 +205,8 @@ export function Header({ className }: { className?: string }) {
                     <span>Conectar Google Agenda</span>
                 </DropdownMenuItem>
               )}
-              
+              <DropdownMenuSeparator />
+              <AboutDialog />
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />

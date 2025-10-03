@@ -67,12 +67,13 @@ function DumpsterTableSkeleton() {
     );
 }
 
-const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' }[] = [
+const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' | 'Em Atraso' }[] = [
     { label: "Todas", value: 'Todos' },
     { label: "Disponível", value: 'Disponível' },
     { label: "Alugada", value: 'Alugada' },
     { label: "Encerra hoje", value: 'Encerra hoje' },
     { label: "Reservada", value: 'Reservada' },
+    { label: "Em Atraso", value: 'Em Atraso' },
     { label: "Em Manutenção", value: 'Em Manutenção' },
 ];
 
@@ -83,7 +84,7 @@ export default function DumpstersPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos'>('Todos');
+  const [statusFilter, setStatusFilter] = useState<DerivedDumpsterStatus | 'Todos' | 'Em Atraso'>('Todos');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
@@ -128,61 +129,74 @@ export default function DumpstersPage() {
   }, [accountId, authLoading, canAccess, loading, router]);
 
  const dumpstersWithDerivedStatus = useMemo((): EnhancedDumpster[] => {
-    const today = startOfToday();
+    const today = new Date();
     const clientMap = new Map(clients.map(c => [c.id, c]));
 
-    return dumpsters.map(d => {
-        const enhancedDumpster: EnhancedDumpster = { ...d, derivedStatus: d.status, scheduledRentals: [] };
+    const dumpstersMap = new Map<string, EnhancedDumpster>(
+      dumpsters.map(d => [d.id, { ...d, derivedStatus: d.status, scheduledRentals: [] }])
+    );
 
+    allRentals.forEach(rental => {
+        const rentalClient = clientMap.get(rental.clientId);
+        if (!rentalClient) return;
+
+        (rental.dumpsterIds || []).forEach(dumpsterId => {
+            const dumpster = dumpstersMap.get(dumpsterId);
+            if (dumpster) {
+                 const populatedRental = {
+                    ...rental,
+                    itemType: 'rental',
+                    dumpsters: [], // Simplified for this context
+                    client: rentalClient,
+                    assignedToUser: null // Not needed for this view
+                } as unknown as PopulatedRental;
+
+                dumpster.scheduledRentals.push(populatedRental);
+            }
+        });
+    });
+
+    dumpstersMap.forEach(d => {
         if (d.status === 'Em Manutenção') {
-            return enhancedDumpster;
+            d.derivedStatus = 'Em Manutenção';
+            return;
         }
 
-        const relevantRentals: PopulatedRental[] = allRentals
-            .filter(r => r.dumpsterId === d.id)
-            .map(r => ({
-                ...r,
-                itemType: 'rental',
-                dumpster: d,
-                client: clientMap.get(r.clientId) || null,
-                assignedToUser: null // Not needed for this view
-            }))
-            .sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
+        d.scheduledRentals.sort((a, b) => new Date(a.rentalDate).getTime() - new Date(b.rentalDate).getTime());
 
-        enhancedDumpster.scheduledRentals = relevantRentals;
-
-        const activeRental = relevantRentals.find(r => isWithinInterval(today, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) }));
-        const overdueRental = relevantRentals.find(r => isAfter(today, parseISO(r.returnDate)));
-        const futureRentals = relevantRentals.filter(r => isAfter(parseISO(r.rentalDate), endOfDay(today)));
+        const now = new Date();
+        const activeRental = d.scheduledRentals.find(r => 
+            isWithinInterval(now, { start: parseISO(r.rentalDate), end: endOfDay(parseISO(r.returnDate)) })
+        );
+        const overdueRental = d.scheduledRentals.find(r => 
+            !activeRental && isAfter(startOfToday(), endOfDay(parseISO(r.returnDate)))
+        );
+        const futureRentals = d.scheduledRentals.filter(r => 
+            isAfter(parseISO(r.rentalDate), activeRental ? endOfDay(parseISO(activeRental.returnDate)) : now)
+        );
         
         let baseStatus = '';
-
-        if (overdueRental) {
-            baseStatus = 'Em Atraso';
-        } else if (activeRental) {
-            if (isToday(parseISO(activeRental.returnDate))) {
-                baseStatus = 'Encerra hoje';
-            } else {
-                baseStatus = 'Alugada';
-            }
+        if (activeRental) {
+             baseStatus = isToday(parseISO(activeRental.returnDate)) ? 'Encerra hoje' : 'Alugada';
+        } else if (overdueRental) {
+             baseStatus = 'Em Atraso';
         }
         
         if (futureRentals.length > 0) {
             const nextBookingDate = format(parseISO(futureRentals[0].rentalDate), "dd/MM/yy");
             if (baseStatus) {
-                enhancedDumpster.derivedStatus = `${baseStatus} / Agendada`;
+                d.derivedStatus = `${baseStatus} / Agendada`;
             } else {
-                enhancedDumpster.derivedStatus = `Reservada para ${nextBookingDate}`;
+                 d.derivedStatus = `Reservada para ${nextBookingDate}`;
             }
         } else if (baseStatus) {
-            enhancedDumpster.derivedStatus = baseStatus;
+            d.derivedStatus = baseStatus;
         } else {
-            enhancedDumpster.derivedStatus = 'Disponível';
+            d.derivedStatus = 'Disponível';
         }
+    });
 
-        return enhancedDumpster;
-    }).sort((a, b) => a.name.localeCompare(b.name));
-
+    return Array.from(dumpstersMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 }, [dumpsters, allRentals, clients]);
 
 
@@ -193,7 +207,7 @@ export default function DumpstersPage() {
         if (statusFilter === 'Reservada') {
             result = result.filter(d => d.derivedStatus.startsWith('Reservada para'));
         } else {
-            result = result.filter(d => d.derivedStatus === statusFilter);
+            result = result.filter(d => d.derivedStatus.startsWith(statusFilter));
         }
     }
 
@@ -477,4 +491,4 @@ export default function DumpstersPage() {
   );
 }
 
-
+    

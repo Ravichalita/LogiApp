@@ -12,17 +12,18 @@ import {
   Query,
   DocumentData,
   orderBy,
+  documentId,
 } from 'firebase/firestore';
-import { getFirebase } from './firebase-client';
+import { getFirebase } from '@/lib/firebase-client';
 import type { Client, Dumpster, Rental, PopulatedRental, UserAccount, Account, Backup, Truck, Operation, PopulatedOperation, OperationType, CompletedRental, CompletedOperation } from './types';
 
 type Unsubscribe = () => void;
 
-const { db } = getFirebase();
+
 
 // Helper function to safely convert a Firestore document snapshot to a serializable object
-const docToSerializable = (doc: DocumentData): any => {
-  if (!doc.exists()) {
+const docToSerializable = (doc: DocumentData | null | undefined): any => {
+  if (!doc || !doc.exists()) {
     return null;
   }
   const data = doc.data();
@@ -41,6 +42,7 @@ const docToSerializable = (doc: DocumentData): any => {
 
 // #region Account Data
 export function getAccount(accountId: string, callback: (account: Account | null) => void): Unsubscribe {
+    const { db } = getFirebase();
     const accountRef = doc(db, `accounts/${accountId}`);
     const unsubscribe = onSnapshot(accountRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -56,6 +58,7 @@ export function getAccount(accountId: string, callback: (account: Account | null
 }
 
 export async function fetchAccount(accountId: string): Promise<Account | null> {
+    const { db } = getFirebase();
     const accountRef = doc(db, `accounts/${accountId}`);
     const docSnap = await getDoc(accountRef);
     if (docSnap.exists()) {
@@ -67,6 +70,7 @@ export async function fetchAccount(accountId: string): Promise<Account | null> {
 
 // #region Client Data
 export function getClients(accountId: string, callback: (clients: Client[]) => void): Unsubscribe {
+  const { db } = getFirebase();
   const clientsCollection = collection(db, `accounts/${accountId}/clients`);
   const q = query(clientsCollection, where("accountId", "==", accountId));
   
@@ -83,6 +87,7 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
 }
 
 export async function fetchClients(accountId: string): Promise<Client[]> {
+    const { db } = getFirebase();
     const clientsCollection = collection(db, `accounts/${accountId}/clients`);
     const q = query(clientsCollection, where("accountId", "==", accountId));
     const querySnapshot = await getDocs(q);
@@ -95,6 +100,7 @@ export async function fetchClients(accountId: string): Promise<Client[]> {
 
 // #region Dumpster Data
 export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]) => void): Unsubscribe {
+    const { db } = getFirebase();
     const dumpstersCollection = collection(db, `accounts/${accountId}/dumpsters`);
     const q = query(dumpstersCollection, where("accountId", "==", accountId));
 
@@ -112,6 +118,7 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
 
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
+    const { db } = getFirebase();
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     const q = query(rentalsCollection, where("accountId", "==", accountId));
 
@@ -126,23 +133,9 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
     return unsubscribe;
 }
 
-export function getCompletedRentals(accountId: string, callback: (rentals: CompletedRental[]) => void): Unsubscribe {
-    const rentalsCollection = collection(db, `accounts/${accountId}/completed_rentals`);
-    const q = query(rentalsCollection, where("accountId", "==", accountId));
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const rentals = querySnapshot.docs.map(doc => docToSerializable(doc) as CompletedRental);
-        callback(rentals);
-    }, (error) => {
-        console.error("Error fetching completed rentals:", error);
-        callback([]);
-    });
-
-    return unsubscribe;
-}
-
 export async function getActiveRentalsForUser(accountId: string, id: string, field: 'assignedTo' | 'clientId' = 'assignedTo'): Promise<Rental[]> {
     if (!accountId || !id) return [];
+    const { db } = getFirebase();
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     const q = query(rentalsCollection, where(field, "==", id));
     const querySnapshot = await getDocs(q);
@@ -156,6 +149,7 @@ export function getPopulatedRentals(
     onError: (error: Error) => void,
     assignedToId?: string
 ): Unsubscribe {
+    const { db } = getFirebase();
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     
     let q: Query<DocumentData> = query(rentalsCollection, where("accountId", "==", accountId));
@@ -166,27 +160,56 @@ export function getPopulatedRentals(
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
         try {
-            const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
-                const rentalData = docToSerializable(rentalDoc) as Omit<Rental, 'id'>;
+            if (querySnapshot.empty) {
+                onData([]);
+                return;
+            }
 
-                const dumpsterPromise = getDoc(doc(db, `accounts/${accountId}/dumpsters`, rentalData.dumpsterId));
+            const allDumpsterIds = new Set<string>();
+            querySnapshot.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.dumpsterIds && Array.isArray(data.dumpsterIds)) {
+                    data.dumpsterIds.forEach(id => allDumpsterIds.add(id));
+                } else if (data.dumpsterId) { // Fallback for old data model
+                    allDumpsterIds.add(data.dumpsterId);
+                }
+            });
+
+            const dumpstersMap = new Map<string, Dumpster>();
+            if (allDumpsterIds.size > 0) {
+                const dumpsterQuery = query(collection(db, `accounts/${accountId}/dumpsters`), where(documentId(), 'in', Array.from(allDumpsterIds)));
+                const dumpsterSnaps = await getDocs(dumpsterQuery);
+                dumpsterSnaps.forEach(d => dumpstersMap.set(d.id, docToSerializable(d) as Dumpster));
+            }
+
+
+            const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
+                const rentalData = docToSerializable(rentalDoc) as Omit<Rental, 'id'> & { id: string };
+
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
                 const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
+                const truckPromise = rentalData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, rentalData.truckId)) : Promise.resolve(null);
+                
+                const dumpsterIds = rentalData.dumpsterIds || (rentalData.dumpsterId ? [rentalData.dumpsterId] : []);
 
-                const [dumpsterSnap, clientSnap, assignedToSnap] = await Promise.all([dumpsterPromise, clientPromise, assignedToPromise]);
+                const [clientSnap, assignedToSnap, truckSnap] = await Promise.all([clientPromise, assignedToPromise, truckPromise]);
+
+                const rentalDumpsters = dumpsterIds
+                    .map(id => dumpstersMap.get(id))
+                    .filter(Boolean) as Dumpster[];
 
                 return {
-                    id: rentalDoc.id,
                     ...rentalData,
                     itemType: 'rental',
-                    dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+                    dumpsters: rentalDumpsters,
                     client: docToSerializable(clientSnap) as Client | null,
                     assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
+                    truck: docToSerializable(truckSnap) as Truck | null,
                 };
             });
 
             const populatedRentals = await Promise.all(rentalPromises);
-            onData(populatedRentals.filter(r => r.client && r.dumpster && r.assignedToUser));
+            onData(populatedRentals.filter(r => r.client && r.dumpsters && r.dumpsters.length > 0 && r.assignedToUser) as PopulatedRental[]);
         } catch(e) {
             console.error("Error processing populated rentals:", e)
             if (e instanceof Error) {
@@ -202,32 +225,13 @@ export function getPopulatedRentals(
 // #endregion
 
 // #region Operation Data
-export function getCompletedOperations(accountId: string, callback: (operations: CompletedOperation[]) => void): Unsubscribe {
-  const opsCollection = collection(db, `accounts/${accountId}/completed_operations`);
-  const q = query(opsCollection, where("accountId", "==", accountId));
-  const unsubscribe = onSnapshot(
-    q,
-    (querySnapshot) => {
-      const ops = querySnapshot.docs.map(
-        (doc) => docToSerializable(doc) as CompletedOperation
-      );
-      callback(ops);
-    },
-    (error) => {
-      console.error("Error fetching completed operations:", error);
-      callback([]);
-    }
-  );
-  return unsubscribe;
-}
-
-
 export function getPopulatedOperations(
     accountId: string,
     onData: (operations: PopulatedOperation[]) => void,
     onError: (error: Error) => void,
     driverId?: string,
 ): Unsubscribe {
+    const { db } = getFirebase();
     const opsCollection = collection(db, `accounts/${accountId}/operations`);
     let q: Query<DocumentData> = query(opsCollection, where("accountId", "==", accountId));
 
@@ -245,38 +249,55 @@ export function getPopulatedOperations(
             const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
 
             const opPromises = querySnapshot.docs.map(async (opDoc) => {
-                const opData = docToSerializable(opDoc) as Omit<Operation, 'id'>;
+                try {
+                    const opData = docToSerializable(opDoc) as Omit<Operation, 'id'>;
 
-                const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, opData.clientId));
-                const truckPromise = opData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, opData.truckId)) : Promise.resolve(null);
-                const driverPromise = opData.driverId ? getDoc(doc(db, `users`, opData.driverId)) : Promise.resolve(null);
+                    // Ensure required fields exist before fetching related docs
+                    if (!opData.clientId || !opData.driverId) {
+                        console.warn(`Skipping operation ${opDoc.id} due to missing clientId or driverId.`);
+                        return null; 
+                    }
 
-                const [clientSnap, truckSnap, driverSnap] = await Promise.all([clientPromise, truckPromise, driverPromise]);
+                    const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, opData.clientId));
+                    const truckPromise = opData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, opData.truckId)) : Promise.resolve(null);
+                    const driverPromise = getDoc(doc(db, `users`, opData.driverId));
 
-                const serializedData = docToSerializable(opDoc) as Operation;
-                
-                const populatedTypes = (opData.typeIds || []).map(id => ({
-                    id,
-                    name: opTypeMap.get(id) || 'Tipo desconhecido'
-                }));
+                    const [clientSnap, truckSnap, driverSnap] = await Promise.all([clientPromise, truckPromise, driverPromise]);
+                    
+                    // If a required document (client, driver) doesn't exist, we skip this operation
+                    if (!clientSnap.exists() || !driverSnap.exists()) {
+                        console.warn(`Skipping operation ${opDoc.id} because a required related document (client or driver) was not found.`);
+                        return null;
+                    }
 
-                return {
-                    ...serializedData,
-                    itemType: 'operation',
-                    client: docToSerializable(clientSnap) as Client | null,
-                    truck: docToSerializable(truckSnap) as Truck | null,
-                    driver: docToSerializable(driverSnap) as UserAccount | null,
-                    operationTypes: populatedTypes,
-                };
+                    const serializedData = docToSerializable(opDoc) as Operation;
+                    
+                    const populatedTypes = (opData.typeIds || []).map(id => ({
+                        id,
+                        name: opTypeMap.get(id) || 'Tipo desconhecido'
+                    }));
+
+                    return {
+                        ...serializedData,
+                        itemType: 'operation',
+                        client: docToSerializable(clientSnap) as Client | null,
+                        truck: docToSerializable(truckSnap) as Truck | null,
+                        driver: docToSerializable(driverSnap) as UserAccount | null,
+                        operationTypes: populatedTypes,
+                    };
+                } catch (individualError) {
+                     console.error(`Failed to process individual operation ${opDoc.id}:`, individualError);
+                    return null; // Return null for the failed operation
+                }
             });
 
-            const populatedOps = await Promise.all(opPromises);
+            const populatedOpsResults = await Promise.all(opPromises);
+            const validPopulatedOps = populatedOpsResults.filter((op): op is PopulatedOperation => op !== null);
             
             // Sort on the client side
-            const sortedOps = populatedOps
-              .filter((op): op is PopulatedOperation => !!op.client)
+            const sortedOps = validPopulatedOps
               .sort((a, b) => {
-                // Handle potential undefined createdAt by providing a fallback date.
+                // Handle potential undefined startDate by providing a fallback date.
                 const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
                 const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
                 return dateA - dateB; // Sort ascending by start time
@@ -300,11 +321,11 @@ export function getPopulatedOperations(
 
 // #region Team Data
 export function getTeamMembers(accountId: string, callback: (users: UserAccount[]) => void): Unsubscribe {
-  if (!accountId) {
-    callback([]);
+  if (!accountId || !callback) {
+    if (callback) callback([]);
     return () => {};
   }
-  
+  const { db } = getFirebase();
   const accountRef = doc(db, 'accounts', accountId);
   
   const unsubscribe = onSnapshot(accountRef, async (accountSnap) => {
@@ -344,6 +365,7 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
 
 export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]> {
   if (!accountId) return [];
+  const { db } = getFirebase();
   const accountRef = doc(db, 'accounts', accountId);
   const accountSnap = await getDoc(accountRef);
   if (!accountSnap.exists()) return [];
@@ -367,6 +389,7 @@ export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]
 
 // #region Fleet Data
 export function getTrucks(accountId: string, callback: (trucks: Truck[]) => void): Unsubscribe {
+  const { db } = getFirebase();
   const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
   const q = query(trucksCollection, where("accountId", "==", accountId));
 

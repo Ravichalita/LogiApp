@@ -1,7 +1,7 @@
 {
-  "name": "CaçambaControl",
-  "short_name": "CaçambaControl",
-  "description": "Gestão de Caçambas e Controle de Aluguéis.",
+  "name": "LogiApp",
+  "short_name": "LogiApp",
+  "description": "Gestão de logistica simplificada.",
   "start_url": "/os",
   "id": "/os",
   "display": "standalone",

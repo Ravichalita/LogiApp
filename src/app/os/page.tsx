@@ -1,10 +1,11 @@
 
+
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getPopulatedRentals, getPopulatedOperations, fetchTeamMembers } from '@/lib/data';
-import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment } from '@/lib/types';
+import type { PopulatedRental, PopulatedOperation, UserAccount, OperationType, Attachment, Dumpster } from '@/lib/types';
 import { format, isBefore, isAfter, isToday, parseISO, startOfToday, endOfDay, isWithinInterval, isSameDay } from 'date-fns';
 import {
   Accordion,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RentalCardActions } from '@/app/rentals/rental-card-actions';
 import { Truck, Calendar, User, ShieldAlert, Search, Plus, Minus, ChevronDown, Hash, Home, Container, Workflow, Building, MapPin, FileText, DollarSign, TrendingDown, TrendingUp, Route, Clock, Sun, Cloudy, CloudRain, Snowflake, Map, Paperclip, Sparkles, MapPinned, ArrowRightLeft, MoreVertical, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -52,19 +52,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { RentalCardActions } from '../rentals/rental-card-actions';
+import { ScheduleSwapDialog } from '../rentals/schedule-swap-dialog';
 
 
-type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje';
+type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje' | 'Trocar';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
 type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em Atraso';
 
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info', order: number } {
-  const today = startOfToday(new Date());
+  const today = startOfToday();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
+  const swapDate = rental.swapDate ? parseISO(rental.swapDate) : null;
 
+  if (swapDate && isToday(swapDate)) {
+    return { text: 'Trocar', variant: 'destructive', order: 0 };
+  }
   if (isAfter(today, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
@@ -120,8 +126,8 @@ const formatDateRange = (start?: string, end?: string) => {
         const startDate = parseISO(start);
         const endDate = parseISO(end);
         
-        const startFormat = isToday(startDate) ? "'Hoje às' HH:mm" : "dd/MM/yy 'às' HH:mm";
-        const endFormat = isToday(endDate) ? "'Hoje às' HH:mm" : "dd/MM/yy 'às' HH:mm";
+        const startFormat = "dd/MM/yy 'às' HH:mm";
+        const endFormat = "dd/MM/yy 'às' HH:mm";
         
         return `${format(startDate, startFormat, { locale: ptBR })} - ${format(endDate, endFormat, { locale: ptBR })}`;
     } catch (error) {
@@ -191,6 +197,7 @@ const statusFilterOptions: { label: string; value: StatusFilter }[] = [
     { label: "Em Andamento", value: 'Em Andamento' },
     { label: "Encerram Hoje", value: 'Encerra hoje' },
     { label: "Em Atraso", value: 'Em Atraso' },
+    { label: "Trocar", value: 'Trocar' },
 ];
 
 
@@ -200,66 +207,80 @@ export default function OSPage() {
   const [rentals, setRentals] = useState<PopulatedRental[]>([]);
   const [operations, setOperations] = useState<PopulatedOperation[]>([]);
   const [teamMembers, setTeamMembers] = useState<UserAccount[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [osTypeFilter, setOsTypeFilter] = useState<OsTypeFilter>('Todas');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+  const [ownerAvatarDataUri, setOwnerAvatarDataUri] = useState<string | undefined>();
   const router = useRouter();
   const { toast } = useToast();
+  const dataLoadedRef = useRef(false);
 
   const permissions = userAccount?.permissions;
-  const canAccessRentals = isSuperAdmin || permissions?.canAccessRentals;
-  const canAccessOperations = isSuperAdmin || permissions?.canAccessOperations;
-  const canAccessRoutes = isSuperAdmin || permissions?.canAccessRoutes;
-  const canEditRentals = isSuperAdmin || permissions?.canEditRentals;
-  const canEditOperations = isSuperAdmin || permissions?.canEditOperations;
+  const canAccessRentals = isSuperAdmin || !!permissions?.canAccessRentals;
+  const canAccessOperations = isSuperAdmin || !!permissions?.canAccessOperations;
+  const canAccessRoutes = isSuperAdmin || !!permissions?.canAccessRoutes;
+  const canEditRentals = isSuperAdmin || !!permissions?.canEditRentals;
+  const canEditOperations = isSuperAdmin || !!permissions?.canEditOperations;
   const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
-  const canUseAttachments = isSuperAdmin || permissions?.canUseAttachments;
+  const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
+  const isViewer = userAccount?.role === 'viewer';
 
-  
+
   useEffect(() => {
     if (authLoading) return;
-    if (!accountId || (!canAccessRentals && !canAccessOperations)) {
-      setLoading(false);
+    
+    const hasAccess = canAccessRentals || canAccessOperations;
+    if (!accountId || !hasAccess) {
+      setLoadingData(false);
       return;
     }
 
-    setLoading(true);
+    if (!dataLoadedRef.current) {
+        setLoadingData(true);
+    }
+    
     const isAdminView = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin';
     const userIdToFilter = isAdminView ? undefined : user?.uid;
 
     const unsubscribers: (() => void)[] = [];
 
+    const handleDataError = (err: Error) => {
+        console.error("Data subscription error:", err);
+        setError(err);
+        setLoadingData(false);
+    };
+
+    if (teamMembers.length === 0) {
+        fetchTeamMembers(accountId).then(setTeamMembers);
+    }
+    
     if (canAccessRentals) {
-      if (canEditRentals && teamMembers.length === 0) {
-         fetchTeamMembers(accountId).then(setTeamMembers);
-      }
       const unsub = getPopulatedRentals(
         accountId,
-        (data) => setRentals(data),
-        (err) => { console.error("Rental subscription error:", err); setError(err); },
+        (data) => { setRentals(data); dataLoadedRef.current = true; setLoadingData(false); },
+        handleDataError,
         userIdToFilter
       );
       unsubscribers.push(unsub);
     }
     
     if (canAccessOperations) {
-        if(teamMembers.length === 0) {
-            fetchTeamMembers(accountId).then(setTeamMembers);
-        }
         const unsub = getPopulatedOperations(
             accountId,
-            (data) => setOperations(data),
-            (err) => { console.error("Operation subscription error:", err); setError(err); },
+            (data) => { setOperations(data); dataLoadedRef.current = true; setLoadingData(false); },
+            handleDataError,
             userIdToFilter
-        )
+        );
         unsubscribers.push(unsub);
     }
-
-    setLoading(false);
+    
+    if (!canAccessRentals && !canAccessOperations) {
+        setLoadingData(false);
+    }
     
     return () => unsubscribers.forEach(unsub => unsub());
 
@@ -333,6 +354,43 @@ export default function OSPage() {
 
   }, [rentals, operations, searchTerm, osTypeFilter, statusFilter, canAccessRentals, canAccessOperations, selectedDate]);
   
+  const owner = useMemo(() => teamMembers.find(m => m.role === 'owner'), [teamMembers]);
+
+  useEffect(() => {
+    if (!owner?.avatarUrl) {
+      setOwnerAvatarDataUri(undefined);
+      return;
+    }
+
+    const controller = new AbortController();
+    const toDataURL = async (url: string) => {
+      try {
+        const res = await fetch(`/api/image-proxy?url=${encodeURIComponent(url)}`, { signal: controller.signal });
+        if (!res.ok) throw new Error('fetch failed: ' + res.status);
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+             console.error('Erro ao converter avatar para dataURI', err);
+        }
+        return undefined;
+      }
+    };
+
+    let mounted = true;
+    toDataURL(owner.avatarUrl).then(uri => { if (mounted) setOwnerAvatarDataUri(uri); });
+
+    return () => { 
+        mounted = false; 
+        controller.abort(); 
+    };
+  }, [owner?.avatarUrl]);
+
   const handleTypeFilterChange = (type: OsTypeFilter) => {
     setOsTypeFilter(type);
     setStatusFilter('Todas'); // Reset status filter when type changes
@@ -416,18 +474,28 @@ export default function OSPage() {
         break;
       }
       case 'pdf': {
-        const osId = `${isRental ? 'AL' : 'OP'}${item.sequentialId}`;
         const pdfContainerId = `pdf-${isRental ? 'al' : 'op'}-${item.id}`;
         const pdfContainer = document.getElementById(pdfContainerId);
         if (!pdfContainer) {
             toast({ title: "Erro", description: "Container do PDF não encontrado.", variant: "destructive" });
             return;
         }
-        const canvas = await html2canvas(pdfContainer, { scale: 2 });
+
+        const canvas = await html2canvas(pdfContainer, { useCORS: true, scale: 2 });
+        if (canvas.width === 0 || canvas.height === 0) {
+            toast({ title: "Erro de Renderização", description: "Não foi possível gerar a imagem para o PDF. Tente novamente.", variant: "destructive" });
+            return;
+        }
+        
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        pdf.addImage(canvas, 'PNG', 0, 0, pdfWidth, (canvas.height * pdfWidth) / canvas.width);
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, pdfWidth, pdfHeight);
+        
+        const osId = `${isRental ? 'AL' : 'OP'}${item.sequentialId}`;
         pdf.save(`OS_${osId}.pdf`);
+
         break;
       }
       case 'delete': {
@@ -468,15 +536,62 @@ export default function OSPage() {
   };
 
 
-  const isLoading = authLoading || (loading && (canAccessRentals || canAccessOperations));
+  const isLoading = authLoading || loadingData;
+  const hasAnyAccess = canAccessRentals || canAccessOperations || isSuperAdmin;
+  
+  if (isLoading) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
+            <OSCardSkeleton />
+        </div>
+    )
+  }
+  
+  if (error) {
+       return (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
+             <div className="p-4 bg-destructive/10 rounded-full mb-4">
+                <ShieldAlert className="h-10 w-10 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Carregamento</h2>
+            <p className="text-muted-foreground mb-6 max-w-md">
+                Não foi possível carregar as ordens de serviço. Isso pode ser um problema nos dados de uma OS específica. Verifique os dados no servidor ou contate o suporte.
+            </p>
+             <Button onClick={() => window.location.reload()}>
+                Recarregar Página
+            </Button>
+        </div>
+    )
+  }
+
+  if (!hasAnyAccess) {
+    return (
+        <div className="container mx-auto py-8 px-4 md:px-6">
+            <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Acesso Negado</AlertTitle>
+                <AlertDescription>
+                    Você não tem permissão para visualizar Ordens de Serviço.
+                </AlertDescription>
+            </Alert>
+        </div>
+    )
+  }
 
   const pageContent = (
     <>
-      <div style={{ position: 'fixed', left: '-2000px', top: 0, zIndex: -1, width: '210mm', height: '297mm' }}>
+      {/* Hidden container for PDF rendering */}
+       <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
         {combinedItems.map(item => (
-            <OsPdfDocument key={`${item.itemType}-${item.id}`} item={item} />
+            <OsPdfDocument
+              key={`pdf-doc-${item.id}`}
+              item={item}
+              owner={owner}
+            />
         ))}
       </div>
+
       <div className="space-y-4 mb-6">
         <div className="flex flex-col md:flex-row gap-2">
             <div className="relative flex-grow">
@@ -549,72 +664,81 @@ export default function OSPage() {
                     if (item.itemType === 'rental') {
                         const rental = item as PopulatedRental;
                         const status = getRentalStatus(rental);
-                        const isFinalizeDisabled = !['Ativo', 'Em Atraso', 'Encerra hoje'].includes(status.text);
 
                         return (
                             <DraggableActionCard 
-                                key={uniqueKey}
-                                actions={
-                                    <>
-                                        {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('edit', rental)}><Edit className="h-6 w-6" /> Editar</Button>}
-                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', rental)} disabled={isFinalizeDisabled}><CheckCircle className="h-6 w-6" /> Finalizar</Button>
-                                        <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone || '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex">
-                                            <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
-                                        </a>
-                                        {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('swap', rental)}><ArrowRightLeft className="h-6 w-6" /> Trocar</Button>}
-                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('pdf', rental)}><Download className="h-6 w-6" /> Baixar PDF</Button>
-                                        {canEditRentals && <Button variant="destructive" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('delete', rental)}><Trash2 className="h-6 w-6" /> Excluir</Button>}
-                                    </>
-                                }
-                            >
-                                <Accordion type="single" collapsible className="w-full">
-                                    <AccordionItem value={rental.id} className="border-none">
-                                        <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                            <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
-                                                AL{rental.sequentialId}
-                                            </span>
-                                            <CardHeader className="pb-4 pt-8">
-                                                <div className="flex items-start justify-between">
-                                                    <CardTitle className="text-xl font-headline">{rental.dumpster?.name}</CardTitle>
+                            key={uniqueKey}
+                            actions={
+                                <>
+                                    {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('edit', rental)}><Edit className="h-6 w-6" /> Editar</Button>}
+                                    <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('finalize', rental)}> <CheckCircle className="h-6 w-6" /> Finalizar</Button>
+                                    <a href={`https://wa.me/${formatPhoneNumberForWhatsApp(rental.client?.phone || '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex">
+                                        <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
+                                    </a>
+                                    {canEditRentals && <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('swap', rental)}><ArrowRightLeft className="h-6 w-6" /> Trocar</Button>}
+                                    <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('pdf', rental)}><Download className="h-6 w-6" /> Baixar PDF</Button>
+                                    {canEditRentals && <Button variant="destructive" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('delete', rental)}><Trash2 className="h-6 w-6" /> Excluir</Button>}
+                                </>
+                            }
+                        >
+                            <Accordion type="single" collapsible className="w-full">
+                                <AccordionItem value={rental.id} className="border-none">
+                                    <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
+                                        <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
+                                            AL{rental.sequentialId}
+                                        </span>
+                                        <CardHeader className="pb-4 pt-8">
+                                             <div className="flex items-start justify-between">
+                                                    <CardTitle className="text-xl font-headline">
+                                                    {(rental.dumpsters || []).map(d => d.name).join(', ')}
+                                                    </CardTitle>
                                                     <div className="flex flex-col items-end gap-1 ml-2">
-                                                        <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                                    <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                                </div>
+                                            </div>
+                                            <CardDescription className="text-sm mt-4">
+                                                <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Building className="h-4 w-4"/> {rental.client?.name}
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User className="h-4 w-4"/>
+                                                            {canEditRentals && rental.assignedToUser ? (
+                                                                <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
+                                                                    {rental.assignedToUser.name}
+                                                                </EditAssignedUserDialog>
+                                                            ) : (
+                                                                <span>{rental.assignedToUser?.name}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                     <div className="flex flex-col items-start md:items-end gap-1.5">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <Calendar className="h-4 w-4"/>
+                                                            <span>{formatDateRange(rental.rentalDate, rental.returnDate)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            {rental.swapDate && (
+                                                                <p className="text-xs font-semibold text-blue-600">
+                                                                    Troca agendada para: {format(parseISO(rental.swapDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                                </p>
+                                                            )}
+                                                            <ScheduleSwapDialog rental={rental} />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <CardDescription className="text-sm mt-4">
-                                                    <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Building className="h-4 w-4"/> {rental.client?.name}
-                                                            </div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <User className="h-4 w-4"/>
-                                                                {canEditRentals && rental.assignedToUser ? (
-                                                                    <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
-                                                                        {rental.assignedToUser.name}
-                                                                    </EditAssignedUserDialog>
-                                                                ) : (
-                                                                    <span>{rental.assignedToUser?.name}</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-1.5 text-left md:text-right">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Calendar className="h-4 w-4"/>
-                                                                <span>Retirada em {format(parseISO(rental.returnDate), "dd/MM/yy", { locale: ptBR })}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardDescription>
-                                            </CardHeader>
-                                            <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
-                                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                            </AccordionTrigger>
-                                            <AccordionContent className="p-6 pt-4">
-                                                <RentalCardActions rental={rental} status={status} />
-                                            </AccordionContent>
-                                        </Card>
-                                    </AccordionItem>
-                                </Accordion>
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <AccordionTrigger className="w-full bg-muted/50 hover:bg-muted/80 text-muted-foreground hover:no-underline p-2 rounded-none justify-center" hideChevron>
+                                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                        </AccordionTrigger>
+                                        <AccordionContent className="p-6 pt-4">
+                                            <RentalCardActions rental={rental} status={status} />
+                                        </AccordionContent>
+                                    </Card>
+                                </AccordionItem>
+                            </Accordion>
                             </DraggableActionCard>
                         )
                     } else {
@@ -725,12 +849,10 @@ export default function OSPage() {
                                                     <Separator />
 
                                                     {canSeeServiceValue && (
-                                                        <div className="space-y-4">
-                                                            <div className="flex items-center gap-2 pt-2">
-                                                                <DollarSign className="h-4 w-4 text-muted-foreground" />
-                                                                <span className="font-medium">Valor do Serviço:</span>
-                                                                <span className="font-bold">{formatCurrency(op.value)}</span>
-                                                            </div>
+                                                        <div className="flex items-center gap-2 pt-2">
+                                                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                                            <span className="font-medium">Valor do Serviço:</span>
+                                                            <span className="font-bold">{formatCurrency(op.value)}</span>
                                                         </div>
                                                     )}
                                                     
@@ -845,46 +967,6 @@ export default function OSPage() {
     </>
   );
 
-  if (isLoading) {
-    return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <h1 className="text-3xl font-headline font-bold mb-8">Ordens de Serviço</h1>
-            <OSCardSkeleton />
-        </div>
-    )
-  }
-  
-  if (error) {
-       return (
-        <div className="flex flex-col items-center justify-center h-[60vh] text-center p-4">
-             <div className="p-4 bg-destructive/10 rounded-full mb-4">
-                <ShieldAlert className="h-10 w-10 text-destructive" />
-            </div>
-            <h2 className="text-2xl font-bold font-headline mb-2">Erro de Permissão</h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-                Não foi possível carregar as ordens de serviço. Verifique suas permissões de acesso e recarregue a página. Se o problema persistir, contate o administrador.
-            </p>
-             <Button onClick={() => window.location.reload()}>
-                Recarregar Página
-            </Button>
-        </div>
-    )
-  }
-
-  if (!canAccessRentals && !canAccessOperations && !loading) {
-    return (
-        <div className="container mx-auto py-8 px-4 md:px-6">
-            <Alert variant="destructive">
-                <ShieldAlert className="h-4 w-4" />
-                <AlertTitle>Acesso Negado</AlertTitle>
-                <AlertDescription>
-                    Você não tem permissão para visualizar Ordens de Serviço.
-                </AlertDescription>
-            </Alert>
-        </div>
-    )
-  }
-
   return (
     <div className="container mx-auto py-8 px-4 md:px-6">
        
@@ -916,5 +998,3 @@ export default function OSPage() {
     </div>
   );
 }
-
-    
