@@ -115,6 +115,7 @@ export default function RoutePlanningPage() {
     const { toast } = useToast();
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [includeOverdue, setIncludeOverdue] = useState(false);
+    const [analyzeTrafficEnabled, setAnalyzeTrafficEnabled] = useState(true);
     
     const canAccess = isSuperAdmin || userAccount?.permissions?.canAccessRoutes;
     const canSeeFinance = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.permissions?.canAccessFinance;
@@ -253,18 +254,22 @@ export default function RoutePlanningPage() {
                 accountId: accountId,
             });
 
-            updateOperationRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
-            
-            const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
-            const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
+            if (analyzeTrafficEnabled) {
+                updateOperationRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
 
-            const trafficResult = await analyzeTraffic({
-                routeStops: [...new Set(routeStops)],
-                date: departureTime.toISOString(),
-                totalDuration: optimizedRoute.totalDuration || 'não calculado',
-            });
+                const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
+                const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
 
-             updateOperationRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+                const trafficResult = await analyzeTraffic({
+                    routeStops: [...new Set(routeStops)],
+                    date: departureTime.toISOString(),
+                    totalDuration: optimizedRoute.totalDuration || 'não calculado',
+                });
+
+                updateOperationRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+            } else {
+                updateOperationRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: false });
+            }
 
         } catch (error) {
             console.error("Optimization failed:", error);
@@ -311,18 +316,22 @@ export default function RoutePlanningPage() {
                 baseDepartureTime: routeToOptimize.departureTime,
             });
 
-            updateRentalRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
-            
-            const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
-            const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
+            if (analyzeTrafficEnabled) {
+                updateRentalRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
 
-            const trafficResult = await analyzeTraffic({
-                routeStops: [...new Set(routeStops)],
-                date: departureTime.toISOString(),
-                totalDuration: optimizedRoute.totalDuration || 'não calculado',
-            });
-            
-            updateRentalRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+                const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
+                const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
+
+                const trafficResult = await analyzeTraffic({
+                    routeStops: [...new Set(routeStops)],
+                    date: departureTime.toISOString(),
+                    totalDuration: optimizedRoute.totalDuration || 'não calculado',
+                });
+
+                updateRentalRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+            } else {
+                updateRentalRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: false });
+            }
 
         } catch (error) {
              console.error("Rental route optimization failed:", error);
@@ -406,6 +415,16 @@ export default function RoutePlanningPage() {
                 <Checkbox id="include-overdue" checked={includeOverdue} onCheckedChange={(checked) => setIncludeOverdue(!!checked)} />
                 <Label htmlFor="include-overdue" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Incluir OSs Atrasadas
+                </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox
+                    id="analyze-traffic"
+                    checked={analyzeTrafficEnabled}
+                    onCheckedChange={(checked) => setAnalyzeTrafficEnabled(!!checked)}
+                />
+                <Label htmlFor="analyze-traffic" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Analisar Trânsito (Beta)
                 </Label>
             </div>
         </div>
