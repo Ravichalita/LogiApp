@@ -283,7 +283,13 @@ export async function createClient(accountId: string, prevState: any, formData: 
 }
 
 export async function updateClient(accountId: string, prevState: any, formData: FormData) {
-    const validatedFields = UpdateClientSchema.safeParse(Object.fromEntries(formData.entries()));
+    const rawData = Object.fromEntries(formData.entries());
+    const id = rawData.id as string;
+    if (!id) {
+        return { message: 'error', error: 'ID do cliente ausente.' };
+    }
+
+    const validatedFields = UpdateClientSchema.safeParse(rawData);
 
     if (!validatedFields.success) {
         return {
@@ -292,14 +298,28 @@ export async function updateClient(accountId: string, prevState: any, formData: 
         };
     }
     
-    const { id, ...clientData } = validatedFields.data;
-
     try {
         const clientDoc = getFirestore(adminApp).doc(`accounts/${accountId}/clients/${id}`);
-        await clientDoc.update({
-          ...clientData,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
+        
+        // This is the corrected block
+        const { id: _, ...clientData } = validatedFields.data;
+        const updateData: Record<string, any> = Object.fromEntries(
+          Object.entries(clientData).filter(([_, v]) => v !== undefined && v !== null)
+        );
+        updateData.updatedAt = FieldValue.serverTimestamp();
+
+        if (formData.has('googleMapsLink')) {
+          const rawLink = (formData.get('googleMapsLink') ?? '') as string;
+          const linkValue = rawLink.trim();
+          if (linkValue === '') {
+            // Em vez de salvar uma string vazia, instruímos o Firestore a deletar o campo.
+          updateData.googleMapsLink = FieldValue.delete();
+            } else {
+         updateData.googleMapsLink = linkValue;
+           }
+        }
+        
+        await clientDoc.update(updateData);
         revalidatePath('/clients');
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -765,7 +785,16 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     
     const { id, ...rentalData } = validatedFields.data;
     
-    const updateData = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined));
+    const updateData: Record<string, any> = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined && v !== null));
+
+    if (formData.has('deliveryGoogleMapsLink')) {
+      const linkValue = formData.get('deliveryGoogleMapsLink') as string;
+      updateData.deliveryGoogleMapsLink = linkValue && linkValue.trim() !== '' ? linkValue : FieldValue.delete();
+    }
+    
+    if (updateData.swapDate === null) {
+      updateData.swapDate = FieldValue.delete();
+    }
 
     if (Object.keys(updateData).length === 0) {
         return { message: 'success', info: 'Nenhum campo para atualizar.' };
@@ -812,7 +841,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) as string };
     }
-
+    
     // Only redirect if coming from the edit page, not from a simple attachment update
     const headersList = headers();
     const referer = headersList.get('referer');
@@ -1056,7 +1085,12 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 
     const { id, ...operationData } = validatedFields.data;
-    const updateData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined && v !== null));
+    const updateData: Record<string, any> = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined && v !== null));
+
+    if (formData.has('destinationGoogleMapsLink')) {
+      const linkValue = formData.get('destinationGoogleMapsLink') as string;
+      updateData.destinationGoogleMapsLink = linkValue && linkValue.trim() !== '' ? linkValue : FieldValue.delete();
+    }
 
     if (Object.keys(updateData).length === 0) {
         return { message: 'success', info: 'Nenhum campo para atualizar.' };
@@ -1117,7 +1151,13 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
-    redirect('/os');
+    
+    // Only redirect if coming from the edit page
+    const headersList = headers();
+    const referer = headersList.get('referer');
+    if (referer?.includes('/edit')) {
+        redirect('/os');
+    }
 }
 
 
@@ -1376,26 +1416,6 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
-}
-
-async function deleteCollection(db: FirebaseFirestore.Firestore, query: FirebaseFirestore.Query, resolve: (value: unknown) => void) {
-    const snapshot = await query.get();
-
-    const batchSize = snapshot.size;
-    if (batchSize === 0) {
-        resolve(true);
-        return;
-    }
-
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-    });
-    await batch.commit();
-
-    process.nextTick(() => {
-        deleteCollection(db, query, resolve);
-    });
 }
 
 async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number): Promise<string[]> {
@@ -2359,6 +2379,15 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
     
+
+
+
+
+
+
+
+
+
 
 
 

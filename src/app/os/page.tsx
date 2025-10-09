@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -820,10 +819,10 @@ export default function OSPage() {
                                                                 <p className="text-xs font-semibold uppercase text-muted-foreground">Destino:</p>
                                                                 <p className="font-medium">{op.destinationAddress}</p>
                                                             </div>
-                                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
-                                                                <MapPinned className="h-5 w-5" />
-                                                                <span className="text-[10px] font-bold">GPS</span>
-                                                            </a>
+                                                             <a href={op.destinationGoogleMapsLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(op.destinationAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                                                                 <MapPinned className="h-5 w-5" />
+                                                                 <span className="text-[10px] font-bold">GPS</span>
+                                                             </a>
                                                         </div>
                                                         <Accordion type="single" collapsible className="w-full">
                                                             <AccordionItem value="start-address" className="border-none">
@@ -998,3 +997,5 @@ export default function OSPage() {
     </div>
   );
 }
+
+    

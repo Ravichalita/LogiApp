@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/auth-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client, Dumpster, Rental, UserAccount, Account, PopulatedOperation, CompletedRental, CompletedOperation, Truck as TruckType } from '@/lib/types';
-import { isAfter, isToday, parseISO, startOfToday, format, isWithinInterval, isBefore, endOfDay, subDays, differenceInDays, startOfDay, isSameDay } from 'date-fns';
+import { isAfter, isToday, parseISO, startOfToday, format, isWithinInterval, isBefore, endOfDay, subDays, differenceInDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 
@@ -21,6 +21,7 @@ function NewRentalPageContent() {
   const searchParams = useSearchParams();
   const prefillDataParam = searchParams.get('prefill');
   const swapOriginId = searchParams.get('swapOriginId');
+  const prefillClientId = searchParams.get('clientId');
   
   const prefillData = useMemo(() => {
     if (prefillDataParam) {
@@ -107,13 +108,13 @@ function NewRentalPageContent() {
         .sort((a, b) => (a._rentalStart!.getTime() - b._rentalStart!.getTime()));
 
       const activeRental = dumpsterRentals.find(r =>
-        isWithinInterval(today, { start: startOfDay(r._rentalStart!), end: endOfDay(r._rentalEnd!) })
+        isWithinInterval(today, { start: startOfToday(r._rentalStart!), end: endOfDay(r._rentalEnd!) })
       );
       
       const overdueRental = dumpsterRentals.find(r => isAfter(today, endOfDay(r._rentalEnd!)) && !isSameDay(today, endOfDay(r._rentalEnd!)));
 
       const futureRentals = dumpsterRentals.filter(r =>
-        isAfter(startOfDay(r._rentalStart!), today)
+        isAfter(startOfToday(r._rentalStart!), today)
       );
 
       let specialStatus = 'Disponível';
@@ -131,7 +132,7 @@ function NewRentalPageContent() {
       }
 
       const disabledRanges = dumpsterRentals.map(r => ({
-        start: startOfDay(r._rentalStart!),
+        start: startOfToday(r._rentalStart!),
         end: endOfDay(subDays(r._rentalEnd!, 1)), // A caçamba fica livre no dia da retirada
       })).filter(range => range.end >= range.start);
 
@@ -139,7 +140,7 @@ function NewRentalPageContent() {
         const start = r._rentalStart!;
         const end = r._rentalEnd!;
         let scheduleStatus = 'Reservada';
-        if (isWithinInterval(today, { start: startOfDay(start), end: endOfDay(end) })) {
+        if (isWithinInterval(today, { start: startOfToday(start), end: endOfDay(end) })) {
             scheduleStatus = 'Alugada';
         }
         return {
@@ -239,6 +240,7 @@ function NewRentalPageContent() {
                 account={account}
                 prefillData={prefillData}
                 swapOriginId={swapOriginId}
+                prefillClientId={prefillClientId}
              />
           ) : (
             <Alert>

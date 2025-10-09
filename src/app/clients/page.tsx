@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Mail, FileText, MapPin, Phone, Search, Fingerprint, Plus, Minus, ShieldAlert, History, UserX, Star, CheckCircle } from 'lucide-react';
+import { Mail, FileText, MapPin, Phone, Search, Fingerprint, Plus, Minus, ShieldAlert, History, UserX, Star, CheckCircle, Workflow, Container } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import type { Client, CompletedRental, Rental, PopulatedOperation, CompletedOperation } from '@/lib/types';
@@ -25,6 +25,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { getFirebase } from '@/lib/firebase-client';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { parseISO, differenceInDays, addDays } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 function ClientListSkeleton() {
@@ -71,18 +72,46 @@ function ClientList({ clients }: { clients: Client[] }) {
             {clients.map(client => (
             <AccordionItem value={client.id} key={client.id} className="border rounded-lg shadow-sm bg-card">
                 <div className="p-4">
-                <div className="flex items-center justify-between">
-                    <div className="font-medium">{client.name}</div>
-                    <ClientActions client={client} />
-                </div>
-                <Button variant="ghost" className="text-sm text-muted-foreground mt-1 flex items-center gap-2 p-0 h-auto hover:bg-transparent" onClick={() => handleCopyPhone(client.phone)}>
-                    <Phone className="h-4 w-4 shrink-0"/> <span>{client.phone}</span>
-                </Button>
-                <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-2 justify-start group" hideChevron>
-                        <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
-                        <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
-                    Ver Detalhes
-                </AccordionTrigger>
+                    <div className="flex items-center justify-between">
+                        <div className="font-medium">{client.name}</div>
+                        <div className="flex items-center gap-1">
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                         <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                            <Link href={`/rentals/new?clientId=${client.id}`}>
+                                                <Container className="h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Novo Aluguel</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                 <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                                            <Link href={`/operations/new?clientId=${client.id}`}>
+                                                <Workflow className="h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Nova Operação</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <ClientActions client={client} />
+                        </div>
+                    </div>
+                    <Button variant="ghost" className="text-sm text-muted-foreground mt-1 flex items-center gap-2 p-0 h-auto hover:bg-transparent" onClick={() => handleCopyPhone(client.phone)}>
+                        <Phone className="h-4 w-4 shrink-0"/> <span>{client.phone}</span>
+                    </Button>
+                    <AccordionTrigger className="text-sm text-primary hover:no-underline p-0 pt-2 justify-start group" hideChevron>
+                            <Plus className="h-4 w-4 mr-1 transition-transform duration-200 group-data-[state=open]:hidden" />
+                            <Minus className="h-4 w-4 mr-1 transition-transform duration-200 hidden group-data-[state=open]:block" />
+                        Ver Detalhes
+                    </AccordionTrigger>
                 </div>
                 <AccordionContent>
                 <Separator />
@@ -101,10 +130,14 @@ function ClientList({ clients }: { clients: Client[] }) {
                     <div className="flex flex-col">
                         <span className="text-sm text-muted-foreground">Endereço Principal</span>
                         <span className="font-medium">{client.address}</span>
-                        {client.latitude && client.longitude && (
-                        <Link href={`https://www.google.com/maps?q=${client.latitude},${client.longitude}`} target="_blank" className="text-xs text-primary hover:underline mt-1">
-                            Ver no mapa
-                        </Link>
+                        {(client.googleMapsLink || (client.latitude && client.longitude)) && (
+                            <Link 
+                                href={client.googleMapsLink || `https://www.google.com/maps?q=${client.latitude},${client.longitude}`} 
+                                target="_blank" 
+                                className="text-xs text-primary hover:underline mt-1"
+                            >
+                                Ver no mapa
+                            </Link>
                         )}
                     </div>
                     </div>

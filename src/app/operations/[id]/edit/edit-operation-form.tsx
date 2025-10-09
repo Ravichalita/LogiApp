@@ -37,7 +37,7 @@ import { getFirebase } from '@/lib/firebase-client';
 import { Progress } from '@/components/ui/progress';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 
 interface EditOperationFormProps {
@@ -117,6 +117,7 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
       ? { lat: operation.destinationLatitude, lng: operation.destinationLongitude }
       : null
   );
+  const [destinationMapsLink, setDestinationMapsLink] = useState(operation.destinationGoogleMapsLink || '');
   
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(operation.truckId);
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(operation.clientId);
@@ -351,6 +352,9 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
         formData.set('destinationLatitude', String(destinationLocation.lat));
         formData.set('destinationLongitude', String(destinationLocation.lng));
       }
+      if (destinationMapsLink) {
+          formData.set('destinationGoogleMapsLink', destinationMapsLink);
+      }
       
       formData.set('typeIds', JSON.stringify(selectedOperationTypeIds));
       formData.set('value', String(baseValue));
@@ -377,6 +381,7 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
         toast({ title: "Erro", description: result.message, variant: "destructive"});
       } else if (!result?.errors) {
         toast({ title: "Sucesso!", description: "Operação atualizada."});
+        router.push('/os');
       }
     });
   };
@@ -581,7 +586,33 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
         <div className="space-y-2">
             <div className="flex justify-between items-center">
                  <Label htmlFor="destination-address-input" className="text-muted-foreground">Endereço de Destino</Label>
-                 <MapDialog onLocationSelect={handleDestinationLocationSelect} address={destinationAddress} initialLocation={destinationLocation} />
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Link do Google Maps</DialogTitle>
+                            <DialogDescription>
+                                Cole o link de compartilhamento do Google Maps para o endereço de destino. Isso garantirá a localização mais precisa.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2">
+                            <Label htmlFor="destination-maps-link-input">Link</Label>
+                            <Input 
+                                id="destination-maps-link-input"
+                                value={destinationMapsLink}
+                                onChange={(e) => setDestinationMapsLink(e.target.value)}
+                                placeholder="https://maps.app.goo.gl/..."
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button">Salvar</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
             <AddressInput id="destination-address-input" value={destinationAddress} onInputChange={handleDestinationAddressChange} onLocationSelect={handleDestinationLocationSelect} />
             {errors?.destinationAddress && <p className="text-sm font-medium text-destructive">{errors.destinationAddress[0]}</p>}

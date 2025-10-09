@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { OperationForm } from './operation-form';
 import { useAuth } from '@/context/auth-context';
@@ -13,9 +14,11 @@ import { Link } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 
-
-export default function NewOperationPage() {
+function NewOperationPageContent() {
   const { accountId } = useAuth();
+  const searchParams = useSearchParams();
+  const prefillClientId = searchParams.get('clientId') || undefined;
+
   const [clients, setClients] = useState<Client[]>([]);
   const [team, setTeam] = useState<UserAccount[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
@@ -135,10 +138,19 @@ export default function NewOperationPage() {
                 operations={operations}
                 operationTypes={operationTypes}
                 account={account}
+                prefillClientId={prefillClientId}
             />
           )}
         </CardContent>
       </Card>
     </div>
   );
+}
+
+export default function NewOperationPage() {
+    return (
+        <Suspense fallback={<div>Carregando...</div>}>
+            <NewOperationPageContent />
+        </Suspense>
+    )
 }
