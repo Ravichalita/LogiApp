@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition, useRef, useMemo } from 'react';
 import { createOperationAction } from '@/lib/actions';
-import type { Client, Dumpster, Location, UserAccount, RentalPrice, Attachment, Account, Base, AdditionalCost, OperationType, PopulatedOperation } from '@/lib/types';
+import type { Client, Dumpster, Location, UserAccount, RentalPrice, Attachment, Account, Base, AdditionalCost, Truck, PopulatedOperation, OperationType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,9 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, Star, Building, ShieldCheck } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -35,8 +35,15 @@ import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { OperationTypeDialog } from './operation-type-dialog';
 import { ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
+import { Dialog, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+
+
+const initialState = {
+  errors: {},
+  message: '',
+};
 
 interface OperationFormProps {
   clients: Client[];
@@ -51,6 +58,7 @@ interface OperationFormProps {
   operations: PopulatedOperation[];
   operationTypes: OperationType[];
   account: Account | null;
+  prefillClientId?: string;
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -85,7 +93,7 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
     return <Sun className="h-5 w-5" />;
 };
 
-export function OperationForm({ clients, classifiedClients, team, trucks, operations, operationTypes, account }: OperationFormProps) {
+export function OperationForm({ clients, classifiedClients, team, trucks, operations, operationTypes, account, prefillClientId }: OperationFormProps) {
   const { user, accountId, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<any>({});
@@ -101,14 +109,13 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const [selectedBaseId, setSelectedBaseId] = useState<string | undefined>(defaultBase?.id);
   const [startAddress, setStartAddress] = useState(defaultBase?.address || '');
   const [startLocation, setStartLocation] = useState<Omit<Location, 'address'> | null>(
-    defaultBase?.latitude && defaultBase.longitude
-      ? { lat: defaultBase.latitude, lng: defaultBase.longitude }
-      : null
+    defaultBase?.latitude && defaultBase.longitude ? { lat: defaultBase.latitude, lng: defaultBase.longitude } : null
   );
 
   const [destinationAddress, setDestinationAddress] = useState('');
   const [destinationLocation, setDestinationLocation] = useState<Omit<Location, 'address'> | null>(null);
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>();
+  const [destinationMapsLink, setDestinationMapsLink] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(prefillClientId);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
   
   const [selectedOperationTypeIds, setSelectedOperationTypeIds] = useState<string[]>([]);
@@ -243,6 +250,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
       const client = clients.find(c => c.id === selectedClientId);
       if (client) {
          setDestinationAddress(client.address);
+         setDestinationMapsLink(client.googleMapsLink || '');
          if (client.latitude && client.longitude) {
            setDestinationLocation({ lat: client.latitude, lng: client.longitude });
          } else {
@@ -255,6 +263,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
     } else {
        setDestinationAddress('');
        setDestinationLocation(null);
+       setDestinationMapsLink('');
     }
   }, [selectedClientId, clients]);
   
@@ -310,8 +319,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
          if (selectedBase.latitude && selectedBase.longitude) {
             setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
         } else {
-            setStartLocation(null);
-             // Trigger geocoding if coords are missing
+            setStartLocation(null); 
             geocodeAddress(selectedBase.address).then(location => {
                 if (location) {
                     setStartLocation({ lat: location.lat, lng: location.lng });
@@ -456,6 +464,9 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
           formData.set('destinationLatitude', String(destinationLocation.lat));
           formData.set('destinationLongitude', String(destinationLocation.lng));
         }
+        if (destinationMapsLink) {
+            formData.set('destinationGoogleMapsLink', destinationMapsLink);
+        }
 
         formData.set('value', String(baseValue));
         formData.set('additionalCosts', JSON.stringify(additionalCosts));
@@ -566,7 +577,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                     </Command>
                 </DialogContent>
             </Dialog>
-            {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
+           {errors?.clientId && <p className="text-sm font-medium text-destructive">{errors.clientId[0]}</p>}
           </div>
         </div>
 
@@ -625,6 +636,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                         setStartDate(date);
                         setIsStartDateOpen(false);
                     }}
+                    disabled={disabledDatesForSelectedTruck}
                     initialFocus
                     locale={ptBR}
                     />
@@ -666,6 +678,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                                     setEndDate(date);
                                     setIsEndDateOpen(false);
                                 }}
+                                disabled={disabledDatesForSelectedTruck}
                                 initialFocus
                                 locale={ptBR}
                                 />
@@ -724,7 +737,33 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
         <div className="space-y-2">
             <div className="flex justify-between items-center">
                  <Label htmlFor="destination-address-input" className="text-muted-foreground">Endereço de Destino</Label>
-                 <MapDialog onLocationSelect={handleDestinationLocationSelect} address={destinationAddress} initialLocation={destinationLocation} />
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do Google Maps</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Link do Google Maps</DialogTitle>
+                            <DialogDescription>
+                                Cole o link de compartilhamento do Google Maps para o endereço de destino. Isso garantirá a localização mais precisa.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2">
+                            <Label htmlFor="destination-maps-link-input">Link</Label>
+                            <Input 
+                                id="destination-maps-link-input"
+                                value={destinationMapsLink}
+                                onChange={(e) => setDestinationMapsLink(e.target.value)}
+                                placeholder="https://maps.app.goo.gl/..."
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button type="button">Salvar</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
             <AddressInput
                 id="destination-address-input"

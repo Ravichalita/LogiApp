@@ -187,6 +187,7 @@ const BaseOperationSchema = z.object({
   destinationAddress: z.string().min(5, { message: "O endereço de destino é obrigatório." }),
   destinationLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
   destinationLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
+  destinationGoogleMapsLink: z.string().url({ message: "Por favor, insira um link válido do Google Maps." }).optional().or(z.literal('')),
   observations: z.string().optional(),
   value: z.coerce.number().optional().nullable(),
   additionalCosts: z.array(AdditionalCostSchema).optional(),
@@ -252,12 +253,13 @@ export const ClientSchema = z.object({
   address: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
   latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
   longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
+  googleMapsLink: z.string().url({ message: "Por favor, insira um link válido do Google Maps." }).optional().or(z.literal('')),
   observations: z.string().optional(),
 });
 
 export const UpdateClientSchema = ClientSchema.extend({
   id: z.string(),
-});
+}).partial(); // Make all fields optional for updates
 
 
 export const DumpsterSchema = z.object({
@@ -288,6 +290,7 @@ export const RentalSchema = z.object({
   startLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
   startLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   deliveryAddress: z.string().min(5, { message: "O endereço de entrega deve ter pelo menos 5 caracteres." }),
+  deliveryGoogleMapsLink: z.string().url({ message: "Por favor, insira um link válido do Google Maps." }).optional().or(z.literal('')),
   latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
   longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
   billingType: z.enum(['perDay', 'lumpSum']),
@@ -328,6 +331,7 @@ export const UpdateRentalSchema = z.object({
     startLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
     startLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
     deliveryAddress: z.string().min(5, { message: "O endereço de entrega deve ter pelo menos 5 caracteres." }).optional(),
+    deliveryGoogleMapsLink: z.string().url({ message: "Por favor, insira um link válido do Google Maps." }).optional().or(z.literal('')),
     latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
     longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
     value: z.preprocess(
@@ -514,3 +518,5 @@ export type HistoricItem = {
 };
 // #endregion
 
+
+    

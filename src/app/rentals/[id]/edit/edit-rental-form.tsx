@@ -33,6 +33,7 @@ import { geocodeAddress, getDirectionsAction, getWeatherForecastAction } from '@
 import { MapDialog } from '@/components/map-dialog';
 import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
@@ -81,6 +82,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedTo);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(rental.truckId);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
+  const [deliveryMapsLink, setDeliveryMapsLink] = useState(rental.deliveryGoogleMapsLink || '');
   const [rentalDate, setRentalDate] = useState<Date | undefined>(parseISO(rental.rentalDate));
   const [rentalTime, setRentalTime] = useState<string>(format(parseISO(rental.rentalDate), 'HH:mm'));
   const [returnDate, setReturnDate] = useState<Date | undefined>(parseISO(rental.returnDate));
@@ -248,6 +250,9 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         }
 
         formData.set('deliveryAddress', deliveryAddress);
+        if (deliveryMapsLink) {
+            formData.set('deliveryGoogleMapsLink', deliveryMapsLink);
+        }
         if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
         if (finalReturnDate) formData.set('returnDate', finalReturnDate);
         if (deliveryLocation) {
@@ -404,7 +409,36 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="address-input">Endereço de Entrega</Label>
+        <div className="flex items-center justify-between">
+            <Label htmlFor="address-input">Endereço de Entrega</Label>
+            <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Link do Google Maps</DialogTitle>
+                        <DialogDescription>
+                            Cole o link de compartilhamento do Google Maps para o endereço de destino. Isso garantirá a localização mais precisa.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="delivery-maps-link-input">Link</Label>
+                        <Input 
+                            id="delivery-maps-link-input"
+                            value={deliveryMapsLink}
+                            onChange={(e) => setDeliveryMapsLink(e.target.value)}
+                            placeholder="https://maps.app.goo.gl/..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button">Salvar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+              </Dialog>
+        </div>
         <AddressInput
             id="address-input"
             value={deliveryAddress}

@@ -34,7 +34,7 @@ import { Separator } from '@/components/ui/separator';
 import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { useRouter } from 'next/navigation';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
 
@@ -73,6 +73,7 @@ interface RentalFormProps {
   account: Account | null;
   prefillData?: any;
   swapOriginId?: string | null;
+  prefillClientId?: string;
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
@@ -104,14 +105,14 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
     return <Sun className="h-5 w-5" />;
 };
 
-export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account, prefillData, swapOriginId }: RentalFormProps) {
+export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account, prefillData, swapOriginId, prefillClientId }: RentalFormProps) {
   const { accountId, user, userAccount, isSuperAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
   
   const [selectedDumpsterIds, setSelectedDumpsterIds] = useState<string[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(prefillData?.clientId);
+  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(prefillClientId || prefillData?.clientId);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
   const [assignedToId, setAssignedToId] = useState<string | undefined>(prefillData?.assignedTo || userAccount?.id);
   
@@ -130,6 +131,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       ? { lat: prefillData.latitude, lng: prefillData.longitude }
       : null
   );
+  const [deliveryMapsLink, setDeliveryMapsLink] = useState('');
 
   const [rentalDate, setRentalDate] = useState<Date | undefined>(prefillData ? new Date() : undefined);
   const [rentalTime, setRentalTime] = useState<string>('08:00');
@@ -360,6 +362,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         if (deliveryLocation) {
           formData.set('latitude', String(deliveryLocation.lat));
           formData.set('longitude', String(deliveryLocation.lng));
+        }
+        if (deliveryMapsLink) {
+            formData.set('deliveryGoogleMapsLink', deliveryMapsLink);
         }
         
         if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
@@ -768,7 +773,36 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="address-input">Endereço de Entrega</Label>
+        <div className="flex items-center justify-between">
+            <Label htmlFor="address-input">Endereço de Entrega</Label>
+             <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Link do Google Maps</DialogTitle>
+                        <DialogDescription>
+                            Cole o link de compartilhamento do Google Maps para o endereço de destino. Isso garantirá a localização mais precisa.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="delivery-maps-link-input">Link</Label>
+                        <Input 
+                            id="delivery-maps-link-input"
+                            value={deliveryMapsLink}
+                            onChange={(e) => setDeliveryMapsLink(e.target.value)}
+                            placeholder="https://maps.app.goo.gl/..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button">Salvar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+              </Dialog>
+        </div>
         <AddressInput
             id="address-input"
             value={deliveryAddress}
@@ -870,7 +904,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                 />
               </PopoverContent>
             </Popover>
-            <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-auto" />
+             <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-auto" />
           </div>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
            {sameDaySwapWarning && (

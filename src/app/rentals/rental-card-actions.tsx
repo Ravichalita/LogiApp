@@ -118,6 +118,21 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
   const rentalDays = calculateRentalDays(rental.rentalDate, rental.returnDate);
   const totalValue = rental.billingType === 'lumpSum' ? (rental.lumpSumValue || 0) : rental.value * rentalDays;
 
+  const getGoogleMapsUrl = () => {
+    if (rental.deliveryGoogleMapsLink) {
+        return rental.deliveryGoogleMapsLink;
+    }
+    if (rental.client?.googleMapsLink) {
+        return rental.client.googleMapsLink;
+    }
+    if (rental.latitude && rental.longitude) {
+        return `https://www.google.com/maps/search/?api=1&query=${rental.latitude},${rental.longitude}`;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`;
+  };
+  const googleMapsUrl = getGoogleMapsUrl();
+
+
   const handleAttachmentUploaded = (newAttachment: Attachment) => {
     const updatedAttachments = [...attachments, newAttachment];
     setAttachments(updatedAttachments);
@@ -227,7 +242,7 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                         <p className="text-xs font-semibold uppercase text-muted-foreground">Local de Entrega:</p>
                         <p className="font-medium">{rental.deliveryAddress}</p>
                     </div>
-                     <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rental.deliveryAddress)}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
+                     <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0">
                          <MapPinned className="h-5 w-5" />
                          <span className="text-[10px] font-bold">GPS</span>
                      </a>

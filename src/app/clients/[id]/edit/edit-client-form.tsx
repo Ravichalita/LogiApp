@@ -13,6 +13,7 @@ import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
 import { AddressInput } from '@/components/address-input';
 import Link from 'next/link';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 
 const initialState = {
   errors: {},
@@ -37,6 +38,8 @@ export function EditClientForm({ client }: { client: Client }) {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(
     client.latitude && client.longitude ? { lat: client.latitude, lng: client.longitude } : null
   );
+  const [mapsLink, setMapsLink] = useState(client.googleMapsLink || '');
+
 
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
@@ -61,7 +64,7 @@ export function EditClientForm({ client }: { client: Client }) {
         formData.set('latitude', '');
         formData.set('longitude', '');
       }
-
+      
       const boundAction = updateClient.bind(null, accountId);
       const result = await boundAction(state, formData);
 
@@ -92,6 +95,8 @@ export function EditClientForm({ client }: { client: Client }) {
     <>
       <form action={handleFormAction} className="space-y-4">
         <input type="hidden" name="id" value={client.id} />
+        {/* Hidden input to ensure the mapsLink value is always submitted with the form */}
+        <input type="hidden" name="googleMapsLink" value={mapsLink} />
         
         <div className="space-y-2">
           <Label htmlFor="name">Nome do Cliente</Label>
@@ -114,7 +119,36 @@ export function EditClientForm({ client }: { client: Client }) {
           {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
         </div>
         <div className="space-y-2">
-            <Label htmlFor="address-input">Endereço Principal</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="address-input">Endereço Principal</Label>
+              <Dialog>
+                <DialogTrigger asChild>
+                    <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Link do Google Maps</DialogTitle>
+                        <DialogDescription>
+                            Cole o link de compartilhamento do Google Maps para este endereço. Isso garantirá a localização mais precisa.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="maps-link-input">Link</Label>
+                        <Input 
+                            id="maps-link-input"
+                            value={mapsLink}
+                            onChange={(e) => setMapsLink(e.target.value)}
+                            placeholder="https://maps.app.goo.gl/..."
+                        />
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button">Salvar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+              </Dialog>
+          </div>
             <AddressInput
                 id="address-input"
                 value={address}
