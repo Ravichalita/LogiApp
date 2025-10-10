@@ -217,7 +217,15 @@ export default function OSPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [ownerAvatarDataUri, setOwnerAvatarDataUri] = useState<string | undefined>();
-  const [titleViewMode, setTitleViewMode] = useState<TitleViewMode>('client');
+  const [titleViewMode, setTitleViewMode] = useState<TitleViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem('osTitleViewMode') as TitleViewMode | null;
+      if (savedMode && (savedMode === 'client' || savedMode === 'service')) {
+        return savedMode;
+      }
+    }
+    return 'client';
+  });
   const router = useRouter();
   const { toast } = useToast();
   const dataLoadedRef = useRef(false);
@@ -232,13 +240,6 @@ export default function OSPage() {
   const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
   const isViewer = userAccount?.role === 'viewer';
   
-  useEffect(() => {
-    const savedMode = localStorage.getItem('osTitleViewMode') as TitleViewMode | null;
-    if (savedMode && (savedMode === 'client' || savedMode === 'service')) {
-      setTitleViewMode(savedMode);
-    }
-  }, []);
-
   useEffect(() => {
     localStorage.setItem('osTitleViewMode', titleViewMode);
   }, [titleViewMode]);
