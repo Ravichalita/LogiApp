@@ -231,6 +231,17 @@ export default function OSPage() {
   const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
   const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
   const isViewer = userAccount?.role === 'viewer';
+  
+  useEffect(() => {
+    const savedMode = localStorage.getItem('osTitleViewMode') as TitleViewMode | null;
+    if (savedMode && (savedMode === 'client' || savedMode === 'service')) {
+      setTitleViewMode(savedMode);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('osTitleViewMode', titleViewMode);
+  }, [titleViewMode]);
 
 
   useEffect(() => {
