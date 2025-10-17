@@ -65,7 +65,7 @@ type TitleViewMode = 'service' | 'client';
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info', order: number } {
-  const today = startOfToday();
+  const now = new Date();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
   const swapDate = rental.swapDate ? parseISO(rental.swapDate) : null;
@@ -73,16 +73,16 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   if (swapDate && isToday(swapDate)) {
     return { text: 'Trocar', variant: 'destructive', order: 0 };
   }
-  if (isAfter(today, returnDate)) {
+  if (isAfter(now, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
   if (isToday(returnDate)) {
     return { text: 'Encerra hoje', variant: 'warning', order: 2 };
   }
-  if (isWithinInterval(today, { start: rentalDate, end: returnDate })) {
+  if (isWithinInterval(now, { start: rentalDate, end: returnDate })) {
      return { text: 'Ativo', variant: 'success', order: 3 };
   }
-  if (isBefore(today, rentalDate)) {
+  if (isBefore(now, rentalDate)) {
     return { text: 'Pendente', variant: 'info', order: 4 };
   }
   return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
