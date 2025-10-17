@@ -141,17 +141,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
 
-  const disabledDatesForSelectedTruck = useMemo(() => {
-    if (!selectedTruckId) return [];
-    return operations
-      .filter(op => op.truckId === selectedTruckId && op.startDate && op.endDate)
-      .map(op => ({
-        from: startOfDay(parseISO(op.startDate!)),
-        to: endOfDay(parseISO(op.endDate!))
-      }));
-  }, [selectedTruckId, operations]);
-
-
     useEffect(() => {
         if (!startLocation && startAddress) {
             geocodeAddress(startAddress).then(location => {
@@ -359,23 +348,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   
   const handleTruckChange = (truckId: string) => {
     setSelectedTruckId(truckId);
-    // Reset dates if they are in a disabled range for the new truck
-    const truckDisabledRanges = operations
-        .filter(op => op.truckId === truckId && op.startDate && op.endDate)
-        .map(op => ({ from: startOfDay(parseISO(op.startDate!)), to: endOfDay(parseISO(op.endDate!)) }));
-    
-    if (startDate) {
-        const isStartDateDisabled = truckDisabledRanges.some(range => isWithinInterval(startDate, range));
-        if (isStartDateDisabled) {
-            setStartDate(undefined);
-            setEndDate(undefined);
-            toast({
-                title: "Data Reajustada",
-                description: "A data selecionada não está disponível para este caminhão e foi redefinida.",
-                variant: "destructive"
-            });
-        }
-    }
   }
 
   const handleAttachmentUploaded = (newAttachment: Attachment) => {
@@ -636,7 +608,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                         setStartDate(date);
                         setIsStartDateOpen(false);
                     }}
-                    disabled={disabledDatesForSelectedTruck}
                     initialFocus
                     locale={ptBR}
                     />
@@ -678,7 +649,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                                     setEndDate(date);
                                     setIsEndDateOpen(false);
                                 }}
-                                disabled={disabledDatesForSelectedTruck}
                                 initialFocus
                                 locale={ptBR}
                                 />
