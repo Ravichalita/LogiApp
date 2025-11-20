@@ -5,8 +5,9 @@ import { useAuth } from '@/context/auth-context';
 import { getAllAccountsAction } from '@/lib/actions';
 import type { Account } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LogOut } from 'lucide-react';
+import { LogOut, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function AccountSwitcher() {
   const {
@@ -39,7 +40,7 @@ export function AccountSwitcher() {
         .catch(err => {
           if (isMounted) {
             console.error("Failed to fetch accounts:", err);
-            setError("Falha ao carregar contas.");
+            setError(err.message || "Falha ao carregar contas.");
           }
         })
         .finally(() => {
@@ -72,31 +73,47 @@ export function AccountSwitcher() {
 
   const triggerText = isLoading
     ? 'Carregando contas...'
-    : error || currentAccountName || 'Selecionar Conta';
+    : error
+        ? 'Erro ao carregar'
+        : currentAccountName || 'Selecionar Conta';
 
   return (
     <div className="flex items-center gap-2 p-2 rounded-lg bg-background">
-      <Select
-        value={impersonatedAccountId || realAccountId || ''}
-        onValueChange={handleValueChange}
-        disabled={isLoading || !!error}
-      >
-        <SelectTrigger className="w-full md:w-[250px] text-sm font-semibold">
-          <SelectValue placeholder="Selecionar conta do cliente">
-            {triggerText}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-            <SelectItem value={realAccountId || ''}>
-                Visão Super Admin
-            </SelectItem>
-          {accounts.map(account => (
-            <SelectItem key={account.id} value={account.id}>
-              {account.companyName || 'Conta sem nome'}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-2">
+          <Select
+            value={impersonatedAccountId || realAccountId || ''}
+            onValueChange={handleValueChange}
+            disabled={isLoading || !!error}
+          >
+            <SelectTrigger className="w-full md:w-[250px] text-sm font-semibold">
+              <SelectValue placeholder="Selecionar conta do cliente">
+                {triggerText}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value={realAccountId || ''}>
+                    Visão Super Admin
+                </SelectItem>
+              {accounts.map(account => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.companyName || 'Conta sem nome'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {error && (
+              <TooltipProvider>
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                          <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                          <p>{error}</p>
+                      </TooltipContent>
+                  </Tooltip>
+              </TooltipProvider>
+          )}
+      </div>
       {impersonatedAccountId && (
         <Button
           variant="ghost"

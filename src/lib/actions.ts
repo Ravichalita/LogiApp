@@ -2203,21 +2203,26 @@ export async function sendFirstLoginNotificationToSuperAdminAction(newClientName
 
 // #region Super Admin Actions
 export async function getAllAccountsAction(invokerId: string) {
-    const invokerUser = await adminAuth.getUser(invokerId);
-    if (invokerUser.customClaims?.role !== 'superadmin') {
-        throw new Error("Apenas Super Admins podem listar todas as contas.");
-    }
-
     try {
+        if (!invokerId) {
+             throw new Error("ID de usuário inválido.");
+        }
+
+        const invokerUser = await adminAuth.getUser(invokerId);
+        if (invokerUser.customClaims?.role !== 'superadmin') {
+             console.warn(`User ${invokerId} attempted to list accounts but is not superadmin.`);
+             throw new Error("Permissão negada: Apenas Super Admins podem listar todas as contas.");
+        }
+
         const accountsSnap = await adminDb.collection('accounts').get();
         if (accountsSnap.empty) {
             return [];
         }
         const accounts = accountsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
         return accounts;
-    } catch (e) {
+    } catch (e: any) {
         console.error("Error fetching all accounts:", e);
-        return [];
+        throw new Error(e.message || "Erro interno ao buscar contas.");
     }
 }
 export async function createSuperAdminAction(invokerId: string | null, prevState: any, formData: FormData) {
