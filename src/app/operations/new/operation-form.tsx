@@ -138,6 +138,9 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const [recurrenceDays, setRecurrenceDays] = useState<string[]>([]);
   const [recurrenceTime, setRecurrenceTime] = useState('08:00');
   const [recurrenceBillingType, setRecurrenceBillingType] = useState('per_service');
+  const [recurrenceDurationType, setRecurrenceDurationType] = useState('permanent');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | undefined>();
+  const [isRecurrenceEndDateOpen, setIsRecurrenceEndDateOpen] = useState(false);
 
   const [clientSelectOpen, setClientSelectOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
@@ -467,6 +470,10 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
           formData.set('recurrenceDays', JSON.stringify(recurrenceDays));
           formData.set('recurrenceTime', recurrenceTime);
           formData.set('recurrenceBillingType', recurrenceBillingType);
+          formData.set('recurrenceDurationType', recurrenceDurationType);
+          if (recurrenceDurationType === 'custom' && recurrenceEndDate) {
+             formData.set('recurrenceEndDate', recurrenceEndDate.toISOString());
+          }
         }
 
         formData.set('typeIds', JSON.stringify(selectedOperationTypeIds));
@@ -803,6 +810,51 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                    <Label htmlFor="monthly">Mensal</Label>
                  </div>
                </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+                <Label>Duração</Label>
+                <RadioGroup value={recurrenceDurationType} onValueChange={setRecurrenceDurationType} className="flex gap-4 mb-2">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="permanent" id="permanent" />
+                        <Label htmlFor="permanent">Permanente (Indefinido)</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="custom" id="custom" />
+                        <Label htmlFor="custom">Até uma data específica</Label>
+                    </div>
+                </RadioGroup>
+                {recurrenceDurationType === 'custom' && (
+                     <div className="w-full max-w-sm">
+                        <Popover open={isRecurrenceEndDateOpen} onOpenChange={setIsRecurrenceEndDateOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !recurrenceEndDate && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {recurrenceEndDate ? format(recurrenceEndDate, "PPP", { locale: ptBR }) : <span>Selecione a data final</span>}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar
+                                    mode="single"
+                                    selected={recurrenceEndDate}
+                                    onSelect={(date) => {
+                                        setRecurrenceEndDate(date);
+                                        setIsRecurrenceEndDateOpen(false);
+                                    }}
+                                    initialFocus
+                                    locale={ptBR}
+                                    disabled={(date) => startDate ? isBeforeDate(date, startDate) : false}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                )}
             </div>
           </div>
         )}

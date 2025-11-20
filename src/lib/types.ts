@@ -202,6 +202,7 @@ const BaseOperationSchema = z.object({
   recurrenceDays: z.array(z.string()).optional(),
   recurrenceTime: z.string().optional(),
   recurrenceBillingType: z.enum(['monthly', 'per_service']).optional(),
+  recurrenceEndDate: z.string().optional().nullable(),
 });
 
 export const OperationSchema = BaseOperationSchema.extend({
@@ -321,6 +322,7 @@ export const RentalSchema = z.object({
   recurrenceDays: z.array(z.string()).optional(),
   recurrenceTime: z.string().optional(),
   recurrenceBillingType: z.enum(['monthly', 'per_service']).optional(),
+  recurrenceEndDate: z.string().optional().nullable(),
 });
 
 const UpdateRentalPeriodSchema = z.object({

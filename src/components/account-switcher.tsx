@@ -19,26 +19,39 @@ export function AccountSwitcher() {
   } = useAuth();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     if (isSuperAdmin && user) {
       setIsLoading(true);
       getAllAccountsAction(user.uid)
         .then(fetchedAccounts => {
-          // Sort accounts by name for better usability
-          const sortedAccounts = fetchedAccounts.sort((a, b) => (a.companyName || '').localeCompare(b.companyName || ''));
-          setAccounts(sortedAccounts);
+          if (isMounted) {
+             // Sort accounts by name for better usability
+            const sortedAccounts = fetchedAccounts.sort((a, b) => (a.companyName || '').localeCompare(b.companyName || ''));
+            setAccounts(sortedAccounts);
+            setError(null);
+          }
         })
         .catch(err => {
-          console.error("Failed to fetch accounts:", err);
-          setError("Falha ao carregar contas.");
+          if (isMounted) {
+            console.error("Failed to fetch accounts:", err);
+            setError("Falha ao carregar contas.");
+          }
         })
         .finally(() => {
-          setIsLoading(false);
+          if (isMounted) {
+            setIsLoading(false);
+          }
         });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isSuperAdmin, user]);
 
   if (!isSuperAdmin) {
@@ -79,7 +92,7 @@ export function AccountSwitcher() {
             </SelectItem>
           {accounts.map(account => (
             <SelectItem key={account.id} value={account.id}>
-              {account.companyName}
+              {account.companyName || 'Conta sem nome'}
             </SelectItem>
           ))}
         </SelectContent>
