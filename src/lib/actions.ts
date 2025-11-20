@@ -971,6 +971,14 @@ export async function createOperationAction(accountId: string, createdBy: string
       }
     }
 
+    let recurrenceEndDate: string | undefined | null = undefined;
+    if (rawData.recurrenceEndDate && typeof rawData.recurrenceEndDate === 'string') {
+        recurrenceEndDate = rawData.recurrenceEndDate;
+    }
+    if (rawData.recurrenceDurationType === 'permanent') {
+        recurrenceEndDate = null;
+    }
+
     const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
     const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + (cost?.value || 0), 0);
     const totalCost = travelCost + additionalCostsTotal;
@@ -989,6 +997,7 @@ export async function createOperationAction(accountId: string, createdBy: string
          attachments,
          isRecurring: rawData.isRecurring === 'true',
          recurrenceDays,
+         recurrenceEndDate,
     };
     
     const validatedFields = OperationSchema.safeParse(dataToValidate);
