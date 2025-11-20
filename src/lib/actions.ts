@@ -16,7 +16,8 @@ import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
 import { google } from 'googleapis';
-import { getPopulatedRentalsForServer, getPopulatedOperationsForServer, toSerializableObject } from './data-server-actions';
+import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
+import { toSerializableObject } from './utils';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
