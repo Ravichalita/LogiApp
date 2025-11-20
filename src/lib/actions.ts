@@ -2219,10 +2219,28 @@ export async function getAllAccountsAction(invokerId: string) {
         if (accountsSnap.empty) {
             return [];
         }
-        const accounts = accountsSnap.docs.map(doc => {
-             const data = doc.data();
-             return toSerializableObject({ id: doc.id, ...data }) as Account;
+
+        const accountsPromises = accountsSnap.docs.map(async (accountDoc) => {
+            const data = accountDoc.data();
+            const account = toSerializableObject({ id: accountDoc.id, ...data }) as Account;
+
+            if (account.ownerId) {
+                try {
+                    const userSnap = await adminDb.doc(`users/${account.ownerId}`).get();
+                    if (userSnap.exists) {
+                        const userData = userSnap.data();
+                        // Prioritize companyName from user profile, fall back to user name
+                        // We add a virtual property 'companyName' to the Account object for display purposes
+                        (account as any).companyName = userData?.companyName || userData?.name || 'Conta sem nome';
+                    }
+                } catch (err) {
+                    console.warn(`Failed to fetch owner details for account ${account.id}`, err);
+                }
+            }
+            return account;
         });
+
+        const accounts = await Promise.all(accountsPromises);
         return accounts;
     } catch (e: any) {
         console.error("Error fetching all accounts:", e);
