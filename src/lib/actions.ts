@@ -569,6 +569,15 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
     }
 
+    let recurrenceDays: string[] | undefined = undefined;
+    if (rawData.recurrenceDays && typeof rawData.recurrenceDays === 'string') {
+      try {
+        recurrenceDays = JSON.parse(rawData.recurrenceDays);
+      } catch (e) {
+        console.error("Failed to parse recurrenceDays JSON");
+      }
+    }
+
     const dataToValidate = {
         ...rawData,
         dumpsterIds,
@@ -583,6 +592,8 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         notificationsSent: { due: false, late: false },
         attachments,
         additionalCosts,
+        isRecurring: rawData.isRecurring === 'true',
+        recurrenceDays,
     };
     
     const validatedFields = RentalSchema.safeParse(dataToValidate);
@@ -951,6 +962,15 @@ export async function createOperationAction(accountId: string, createdBy: string
         }
     }
 
+    let recurrenceDays: string[] | undefined = undefined;
+    if (rawData.recurrenceDays && typeof rawData.recurrenceDays === 'string') {
+      try {
+        recurrenceDays = JSON.parse(rawData.recurrenceDays);
+      } catch (e) {
+        console.error("Failed to parse recurrenceDays JSON");
+      }
+    }
+
     const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
     const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + (cost?.value || 0), 0);
     const totalCost = travelCost + additionalCostsTotal;
@@ -967,6 +987,8 @@ export async function createOperationAction(accountId: string, createdBy: string
          totalCost,
          additionalCosts,
          attachments,
+         isRecurring: rawData.isRecurring === 'true',
+         recurrenceDays,
     };
     
     const validatedFields = OperationSchema.safeParse(dataToValidate);
