@@ -16,6 +16,9 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Toggle } from "@/components/ui/toggle";
+import { Repeat } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -155,6 +158,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
   const [sameDaySwapWarning, setSameDaySwapWarning] = useState<string | null>(null);
+
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState('weekly');
+  const [recurrenceDays, setRecurrenceDays] = useState<string[]>([]);
+  const [recurrenceTime, setRecurrenceTime] = useState('08:00');
+  const [recurrenceBillingType, setRecurrenceBillingType] = useState('per_service');
 
   const [dumpsterSelectOpen, setDumpsterSelectOpen] = useState(false);
   const [clientSelectOpen, setClientSelectOpen] = useState(false);
@@ -370,6 +379,14 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
         if (finalReturnDate) formData.set('returnDate', finalReturnDate);
         
+        if (isRecurring) {
+          formData.set('isRecurring', 'true');
+          formData.set('recurrenceFrequency', recurrenceFrequency);
+          formData.set('recurrenceDays', JSON.stringify(recurrenceDays));
+          formData.set('recurrenceTime', recurrenceTime);
+          formData.set('recurrenceBillingType', recurrenceBillingType);
+        }
+
         formData.set('billingType', billingType);
         formData.set('value', String(value));
         formData.set('lumpSumValue', String(lumpSumValue));
@@ -959,6 +976,96 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           </div>
            {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
+      </div>
+
+      <div className="p-4 border rounded-md space-y-4 bg-card">
+        <div className="flex items-center gap-2">
+          <Toggle
+            pressed={isRecurring}
+            onPressedChange={setIsRecurring}
+            aria-label="Tornar recorrente"
+            variant="outline"
+            className="gap-2"
+          >
+            <Repeat className="h-4 w-4" />
+            Tornar Recorrente
+          </Toggle>
+          {isRecurring && <span className="text-sm text-muted-foreground font-medium">Configuração de Recorrência Ativada</span>}
+        </div>
+
+        {isRecurring && (
+          <div className="grid gap-4 pt-2 border-t mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="space-y-2">
+                  <Label>Frequência</Label>
+                  <Select value={recurrenceFrequency} onValueChange={setRecurrenceFrequency}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a frequência" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="weekly">Semanal</SelectItem>
+                      <SelectItem value="biweekly">Quinzenal</SelectItem>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+               </div>
+               <div className="space-y-2">
+                  <Label>Horário</Label>
+                  <Input
+                    type="time"
+                    value={recurrenceTime}
+                    onChange={(e) => setRecurrenceTime(e.target.value)}
+                  />
+               </div>
+            </div>
+
+            <div className="space-y-2">
+               <Label>Dias da Semana</Label>
+               <div className="flex flex-wrap gap-2">
+                 {[
+                   { value: 'sunday', label: 'Dom' },
+                   { value: 'monday', label: 'Seg' },
+                   { value: 'tuesday', label: 'Ter' },
+                   { value: 'wednesday', label: 'Qua' },
+                   { value: 'thursday', label: 'Qui' },
+                   { value: 'friday', label: 'Sex' },
+                   { value: 'saturday', label: 'Sáb' },
+                 ].map((day) => (
+                   <Toggle
+                      key={day.value}
+                      pressed={recurrenceDays.includes(day.value)}
+                      onPressedChange={(pressed) => {
+                        if (pressed) {
+                          setRecurrenceDays([...recurrenceDays, day.value]);
+                        } else {
+                          setRecurrenceDays(recurrenceDays.filter(d => d !== day.value));
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                   >
+                     {day.label}
+                   </Toggle>
+                 ))}
+               </div>
+               {recurrenceDays.length === 0 && <p className="text-xs text-destructive">Selecione pelo menos um dia.</p>}
+            </div>
+
+            <div className="space-y-2">
+               <Label>Cobrança</Label>
+               <RadioGroup value={recurrenceBillingType} onValueChange={setRecurrenceBillingType} className="flex gap-4">
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="per_service" id="per_service" />
+                   <Label htmlFor="per_service">Por Serviço</Label>
+                 </div>
+                 <div className="flex items-center space-x-2">
+                   <RadioGroupItem value="monthly" id="monthly" />
+                   <Label htmlFor="monthly">Mensal</Label>
+                 </div>
+               </RadioGroup>
+            </div>
+          </div>
+        )}
       </div>
       
       <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
