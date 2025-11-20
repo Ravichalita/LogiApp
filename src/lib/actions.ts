@@ -16,7 +16,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
 import { google } from 'googleapis';
-import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
+import { getPopulatedRentalsForServer, getPopulatedOperationsForServer, toSerializableObject } from './data-server-actions';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -2218,7 +2218,10 @@ export async function getAllAccountsAction(invokerId: string) {
         if (accountsSnap.empty) {
             return [];
         }
-        const accounts = accountsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+        const accounts = accountsSnap.docs.map(doc => {
+             const data = doc.data();
+             return toSerializableObject({ id: doc.id, ...data }) as Account;
+        });
         return accounts;
     } catch (e: any) {
         console.error("Error fetching all accounts:", e);

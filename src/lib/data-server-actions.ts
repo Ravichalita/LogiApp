@@ -8,7 +8,7 @@ import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay } from 'date-fns';
 
 // Helper to convert Timestamps to serializable format
-const toSerializableObject = (obj: any): any => {
+export const toSerializableObject = (obj: any): any => {
     if (obj == null) return obj;
     if (typeof obj !== 'object') return obj;
 
