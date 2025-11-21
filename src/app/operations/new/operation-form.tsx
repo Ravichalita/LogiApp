@@ -16,9 +16,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Toggle } from "@/components/ui/toggle";
-import { Repeat } from 'lucide-react';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -132,16 +129,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
-
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceFrequency, setRecurrenceFrequency] = useState('weekly');
-  const [recurrenceDays, setRecurrenceDays] = useState<string[]>([]);
-  const [recurrenceTime, setRecurrenceTime] = useState('08:00');
-  const [recurrenceBillingType, setRecurrenceBillingType] = useState('per_service');
-  const [recurrenceDurationType, setRecurrenceDurationType] = useState('permanent');
-  const [recurrenceEndDate, setRecurrenceEndDate] = useState<Date | undefined>();
-  const [isRecurrenceEndDateOpen, setIsRecurrenceEndDateOpen] = useState(false);
-
   const [clientSelectOpen, setClientSelectOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
   const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
@@ -152,17 +139,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
-
-
-  const disabledDatesForSelectedTruck = useMemo(() => {
-    if (!selectedTruckId) return [];
-    return operations
-      .filter(op => op.truckId === selectedTruckId && op.startDate && op.endDate)
-      .map(op => ({
-        from: startOfDay(parseISO(op.startDate!)),
-        to: endOfDay(parseISO(op.endDate!))
-      }));
-  }, [selectedTruckId, operations]);
 
 
     useEffect(() => {
@@ -372,23 +348,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   
   const handleTruckChange = (truckId: string) => {
     setSelectedTruckId(truckId);
-    // Reset dates if they are in a disabled range for the new truck
-    const truckDisabledRanges = operations
-        .filter(op => op.truckId === truckId && op.startDate && op.endDate)
-        .map(op => ({ from: startOfDay(parseISO(op.startDate!)), to: endOfDay(parseISO(op.endDate!)) }));
-    
-    if (startDate) {
-        const isStartDateDisabled = truckDisabledRanges.some(range => isWithinInterval(startDate, range));
-        if (isStartDateDisabled) {
-            setStartDate(undefined);
-            setEndDate(undefined);
-            toast({
-                title: "Data Reajustada",
-                description: "A data selecionada não está disponível para este caminhão e foi redefinida.",
-                variant: "destructive"
-            });
-        }
-    }
   }
 
   const handleAttachmentUploaded = (newAttachment: Attachment) => {
@@ -464,18 +423,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
         if (finalStartDate) formData.set('startDate', finalStartDate);
         if (finalEndDate) formData.set('endDate', finalEndDate);
         
-        if (isRecurring) {
-          formData.set('isRecurring', 'true');
-          formData.set('recurrenceFrequency', recurrenceFrequency);
-          formData.set('recurrenceDays', JSON.stringify(recurrenceDays));
-          formData.set('recurrenceTime', recurrenceTime);
-          formData.set('recurrenceBillingType', recurrenceBillingType);
-          formData.set('recurrenceDurationType', recurrenceDurationType);
-          if (recurrenceDurationType === 'custom' && recurrenceEndDate) {
-             formData.set('recurrenceEndDate', recurrenceEndDate.toISOString());
-          }
-        }
-
         formData.set('typeIds', JSON.stringify(selectedOperationTypeIds));
 
         formData.set('startAddress', startAddress);
@@ -661,7 +608,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                         setStartDate(date);
                         setIsStartDateOpen(false);
                     }}
-                    disabled={disabledDatesForSelectedTruck}
                     initialFocus
                     locale={ptBR}
                     />
@@ -703,7 +649,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                                     setEndDate(date);
                                     setIsEndDateOpen(false);
                                 }}
-                                disabled={disabledDatesForSelectedTruck}
                                 initialFocus
                                 locale={ptBR}
                                 />
@@ -722,141 +667,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                 <AlertTitle>Conflito de Agendamento</AlertTitle>
                 <AlertDescription>{scheduleConflict}</AlertDescription>
             </Alert>
-        )}
-      </div>
-
-      <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="flex items-center gap-2">
-          <Toggle
-            pressed={isRecurring}
-            onPressedChange={setIsRecurring}
-            aria-label="Tornar recorrente"
-            variant="outline"
-            className="gap-2"
-          >
-            <Repeat className="h-4 w-4" />
-            Tornar Recorrente
-          </Toggle>
-          {isRecurring && <span className="text-sm text-muted-foreground font-medium">Configuração de Recorrência Ativada</span>}
-        </div>
-
-        {isRecurring && (
-          <div className="grid gap-4 pt-2 border-t mt-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <div className="space-y-2">
-                  <Label>Frequência</Label>
-                  <Select value={recurrenceFrequency} onValueChange={setRecurrenceFrequency}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a frequência" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weekly">Semanal</SelectItem>
-                      <SelectItem value="biweekly">Quinzenal</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
-               <div className="space-y-2">
-                  <Label>Horário</Label>
-                  <Input
-                    type="time"
-                    value={recurrenceTime}
-                    onChange={(e) => setRecurrenceTime(e.target.value)}
-                  />
-               </div>
-            </div>
-
-            <div className="space-y-2">
-               <Label>Dias da Semana</Label>
-               <div className="flex flex-wrap gap-2">
-                 {[
-                   { value: 'sunday', label: 'Dom' },
-                   { value: 'monday', label: 'Seg' },
-                   { value: 'tuesday', label: 'Ter' },
-                   { value: 'wednesday', label: 'Qua' },
-                   { value: 'thursday', label: 'Qui' },
-                   { value: 'friday', label: 'Sex' },
-                   { value: 'saturday', label: 'Sáb' },
-                 ].map((day) => (
-                   <Toggle
-                      key={day.value}
-                      pressed={recurrenceDays.includes(day.value)}
-                      onPressedChange={(pressed) => {
-                        if (pressed) {
-                          setRecurrenceDays([...recurrenceDays, day.value]);
-                        } else {
-                          setRecurrenceDays(recurrenceDays.filter(d => d !== day.value));
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                   >
-                     {day.label}
-                   </Toggle>
-                 ))}
-               </div>
-               {recurrenceDays.length === 0 && <p className="text-xs text-destructive">Selecione pelo menos um dia.</p>}
-            </div>
-
-            <div className="space-y-2">
-               <Label>Cobrança</Label>
-               <RadioGroup value={recurrenceBillingType} onValueChange={setRecurrenceBillingType} className="flex gap-4">
-                 <div className="flex items-center space-x-2">
-                   <RadioGroupItem value="per_service" id="per_service" />
-                   <Label htmlFor="per_service">Por Serviço</Label>
-                 </div>
-                 <div className="flex items-center space-x-2">
-                   <RadioGroupItem value="monthly" id="monthly" />
-                   <Label htmlFor="monthly">Mensal</Label>
-                 </div>
-               </RadioGroup>
-            </div>
-
-            <div className="space-y-2">
-                <Label>Duração</Label>
-                <RadioGroup value={recurrenceDurationType} onValueChange={setRecurrenceDurationType} className="flex gap-4 mb-2">
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="permanent" id="permanent" />
-                        <Label htmlFor="permanent">Permanente (Indefinido)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="custom" id="custom" />
-                        <Label htmlFor="custom">Até uma data específica</Label>
-                    </div>
-                </RadioGroup>
-                {recurrenceDurationType === 'custom' && (
-                     <div className="w-full max-w-sm">
-                        <Popover open={isRecurrenceEndDateOpen} onOpenChange={setIsRecurrenceEndDateOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !recurrenceEndDate && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {recurrenceEndDate ? format(recurrenceEndDate, "PPP", { locale: ptBR }) : <span>Selecione a data final</span>}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                    mode="single"
-                                    selected={recurrenceEndDate}
-                                    onSelect={(date) => {
-                                        setRecurrenceEndDate(date);
-                                        setIsRecurrenceEndDateOpen(false);
-                                    }}
-                                    initialFocus
-                                    locale={ptBR}
-                                    disabled={(date) => startDate ? isBeforeDate(date, startDate) : false}
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                )}
-            </div>
-          </div>
         )}
       </div>
 

@@ -53,16 +53,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import { RentalCardActions } from '../rentals/rental-card-actions';
 import { ScheduleSwapDialog } from '../rentals/schedule-swap-dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 type RentalStatus = 'Pendente' | 'Ativo' | 'Em Atraso' | 'Agendado' | 'Encerra hoje' | 'Trocar';
 type OsTypeFilter = 'Todas' | 'Aluguel' | 'Operação';
 type StatusFilter = 'Todas' | RentalStatus | 'Em Andamento' | 'Pendente' | 'Em Atraso';
+type TitleViewMode = 'service' | 'client';
 
 
 // --- Helper Functions ---
 export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; variant: 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info', order: number } {
-  const today = startOfToday();
+  const now = new Date();
   const rentalDate = parseISO(rental.rentalDate);
   const returnDate = parseISO(rental.returnDate);
   const swapDate = rental.swapDate ? parseISO(rental.swapDate) : null;
@@ -70,16 +73,16 @@ export function getRentalStatus(rental: PopulatedRental): { text: RentalStatus; 
   if (swapDate && isToday(swapDate)) {
     return { text: 'Trocar', variant: 'destructive', order: 0 };
   }
-  if (isAfter(today, returnDate)) {
+  if (isAfter(now, returnDate)) {
     return { text: 'Em Atraso', variant: 'destructive', order: 1 };
   }
   if (isToday(returnDate)) {
     return { text: 'Encerra hoje', variant: 'warning', order: 2 };
   }
-  if (isWithinInterval(today, { start: rentalDate, end: returnDate })) {
+  if (isWithinInterval(now, { start: rentalDate, end: returnDate })) {
      return { text: 'Ativo', variant: 'success', order: 3 };
   }
-  if (isBefore(today, rentalDate)) {
+  if (isBefore(now, rentalDate)) {
     return { text: 'Pendente', variant: 'info', order: 4 };
   }
   return { text: 'Agendado', variant: 'secondary', order: 5 }; // Should not happen in active rentals list often
@@ -214,6 +217,15 @@ export default function OSPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [ownerAvatarDataUri, setOwnerAvatarDataUri] = useState<string | undefined>();
+  const [titleViewMode, setTitleViewMode] = useState<TitleViewMode>(() => {
+    if (typeof window !== 'undefined') {
+      const savedMode = localStorage.getItem('osTitleViewMode') as TitleViewMode | null;
+      if (savedMode && (savedMode === 'client' || savedMode === 'service')) {
+        return savedMode;
+      }
+    }
+    return 'client';
+  });
   const router = useRouter();
   const { toast } = useToast();
   const dataLoadedRef = useRef(false);
@@ -227,6 +239,10 @@ export default function OSPage() {
   const canSeeServiceValue = isSuperAdmin || userAccount?.role === 'owner' || userAccount?.role === 'admin' || permissions?.canSeeServiceValue;
   const canUseAttachments = isSuperAdmin || !!permissions?.canUseAttachments;
   const isViewer = userAccount?.role === 'viewer';
+  
+  useEffect(() => {
+    localStorage.setItem('osTitleViewMode', titleViewMode);
+  }, [titleViewMode]);
 
 
   useEffect(() => {
@@ -653,6 +669,16 @@ export default function OSPage() {
                     </Button>
                 ))}
             </div>
+             <div className="flex items-center space-x-2 pt-2">
+                <Switch 
+                    id="title-view-mode" 
+                    checked={titleViewMode === 'client'} 
+                    onCheckedChange={(checked) => setTitleViewMode(checked ? 'client' : 'service')}
+                />
+                <Label htmlFor="title-view-mode">
+                    {titleViewMode === 'client' ? "Visualizando por cliente" : "Visualizando por serviço"}
+                </Label>
+            </div>
         </div>
       </div>
       
@@ -663,6 +689,10 @@ export default function OSPage() {
                     if (item.itemType === 'rental') {
                         const rental = item as PopulatedRental;
                         const status = getRentalStatus(rental);
+                        
+                        const title = titleViewMode === 'client' ? rental.client?.name : (rental.dumpsters || []).map(d => d.name).join(', ');
+                        const subtitle = titleViewMode === 'client' ? (rental.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ') : rental.client?.name;
+
 
                         return (
                             <DraggableActionCard 
@@ -683,25 +713,24 @@ export default function OSPage() {
                             <Accordion type="single" collapsible className="w-full">
                                 <AccordionItem value={rental.id} className="border-none">
                                     <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                        <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
-                                            AL{rental.sequentialId}
-                                        </span>
+                                        <div className="absolute top-2 left-3 flex items-center gap-1.5 text-xs font-mono font-bold text-primary">
+                                            <Container className="h-3 w-3" />
+                                            <span>AL{rental.sequentialId}</span>
+                                        </div>
                                         <CardHeader className="pb-4 pt-8">
                                              <div className="flex items-start justify-between">
-                                                    <CardTitle className="text-xl font-headline">
-                                                    {(rental.dumpsters || []).map(d => d.name).join(', ')}
-                                                    </CardTitle>
-                                                    <div className="flex flex-col items-end gap-1 ml-2">
-                                                    <Badge variant={status.variant} className="text-center">{status.text}</Badge>
-                                                </div>
+                                                    <div className="pr-4">
+                                                        <CardTitle className="text-xl font-headline">{title}</CardTitle>
+                                                        <CardDescription>{subtitle}</CardDescription>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
+                                                        <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                                    </div>
                                             </div>
                                             <CardDescription className="text-sm mt-4">
                                                 <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
                                                     <div className="space-y-1.5">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Building className="h-4 w-4"/> {rental.client?.name}
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
+                                                         <div className="flex items-center gap-1.5">
                                                             <User className="h-4 w-4"/>
                                                             {canEditRentals && rental.assignedToUser ? (
                                                                 <EditAssignedUserDialog rental={rental} teamMembers={teamMembers}>
@@ -747,6 +776,9 @@ export default function OSPage() {
                         const isFinalizeOpDisabled = status.text !== 'Em Andamento' && status.text !== 'Em Atraso';
                         const attachmentCount = op.attachments?.length || 0;
 
+                        const title = titleViewMode === 'client' ? op.client?.name : op.operationTypes.map(t => t.name).join(', ');
+                        const subtitle = titleViewMode === 'client' ? op.operationTypes.map(t => t.name).join(', ') : op.client?.name;
+
                         return (
                            <DraggableActionCard 
                                 key={uniqueKey}
@@ -765,22 +797,21 @@ export default function OSPage() {
                                 <Accordion type="single" collapsible className="w-full">
                                     <AccordionItem value={op.id} className="border-none">
                                         <Card className="relative h-full flex flex-col border rounded-lg shadow-sm overflow-hidden bg-card">
-                                            <span className="absolute top-2 left-3 text-xs font-mono font-bold text-primary">
-                                                OP{op.sequentialId}
-                                            </span>
+                                            <div className="absolute top-2 left-3 flex items-center gap-1.5 text-xs font-mono font-bold text-primary">
+                                                <Workflow className="h-3 w-3" />
+                                                <span>OP{op.sequentialId}</span>
+                                            </div>
                                             <CardHeader className="pb-4 pt-8">
                                                 <div className="flex items-start justify-between mb-2">
-                                                    <CardTitle className="text-xl font-headline">
-                                                        {op.operationTypes.map(t => t.name).join(', ')}
-                                                    </CardTitle>
-                                                    <Badge variant={status.variant} className="text-center">{status.text}</Badge>
+                                                    <div className="pr-4">
+                                                        <CardTitle className="text-xl font-headline">{title}</CardTitle>
+                                                        <CardDescription>{subtitle}</CardDescription>
+                                                    </div>
+                                                    <Badge variant={status.variant} className="text-center flex-shrink-0">{status.text}</Badge>
                                                 </div>
                                                 <CardDescription className="text-sm mt-4">
                                                     <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
                                                         <div className="space-y-1.5">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Building className="h-4 w-4"/> {op.client?.name}
-                                                            </div>
                                                             <div className="flex items-center gap-1.5">
                                                                 <User className="h-4 w-4"/> 
                                                                 {canEditOperations && op.driver ? (
@@ -841,7 +872,7 @@ export default function OSPage() {
                                                     
                                                     {op.observations && (
                                                         <div className="flex items-start gap-3">
-                                                            <FileText className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                                                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                                                             <p className="whitespace-pre-wrap">{op.observations}</p>
                                                         </div>
                                                     )}
@@ -997,5 +1028,3 @@ export default function OSPage() {
     </div>
   );
 }
-
-    

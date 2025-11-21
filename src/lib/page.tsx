@@ -95,12 +95,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange }: { item: Histo
                         <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                         <div className="flex flex-col">
                             <span className="text-sm text-muted-foreground">{isRental ? "Caçamba" : "Caminhão"}</span>
-                            <span className="font-medium">
-                                {isRental
-                                    ? rental?.dumpsters?.map(d => `${d.name} (${d.size}m³)`).join(', ')
-                                    : `${operation?.truck?.name} (${operation?.truck?.plate})`
-                                }
-                            </span>
+                            <span className="font-medium">{isRental ? `${rental?.dumpster?.name} (${rental?.dumpster?.size}m³)` : `${operation?.truck?.name} (${operation?.truck?.plate})`}</span>
                         </div>
                     </div>
                     <div className="flex items-start gap-3">

@@ -197,12 +197,6 @@ const BaseOperationSchema = z.object({
   accountId: z.string(),
   createdAt: z.custom<FieldValue>().optional(),
   attachments: z.array(AttachmentSchema).optional(),
-  isRecurring: z.boolean().optional().default(false),
-  recurrenceFrequency: z.string().optional(),
-  recurrenceDays: z.array(z.string()).optional(),
-  recurrenceTime: z.string().optional(),
-  recurrenceBillingType: z.enum(['monthly', 'per_service']).optional(),
-  recurrenceEndDate: z.string().optional().nullable(),
 });
 
 export const OperationSchema = BaseOperationSchema.extend({
@@ -317,12 +311,6 @@ export const RentalSchema = z.object({
   totalCost: z.number().optional(),
   googleCalendarEventId: z.string().optional(),
   googleCalendarSwapEventId: z.string().optional(),
-  isRecurring: z.boolean().optional().default(false),
-  recurrenceFrequency: z.string().optional(),
-  recurrenceDays: z.array(z.string()).optional(),
-  recurrenceTime: z.string().optional(),
-  recurrenceBillingType: z.enum(['monthly', 'per_service']).optional(),
-  recurrenceEndDate: z.string().optional().nullable(),
 });
 
 const UpdateRentalPeriodSchema = z.object({

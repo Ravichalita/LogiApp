@@ -6,7 +6,28 @@ import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/f
 import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Operation, Truck } from './types';
 import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay } from 'date-fns';
-import { toSerializableObject } from './utils';
+
+// Helper to convert Timestamps to serializable format
+const toSerializableObject = (obj: any): any => {
+    if (obj == null) return obj;
+    if (typeof obj !== 'object') return obj;
+
+    if (obj.toDate && typeof obj.toDate === 'function') {
+        return obj.toDate().toISOString();
+    }
+    
+    if (Array.isArray(obj)) {
+        return obj.map(toSerializableObject);
+    }
+    
+    const newObj: { [key: string]: any } = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            newObj[key] = toSerializableObject(obj[key]);
+        }
+    }
+    return newObj;
+}
 
 // Helper function to safely convert a Firestore document snapshot to a serializable object
 const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot | null | undefined): any => {

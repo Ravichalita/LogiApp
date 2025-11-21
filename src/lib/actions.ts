@@ -17,7 +17,6 @@ import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
 import { google } from 'googleapis';
 import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
-import { toSerializableObject } from './utils';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -570,15 +569,6 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
     }
 
-    let recurrenceDays: string[] | undefined = undefined;
-    if (rawData.recurrenceDays && typeof rawData.recurrenceDays === 'string') {
-      try {
-        recurrenceDays = JSON.parse(rawData.recurrenceDays);
-      } catch (e) {
-        console.error("Failed to parse recurrenceDays JSON");
-      }
-    }
-
     const dataToValidate = {
         ...rawData,
         dumpsterIds,
@@ -593,8 +583,6 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         notificationsSent: { due: false, late: false },
         attachments,
         additionalCosts,
-        isRecurring: rawData.isRecurring === 'true',
-        recurrenceDays,
     };
     
     const validatedFields = RentalSchema.safeParse(dataToValidate);
@@ -626,7 +614,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
     // Sync to Google Calendar if integrated
     try {
-        const userDoc = await db.doc(`users/${createdBy}`).get();
+        const userDoc = await db.doc(`users/${rentalData.assignedTo}`).get();
         if (userDoc.exists && userDoc.data()?.googleCalendar) {
             // Fetch all data required for the PopulatedRental type
             const clientSnap = await db.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
@@ -645,7 +633,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                 assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
                 truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
             };
-            await syncOsToGoogleCalendarAction(createdBy, populatedRentalForSync);
+            await syncOsToGoogleCalendarAction(rentalData.assignedTo, populatedRentalForSync);
         }
     } catch (syncError: any) {
         console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
@@ -815,7 +803,9 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     try {
         const rentalRef = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
         
-        const rentalBeforeUpdate = (await rentalRef.get()).data() as Rental;
+        const rentalBeforeUpdateSnap = await rentalRef.get();
+        if (!rentalBeforeUpdateSnap.exists) throw new Error("OS não encontrada.");
+        const rentalBeforeUpdate = rentalBeforeUpdateSnap.data() as Rental;
         
         await rentalRef.update({
           ...updateData,
@@ -963,23 +953,6 @@ export async function createOperationAction(accountId: string, createdBy: string
         }
     }
 
-    let recurrenceDays: string[] | undefined = undefined;
-    if (rawData.recurrenceDays && typeof rawData.recurrenceDays === 'string') {
-      try {
-        recurrenceDays = JSON.parse(rawData.recurrenceDays);
-      } catch (e) {
-        console.error("Failed to parse recurrenceDays JSON");
-      }
-    }
-
-    let recurrenceEndDate: string | undefined | null = undefined;
-    if (rawData.recurrenceEndDate && typeof rawData.recurrenceEndDate === 'string') {
-        recurrenceEndDate = rawData.recurrenceEndDate;
-    }
-    if (rawData.recurrenceDurationType === 'permanent') {
-        recurrenceEndDate = null;
-    }
-
     const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
     const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + (cost?.value || 0), 0);
     const totalCost = travelCost + additionalCostsTotal;
@@ -996,9 +969,6 @@ export async function createOperationAction(accountId: string, createdBy: string
          totalCost,
          additionalCosts,
          attachments,
-         isRecurring: rawData.isRecurring === 'true',
-         recurrenceDays,
-         recurrenceEndDate,
     };
     
     const validatedFields = OperationSchema.safeParse(dataToValidate);
@@ -1033,7 +1003,7 @@ export async function createOperationAction(accountId: string, createdBy: string
 
      // Sync to Google Calendar if integrated
      try {
-        const userDoc = await db.doc(`users/${createdBy}`).get();
+        const userDoc = await db.doc(`users/${operationData.driverId}`).get();
         if (userDoc.exists && userDoc.data()?.googleCalendar) {
             const clientSnap = await db.doc(`accounts/${accountId}/clients/${operationData.clientId}`).get();
             const driverSnap = await db.doc(`users/${operationData.driverId}`).get();
@@ -1052,7 +1022,7 @@ export async function createOperationAction(accountId: string, createdBy: string
                 truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
                 operationTypes: (operationData.typeIds || []).map(id => ({ id, name: opTypeMap.get(id) || 'Tipo desconhecido' })),
             };
-            await syncOsToGoogleCalendarAction(createdBy, populatedOpForSync);
+            await syncOsToGoogleCalendarAction(operationData.driverId, populatedOpForSync);
         }
     } catch(syncError: any) {
         console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
@@ -1128,10 +1098,54 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
     try {
         const operationRef = adminDb.doc(`accounts/${accountId}/operations/${id}`);
+        const opBeforeUpdateSnap = await operationRef.get();
+        if (!opBeforeUpdateSnap.exists) throw new Error("Operação não encontrada.");
+        const opBeforeUpdate = opBeforeUpdateSnap.data() as Operation;
+
         await operationRef.update({
             ...updateData,
             updatedAt: FieldValue.serverTimestamp(),
         });
+
+        if (updateData.driverId && updateData.driverId !== opBeforeUpdate.driverId) {
+            await sendNotification({
+                userId: updateData.driverId,
+                title: 'Você foi designado para uma Operação',
+                body: `Você foi designado para uma nova operação. Verifique os detalhes no app.`,
+            });
+
+            // Sync to Google Calendar
+            try {
+                const userDoc = await adminDb.doc(`users/${updateData.driverId}`).get();
+                if (userDoc.exists && userDoc.data()?.googleCalendar) {
+
+                    const updatedOpData = { ...opBeforeUpdate, ...updateData };
+
+                    const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${updatedOpData.clientId}`).get();
+                    const driverSnap = userDoc;
+                    const truckSnap = updatedOpData.truckId ? await adminDb.doc(`accounts/${accountId}/trucks/${updatedOpData.truckId}`).get() : null;
+
+                    const accountSnap = await adminDb.doc(`accounts/${accountId}`).get();
+                    const operationTypes: OperationType[] = accountSnap.data()?.operationTypes || [];
+                    const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
+
+                    const populatedOpForSync: PopulatedOperation = {
+                        id,
+                        ...updatedOpData,
+                        itemType: 'operation',
+                        client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
+                        driver: driverSnap.exists ? { id: driverSnap.id, ...driverSnap.data() } as any : null,
+                        truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
+                        operationTypes: (updatedOpData.typeIds || []).map(typeId => ({ id: typeId, name: opTypeMap.get(typeId) || 'Tipo desconhecido' })),
+                    };
+
+                    await syncOsToGoogleCalendarAction(updateData.driverId, populatedOpForSync);
+                }
+            } catch (syncError: any) {
+                console.error(`Falha ao sincronizar a atualização da Operação ${id} com o Google Agenda:`, syncError.message);
+            }
+        }
+
         revalidatePath('/operations');
         revalidatePath('/os');
     } catch (e) {
@@ -2203,50 +2217,6 @@ export async function sendFirstLoginNotificationToSuperAdminAction(newClientName
 // #endregion
 
 // #region Super Admin Actions
-export async function getAllAccountsAction(invokerId: string) {
-    try {
-        if (!invokerId) {
-             throw new Error("ID de usuário inválido.");
-        }
-
-        const invokerUser = await adminAuth.getUser(invokerId);
-        if (invokerUser.customClaims?.role !== 'superadmin') {
-             console.warn(`User ${invokerId} attempted to list accounts but is not superadmin.`);
-             throw new Error("Permissão negada: Apenas Super Admins podem listar todas as contas.");
-        }
-
-        const accountsSnap = await adminDb.collection('accounts').get();
-        if (accountsSnap.empty) {
-            return [];
-        }
-
-        const accountsPromises = accountsSnap.docs.map(async (accountDoc) => {
-            const data = accountDoc.data();
-            const account = toSerializableObject({ id: accountDoc.id, ...data }) as Account;
-
-            if (account.ownerId) {
-                try {
-                    const userSnap = await adminDb.doc(`users/${account.ownerId}`).get();
-                    if (userSnap.exists) {
-                        const userData = userSnap.data();
-                        // Prioritize companyName from user profile, fall back to user name
-                        // We add a virtual property 'companyName' to the Account object for display purposes
-                        (account as any).companyName = userData?.companyName || userData?.name || 'Conta sem nome';
-                    }
-                } catch (err) {
-                    console.warn(`Failed to fetch owner details for account ${account.id}`, err);
-                }
-            }
-            return account;
-        });
-
-        const accounts = await Promise.all(accountsPromises);
-        return accounts;
-    } catch (e: any) {
-        console.error("Error fetching all accounts:", e);
-        throw new Error(e.message || "Erro interno ao buscar contas.");
-    }
-}
 export async function createSuperAdminAction(invokerId: string | null, prevState: any, formData: FormData) {
   if (!invokerId) return { message: 'Apenas Super Admins podem criar outros Super Admins.' };
 
