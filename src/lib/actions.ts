@@ -1243,13 +1243,13 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 }
 
-
 export async function finishOperationAction(accountId: string, operationId: string) {
     if (!accountId || !operationId) {
         return { message: 'error', error: 'ID da conta ou da operação está ausente.' };
     }
     const db = adminDb;
     const batch = db.batch();
+
     try {
         const operationRef = db.doc(`accounts/${accountId}/operations/${operationId}`);
         const operationSnap = await operationRef.get();
@@ -1284,6 +1284,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
+
 
 export async function deleteOperationAction(accountId: string, operationId: string) {
     if (!accountId || !operationId) {
@@ -1328,6 +1329,7 @@ export async function createTruckAction(accountId: string, prevState: any, formD
             message: 'error',
         };
     }
+}
 
     try {
         const trucksCollection = adminDb.collection(`accounts/${accountId}/trucks`);
