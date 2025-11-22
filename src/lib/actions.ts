@@ -1329,6 +1329,7 @@ export async function createTruckAction(accountId: string, prevState: any, formD
             message: 'error',
         };
     }
+}
 
     try {
         const trucksCollection = adminDb.collection(`accounts/${accountId}/trucks`);

@@ -18,11 +18,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   // This is required for Server Actions to work with the Firebase Admin SDK
-  // It is disabled when using Turbopack, as it can cause issues.
-  ...(!process.env.TURBOPACK && { serverExternalPackages: ['firebase-admin'] }),
-  experimental: {
-    
-  },
+  serverExternalPackages: ['firebase-admin'],
   // Redirect root to /os
   async redirects() {
     return [
