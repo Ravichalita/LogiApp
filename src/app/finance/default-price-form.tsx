@@ -1,7 +1,7 @@
 
 'use client';
-import { useState, useEffect, useId, useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useState, useEffect } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import { updateRentalPricesAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -40,7 +40,7 @@ function SubmitButton() {
 export function RentalPricesForm({ account }: { account: Account }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
-    const [state, formAction] = useActionState(updateRentalPricesAction.bind(null, accountId!), { error: null });
+    const [state, formAction] = useFormState(updateRentalPricesAction.bind(null, accountId!), { error: null });
 
     const [prices, setPrices] = useState<RentalPrice[]>(account.rentalPrices || []);
     

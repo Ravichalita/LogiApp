@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useActionState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useFormState } from 'react-dom';
 import { signupAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
 import { useFormStatus } from 'react-dom';
@@ -109,7 +110,7 @@ function SuccessDialog({
 
 export function InviteForm({ onSave }: { onSave?: () => void }) {
   const { accountId } = useAuth();
-  const [state, formAction] = useActionState(signupAction.bind(null, accountId), initialState);
+  const [state, formAction] = useFormState(signupAction.bind(null, accountId), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);

@@ -1,7 +1,7 @@
 
 'use client';
-import { useEffect, useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+import { useEffect } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import { updateBackupSettingsAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -31,7 +31,7 @@ const initialState = {
 export function BackupSettingsForm({ account }: { account: Account }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
-    const [state, formAction] = useActionState(updateBackupSettingsAction.bind(null, accountId!), initialState);
+    const [state, formAction] = useFormState(updateBackupSettingsAction.bind(null, accountId!), initialState);
 
     useEffect(() => {
         if (state.message === 'success') {

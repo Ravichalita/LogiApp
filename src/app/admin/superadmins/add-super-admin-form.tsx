@@ -1,7 +1,8 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useActionState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useFormState } from 'react-dom';
 import { createSuperAdminAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
 import { useFormStatus } from 'react-dom';
@@ -108,7 +109,7 @@ function SuccessDialog({
 
 export function AddSuperAdminForm({ onSave }: { onSave?: () => void }) {
   const { user } = useAuth();
-  const [state, formAction] = useActionState(createSuperAdminAction.bind(null, user?.uid || null), initialState);
+  const [state, formAction] = useFormState(createSuperAdminAction.bind(null, user?.uid || null), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -173,8 +174,8 @@ export function AddSuperAdminForm({ onSave }: { onSave?: () => void }) {
     </div>
      <SuccessDialog
         isOpen={isSuccessDialogOpen}
-        onOpenChange={setIsSuccessDialogOpen}
         newUser={state.newUser}
+        onOpenChange={setIsSuccessDialogOpen}
         onClose={onSave!}
     />
     </>
