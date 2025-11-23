@@ -31,8 +31,8 @@ export const RentalPriceSchema = z.object({
 export type RentalPrice = z.infer<typeof RentalPriceSchema>;
 
 export const UploadedImageSchema = z.object({
-  url: z.string().url(),
-  path: z.string(),
+    url: z.string().url(),
+    path: z.string(),
 });
 export type UploadedImage = z.infer<typeof UploadedImageSchema>;
 
@@ -50,37 +50,37 @@ export const TruckTypeSchema = z.object({
 export type TruckType = z.infer<typeof TruckTypeSchema>;
 
 export const BaseSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "O nome da base é obrigatório."),
-  address: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
-  latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
-  longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
+    id: z.string(),
+    name: z.string().min(1, "O nome da base é obrigatório."),
+    address: z.string().min(5, { message: "O endereço deve ter pelo menos 5 caracteres." }),
+    latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+    longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
 });
 export type Base = z.infer<typeof BaseSchema>;
 
 export const OperationalCostSchema = z.object({
-  id: z.string(),
-  baseId: z.string().min(1, "A base é obrigatória."),
-  truckTypeId: z.string().min(1, "O tipo de caminhão é obrigatório."),
-  value: z.coerce.number().min(0, "O valor deve ser zero ou maior."),
+    id: z.string(),
+    baseId: z.string().min(1, "A base é obrigatória."),
+    truckTypeId: z.string().min(1, "O tipo de caminhão é obrigatório."),
+    value: z.coerce.number().min(0, "O valor deve ser zero ou maior."),
 });
 export type OperationalCost = z.infer<typeof OperationalCostSchema>;
 
 
 export const AccountSchema = z.object({
-  id: z.string(),
-  ownerId: z.string(),
-  rentalCounter: z.number().int().optional().default(0),
-  operationCounter: z.number().int().optional().default(0),
-  rentalPrices: z.array(RentalPriceSchema).optional().default([]),
-  operationTypes: z.array(OperationTypeSchema).optional().default([]),
-  truckTypes: z.array(TruckTypeSchema).optional().default([]),
-  notificationImages: z.array(UploadedImageSchema).optional().default([]),
-  lastBackupDate: z.string().optional(),
-  backupPeriodicityDays: z.number().int().min(1).optional().default(7),
-  backupRetentionDays: z.number().int().min(1).optional().default(90),
-  bases: z.array(BaseSchema).optional().default([]),
-  operationalCosts: z.array(OperationalCostSchema).optional().default([]),
+    id: z.string(),
+    ownerId: z.string(),
+    rentalCounter: z.number().int().optional().default(0),
+    operationCounter: z.number().int().optional().default(0),
+    rentalPrices: z.array(RentalPriceSchema).optional().default([]),
+    operationTypes: z.array(OperationTypeSchema).optional().default([]),
+    truckTypes: z.array(TruckTypeSchema).optional().default([]),
+    notificationImages: z.array(UploadedImageSchema).optional().default([]),
+    lastBackupDate: z.string().optional(),
+    backupPeriodicityDays: z.number().int().min(1).optional().default(7),
+    backupRetentionDays: z.number().int().min(1).optional().default(90),
+    bases: z.array(BaseSchema).optional().default([]),
+    operationalCosts: z.array(OperationalCostSchema).optional().default([]),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -90,7 +90,7 @@ export const UpdateBackupSettingsSchema = z.object({
 });
 
 export const UpdateBasesSchema = z.object({
-  bases: z.array(BaseSchema).optional().default([]),
+    bases: z.array(BaseSchema).optional().default([]),
 });
 
 export const UpdateOperationalCostsSchema = z.object({
@@ -103,29 +103,29 @@ export const UpdateOperationalCostsSchema = z.object({
 
 // #region Permissions
 export const PermissionsSchema = z.object({
-  // Main screen access
-  canAccessRentals: z.boolean().default(true),
-  canAccessOperations: z.boolean().default(false),
-  canAccessRoutes: z.boolean().default(false),
-  canAccessClients: z.boolean().default(true),
-  canAccessDumpsters: z.boolean().default(true),
-  canAccessFleet: z.boolean().default(false),
-  canAccessTeam: z.boolean().default(false),
-  canAccessSettings: z.boolean().default(false),
-
-  // Feature Access
-  canAccessFinance: z.boolean().default(false),
-  canSeeServiceValue: z.boolean().default(false),
-  canAccessNotificationsStudio: z.boolean().default(false),
-  canUseAttachments: z.boolean().default(false),
-
-  // Actions Access
-  canEditRentals: z.boolean().default(false),
-  canEditOperations: z.boolean().default(false),
-  canEditDumpsters: z.boolean().default(false),
-  canEditFleet: z.boolean().default(false),
-  canAddClients: z.boolean().default(true), // New permission
-  canEditClients: z.boolean().default(false),
+    // Main screen access
+    canAccessRentals: z.boolean().default(true),
+    canAccessOperations: z.boolean().default(false),
+    canAccessRoutes: z.boolean().default(false),
+    canAccessClients: z.boolean().default(true),
+    canAccessDumpsters: z.boolean().default(true),
+    canAccessFleet: z.boolean().default(false),
+    canAccessTeam: z.boolean().default(false),
+    canAccessSettings: z.boolean().default(false),
+    
+    // Feature Access
+    canAccessFinance: z.boolean().default(false),
+    canSeeServiceValue: z.boolean().default(false),
+    canAccessNotificationsStudio: z.boolean().default(false),
+    canUseAttachments: z.boolean().default(false),
+    
+    // Actions Access
+    canEditRentals: z.boolean().default(false),
+    canEditOperations: z.boolean().default(false),
+    canEditDumpsters: z.boolean().default(false),
+    canEditFleet: z.boolean().default(false),
+    canAddClients: z.boolean().default(true), // New permission
+    canEditClients: z.boolean().default(false),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;
@@ -145,7 +145,7 @@ export type Backup = z.infer<typeof BackupSchema>;
 export const TruckSchema = z.object({
   name: z.string().min(1, { message: "O nome/identificador é obrigatório." }),
   plate: z.string().min(1, "A placa é obrigatória.").max(8, { message: "A placa deve ter no máximo 8 caracteres." }),
-  type: z.string({ required_error: "O tipo de caminhão é obrigatório." }),
+  type: z.string({ required_error: "O tipo de caminhão é obrigatório."}),
   year: z.preprocess(toNumOrNull, z.number().nullable()),
   status: z.enum(['Disponível', 'Em Manutenção', 'Em Operação']).default('Disponível'),
 });
@@ -157,19 +157,19 @@ export const UpdateTruckSchema = TruckSchema.extend({
 // #endregion
 
 export const AttachmentSchema = z.object({
-  url: z.string().url(),
-  name: z.string(),
-  type: z.string(),
-  uploadedAt: z.string(),
-  path: z.string(),
+    url: z.string().url(),
+    name: z.string(),
+    type: z.string(),
+    uploadedAt: z.string(),
+    path: z.string(),
 });
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
 // #region Operation Schema
 export const AdditionalCostSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  value: z.number(),
+    id: z.string(),
+    name: z.string(),
+    value: z.number(),
 });
 export type AdditionalCost = z.infer<typeof AdditionalCostSchema>;
 
@@ -197,34 +197,33 @@ const BaseOperationSchema = z.object({
   accountId: z.string(),
   createdAt: z.custom<FieldValue>().optional(),
   attachments: z.array(AttachmentSchema).optional(),
-  recurrenceProfileId: z.string().optional(),
 });
 
 export const OperationSchema = BaseOperationSchema.extend({
   sequentialId: z.number().int().positive(),
   googleCalendarEventId: z.string().optional(),
 }).refine(data => {
-  if (data.startDate && data.endDate) {
-    return new Date(data.endDate) >= new Date(data.startDate);
-  }
-  return true;
+    if (data.startDate && data.endDate) {
+        return new Date(data.endDate) >= new Date(data.startDate);
+    }
+    return true;
 }, {
-  message: "A data de término deve ser posterior ou igual à data de início.",
-  path: ["endDate"],
+    message: "A data de término deve ser posterior ou igual à data de início.",
+    path: ["endDate"],
 });
 
 export const UpdateOperationSchema = BaseOperationSchema
-  .omit({
-    createdBy: true,
-    accountId: true,
-    createdAt: true,
-    status: true
+  .omit({ 
+    createdBy: true, 
+    accountId: true, 
+    createdAt: true, 
+    status: true 
   })
   .extend({ id: z.string() })
   .partial()
   .refine(data => {
     if (data.startDate && data.endDate) {
-      return new Date(data.endDate) >= new Date(data.startDate);
+        return new Date(data.endDate) >= new Date(data.startDate);
     }
     return true;
   }, {
@@ -236,8 +235,8 @@ export const UpdateOperationSchema = BaseOperationSchema
 export type Operation = z.infer<typeof OperationSchema> & { id: string };
 
 export const CompletedOperationSchema = BaseOperationSchema.extend({
-  sequentialId: z.number().int().positive(),
-  completedAt: z.custom<FieldValue | Timestamp | string>(),
+    sequentialId: z.number().int().positive(),
+    completedAt: z.custom<FieldValue | Timestamp | string>(),
 });
 
 export type CompletedOperation = z.infer<typeof CompletedOperationSchema> & { id: string, completedAt: string };
@@ -264,14 +263,14 @@ export const UpdateClientSchema = ClientSchema.extend({
 
 
 export const DumpsterSchema = z.object({
-  name: z.string().min(1, { message: "O nome é obrigatório." }),
-  color: z.enum(Object.keys(DUMPSTER_COLORS) as [DumpsterColor, ...DumpsterColor[]], {
-    required_error: "A cor é obrigatória.",
-  }),
-  size: z.coerce.number().positive({ message: "O tamanho deve ser um número positivo." }),
-  status: z.enum(['Disponível', 'Em Manutenção'], {
-    errorMap: () => ({ message: "Status inválido." }),
-  }),
+    name: z.string().min(1, { message: "O nome é obrigatório."}),
+    color: z.enum(Object.keys(DUMPSTER_COLORS) as [DumpsterColor, ...DumpsterColor[]], {
+        required_error: "A cor é obrigatória.",
+    }),
+    size: z.coerce.number().positive({ message: "O tamanho deve ser um número positivo."}),
+    status: z.enum(['Disponível', 'Em Manutenção'], {
+        errorMap: () => ({ message: "Status inválido." }),
+    }),
 });
 
 export const UpdateDumpsterSchema = DumpsterSchema.extend({
@@ -299,7 +298,7 @@ export const RentalSchema = z.object({
   lumpSumValue: z.coerce.number().min(0, "O valor deve ser zero ou maior.").optional(),
   status: z.enum(['Pendente', 'Ativo', 'Finalizado', 'Atrasado']),
   createdBy: z.string(),
-  assignedTo: z.string({ required_error: "É necessário designar um responsável." }),
+  assignedTo: z.string({ required_error: "É necessário designar um responsável."}),
   observations: z.string().optional(),
   notificationsSent: z.object({
     due: z.boolean().default(false),
@@ -312,7 +311,6 @@ export const RentalSchema = z.object({
   totalCost: z.number().optional(),
   googleCalendarEventId: z.string().optional(),
   googleCalendarSwapEventId: z.string().optional(),
-  recurrenceProfileId: z.string().optional(),
 });
 
 const UpdateRentalPeriodSchema = z.object({
@@ -325,46 +323,46 @@ const UpdateRentalPeriodSchema = z.object({
 });
 
 export const UpdateRentalSchema = z.object({
-  id: z.string(),
-  rentalDate: z.string().optional(),
-  returnDate: z.string().optional(),
-  swapDate: z.string().optional().nullable(),
-  startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }).optional(),
-  startLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
-  startLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
-  deliveryAddress: z.string().min(5, { message: "O endereço de entrega deve ter pelo menos 5 caracteres." }).optional(),
-  deliveryGoogleMapsLink: z.string().url({ message: "Por favor, insira um link válido do Google Maps." }).optional().or(z.literal('')),
-  latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
-  longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
-  value: z.preprocess(
-    (val) => (typeof val === 'string' ? val.replace(',', '.') : val),
-    z.coerce.number().min(0, "O valor deve ser zero ou maior.")
-  ).optional(),
-  assignedTo: z.string().optional(),
-  truckId: z.string().optional(),
-  observations: z.string().optional(),
-  attachments: z.array(AttachmentSchema).optional(),
-  additionalCosts: z.array(AdditionalCostSchema).optional(),
-  billingType: z.enum(['perDay', 'lumpSum']).optional(),
-  lumpSumValue: z.coerce.number().min(0).optional(),
-  travelCost: z.number().optional(),
-  totalCost: z.number().optional(),
+    id: z.string(),
+    rentalDate: z.string().optional(),
+    returnDate: z.string().optional(),
+    swapDate: z.string().optional().nullable(),
+    startAddress: z.string().min(5, { message: "O endereço de partida é obrigatório." }).optional(),
+    startLatitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+    startLongitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
+    deliveryAddress: z.string().min(5, { message: "O endereço de entrega deve ter pelo menos 5 caracteres." }).optional(),
+    deliveryGoogleMapsLink: z.string().url({ message: "Por favor, insira um link válido do Google Maps." }).optional().or(z.literal('')),
+    latitude: z.preprocess(toNumOrNull, z.number().min(-90).max(90).nullable()).optional(),
+    longitude: z.preprocess(toNumOrNull, z.number().min(-180).max(180).nullable()).optional(),
+    value: z.preprocess(
+      (val) => (typeof val === 'string' ? val.replace(',', '.') : val),
+      z.coerce.number().min(0, "O valor deve ser zero ou maior.")
+    ).optional(),
+    assignedTo: z.string().optional(),
+    truckId: z.string().optional(),
+    observations: z.string().optional(),
+    attachments: z.array(AttachmentSchema).optional(),
+    additionalCosts: z.array(AdditionalCostSchema).optional(),
+    billingType: z.enum(['perDay', 'lumpSum']).optional(),
+    lumpSumValue: z.coerce.number().min(0).optional(),
+    travelCost: z.number().optional(),
+    totalCost: z.number().optional(),
 }).refine(data => {
-  if (data.rentalDate && data.returnDate) {
-    return new Date(data.returnDate) > new Date(data.rentalDate);
-  }
-  return true;
+    if (data.rentalDate && data.returnDate) {
+        return new Date(data.returnDate) > new Date(data.rentalDate);
+    }
+    return true;
 }, {
-  message: "A data de retirada deve ser posterior à data de entrega.",
-  path: ["returnDate"],
+    message: "A data de retirada deve ser posterior à data de entrega.",
+    path: ["returnDate"],
 });
 
 
 export const CompletedRentalSchema = RentalSchema.extend({
-  originalRentalId: z.string(),
-  completedDate: z.custom<FieldValue>(),
-  rentalDays: z.number().positive(),
-  totalValue: z.number().positive(),
+    originalRentalId: z.string(),
+    completedDate: z.custom<FieldValue>(),
+    rentalDays: z.number().positive(),
+    totalValue: z.number().positive(),
 });
 
 
@@ -383,10 +381,10 @@ export const UserAccountSchema = z.object({
   hasSeenWelcome: z.boolean().optional(),
   firstAccessAt: z.string().optional(),
   googleCalendar: z.object({
-    accessToken: z.string(),
-    expiryDate: z.number(),
-    refreshToken: z.string(),
-    calendarId: z.string().optional(),
+      accessToken: z.string(),
+      expiryDate: z.number(),
+      refreshToken: z.string(),
+      calendarId: z.string().optional(),
   }).optional(),
   avatarUrl: z.string().url().optional(),
   avatarPath: z.string().optional(),
@@ -404,28 +402,28 @@ export const UserAccountSchema = z.object({
 });
 
 export const UpdateUserProfileSchema = z.object({
-  name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }).optional(),
-  avatarUrl: z.string().url().optional(),
-  avatarPath: z.string().optional(),
-  phone: z.string().optional(),
-  phone2: z.string().optional(),
-  personType: z.enum(['fisica', 'juridica']),
-  companyName: z.string().optional(),
-  cpf: z.string().optional(),
-  cnpj: z.string().optional(),
-  address: z.string().optional(),
-  addressNumber: z.string().optional(),
-  addressComplement: z.string().optional(),
-  addressDistrict: z.string().optional(),
-  addressCity: z.string().optional(),
-  addressState: z.string().optional(),
-  addressZipCode: z.string().optional(),
+    name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }).optional(),
+    avatarUrl: z.string().url().optional(),
+    avatarPath: z.string().optional(),
+    phone: z.string().optional(),
+    phone2: z.string().optional(),
+    personType: z.enum(['fisica', 'juridica']),
+    companyName: z.string().optional(),
+    cpf: z.string().optional(),
+    cnpj: z.string().optional(),
+    address: z.string().optional(),
+    addressNumber: z.string().optional(),
+    addressComplement: z.string().optional(),
+    addressDistrict: z.string().optional(),
+    addressCity: z.string().optional(),
+    addressState: z.string().optional(),
+    addressZipCode: z.string().optional(),
 });
 
 const BaseSignupSchema = z.object({
-  name: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
-  email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
-  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
+    name: z.string().min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' }),
+    email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
+    password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres.' }),
 });
 
 export const SignupSchema = BaseSignupSchema
@@ -441,7 +439,7 @@ export const SuperAdminCreationSchema = BaseSignupSchema;
 
 
 export const RentalPricesSchema = z.object({
-  rentalPrices: z.array(RentalPriceSchema).optional().default([]),
+    rentalPrices: z.array(RentalPriceSchema).optional().default([]),
 });
 
 // #endregion
@@ -452,14 +450,14 @@ export type Client = z.infer<typeof ClientSchema> & { id: string, createdAt: any
 export type Dumpster = z.infer<typeof DumpsterSchema> & { id: string, accountId: string };
 export type DumpsterStatus = Dumpster['status'];
 export type Rental = z.infer<typeof RentalSchema> & { id: string, truckId?: string, swapDate?: string, googleCalendarEventId?: string, googleCalendarSwapEventId?: string };
-export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & {
-  id: string;
-  completedDate: string; // Serialized as ISO string
-  accountId: string;
-  client?: Client | null;
-  dumpsters?: Dumpster[] | null; // Changed from dumpster to dumpsters
-  assignedToUser?: UserAccount | null;
-  attachments?: z.infer<typeof AttachmentSchema>[];
+export type CompletedRental = Omit<z.infer<typeof CompletedRentalSchema>, 'completedDate'> & { 
+    id: string; 
+    completedDate: string; // Serialized as ISO string
+    accountId: string;
+    client?: Client | null;
+    dumpsters?: Dumpster[] | null; // Changed from dumpster to dumpsters
+    assignedToUser?: UserAccount | null;
+    attachments?: z.infer<typeof AttachmentSchema>[];
 };
 export type UserAccount = z.infer<typeof UserAccountSchema>;
 export type UserRole = UserAccount['role'];
@@ -470,76 +468,55 @@ export type Location = { lat: number; lng: number; address: string; };
 export type DerivedDumpsterStatus = 'Disponível' | 'Alugada' | 'Em Manutenção' | 'Reservada' | 'Encerra hoje' | 'Em Atraso';
 export type EnhancedDumpster = Dumpster & { derivedStatus: string, scheduledRentals: PopulatedRental[] };
 export type PopulatedRental = Omit<Rental, 'clientId' | 'assignedTo'> & {
-  id: string;
-  itemType: 'rental';
-  truck?: Truck | null;
-  dumpsters: Dumpster[] | null;
-  client: Client | null;
-  assignedToUser: UserAccount | null;
-  swapDate?: string;
-  googleCalendarEventId?: string;
-  googleCalendarSwapEventId?: string;
+    id: string;
+    itemType: 'rental';
+    truck?: Truck | null;
+    dumpsters: Dumpster[] | null;
+    client: Client | null;
+    assignedToUser: UserAccount | null;
+    swapDate?: string;
+    googleCalendarEventId?: string;
+    googleCalendarSwapEventId?: string;
 };
 export type PopulatedOperation = Operation & {
-  id: string;
-  itemType: 'operation';
-  operationTypes: { id: string, name: string }[];
-  client: Client | null;
-  truck: Truck | null;
-  driver: UserAccount | null;
-  createdAt?: Timestamp | string; // Allow string for serialized data
-  completedAt?: string; // Serialized ISO string for completed operations
+    id: string;
+    itemType: 'operation';
+    operationTypes: {id: string, name: string}[];
+    client: Client | null;
+    truck: Truck | null;
+    driver: UserAccount | null;
+    createdAt?: Timestamp | string; // Allow string for serialized data
+    completedAt?: string; // Serialized ISO string for completed operations
 };
 export type PopulatedCompletedRental = Omit<CompletedRental, 'clientId'> & {
-  id: string;
-  client: Client | null;
+    id: string;
+    client: Client | null;
 };
 export type AdminClientView = {
-  accountId: string;
-  ownerId: string;
-  ownerName: string;
-  ownerEmail: string;
-  ownerStatus: UserStatus;
-  hasSeenWelcome: boolean;
-  createdAt: string;
-  firstAccessAt?: string;
-  members: UserAccount[];
+    accountId: string;
+    ownerId: string;
+    ownerName: string;
+    ownerEmail: string;
+    ownerStatus: UserStatus;
+    hasSeenWelcome: boolean;
+    createdAt: string;
+    firstAccessAt?: string;
+    members: UserAccount[];
 }
 
-
 export type HistoricItem = {
-  id: string;
-  kind: 'rental' | 'operation';
-  prefix: 'AL' | 'OP';
-  clientName: string;
-  completedDate: string;
-  totalValue: number;
-  sequentialId: number;
-  operationTypeName?: string | null; // Keep for backward compatibility in historic items view
-  operationTypes?: { id: string, name: string }[]; // For new items
-  data: CompletedRental | PopulatedOperation;
+    id: string;
+    kind: 'rental' | 'operation';
+    prefix: 'AL' | 'OP';
+    clientName: string;
+    completedDate: string;
+    totalValue: number;
+    sequentialId: number;
+    operationTypeName?: string | null; // Keep for backward compatibility in historic items view
+    operationTypes?: {id: string, name: string}[]; // For new items
+    data: CompletedRental | PopulatedOperation;
 };
-
-// #region Recurrence
-export const RecurrenceProfileSchema = z.object({
-  id: z.string(),
-  accountId: z.string(),
-  type: z.enum(['rental', 'operation']),
-  frequency: z.enum(['weekly']), // For now only weekly is implemented
-  daysOfWeek: z.array(z.number().min(0).max(6)),
-  time: z.string(), // HH:mm
-  endDate: z.string().optional().nullable(), // ISO string, null if permanent
-  billingType: z.enum(['per_service', 'monthly']),
-  status: z.enum(['active', 'cancelled', 'completed']),
-  nextRunDate: z.string(), // ISO string
-  templateData: z.any(), // Store the form data to recreate the OS
-  createdAt: z.custom<FieldValue>().optional(),
-  lastRunDate: z.string().optional(),
-});
-export type RecurrenceProfile = z.infer<typeof RecurrenceProfileSchema>;
-// #endregion
-
 // #endregion
 
 
-
+    
