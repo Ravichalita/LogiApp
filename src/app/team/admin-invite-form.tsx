@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useActionState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { signupAction } from '@/lib/actions';
 import { useAuth } from '@/context/auth-context';
-import { useFormStatus } from 'react-dom';
+import { useFormStatus, useFormState } from 'react-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,7 +110,7 @@ function SuccessDialog({
 
 export function AdminInviteForm({ onSave }: { onSave?: () => void }) {
   // We pass `null` for the accountId to signupAction, indicating a new account should be created.
-  const [state, formAction] = useActionState(signupAction.bind(null, null), initialState);
+  const [state, formAction] = useFormState(signupAction.bind(null, null), initialState);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -171,7 +171,7 @@ export function AdminInviteForm({ onSave }: { onSave?: () => void }) {
 
             {showPasswordHint && (
                 <p className="text-xs text-muted-foreground">
-                    Geramos uma sugestão de senha automaticamente para você. Mas você ainda pode mudar manually se quiser.
+                    Geramos uma sugestão de senha automaticamente para você. Mas você ainda pode mudar manualmente se quiser.
                 </p>
             )}
             
