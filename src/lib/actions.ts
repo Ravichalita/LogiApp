@@ -1240,12 +1240,12 @@ export async function deleteOperationAction(accountId: string, operationId: stri
 export async function createTruckAction(accountId: string, prevState: any, formData: FormData) {
   const validatedFields = TruckSchema.safeParse(Object.fromEntries(formData.entries()));
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'error',
-    };
-  }
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: 'error',
+        };
+    }
 
   try {
     const trucksCollection = adminDb.collection(`accounts/${accountId}/trucks`);
