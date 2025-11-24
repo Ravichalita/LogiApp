@@ -1,10 +1,86 @@
 
-
 'use server';
 import { getStorage } from 'firebase-admin/storage';
 import { headers } from 'next/headers';
 import { google } from 'googleapis';
 import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
+import {
+    adminAuth,
+    adminDb,
+    adminApp
+} from './firebase-admin';
+import {
+    z
+} from 'zod';
+import {
+    revalidatePath
+} from 'next/cache';
+import {
+    redirect
+} from 'next/navigation';
+import {
+    ClientSchema,
+    DumpsterSchema,
+    RentalSchema,
+    CompletedRentalSchema,
+    UpdateClientSchema,
+    UpdateDumpsterSchema,
+    UpdateRentalSchema,
+    SignupSchema,
+    UserAccountSchema,
+    PermissionsSchema,
+    RentalPriceSchema,
+    UpdateBackupSettingsSchema,
+    UpdateUserProfileSchema,
+    AttachmentSchema,
+    SuperAdminCreationSchema,
+    TruckSchema,
+    UpdateTruckSchema,
+    OperationSchema,
+    UpdateOperationSchema,
+    RecurrenceProfileSchema,
+    UpdateBasesSchema,
+    UpdateOperationalCostsSchema
+} from './types';
+import type {
+    UserAccount,
+    UserRole,
+    UserStatus,
+    Permissions,
+    Account,
+    RentalPrice,
+    UploadedImage,
+    Rental,
+    AdditionalCost,
+    Operation,
+    TruckType,
+    RecurrenceProfile,
+    PopulatedRental,
+    PopulatedOperation,
+    Dumpster
+} from './types';
+import {
+    ensureUserDocument
+} from './data-server';
+import {
+    sendNotification
+} from './notifications';
+import {
+    addDays,
+    isBefore,
+    isAfter,
+    isToday,
+    parseISO,
+    startOfToday,
+    format,
+    set
+} from 'date-fns';
+import {
+    toZonedTime
+} from 'date-fns-tz';
+import {
+    FieldValue
+} from 'firebase-admin/firestore';
 
 // Helper function for error handling
 function handleFirebaseError(error: unknown): string {
@@ -36,9 +112,14 @@ export async function recoverSuperAdminAction() {
             name: 'Super Admin',
             email: 'contato@econtrol.com.br',
         }, null, 'superadmin');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -50,16 +131,28 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
     if (!validatedFields.success) {
         const fieldErrors = validatedFields.error.flatten().fieldErrors;
         if (fieldErrors._errors && fieldErrors._errors.length > 0) {
-            return { ...prevState, message: fieldErrors._errors[0] };
+            return { ...prevState,
+                message: fieldErrors._errors[0]
+            };
         }
         const firstError = Object.values(fieldErrors).flat()[0] || 'Por favor, verifique os campos.';
-        return { ...prevState, message: firstError };
+        return { ...prevState,
+            message: firstError
+        };
     }
 
-    const { name, email, password } = validatedFields.data;
+    const {
+        name,
+        email,
+        password
+    } = validatedFields.data;
 
     try {
-        await ensureUserDocument({ name, email, password }, inviterAccountId);
+        await ensureUserDocument({
+            name,
+            email,
+            password
+        }, inviterAccountId);
 
         const successState = {
             ...prevState,
@@ -74,7 +167,9 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
         return successState;
 
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return { ...prevState,
+            message: handleFirebaseError(e)
+        };
     }
 }
 
@@ -100,7 +195,12 @@ export async function updateUserRoleAction(invokerId: string, accountId: string,
             throw new Error("Usuário não encontrado ou não pertence a esta conta.");
         }
 
-        const updates: { role: UserRole, permissions?: Permissions } = { role: newRole };
+        const updates: {
+            role: UserRole,
+            permissions?: Permissions
+        } = {
+            role: newRole
+        };
 
         const ownerRef = db.doc(`users/${ownerId}`);
         const ownerSnap = await ownerRef.get(); // Correctly await the promise
@@ -117,13 +217,21 @@ export async function updateUserRoleAction(invokerId: string, accountId: string,
             updates.permissions = PermissionsSchema.parse({});
         }
 
-        await adminAuth.setCustomUserClaims(userId, { role: newRole, accountId });
+        await adminAuth.setCustomUserClaims(userId, {
+            role: newRole,
+            accountId
+        });
         await userRef.update(updates);
 
         revalidatePath('/team');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -143,7 +251,8 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
             throw new Error("Usuário não pertence a esta conta.");
         }
 
-        const newPermissions = { ...permissions };
+        const newPermissions = { ...permissions
+        };
 
         // Cascade logic: if a main screen is disabled, related edit permissions should also be disabled
         if (newPermissions.canAccessOperations === true) {
@@ -163,7 +272,9 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
         const validatedPermissions = PermissionsSchema.parse(newPermissions);
 
         const batch = db.batch();
-        batch.update(userRef, { permissions: validatedPermissions });
+        batch.update(userRef, {
+            permissions: validatedPermissions
+        });
 
         // If the user being updated is an owner, cascade permissions to their admins
         if (userData.role === 'owner') {
@@ -173,7 +284,9 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
                 .get();
 
             adminsSnap.docs.forEach(d => {
-                batch.update(d.ref, { permissions: validatedPermissions });
+                batch.update(d.ref, {
+                    permissions: validatedPermissions
+                });
             });
         }
 
@@ -183,9 +296,14 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
         revalidatePath('/admin/clients');
         revalidatePath('/');
         revalidatePath('/settings');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -218,7 +336,9 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
 
         if (!rentalsSnap.empty) {
             rentalsSnap.forEach(doc => {
-                batch.update(doc.ref, { assignedTo: ownerId });
+                batch.update(doc.ref, {
+                    assignedTo: ownerId
+                });
             });
         }
 
@@ -234,9 +354,14 @@ export async function removeTeamMemberAction(accountId: string, userId: string) 
 
         revalidatePath('/team');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -263,7 +388,10 @@ export async function createClient(accountId: string, prevState: any, formData: 
             createdAt: FieldValue.serverTimestamp(),
         });
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 
     revalidatePath('/clients');
@@ -274,7 +402,10 @@ export async function updateClient(accountId: string, prevState: any, formData: 
     const rawData = Object.fromEntries(formData.entries());
     const id = rawData.id as string;
     if (!id) {
-        return { message: 'error', error: 'ID do cliente ausente.' };
+        return {
+            message: 'error',
+            error: 'ID do cliente ausente.'
+        };
     }
 
     const validatedFields = UpdateClientSchema.safeParse(rawData);
@@ -290,8 +421,10 @@ export async function updateClient(accountId: string, prevState: any, formData: 
         const clientDoc = getFirestore(adminApp).doc(`accounts/${accountId}/clients/${id}`);
 
         // This is the corrected block
-        const { id: _, ...clientData } = validatedFields.data;
-        const updateData: Record<string, any> = Object.fromEntries(
+        const {
+            id: _, ...clientData
+        } = validatedFields.data;
+        const updateData: Record < string, any > = Object.fromEntries(
             Object.entries(clientData).filter(([_, v]) => v !== undefined && v !== null)
         );
         updateData.updatedAt = FieldValue.serverTimestamp();
@@ -310,7 +443,10 @@ export async function updateClient(accountId: string, prevState: any, formData: 
         await clientDoc.update(updateData);
         revalidatePath('/clients');
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 
     redirect('/clients');
@@ -339,9 +475,14 @@ export async function deleteClientAction(accountId: string, clientId: string) {
 
         revalidatePath('/clients');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 // #endregion
@@ -370,9 +511,14 @@ export async function createDumpster(accountId: string, prevState: any, formData
             createdAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/dumpsters');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -380,10 +526,14 @@ export async function updateUserProfileAction(userId: string, prevState: any, fo
     const validatedFields = UpdateUserProfileSchema.safeParse(Object.fromEntries(formData.entries()));
 
     if (!validatedFields.success) {
-        return { message: 'error', error: JSON.stringify(validatedFields.error.flatten().fieldErrors) };
+        return {
+            message: 'error',
+            error: JSON.stringify(validatedFields.error.flatten().fieldErrors)
+        };
     }
 
-    const { ...updateData } = validatedFields.data;
+    const { ...updateData
+    } = validatedFields.data;
 
     try {
         const userRef = getFirestore(adminApp).doc(`users/${userId}`);
@@ -393,22 +543,34 @@ export async function updateUserProfileAction(userId: string, prevState: any, fo
         });
 
         if (validatedFields.data.name) {
-            await adminAuth.updateUser(userId, { displayName: validatedFields.data.name });
+            await adminAuth.updateUser(userId, {
+                displayName: validatedFields.data.name
+            });
         }
         if (validatedFields.data.avatarUrl) {
-            await adminAuth.updateUser(userId, { photoURL: validatedFields.data.avatarUrl });
+            await adminAuth.updateUser(userId, {
+                photoURL: validatedFields.data.avatarUrl
+            });
         }
 
         revalidatePath('/account');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function deleteSelfUserAction(accountId: string, userId: string) {
     if (!accountId || !userId) {
-        return { message: 'error', error: "Informações do usuário ausentes." };
+        return {
+            message: 'error',
+            error: "Informações do usuário ausentes."
+        };
     }
     const db = getFirestore(adminApp);
     const batch = db.batch();
@@ -424,7 +586,9 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
         const assignedRentalsSnap = await assignedRentalsQuery.get();
         if (!assignedRentalsSnap.empty) {
             assignedRentalsSnap.forEach(doc => {
-                batch.update(doc.ref, { assignedTo: FieldValue.delete() });
+                batch.update(doc.ref, {
+                    assignedTo: FieldValue.delete()
+                });
             });
         }
 
@@ -432,7 +596,9 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
         const createdRentalsSnap = await createdRentalsQuery.get();
         if (!createdRentalsSnap.empty) {
             createdRentalsSnap.forEach(doc => {
-                batch.update(doc.ref, { createdBy: FieldValue.delete() });
+                batch.update(doc.ref, {
+                    createdBy: FieldValue.delete()
+                });
             });
         }
 
@@ -446,9 +612,14 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
 
         await adminAuth.deleteUser(userId);
 
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -465,7 +636,10 @@ export async function updateDumpster(accountId: string, prevState: any, formData
         };
     }
 
-    const { id, ...dumpsterData } = validatedFields.data;
+    const {
+        id,
+        ...dumpsterData
+    } = validatedFields.data;
 
     try {
         const dumpsterDoc = getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${id}`);
@@ -476,9 +650,14 @@ export async function updateDumpster(accountId: string, prevState: any, formData
         });
         revalidatePath('/dumpsters');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -487,21 +666,33 @@ export async function deleteDumpsterAction(accountId: string, dumpsterId: string
         await getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
         revalidatePath('/dumpsters');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function updateDumpsterStatusAction(accountId: string, dumpsterId: string, newStatus: 'Disponível' | 'Em Manutenção') {
     try {
         const dumpsterRef = getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
-        await dumpsterRef.update({ status: newStatus });
+        await dumpsterRef.update({
+            status: newStatus
+        });
         revalidatePath('/dumpsters');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -523,7 +714,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             }
             const currentCounter = accountSnap.data()?.rentalCounter || 0;
             const newCounter = currentCounter + 1;
-            transaction.update(accountRef, { rentalCounter: newCounter });
+            transaction.update(accountRef, {
+                rentalCounter: newCounter
+            });
             return newCounter;
         });
 
@@ -553,7 +746,10 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                 dumpsterIds = JSON.parse(rawData.dumpsterIds);
             } catch (e) {
                 console.error("Failed to parse dumpsterIds JSON");
-                return { message: 'error', error: "Formato de IDs de caçamba inválido." }
+                return {
+                    message: 'error',
+                    error: "Formato de IDs de caçamba inválido."
+                }
             }
         }
 
@@ -583,7 +779,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                     recurrenceProfileId = recurrenceRef.id;
 
                     // Update the profile with its own ID
-                    await recurrenceRef.update({ id: recurrenceProfileId });
+                    await recurrenceRef.update({
+                        id: recurrenceProfileId
+                    });
                 }
             } catch (e) {
                 console.error("Failed to parse recurrence JSON");
@@ -601,7 +799,10 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             sequentialId: newSequentialId,
             status: 'Pendente',
             createdBy: createdBy,
-            notificationsSent: { due: false, late: false },
+            notificationsSent: {
+                due: false,
+                late: false
+            },
             attachments,
             additionalCosts,
             recurrenceProfileId,
@@ -644,22 +845,37 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                 const truckSnap = rentalData.truckId ? await db.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : null;
 
                 const dumpsterDocs = await Promise.all(rentalData.dumpsterIds.map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get()));
-                const dumpsters = dumpsterDocs.map(d => ({ id: d.id, ...d.data() }) as Dumpster);
+                const dumpsters = dumpsterDocs.map(d => ({
+                    id: d.id,
+                    ...d.data()
+                }) as Dumpster);
 
                 const populatedRentalForSync: PopulatedRental = {
                     id: rentalDocRef.id,
                     ...rentalData,
                     itemType: 'rental',
-                    client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
+                    client: clientSnap.exists ? {
+                        id: clientSnap.id,
+                        ...clientSnap.data()
+                    } as any : null,
                     dumpsters,
-                    assignedToUser: assignedToSnap.exists ? { id: assignedToSnap.id, ...assignedToSnap.data() } as any : null,
-                    truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
+                    assignedToUser: assignedToSnap.exists ? {
+                        id: assignedToSnap.id,
+                        ...assignedToSnap.data()
+                    } as any : null,
+                    truck: truckSnap && truckSnap.exists ? {
+                        id: truckSnap.id,
+                        ...truckSnap.data()
+                    } as any : null,
                 };
                 await syncOsToGoogleCalendarAction(rentalData.assignedTo, populatedRentalForSync);
             }
         } catch (syncError: any) {
             console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
-            return { message: 'error', error: syncError.message || 'Falha ao sincronizar com Google Agenda.' };
+            return {
+                message: 'error',
+                error: syncError.message || 'Falha ao sincronizar com Google Agenda.'
+            };
         }
 
 
@@ -669,7 +885,9 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         }
 
     } catch (e) {
-        return { message: handleFirebaseError(e) as string };
+        return {
+            message: handleFirebaseError(e) as string
+        };
     }
 
     revalidatePath('/os');
@@ -678,7 +896,10 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
 export async function finishRentalAction(accountId: string, rentalId: string) {
     if (!rentalId || !accountId) {
-        return { message: 'error', error: 'ID da OS ou da conta está ausente.' };
+        return {
+            message: 'error',
+            error: 'ID da OS ou da conta está ausente.'
+        };
     }
 
     const db = getFirestore(adminApp);
@@ -701,7 +922,10 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         const dumpsterDocs = await Promise.all(
             (rentalData.dumpsterIds || []).map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get())
         );
-        const dumpsters = dumpsterDocs.map(d => ({ id: d.id, ...d.data() }) as Dumpster);
+        const dumpsters = dumpsterDocs.map(d => ({
+            id: d.id,
+            ...d.data()
+        }) as Dumpster);
 
         const rentalDate = new Date(rentalData.rentalDate);
         const returnDate = new Date(rentalData.returnDate);
@@ -732,7 +956,10 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
     } catch (e) {
         console.error("Failed to finish rental:", e);
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 
     revalidatePath('/');
@@ -741,7 +968,10 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
 export async function deleteRentalAction(accountId: string, rentalId: string) {
     if (!rentalId) {
-        return { message: 'error', error: 'Rental ID is missing.' };
+        return {
+            message: 'error',
+            error: 'Rental ID is missing.'
+        };
     }
     const db = adminDb;
     try {
@@ -757,21 +987,30 @@ export async function deleteRentalAction(accountId: string, rentalId: string) {
         }
         await rentalRef.delete();
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) as string };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e) as string
+        };
     }
 }
 
 export async function updateRentalAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
-    const dataToValidate: Record<string, any> = { ...rawData };
+    const dataToValidate: Record < string, any > = { ...rawData
+    };
 
     if (rawData.dumpsterIds && typeof rawData.dumpsterIds === 'string') {
         try {
             dataToValidate.dumpsterIds = JSON.parse(rawData.dumpsterIds);
         } catch (e) {
-            return { message: 'error', error: "Formato de IDs de caçamba inválido." }
+            return {
+                message: 'error',
+                error: "Formato de IDs de caçamba inválido."
+            }
         }
     }
 
@@ -783,7 +1022,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         try {
             dataToValidate.attachments = JSON.parse(rawData.attachments);
         } catch (e) {
-            return { message: 'error', error: 'Formato de anexo inválido.' };
+            return {
+                message: 'error',
+                error: 'Formato de anexo inválido.'
+            };
         }
     }
 
@@ -791,7 +1033,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         try {
             dataToValidate.additionalCosts = JSON.parse(rawData.additionalCosts);
         } catch (e) {
-            return { message: 'error', error: "Formato de custos adicionais inválido." }
+            return {
+                message: 'error',
+                error: "Formato de custos adicionais inválido."
+            }
         }
     }
 
@@ -805,9 +1050,12 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         };
     }
 
-    const { id, ...rentalData } = validatedFields.data;
+    const {
+        id,
+        ...rentalData
+    } = validatedFields.data;
 
-    const updateData: Record<string, any> = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined && v !== null));
+    const updateData: Record < string, any > = Object.fromEntries(Object.entries(rentalData).filter(([_, v]) => v !== undefined && v !== null));
 
     if (formData.has('deliveryGoogleMapsLink')) {
         const linkValue = formData.get('deliveryGoogleMapsLink') as string;
@@ -819,7 +1067,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     if (Object.keys(updateData).length === 0) {
-        return { message: 'success', info: 'Nenhum campo para atualizar.' };
+        return {
+            message: 'success',
+            info: 'Nenhum campo para atualizar.'
+        };
     }
 
     try {
@@ -834,7 +1085,9 @@ export async function updateRentalAction(accountId: string, prevState: any, form
             updatedAt: FieldValue.serverTimestamp(),
         });
 
-        const updatedRentalData = { ...rentalBeforeUpdate, ...updateData };
+        const updatedRentalData = { ...rentalBeforeUpdate,
+            ...updateData
+        };
 
         const fullUpdatedRental: PopulatedRental = {
             id,
@@ -861,7 +1114,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
         revalidatePath('/os');
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) as string };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e) as string
+        };
     }
 
     // Only redirect if coming from the edit page, not from a simple attachment update
@@ -872,8 +1128,11 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 }
 
-export async function addAttachmentToRentalAction(accountId: string, rentalId: string, attachment: z.infer<typeof AttachmentSchema>, collectionName: 'rentals' | 'completed_rentals') {
-    if (!accountId || !rentalId) return { message: 'error', error: 'ID da conta ou do aluguel ausente.' };
+export async function addAttachmentToRentalAction(accountId: string, rentalId: string, attachment: z.infer < typeof AttachmentSchema > , collectionName: 'rentals' | 'completed_rentals') {
+    if (!accountId || !rentalId) return {
+        message: 'error',
+        error: 'ID da conta ou do aluguel ausente.'
+    };
 
     try {
         const rentalRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${rentalId}`);
@@ -881,28 +1140,44 @@ export async function addAttachmentToRentalAction(accountId: string, rentalId: s
             attachments: FieldValue.arrayUnion(attachment)
         });
         revalidatePath(collectionName === 'rentals' ? '/os' : '/finance');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
-export async function addAttachmentToOperationAction(accountId: string, operationId: string, attachment: z.infer<typeof AttachmentSchema>, collectionName: 'operations' | 'completed_operations') {
-    if (!accountId || !operationId) return { message: 'error', error: 'ID da conta ou da operação ausente.' };
+export async function addAttachmentToOperationAction(accountId: string, operationId: string, attachment: z.infer < typeof AttachmentSchema > , collectionName: 'operations' | 'completed_operations') {
+    if (!accountId || !operationId) return {
+        message: 'error',
+        error: 'ID da conta ou da operação ausente.'
+    };
     try {
         const opRef = adminDb.doc(`accounts/${accountId}/${collectionName}/${operationId}`);
         await opRef.update({
             attachments: FieldValue.arrayUnion(attachment)
         });
         revalidatePath(collectionName === 'operations' ? '/os' : '/finance');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function deleteAttachmentAction(accountId: string, itemId: string, itemKind: 'rentals' | 'operations' | 'completed_rentals' | 'completed_operations', attachment: Attachment) {
-    if (!accountId || !itemId || !itemKind) return { message: 'error', error: 'Informações incompletas para excluir anexo.' };
+    if (!accountId || !itemId || !itemKind) return {
+        message: 'error',
+        error: 'Informações incompletas para excluir anexo.'
+    };
 
     try {
         await deleteStorageFileAction(attachment.path);
@@ -914,10 +1189,15 @@ export async function deleteAttachmentAction(accountId: string, itemId: string, 
 
         revalidatePath('/os');
         revalidatePath('/finance');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
         console.error("Error deleting attachment reference from DB:", e);
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -939,7 +1219,9 @@ export async function createOperationAction(accountId: string, createdBy: string
             }
             const currentCounter = accountSnap.data()?.operationCounter || 0;
             const newCounter = currentCounter + 1;
-            transaction.update(accountRef, { operationCounter: newCounter });
+            transaction.update(accountRef, {
+                operationCounter: newCounter
+            });
             return newCounter;
         });
 
@@ -997,7 +1279,9 @@ export async function createOperationAction(accountId: string, createdBy: string
                     const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add(recurrenceProfile);
                     recurrenceProfileId = recurrenceRef.id;
 
-                    await recurrenceRef.update({ id: recurrenceProfileId });
+                    await recurrenceRef.update({
+                        id: recurrenceProfileId
+                    });
                 }
             } catch (e) {
                 console.error("Failed to parse recurrence JSON");
@@ -1025,7 +1309,8 @@ export async function createOperationAction(accountId: string, createdBy: string
             };
         }
 
-        const { ...operationData } = validatedFields.data;
+        const { ...operationData
+        } = validatedFields.data;
 
         const finalData = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined));
 
@@ -1035,7 +1320,9 @@ export async function createOperationAction(accountId: string, createdBy: string
         });
 
         if (operationData.truckId) {
-            await db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`).update({ status: 'Em Operação' });
+            await db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`).update({
+                status: 'Em Operação'
+            });
         }
 
         if (validatedFields.data.driverId) {
@@ -1062,21 +1349,39 @@ export async function createOperationAction(accountId: string, createdBy: string
                     id: opDocRef.id,
                     ...operationData,
                     itemType: 'operation',
-                    client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
-                    driver: driverSnap.exists ? { id: driverSnap.id, ...driverSnap.data() } as any : null,
-                    truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
-                    operationTypes: (operationData.typeIds || []).map(id => ({ id, name: opTypeMap.get(id) || 'Tipo desconhecido' })),
+                    client: clientSnap.exists ? {
+                        id: clientSnap.id,
+                        ...clientSnap.data()
+                    } as any : null,
+                    driver: driverSnap.exists ? {
+                        id: driverSnap.id,
+                        ...driverSnap.data()
+                    } as any : null,
+                    truck: truckSnap && truckSnap.exists ? {
+                        id: truckSnap.id,
+                        ...truckSnap.data()
+                    } as any : null,
+                    operationTypes: (operationData.typeIds || []).map(id => ({
+                        id,
+                        name: opTypeMap.get(id) || 'Tipo desconhecido'
+                    })),
                 };
                 await syncOsToGoogleCalendarAction(operationData.driverId, populatedOpForSync);
             }
         } catch (syncError: any) {
             console.error('ERRO DETALHADO DA SINCRONIZAÇÃO:', JSON.stringify(syncError, null, 2));
-            return { message: 'error', error: syncError.message || 'Falha ao sincronizar com Google Agenda.' };
+            return {
+                message: 'error',
+                error: syncError.message || 'Falha ao sincronizar com Google Agenda.'
+            };
         }
 
 
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) as string };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e) as string
+        };
     }
 
     revalidatePath('/os');
@@ -1085,13 +1390,17 @@ export async function createOperationAction(accountId: string, createdBy: string
 
 export async function updateOperationAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
-    const dataToValidate: Record<string, any> = { ...rawData };
+    const dataToValidate: Record < string, any > = { ...rawData
+    };
 
     if (rawData.additionalCosts && typeof rawData.additionalCosts === 'string') {
         try {
             dataToValidate.additionalCosts = JSON.parse(rawData.additionalCosts);
         } catch (e) {
-            return { message: 'error', error: "Formato de custos adicionais inválido." }
+            return {
+                message: 'error',
+                error: "Formato de custos adicionais inválido."
+            }
         }
     }
 
@@ -1099,7 +1408,10 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         try {
             dataToValidate.typeIds = JSON.parse(rawData.typeIds);
         } catch (e) {
-            return { message: 'error', error: "Formato de tipos de operação inválido." }
+            return {
+                message: 'error',
+                error: "Formato de tipos de operação inválido."
+            }
         }
     }
 
@@ -1107,7 +1419,10 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         try {
             dataToValidate.attachments = JSON.parse(rawData.attachments);
         } catch (e) {
-            return { message: 'error', error: "Formato de anexos inválido." }
+            return {
+                message: 'error',
+                error: "Formato de anexos inválido."
+            }
         }
     }
 
@@ -1129,8 +1444,11 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         };
     }
 
-    const { id, ...operationData } = validatedFields.data;
-    const updateData: Record<string, any> = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined && v !== null));
+    const {
+        id,
+        ...operationData
+    } = validatedFields.data;
+    const updateData: Record < string, any > = Object.fromEntries(Object.entries(operationData).filter(([_, v]) => v !== undefined && v !== null));
 
     if (formData.has('destinationGoogleMapsLink')) {
         const linkValue = formData.get('destinationGoogleMapsLink') as string;
@@ -1138,7 +1456,10 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 
     if (Object.keys(updateData).length === 0) {
-        return { message: 'success', info: 'Nenhum campo para atualizar.' };
+        return {
+            message: 'success',
+            info: 'Nenhum campo para atualizar.'
+        };
     }
 
     try {
@@ -1164,7 +1485,9 @@ export async function updateOperationAction(accountId: string, prevState: any, f
                 const userDoc = await adminDb.doc(`users/${updateData.driverId}`).get();
                 if (userDoc.exists && userDoc.data()?.googleCalendar) {
 
-                    const updatedOpData = { ...opBeforeUpdate, ...updateData };
+                    const updatedOpData = { ...opBeforeUpdate,
+                        ...updateData
+                    };
 
                     const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${updatedOpData.clientId}`).get();
                     const driverSnap = userDoc;
@@ -1178,10 +1501,22 @@ export async function updateOperationAction(accountId: string, prevState: any, f
                         id,
                         ...updatedOpData,
                         itemType: 'operation',
-                        client: clientSnap.exists ? { id: clientSnap.id, ...clientSnap.data() } as any : null,
-                        driver: driverSnap.exists ? { id: driverSnap.id, ...driverSnap.data() } as any : null,
-                        truck: truckSnap && truckSnap.exists ? { id: truckSnap.id, ...truckSnap.data() } as any : null,
-                        operationTypes: (updatedOpData.typeIds || []).map(typeId => ({ id: typeId, name: opTypeMap.get(typeId) || 'Tipo desconhecido' })),
+                        client: clientSnap.exists ? {
+                            id: clientSnap.id,
+                            ...clientSnap.data()
+                        } as any : null,
+                        driver: driverSnap.exists ? {
+                            id: driverSnap.id,
+                            ...driverSnap.data()
+                        } as any : null,
+                        truck: truckSnap && truckSnap.exists ? {
+                            id: truckSnap.id,
+                            ...truckSnap.data()
+                        } as any : null,
+                        operationTypes: (updatedOpData.typeIds || []).map(typeId => ({
+                            id: typeId,
+                            name: opTypeMap.get(typeId) || 'Tipo desconhecido'
+                        })),
                     };
 
                     await syncOsToGoogleCalendarAction(updateData.driverId, populatedOpForSync);
@@ -1194,7 +1529,10 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         revalidatePath('/operations');
         revalidatePath('/os');
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 
     // Only redirect if coming from the edit page
@@ -1208,7 +1546,10 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
 export async function finishOperationAction(accountId: string, operationId: string) {
     if (!accountId || !operationId) {
-        return { message: 'error', error: 'ID da conta ou da operação está ausente.' };
+        return {
+            message: 'error',
+            error: 'ID da conta ou da operação está ausente.'
+        };
     }
     const db = adminDb;
     const batch = db.batch();
@@ -1233,7 +1574,9 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         if (operationData.truckId) {
             const truckRef = db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`);
-            batch.update(truckRef, { status: 'Disponível' });
+            batch.update(truckRef, {
+                status: 'Disponível'
+            });
         }
 
         await batch.commit();
@@ -1242,15 +1585,23 @@ export async function finishOperationAction(accountId: string, operationId: stri
         revalidatePath('/finance');
         revalidatePath('/os');
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function deleteOperationAction(accountId: string, operationId: string) {
     if (!accountId || !operationId) {
-        return { message: 'error', error: 'ID da conta ou da operação está ausente.' };
+        return {
+            message: 'error',
+            error: 'ID da conta ou da operação está ausente.'
+        };
     }
     const db = adminDb;
     try {
@@ -1260,7 +1611,9 @@ export async function deleteOperationAction(accountId: string, operationId: stri
             const opData = opSnap.data() as Operation;
             if (opData.truckId) {
                 const truckRef = db.doc(`accounts/${accountId}/trucks/${opData.truckId}`);
-                await truckRef.update({ status: 'Disponível' });
+                await truckRef.update({
+                    status: 'Disponível'
+                });
             }
             if (opData.attachments && opData.attachments.length > 0) {
                 for (const attachment of opData.attachments) {
@@ -1272,9 +1625,14 @@ export async function deleteOperationAction(accountId: string, operationId: stri
         revalidatePath('/operations');
         revalidatePath('/os');
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1300,9 +1658,14 @@ export async function createTruckAction(accountId: string, prevState: any, formD
             createdAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1316,7 +1679,10 @@ export async function updateTruckAction(accountId: string, prevState: any, formD
         };
     }
 
-    const { id, ...truckData } = validatedFields.data;
+    const {
+        id,
+        ...truckData
+    } = validatedFields.data;
 
     try {
         const truckDoc = adminDb.doc(`accounts/${accountId}/trucks/${id}`);
@@ -1325,9 +1691,14 @@ export async function updateTruckAction(accountId: string, prevState: any, formD
             updatedAt: FieldValue.serverTimestamp(),
         });
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1335,20 +1706,32 @@ export async function deleteTruckAction(accountId: string, truckId: string) {
     try {
         await adminDb.doc(`accounts/${accountId}/trucks/${truckId}`).delete();
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function updateTruckStatusAction(accountId: string, truckId: string, newStatus: Truck['status']) {
     try {
         const truckRef = adminDb.doc(`accounts/${accountId}/trucks/${truckId}`);
-        await truckRef.update({ status: newStatus });
+        await truckRef.update({
+            status: newStatus
+        });
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 // #endregion
@@ -1356,7 +1739,9 @@ export async function updateTruckStatusAction(accountId: string, truckId: string
 // #region Settings & Reset Actions
 
 export async function updateBasesAction(accountId: string, bases: any[]) {
-    const validatedFields = UpdateBasesSchema.safeParse({ bases });
+    const validatedFields = UpdateBasesSchema.safeParse({
+        bases
+    });
 
     if (!validatedFields.success) {
         console.error("Base validation error:", validatedFields.error.flatten().fieldErrors);
@@ -1373,9 +1758,13 @@ export async function updateBasesAction(accountId: string, bases: any[]) {
         });
         revalidatePath('/settings');
         revalidatePath('/operations/new');
-        return { message: 'success' as const };
+        return {
+            message: 'success' as const
+        };
     } catch (e) {
-        return { message: 'error' as const, error: handleFirebaseError(e) };
+        return {
+            message: 'error' as const, error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1384,17 +1773,27 @@ export async function updateOperationTypesAction(accountId: string, types: Opera
     const validatedFields = z.array(OperationTypeSchema).safeParse(types);
 
     if (!validatedFields.success) {
-        return { message: 'error', error: "Tipos de operação inválidos." };
+        return {
+            message: 'error',
+            error: "Tipos de operação inválidos."
+        };
     }
 
     try {
         const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
-        await accountRef.update({ operationTypes: validatedFields.data });
+        await accountRef.update({
+            operationTypes: validatedFields.data
+        });
         revalidatePath('/settings');
         revalidatePath('/operations/new');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1402,22 +1801,34 @@ export async function updateTruckTypesAction(accountId: string, types: TruckType
     const validatedFields = z.array(TruckTypeSchema).safeParse(types);
 
     if (!validatedFields.success) {
-        return { message: 'error', error: "Tipos de caminhão inválidos." };
+        return {
+            message: 'error',
+            error: "Tipos de caminhão inválidos."
+        };
     }
 
     try {
         const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
-        await accountRef.update({ truckTypes: validatedFields.data });
+        await accountRef.update({
+            truckTypes: validatedFields.data
+        });
         revalidatePath('/fleet');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 
 export async function updateOperationalCostsAction(accountId: string, costs: OperationalCost[]) {
-    const validatedFields = UpdateOperationalCostsSchema.safeParse({ operationalCosts: costs });
+    const validatedFields = UpdateOperationalCostsSchema.safeParse({
+        operationalCosts: costs
+    });
 
     if (!validatedFields.success) {
         return {
@@ -1432,9 +1843,13 @@ export async function updateOperationalCostsAction(accountId: string, costs: Ope
             operationalCosts: validatedFields.data.operationalCosts ?? []
         });
         revalidatePath('/settings');
-        return { message: 'success' as const };
+        return {
+            message: 'success' as const
+        };
     } catch (e) {
-        return { message: 'error' as const, error: handleFirebaseError(e) };
+        return {
+            message: 'error' as const, error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1457,15 +1872,20 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
         });
         revalidatePath('/settings');
         revalidatePath('/rentals/new');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
-async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number): Promise<string[]> {
+async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number): Promise < string[] > {
     const collectionRef = db.collection(collectionPath);
-    let query = collectionRef.orderBy(FieldPath.documentId()).limit(batchSize);
+    let query = collectionRef.orderBy(FieldValue.documentId()).limit(batchSize);
     let attachmentPaths: string[] = [];
 
     while (true) {
@@ -1489,7 +1909,7 @@ async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectio
         await batch.commit();
 
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        query = collectionRef.orderBy(FieldPath.documentId()).startAfter(lastVisible).limit(batchSize);
+        query = collectionRef.orderBy(FieldValue.documentId()).startAfter(lastVisible).limit(batchSize);
     }
 
     return attachmentPaths;
@@ -1497,64 +1917,99 @@ async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectio
 
 
 export async function resetCompletedRentalsAction(accountId: string) {
-    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
+    if (!accountId) return {
+        message: 'error',
+        error: 'Conta não identificada.'
+    };
     try {
         const pathsToDelete = await deleteCollectionByPath(adminDb, `accounts/${accountId}/completed_rentals`, 50);
         for (const path of pathsToDelete) {
             await deleteStorageFileAction(path);
         }
         revalidatePath('/finance');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function resetCompletedOperationsAction(accountId: string) {
-    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
+    if (!accountId) return {
+        message: 'error',
+        error: 'Conta não identificada.'
+    };
     try {
         const pathsToDelete = await deleteCollectionByPath(adminDb, `accounts/${accountId}/completed_operations`, 50);
         for (const path of pathsToDelete) {
             await deleteStorageFileAction(path);
         }
         revalidatePath('/finance');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function resetActiveRentalsAction(accountId: string) {
-    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
+    if (!accountId) return {
+        message: 'error',
+        error: 'Conta não identificada.'
+    };
     try {
         const pathsToDelete = await deleteCollectionByPath(adminDb, `accounts/${accountId}/rentals`, 50);
         for (const path of pathsToDelete) {
             await deleteStorageFileAction(path);
         }
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function resetActiveOperationsAction(accountId: string) {
-    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
+    if (!accountId) return {
+        message: 'error',
+        error: 'Conta não identificada.'
+    };
     try {
         const pathsToDelete = await deleteCollectionByPath(adminDb, `accounts/${accountId}/operations`, 50);
         for (const path of pathsToDelete) {
             await deleteStorageFileAction(path);
         }
         revalidatePath('/operations');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function resetAllDataAction(accountId: string) {
     if (!accountId) {
-        return { message: 'error', error: 'Conta não identificada.' };
+        return {
+            message: 'error',
+            error: 'Conta não identificada.'
+        };
     }
     const db = adminDb;
     try {
@@ -1578,10 +2033,15 @@ export async function resetAllDataAction(accountId: string) {
 
         revalidatePath('/settings');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
         console.error("Error in resetAllDataAction (server-side part):", e);
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1591,7 +2051,10 @@ export async function resetAllDataAction(accountId: string) {
 // #region Backup Actions
 
 export async function updateBackupSettingsAction(accountId: string, prevState: any, formData: FormData) {
-    if (!accountId) return { message: 'error', error: 'Conta não identificada.' };
+    if (!accountId) return {
+        message: 'error',
+        error: 'Conta não identificada.'
+    };
 
     const validatedFields = UpdateBackupSettingsSchema.safeParse(Object.fromEntries(formData.entries()));
 
@@ -1609,9 +2072,14 @@ export async function updateBackupSettingsAction(accountId: string, prevState: a
             backupRetentionDays: validatedFields.data.backupRetentionDays,
         });
         revalidatePath('/settings');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1643,7 +2111,10 @@ async function copyCollection(
 
 export async function createFirestoreBackupAction(accountId: string, retentionDays?: number) {
     if (!accountId) {
-        return { message: 'error', error: 'Conta não identificada.' };
+        return {
+            message: 'error',
+            error: 'Conta não identificada.'
+        };
     }
 
     const db = adminDb;
@@ -1676,21 +2147,33 @@ export async function createFirestoreBackupAction(accountId: string, retentionDa
             await copyCollection(db, sourcePath, destPath);
         }
 
-        await backupDocRef.update({ status: 'completed' });
+        await backupDocRef.update({
+            status: 'completed'
+        });
 
         const accountRef = db.doc(`accounts/${accountId}`);
-        await accountRef.update({ lastBackupDate: timestamp.toISOString() });
+        await accountRef.update({
+            lastBackupDate: timestamp.toISOString()
+        });
 
         if (typeof retentionDays === 'number' && retentionDays > 0) {
             await cleanupOldBackupsAction(accountId, retentionDays);
         }
 
         revalidatePath('/settings');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
 
     } catch (e) {
-        await backupDocRef.update({ status: 'failed', error: handleFirebaseError(e) });
-        return { message: 'error', error: handleFirebaseError(e) };
+        await backupDocRef.update({
+            status: 'failed',
+            error: handleFirebaseError(e)
+        });
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1708,10 +2191,13 @@ export async function cleanupOldBackupsAction(accountId: string, retentionDays: 
 
     if (snapshot.empty) {
         console.log("No old backups to delete.");
-        return { message: 'success', info: 'No old backups found.' };
+        return {
+            message: 'success',
+            info: 'No old backups found.'
+        };
     }
 
-    const deletePromises: Promise<any>[] = [];
+    const deletePromises: Promise < any > [] = [];
     snapshot.forEach(doc => {
         console.log(`Scheduling deletion for old backup: ${doc.id}`);
         deletePromises.push(deleteFirestoreBackupAction(accountId, doc.id));
@@ -1720,16 +2206,25 @@ export async function cleanupOldBackupsAction(accountId: string, retentionDays: 
     try {
         await Promise.all(deletePromises);
         console.log(`Successfully deleted ${deletePromises.length} old backups.`);
-        return { message: 'success', deletedCount: deletePromises.length };
+        return {
+            message: 'success',
+            deletedCount: deletePromises.length
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 
 export async function restoreFirestoreBackupAction(accountId: string, backupId: string) {
     if (!accountId || !backupId) {
-        return { message: 'error', error: 'IDs de conta ou backup ausentes.' };
+        return {
+            message: 'error',
+            error: 'IDs de conta ou backup ausentes.'
+        };
     }
 
     const db = adminDb;
@@ -1762,16 +2257,24 @@ export async function restoreFirestoreBackupAction(accountId: string, backupId: 
 
         revalidatePath('/settings');
         revalidatePath('/');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
         console.error("Restore Error:", e);
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function deleteFirestoreBackupAction(accountId: string, backupId: string) {
     if (!accountId || !backupId) {
-        return { message: 'error', error: 'IDs de conta ou backup ausentes.' };
+        return {
+            message: 'error',
+            error: 'IDs de conta ou backup ausentes.'
+        };
     }
 
     const db = adminDb;
@@ -1791,10 +2294,15 @@ export async function deleteFirestoreBackupAction(accountId: string, backupId: s
         await backupDocRef.delete();
 
         revalidatePath('/settings');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
         console.error("Delete Backup Error:", e);
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1816,14 +2324,24 @@ export async function deleteStorageFileAction(pathOrUrl: string) {
         }
 
         const bucket = getStorage(adminApp).bucket();
-        await bucket.file(objectPath).delete({ ignoreNotFound: true });
-        return { message: 'success' };
+        await bucket.file(objectPath).delete({
+            ignoreNotFound: true
+        });
+        return {
+            message: 'success'
+        };
     } catch (e: any) {
         console.error("Error deleting storage file:", e);
         if (e?.code === 404) {
-            return { message: "error", error: "Arquivo não encontrado no bucket (404)." };
+            return {
+                message: "error",
+                error: "Arquivo não encontrado no bucket (404)."
+            };
         }
-        return { message: "error", error: `Falha ao excluir: ${e?.message ?? e}` };
+        return {
+            message: "error",
+            error: `Falha ao excluir: ${e?.message ?? e}`
+        };
     }
 }
 
@@ -1833,7 +2351,9 @@ export async function deleteStorageFileAction(pathOrUrl: string) {
 // #region Google Calendar Actions
 export async function getGoogleAuthUrlAction(userId: string) {
     if (!userId) {
-        return { error: 'Usuário não autenticado.' };
+        return {
+            error: 'Usuário não autenticado.'
+        };
     }
     try {
         const oAuth2Client = new google.auth.OAuth2(
@@ -1853,16 +2373,22 @@ export async function getGoogleAuthUrlAction(userId: string) {
             state: userId, // Pass the user ID in the state parameter
         });
 
-        return { url };
+        return {
+            url
+        };
     } catch (error) {
         console.error("Error generating Google Auth URL:", error);
-        return { error: 'Falha ao gerar URL de autenticação do Google.' };
+        return {
+            error: 'Falha ao gerar URL de autenticação do Google.'
+        };
     }
 }
 
 export async function disconnectGoogleCalendarAction(userId: string) {
     if (!userId) {
-        return { message: 'error' as const, error: 'Usuário não identificado.' };
+        return {
+            message: 'error' as const, error: 'Usuário não identificado.'
+        };
     }
     try {
         const userRef = adminDb.doc(`users/${userId}`);
@@ -1870,9 +2396,13 @@ export async function disconnectGoogleCalendarAction(userId: string) {
             googleCalendar: FieldValue.delete()
         });
         revalidatePath('/');
-        return { message: 'success' as const };
+        return {
+            message: 'success' as const
+        };
     } catch (e) {
-        return { message: 'error' as const, error: handleFirebaseError(e) };
+        return {
+            message: 'error' as const, error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -1913,7 +2443,9 @@ async function syncCalendarEvent(
                     requestBody: eventResource,
                 });
                 if (newEvent.data.id) {
-                    await osRef.update({ [eventIdField]: newEvent.data.id });
+                    await osRef.update({
+                        [eventIdField]: newEvent.data.id
+                    });
                     console.log(`Novo evento ${newEvent.data.id} (${eventIdField}) criado.`);
                 }
             } else {
@@ -1926,7 +2458,9 @@ async function syncCalendarEvent(
             requestBody: eventResource,
         });
         if (newEvent.data.id) {
-            await osRef.update({ [eventIdField]: newEvent.data.id });
+            await osRef.update({
+                [eventIdField]: newEvent.data.id
+            });
             console.log(`Novo evento ${newEvent.data.id} (${eventIdField}) criado.`);
         }
     }
@@ -1952,10 +2486,14 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         process.env.GOOGLE_REDIRECT_URI
     );
 
-    oAuth2Client.setCredentials({ refresh_token: googleCalendar.refreshToken });
+    oAuth2Client.setCredentials({
+        refresh_token: googleCalendar.refreshToken
+    });
 
     try {
-        const { credentials } = await oAuth2Client.refreshAccessToken();
+        const {
+            credentials
+        } = await oAuth2Client.refreshAccessToken();
         oAuth2Client.setCredentials(credentials);
         await userRef.update({
             'googleCalendar.accessToken': credentials.access_token,
@@ -1964,12 +2502,17 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         });
     } catch (error: any) {
         console.error(`Erro ao atualizar o token de acesso do Google para o usuário ${userId}:`, error.response?.data || error.message);
-        await userRef.update({ 'googleCalendar.needsReauth': true });
+        await userRef.update({
+            'googleCalendar.needsReauth': true
+        });
         console.log(`Integração para o usuário ${userId} marcada para reautenticação.`);
         return;
     }
 
-    const calendar = google.calendar({ version: 'v3', auth: oAuth2Client });
+    const calendar = google.calendar({
+        version: 'v3',
+        auth: oAuth2Client
+    });
     const calendarId = googleCalendar.calendarId || 'primary';
 
     if (os.itemType === 'rental') {
@@ -1981,8 +2524,14 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         const mainEventResource = {
             summary: `Aluguel: ${rental.client?.name} - Caçamba(s): ${dumpsterNames}`,
             description: `<b>OS:</b> #${rental.sequentialId}\n<b>Cliente:</b> ${rental.client?.name}\n<b>Caçambas:</b> ${dumpsterNames}\n<b>Local:</b> ${rental.deliveryAddress}\n<b>Observações:</b> ${rental.observations || ''}`,
-            start: { dateTime: toRfc3339(rental.rentalDate), timeZone: 'America/Sao_Paulo' },
-            end: { dateTime: toRfc3339(rental.returnDate), timeZone: 'America/Sao_Paulo' },
+            start: {
+                dateTime: toRfc3339(rental.rentalDate),
+                timeZone: 'America/Sao_Paulo'
+            },
+            end: {
+                dateTime: toRfc3339(rental.returnDate),
+                timeZone: 'America/Sao_Paulo'
+            },
         };
         await syncCalendarEvent(calendar, calendarId, osRef, 'googleCalendarEventId', mainEventResource);
 
@@ -1992,8 +2541,16 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
             const swapEventResource = {
                 summary: `Troca de Caçamba: ${rental.client?.name}`,
                 description: `Troca agendada para a OS #${rental.sequentialId} no endereço ${rental.deliveryAddress}.`,
-                start: { dateTime: toRfc3339(swapDateTime), timeZone: 'America/Sao_Paulo' },
-                end: { dateTime: toRfc3339(set(swapDateTime, { minutes: swapDateTime.getMinutes() + 30 })), timeZone: 'America/Sao_Paulo' }, // Assuming 30 min duration
+                start: {
+                    dateTime: toRfc3339(swapDateTime),
+                    timeZone: 'America/Sao_Paulo'
+                },
+                end: {
+                    dateTime: toRfc3339(set(swapDateTime, {
+                        minutes: swapDateTime.getMinutes() + 30
+                    })),
+                    timeZone: 'America/Sao_Paulo'
+                }, // Assuming 30 min duration
             };
             await syncCalendarEvent(calendar, calendarId, osRef, 'googleCalendarSwapEventId', swapEventResource);
         }
@@ -2006,8 +2563,14 @@ export async function syncOsToGoogleCalendarAction(userId: string, os: Populated
         const eventResource = {
             summary: `${opTypes} - ${operation.client?.name}`,
             description: `<b>OS:</b> #${operation.sequentialId}\n<b>Cliente:</b> ${operation.client?.name}\n<b>Destino:</b> ${operation.destinationAddress}\n<b>Observações:</b> ${operation.observations || ''}`,
-            start: { dateTime: toRfc3339(operation.startDate), timeZone: 'America/Sao_Paulo' },
-            end: { dateTime: toRfc3339(operation.endDate), timeZone: 'America/Sao_Paulo' },
+            start: {
+                dateTime: toRfc3339(operation.startDate),
+                timeZone: 'America/Sao_Paulo'
+            },
+            end: {
+                dateTime: toRfc3339(operation.endDate),
+                timeZone: 'America/Sao_Paulo'
+            },
         };
         await syncCalendarEvent(calendar, calendarId, osRef, 'googleCalendarEventId', eventResource);
     }
@@ -2022,7 +2585,10 @@ export async function syncAllOsToGoogleCalendarAction(userId: string) {
     const userData = userSnap.data() as UserAccount;
     if (!userData.googleCalendar || !userData.accountId) {
         console.log("Integração com o Google Agenda ou accountId não configurados para este usuário.");
-        return { message: 'error', error: 'Integração com Google Agenda não configurada.' };
+        return {
+            message: 'error',
+            error: 'Integração com Google Agenda não configurada.'
+        };
     }
 
     const rentals = await getPopulatedRentalsForServer(userData.accountId);
@@ -2035,10 +2601,15 @@ export async function syncAllOsToGoogleCalendarAction(userId: string) {
 
     try {
         await Promise.all(syncPromises);
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
         console.error("Error during batch sync:", e);
-        return { message: 'error', error: 'Falha ao sincronizar todos os eventos.' };
+        return {
+            message: 'error',
+            error: 'Falha ao sincronizar todos os eventos.'
+        };
     }
 }
 
@@ -2047,12 +2618,16 @@ export async function syncAllOsToGoogleCalendarAction(userId: string) {
 // #region Notification Actions
 export async function uploadNotificationImageAction(accountId: string, image: UploadedImage) {
     if (!accountId || !image) {
-        return { message: 'error' as const, error: 'Dados insuficientes para o upload.' };
+        return {
+            message: 'error' as const, error: 'Dados insuficientes para o upload.'
+        };
     }
 
     const validatedImage = UploadedImageSchema.safeParse(image);
     if (!validatedImage.success) {
-        return { message: 'error' as const, error: 'Objeto de imagem inválido.' };
+        return {
+            message: 'error' as const, error: 'Objeto de imagem inválido.'
+        };
     }
 
     try {
@@ -2062,17 +2637,23 @@ export async function uploadNotificationImageAction(accountId: string, image: Up
 
         revalidatePath('/notifications-studio');
 
-        return { message: 'success' as const, newImage: validatedImage.data };
+        return {
+            message: 'success' as const, newImage: validatedImage.data
+        };
 
     } catch (e) {
         console.error("Upload server action error:", e);
-        return { message: 'error' as const, error: handleFirebaseError(e) };
+        return {
+            message: 'error' as const, error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function deleteNotificationImageAction(accountId: string, imagePath: string) {
     if (!accountId || !imagePath) {
-        return { message: 'error' as const, error: 'Informações incompletas.' };
+        return {
+            message: 'error' as const, error: 'Informações incompletas.'
+        };
     }
 
     try {
@@ -2081,33 +2662,52 @@ export async function deleteNotificationImageAction(accountId: string, imagePath
         if (accountSnap.exists) {
             const currentImages: UploadedImage[] = accountSnap.data()?.notificationImages || [];
             const updatedImages = currentImages.filter(img => img.path !== imagePath);
-            await accountRef.update({ notificationImages: updatedImages });
+            await accountRef.update({
+                notificationImages: updatedImages
+            });
         }
 
         revalidatePath('/notifications-studio');
-        return { message: 'success' as const };
+        return {
+            message: 'success' as const
+        };
     } catch (e) {
         console.error('Error deleting notification image reference from DB:', e);
-        return { message: 'error' as const, error: handleFirebaseError(e) };
+        return {
+            message: 'error' as const, error: handleFirebaseError(e)
+        };
     }
 }
 
 
 export async function updateNotificationImagesAction(accountId: string, images: UploadedImage[]) {
     if (!accountId) {
-        return { message: 'error', error: 'Conta não identificada.' };
+        return {
+            message: 'error',
+            error: 'Conta não identificada.'
+        };
     }
     const validatedImages = z.array(UploadedImageSchema).safeParse(images);
     if (!validatedImages.success) {
-        return { message: 'error', error: 'Dados de imagem inválidos.' };
+        return {
+            message: 'error',
+            error: 'Dados de imagem inválidos.'
+        };
     }
     try {
         const accountRef = adminDb.doc(`accounts/${accountId}`);
-        await accountRef.update({ notificationImages: validatedImages.data });
+        await accountRef.update({
+            notificationImages: validatedImages.data
+        });
         revalidatePath('/notifications-studio');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -2131,7 +2731,10 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
     let notificationsSentCount = 0;
 
     for (const doc of rentalsSnap.docs) {
-        const rental = { id: doc.id, ...doc.data() } as Rental;
+        const rental = {
+            id: doc.id,
+            ...doc.data()
+        } as Rental;
         const returnDate = parseISO(rental.returnDate);
 
         if (isToday(addDays(returnDate, -1)) && !rental.notificationsSent?.due) {
@@ -2140,7 +2743,9 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
                 title: 'Lembrete de Retirada',
                 body: `A OS para ${rental.deliveryAddress} vence amanhã.`,
             });
-            batch.update(doc.ref, { 'notificationsSent.due': true });
+            batch.update(doc.ref, {
+                'notificationsSent.due': true
+            });
             notificationsSentCount++;
         }
 
@@ -2150,7 +2755,9 @@ export async function checkAndSendDueNotificationsAction(accountId: string) {
                 title: 'OS Atrasada!',
                 body: `A OS para ${rental.deliveryAddress} está atrasada.`,
             });
-            batch.update(doc.ref, { 'notificationsSent.late': true });
+            batch.update(doc.ref, {
+                'notificationsSent.late': true
+            });
             notificationsSentCount++;
         }
     }
@@ -2176,10 +2783,21 @@ export async function sendPushNotificationAction(formData: FormData) {
 
     if (!parsed.success) {
         const firstError = Object.values(parsed.error.flatten().fieldErrors).flat()[0];
-        return { message: 'error', error: firstError || 'Dados do formulário inválidos.' };
+        return {
+            message: 'error',
+            error: firstError || 'Dados do formulário inválidos.'
+        };
     }
 
-    const { title, message, targetType, targetIds, imageUrl, linkUrl, senderAccountId } = parsed.data;
+    const {
+        title,
+        message,
+        targetType,
+        targetIds,
+        imageUrl,
+        linkUrl,
+        senderAccountId
+    } = parsed.data;
 
     try {
         let recipientIds: string[] = [];
@@ -2189,32 +2807,39 @@ export async function sendPushNotificationAction(formData: FormData) {
                 const usersSnap = await adminDb.collection('users').get();
                 recipientIds = usersSnap.docs.map(d => d.id);
                 break;
-            case 'my-team': {
-                const accountSnap = await adminDb.doc(`accounts/${senderAccountId}`).get();
-                recipientIds = accountSnap.data()?.members || [];
-                break;
-            }
-            case 'specific-members': {
-                recipientIds = targetIds ? targetIds.split(',') : [];
-                break;
-            }
-            case 'specific-clients': {
-                if (!targetIds) break;
-                const accountIds = targetIds.split(',');
-                const accountPromises = accountIds.map(id => adminDb.doc(`accounts/${id}`).get());
-                const accountSnaps = await Promise.all(accountPromises);
-                recipientIds = accountSnaps.flatMap(snap => snap.data()?.members || []);
-                break;
-            }
-            case 'specific-users': {
-                if (!targetIds) break;
-                recipientIds = targetIds.split(',');
-                break;
-            }
+            case 'my-team':
+                {
+                    const accountSnap = await adminDb.doc(`accounts/${senderAccountId}`).get();
+                    recipientIds = accountSnap.data()?.members || [];
+                    break;
+                }
+            case 'specific-members':
+                {
+                    recipientIds = targetIds ? targetIds.split(',') : [];
+                    break;
+                }
+            case 'specific-clients':
+                {
+                    if (!targetIds) break;
+                    const accountIds = targetIds.split(',');
+                    const accountPromises = accountIds.map(id => adminDb.doc(`accounts/${id}`).get());
+                    const accountSnaps = await Promise.all(accountPromises);
+                    recipientIds = accountSnaps.flatMap(snap => snap.data()?.members || []);
+                    break;
+                }
+            case 'specific-users':
+                {
+                    if (!targetIds) break;
+                    recipientIds = targetIds.split(',');
+                    break;
+                }
         }
 
         if (recipientIds.length === 0) {
-            return { message: 'error', error: 'Nenhum destinatário encontrado para a seleção.' };
+            return {
+                message: 'error',
+                error: 'Nenhum destinatário encontrado para a seleção.'
+            };
         }
 
         const uniqueRecipientIds = [...new Set(recipientIds)];
@@ -2231,9 +2856,14 @@ export async function sendPushNotificationAction(formData: FormData) {
 
         await Promise.all(notificationPromises);
 
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -2263,29 +2893,55 @@ export async function sendFirstLoginNotificationToSuperAdminAction(newClientName
 
 // #region Super Admin Actions
 export async function createSuperAdminAction(invokerId: string | null, prevState: any, formData: FormData) {
-    if (!invokerId) return { message: 'Apenas Super Admins podem criar outros Super Admins.' };
+    if (!invokerId) return {
+        message: 'Apenas Super Admins podem criar outros Super Admins.'
+    };
 
     const invokerUser = await adminAuth.getUser(invokerId);
     if (invokerUser.customClaims?.role !== 'superadmin') {
-        return { message: 'Apenas Super Admins podem criar outros Super Admins.' };
+        return {
+            message: 'Apenas Super Admins podem criar outros Super Admins.'
+        };
     }
 
     const validatedFields = SuperAdminCreationSchema.safeParse(Object.fromEntries(formData.entries()));
 
     if (!validatedFields.success) {
-        return { message: 'Dados do formulário inválidos.' };
+        return {
+            message: 'Dados do formulário inválidos.'
+        };
     }
 
-    const { name, email, password } = validatedFields.data;
+    const {
+        name,
+        email,
+        password
+    } = validatedFields.data;
 
     try {
-        const { accountId, userId } = await ensureUserDocument({ name, email, password }, null, 'superadmin');
+        const {
+            accountId,
+            userId
+        } = await ensureUserDocument({
+            name,
+            email,
+            password
+        }, null, 'superadmin');
 
         revalidatePath('/admin/superadmins');
-        return { message: 'success', newUser: { name, email, password } };
+        return {
+            message: 'success',
+            newUser: {
+                name,
+                email,
+                password
+            }
+        };
 
     } catch (e) {
-        return { message: handleFirebaseError(e) };
+        return {
+            message: handleFirebaseError(e)
+        };
     }
 }
 
@@ -2294,9 +2950,14 @@ export async function deleteSuperAdminAction(userId: string) {
         await adminAuth.deleteUser(userId);
         await adminDb.doc(`users/${userId}`).delete();
         revalidatePath('/admin/superadmins');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -2321,27 +2982,43 @@ export async function updateUserStatusAction(userId: string, disabled: boolean) 
                 const batch = adminDb.batch();
 
                 for (const memberId of memberIds) {
-                    await adminAuth.updateUser(memberId, { disabled });
+                    await adminAuth.updateUser(memberId, {
+                        disabled
+                    });
                     const memberRef = adminDb.doc(`users/${memberId}`);
-                    batch.update(memberRef, { status: newStatus });
+                    batch.update(memberRef, {
+                        status: newStatus
+                    });
                 }
                 await batch.commit();
             }
         } else {
-            await adminAuth.updateUser(userId, { disabled });
-            await userRef.update({ status: newStatus });
+            await adminAuth.updateUser(userId, {
+                disabled
+            });
+            await userRef.update({
+                status: newStatus
+            });
         }
 
         revalidatePath('/admin/clients');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
 export async function deleteClientAccountAction(accountId: string, ownerId: string) {
     if (!accountId || !ownerId) {
-        return { message: 'error', error: 'ID da conta ou do proprietário ausente.' };
+        return {
+            message: 'error',
+            error: 'ID da conta ou do proprietário ausente.'
+        };
     }
 
     try {
@@ -2349,7 +3026,10 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
         const accountRef = db.doc(`accounts/${accountId}`);
         const accountSnap = await accountRef.get();
         if (!accountSnap.exists) {
-            return { message: 'success', info: 'Account already deleted.' };
+            return {
+                message: 'success',
+                info: 'Account already deleted.'
+            };
         }
 
         const memberIds: string[] = accountSnap.data()?.members || [];
@@ -2378,10 +3058,15 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
         await Promise.all(authDeletePromises);
 
         revalidatePath('/admin/clients');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
 
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
 
@@ -2389,6 +3074,7 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 // #endregion
+
 
 
 
@@ -2445,7 +3131,10 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 export async function cancelRecurrenceAction(accountId: string, recurrenceProfileId: string) {
     if (!accountId || !recurrenceProfileId) {
-        return { message: 'error', error: 'IDs ausentes.' };
+        return {
+            message: 'error',
+            error: 'IDs ausentes.'
+        };
     }
 
     try {
@@ -2456,8 +3145,14 @@ export async function cancelRecurrenceAction(accountId: string, recurrenceProfil
         });
 
         revalidatePath('/os');
-        return { message: 'success' };
+        return {
+            message: 'success'
+        };
     } catch (e) {
-        return { message: 'error', error: handleFirebaseError(e) };
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
     }
 }
+    
