@@ -6,8 +6,7 @@ import { google } from 'googleapis';
 import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
 import {
     adminAuth,
-    adminDb,
-    adminApp
+    adminDb
 } from './firebase-admin';
 import {
     z
@@ -175,7 +174,7 @@ export async function signupAction(inviterAccountId: string | null, prevState: a
 
 export async function updateUserRoleAction(invokerId: string, accountId: string, userId: string, newRole: UserRole) {
     try {
-        const db = getFirestore(adminApp);
+        const db = adminDb;
 
         const accountRef = db.doc(`accounts/${accountId}`);
         const accountSnap = await accountRef.get();
@@ -239,7 +238,7 @@ export async function updateUserRoleAction(invokerId: string, accountId: string,
 
 export async function updateUserPermissionsAction(accountId: string, userId: string, permissions: Permissions) {
     try {
-        const db = getFirestore(adminApp);
+        const db = adminDb;
         const userRef = db.doc(`users/${userId}`);
         const userSnap = await userRef.get();
         if (!userSnap.exists) {
@@ -309,7 +308,7 @@ export async function updateUserPermissionsAction(accountId: string, userId: str
 
 
 export async function removeTeamMemberAction(accountId: string, userId: string) {
-    const db = getFirestore(adminApp);
+    const db = adminDb;
     const batch = db.batch();
     try {
         const userRef = db.doc(`users/${userId}`);
@@ -381,7 +380,7 @@ export async function createClient(accountId: string, prevState: any, formData: 
     }
 
     try {
-        const clientsCollection = getFirestore(adminApp).collection(`accounts/${accountId}/clients`);
+        const clientsCollection = adminDb.collection(`accounts/${accountId}/clients`);
         await clientsCollection.add({
             ...validatedFields.data,
             accountId,
@@ -418,7 +417,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
     }
 
     try {
-        const clientDoc = getFirestore(adminApp).doc(`accounts/${accountId}/clients/${id}`);
+        const clientDoc = adminDb.doc(`accounts/${accountId}/clients/${id}`);
 
         // This is the corrected block
         const {
@@ -454,7 +453,7 @@ export async function updateClient(accountId: string, prevState: any, formData: 
 
 
 export async function deleteClientAction(accountId: string, clientId: string) {
-    const db = getFirestore(adminApp);
+    const db = adminDb;
     const batch = db.batch();
 
     try {
@@ -504,7 +503,7 @@ export async function createDumpster(accountId: string, prevState: any, formData
     }
 
     try {
-        const dumpstersCollection = getFirestore(adminApp).collection(`accounts/${accountId}/dumpsters`);
+        const dumpstersCollection = adminDb.collection(`accounts/${accountId}/dumpsters`);
         await dumpstersCollection.add({
             ...validatedFields.data,
             accountId,
@@ -536,7 +535,7 @@ export async function updateUserProfileAction(userId: string, prevState: any, fo
     } = validatedFields.data;
 
     try {
-        const userRef = getFirestore(adminApp).doc(`users/${userId}`);
+        const userRef = adminDb.doc(`users/${userId}`);
         await userRef.update({
             ...updateData,
             updatedAt: FieldValue.serverTimestamp(),
@@ -572,7 +571,7 @@ export async function deleteSelfUserAction(accountId: string, userId: string) {
             error: "Informações do usuário ausentes."
         };
     }
-    const db = getFirestore(adminApp);
+    const db = adminDb;
     const batch = db.batch();
     try {
         const userRef = db.doc(`users/${userId}`);
@@ -642,7 +641,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
     } = validatedFields.data;
 
     try {
-        const dumpsterDoc = getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${id}`);
+        const dumpsterDoc = adminDb.doc(`accounts/${accountId}/dumpsters/${id}`);
         await dumpsterDoc.update({
             ...dumpsterData,
             accountId,
@@ -663,7 +662,7 @@ export async function updateDumpster(accountId: string, prevState: any, formData
 
 export async function deleteDumpsterAction(accountId: string, dumpsterId: string) {
     try {
-        await getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
+        await adminDb.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`).delete();
         revalidatePath('/dumpsters');
         revalidatePath('/');
         return {
@@ -679,7 +678,7 @@ export async function deleteDumpsterAction(accountId: string, dumpsterId: string
 
 export async function updateDumpsterStatusAction(accountId: string, dumpsterId: string, newStatus: 'Disponível' | 'Em Manutenção') {
     try {
-        const dumpsterRef = getFirestore(adminApp).doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
+        const dumpsterRef = adminDb.doc(`accounts/${accountId}/dumpsters/${dumpsterId}`);
         await dumpsterRef.update({
             status: newStatus
         });
@@ -702,7 +701,7 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
 // #region Rental Actions
 
 export async function createRental(accountId: string, createdBy: string, prevState: any, formData: FormData) {
-    const db = getFirestore(adminApp);
+    const db = adminDb;
     const accountRef = db.doc(`accounts/${accountId}`);
     let rentalDocRef;
 
@@ -902,7 +901,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         };
     }
 
-    const db = getFirestore(adminApp);
+    const db = adminDb;
     const batch = db.batch();
 
     try {
@@ -1074,7 +1073,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     try {
-        const rentalRef = getFirestore(adminApp).doc(`accounts/${accountId}/rentals/${id}`);
+        const rentalRef = adminDb.doc(`accounts/${accountId}/rentals/${id}`);
 
         const rentalBeforeUpdateSnap = await rentalRef.get();
         if (!rentalBeforeUpdateSnap.exists) throw new Error("OS não encontrada.");
@@ -1207,7 +1206,7 @@ export async function deleteAttachmentAction(accountId: string, itemId: string, 
 // #region Operation Actions
 
 export async function createOperationAction(accountId: string, createdBy: string, prevState: any, formData: FormData) {
-    const db = getFirestore(adminApp);
+    const db = adminDb;
     const accountRef = db.doc(`accounts/${accountId}`);
     let opDocRef;
 
@@ -1752,7 +1751,7 @@ export async function updateBasesAction(accountId: string, bases: any[]) {
     }
 
     try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
         await accountRef.update({
             bases: validatedFields.data.bases ?? []
         });
@@ -1780,7 +1779,7 @@ export async function updateOperationTypesAction(accountId: string, types: Opera
     }
 
     try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
         await accountRef.update({
             operationTypes: validatedFields.data
         });
@@ -1808,7 +1807,7 @@ export async function updateTruckTypesAction(accountId: string, types: TruckType
     }
 
     try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
         await accountRef.update({
             truckTypes: validatedFields.data
         });
@@ -1838,7 +1837,7 @@ export async function updateOperationalCostsAction(accountId: string, costs: Ope
     }
 
     try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
         await accountRef.update({
             operationalCosts: validatedFields.data.operationalCosts ?? []
         });
@@ -1866,7 +1865,7 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
     }
 
     try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
         await accountRef.update({
             rentalPrices: validatedFields.data ?? []
         });
@@ -2066,7 +2065,7 @@ export async function updateBackupSettingsAction(accountId: string, prevState: a
     }
 
     try {
-        const accountRef = getFirestore(adminApp).doc(`accounts/${accountId}`);
+        const accountRef = adminDb.doc(`accounts/${accountId}`);
         await accountRef.update({
             backupPeriodicityDays: validatedFields.data.backupPeriodicityDays,
             backupRetentionDays: validatedFields.data.backupRetentionDays,
