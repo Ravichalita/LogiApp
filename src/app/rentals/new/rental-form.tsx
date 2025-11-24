@@ -790,7 +790,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           <Label htmlFor="address-input">Endereço de Entrega</Label>
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+              <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do Google Maps</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -1042,40 +1042,40 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
+      
       <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <TrendingDown className="h-4 w-4 text-destructive" />
-            <span className="font-medium">Custo Total da Operação:</span>
-            <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
-          </div>
-          <CostsDialog
-            costs={additionalCosts}
-            onSave={setAdditionalCosts}
-          >
-            <Button type="button" variant="outline">Adicionar Custos</Button>
-          </CostsDialog>
+            <div className="flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-destructive" />
+                <span className="font-medium">Custo Total da Operação:</span>
+                <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
+            </div>
+            <CostsDialog 
+              costs={additionalCosts} 
+              onSave={setAdditionalCosts} 
+            >
+              <Button type="button" variant="outline">Adicionar Custos</Button>
+            </CostsDialog>
         </div>
         {(totalRentalValue > 0 || totalOperationCost > 0) && (
-          <>
+            <>
             <Separator />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm pt-2 gap-2 sm:gap-4">
-              <div className="flex items-center gap-2">
-                {profit >= 0 ?
-                  <TrendingUp className="h-4 w-4 text-green-600" /> :
-                  <TrendingDown className="h-4 w-4 text-red-600" />
-                }
-                <span className="font-medium">Lucro Previsto:</span>
-                <span className={cn(
-                  "font-bold",
-                  profit >= 0 ? "text-green-600" : "text-red-600"
-                )}>
-                  {formatCurrencyForDisplay(profit)}
-                </span>
-              </div>
+                <div className="flex items-center gap-2">
+                    {profit >= 0 ? 
+                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                        <TrendingDown className="h-4 w-4 text-red-600" />
+                    }
+                    <span className="font-medium">Lucro Previsto:</span>
+                    <span className={cn(
+                        "font-bold",
+                        profit >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                        {formatCurrencyForDisplay(profit)}
+                    </span>
+                </div>
             </div>
-          </>
+            </>
         )}
       </div>
 
@@ -1087,12 +1087,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
       {canUseAttachments && accountId && (
         <div className="p-4 border rounded-md space-y-2 bg-card">
-          <AttachmentsUploader
-            accountId={accountId}
-            attachments={attachments}
-            onAttachmentUploaded={handleAttachmentUploaded}
-            onAttachmentDeleted={handleRemoveAttachment}
-            uploadPath={`accounts/${accountId}/rentals/attachments`}
+          <AttachmentsUploader 
+              accountId={accountId}
+              attachments={attachments}
+              onAttachmentUploaded={handleAttachmentUploaded}
+              onAttachmentDeleted={handleRemoveAttachment}
+              uploadPath={`accounts/${accountId}/rentals/attachments`}
           />
         </div>
       )}
@@ -1105,9 +1105,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <SubmitButton isPending={isPending} />
         <Button asChild variant="outline" size="lg">
-          <Link href="/os">Cancelar</Link>
+            <Link href="/os">Cancelar</Link>
         </Button>
-      </div>
-    </form>
+      </div >
+    </form >
   );
 }

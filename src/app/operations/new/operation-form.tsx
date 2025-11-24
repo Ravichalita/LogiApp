@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils';
 import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format, parseISO, isBefore as isBeforeDate, startOfDay, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
+import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Spinner } from '@/components/ui/spinner';
@@ -129,6 +129,23 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const [directions, setDirections] = useState<{ distanceMeters: number; distance: string, duration: string } | null>(null);
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
+  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+  const [clientSelectOpen, setClientSelectOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
+
+  const [recurrenceData, setRecurrenceData] = useState<RecurrenceData>({
+    enabled: false,
+    frequency: 'weekly',
+    daysOfWeek: [],
+    time: '08:00',
+    billingType: 'perService',
+  });
+
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false);
+  const [isEndDateOpen, setIsEndDateOpen] = useState(false);
+  const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
+  const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
 
@@ -872,6 +889,21 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                 uploadPath={`accounts/${accountId}/operations/attachments`}
             />
         </div>
+       )}
+
+      <div className="space-y-2">
+        <Label htmlFor="observations">Observações</Label>
+        <Textarea id="observations" name="observations" placeholder="Ex: Material a ser coletado, informações de contato no local, etc." />
+      </div>
+
+      <RecurrenceSelector
+        value={recurrenceData}
+        onChange={setRecurrenceData}
+      />
+
+      <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
+        <SubmitButton isPending={isPending} />
+        <Button asChild variant="outline" size="lg">
             <Link href="/os">Cancelar</Link>
         </Button>
       </div >
