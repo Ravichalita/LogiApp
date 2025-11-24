@@ -807,6 +807,9 @@ export default function OSPage() {
                                                 <Button variant="outline" size="lg" className="h-20 flex-col gap-2 w-full"><WhatsAppIcon className="h-6 w-6 fill-current" /> Contato</Button>
                                             </a>
                                             <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('pdf', op)}><Download className="h-6 w-6" /> Baixar PDF</Button>
+                                            {op.recurrenceProfileId && (
+                                                <Button variant="outline" size="lg" className="h-20 flex-col gap-2" onClick={() => handleCancelRecurrence(op)}><RefreshCw className="h-6 w-6 text-blue-500" /> Cancelar Recorrência</Button>
+                                            )}
                                             {canEditOp && <Button variant="destructive" size="lg" className="h-20 flex-col gap-2" onClick={() => handleQuickAction('delete', op)}><Trash2 className="h-6 w-6" /> Excluir</Button>}
                                         </>
                                     }
@@ -817,6 +820,11 @@ export default function OSPage() {
                                                 <div className="absolute top-2 left-3 flex items-center gap-1.5 text-xs font-mono font-bold text-primary">
                                                     <Workflow className="h-3 w-3" />
                                                     <span>OP{op.sequentialId}</span>
+                                                    {op.recurrenceProfileId && (
+                                                        <div className="flex items-center gap-1 ml-2 text-blue-600" title="OS Recorrente">
+                                                            <RefreshCw className="h-3 w-3" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <CardHeader className="pb-4 pt-8">
                                                     <div className="flex items-start justify-between mb-2">
@@ -957,6 +965,12 @@ export default function OSPage() {
                                                                                     <Edit className="mr-2 h-4 w-4" />
                                                                                     Editar
                                                                                 </Link>
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        {op.recurrenceProfileId && (
+                                                                            <DropdownMenuItem onSelect={() => handleCancelRecurrence(op)} className="text-blue-600 focus:text-blue-600 focus:bg-blue-50">
+                                                                                <RefreshCw className="mr-2 h-4 w-4" />
+                                                                                Cancelar Recorrência
                                                                             </DropdownMenuItem>
                                                                         )}
                                                                         {canEditOp && <DropdownMenuSeparator />}
