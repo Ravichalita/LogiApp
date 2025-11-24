@@ -707,6 +707,10 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
 
 // Helper function to calculate the next run date for a recurrence profile
 function calculateNextRunDate(daysOfWeek: number[], time: string): Date {
+    if (!daysOfWeek || daysOfWeek.length === 0) {
+        throw new Error("Selecione pelo menos um dia da semana para a recorrência.");
+    }
+
     const [hours, minutes] = time.split(':').map(Number);
     const now = new Date();
     const todayIndex = getDay(now);
@@ -720,9 +724,9 @@ function calculateNextRunDate(daysOfWeek: number[], time: string): Date {
     }
 
     let nextDate = new Date();
-    if (nextDayIndex > todayIndex) {
+    if (nextDayIndex !== undefined && nextDayIndex > todayIndex) {
         nextDate = addDays(now, nextDayIndex - todayIndex);
-    } else {
+    } else if (nextDayIndex !== undefined) {
         nextDate = addDays(now, 7 - (todayIndex - nextDayIndex));
     }
 
@@ -806,9 +810,13 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                         nextRunDate: nextRunDate.toISOString(),
                         templateData: {} // This will be filled later
                     };
+
+                    const cleanRecurrenceProfile = Object.fromEntries(
+                        Object.entries(recurrenceProfile).filter(([_, v]) => v !== undefined)
+                    );
                     
                     const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
-                        ...recurrenceProfile,
+                        ...cleanRecurrenceProfile,
                         createdAt: FieldValue.serverTimestamp(),
                     });
                     recurrenceProfileId = recurrenceRef.id;
@@ -819,6 +827,10 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                 }
             } catch (e) {
                 console.error("Failed to parse recurrence JSON or create profile", e);
+                return {
+                    message: 'error',
+                    error: e instanceof Error ? e.message : 'Erro ao criar recorrência.'
+                }
             }
         }
 
@@ -1321,8 +1333,12 @@ export async function createOperationAction(accountId: string, createdBy: string
                         templateData: {} // Will be filled later
                     };
 
+                    const cleanRecurrenceProfile = Object.fromEntries(
+                        Object.entries(recurrenceProfile).filter(([_, v]) => v !== undefined)
+                    );
+
                     const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
-                        ...recurrenceProfile,
+                        ...cleanRecurrenceProfile,
                         createdAt: FieldValue.serverTimestamp(),
                     });
                     recurrenceProfileId = recurrenceRef.id;
@@ -1333,6 +1349,10 @@ export async function createOperationAction(accountId: string, createdBy: string
                 }
             } catch (e) {
                 console.error("Failed to parse recurrence JSON or create profile", e);
+                return {
+                    message: 'error',
+                    error: e instanceof Error ? e.message : 'Erro ao criar recorrência.'
+                }
             }
         }
 
@@ -1343,10 +1363,17 @@ export async function createOperationAction(accountId: string, createdBy: string
 
         const dataToValidate = {
             ...rawData,
+            value,
+            additionalCosts,
+            attachments,
+            travelCost,
+            totalCost,
             typeIds,
             sequentialId: newSequentialId,
             status: 'Pendente',
             recurrenceProfileId,
+            accountId,
+            createdBy,
         };
 
         const validatedFields = OperationSchema.safeParse(dataToValidate);

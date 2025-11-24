@@ -482,7 +482,8 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
         })
       }
       if (result?.message && !(result as any).errors) {
-        toast({ title: "Erro", description: result.message, variant: "destructive" });
+        const description = (result as any).error || result.message;
+        toast({ title: "Erro", description: description, variant: "destructive" });
       }
     });
   };
