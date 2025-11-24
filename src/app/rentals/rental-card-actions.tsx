@@ -2,10 +2,10 @@
 'use client';
 
 import { useState, useTransition, useRef, useEffect } from 'react';
-import { finishRentalAction, deleteRentalAction, updateRentalAction, deleteAttachmentAction } from '@/lib/actions';
+import { finishRentalAction, deleteRentalAction, updateRentalAction, deleteAttachmentAction, cancelRecurrenceAction } from '@/lib/actions';
 import type { PopulatedRental, Attachment, Account } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, MessageSquare, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, Map as MapIcon, DollarSign, MapPinned, ArrowRightLeft } from 'lucide-react';
+import { CheckCircle, MapPin, Edit, Trash2, TriangleAlert, CircleDollarSign, CalendarDays, MoreVertical, XCircle, FileText, Hash, Share2, MessageSquare, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, Map as MapIcon, DollarSign, MapPinned, ArrowRightLeft, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { format, differenceInCalendarDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -165,6 +165,17 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
             toast({ title: 'Erro ao remover anexo', description: result.error, variant: 'destructive' });
         }
     });
+  };
+
+  const handleCancelRecurrence = async () => {
+      if (!rental.recurrenceProfileId || !accountId) return;
+
+      const result = await cancelRecurrenceAction(accountId, rental.recurrenceProfileId);
+      if (result.message === 'success') {
+          toast({ title: 'Sucesso', description: 'Recorrência cancelada.' });
+      } else {
+          toast({ title: 'Erro', description: result.error || 'Erro ao cancelar recorrência.', variant: 'destructive' });
+      }
   };
 
 
@@ -369,6 +380,12 @@ export function RentalCardActions({ rental, status }: RentalCardActionsProps) {
                                     <ArrowRightLeft className="mr-2 h-4 w-4" />
                                     Trocar
                                 </button>
+                            </DropdownMenuItem>
+                        )}
+                        {rental.recurrenceProfileId && (
+                            <DropdownMenuItem onSelect={handleCancelRecurrence} className="text-blue-600 focus:text-blue-600 focus:bg-blue-50">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Cancelar Recorrência
                             </DropdownMenuItem>
                         )}
                         {canDelete && !isPendingStatus && (

@@ -1343,10 +1343,17 @@ export async function createOperationAction(accountId: string, createdBy: string
 
         const dataToValidate = {
             ...rawData,
+            value,
+            additionalCosts,
+            attachments,
+            travelCost,
+            totalCost,
             typeIds,
             sequentialId: newSequentialId,
             status: 'Pendente',
             recurrenceProfileId,
+            accountId,
+            createdBy,
         };
 
         const validatedFields = OperationSchema.safeParse(dataToValidate);
