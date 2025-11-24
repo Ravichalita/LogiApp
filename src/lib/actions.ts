@@ -810,9 +810,13 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                         nextRunDate: nextRunDate.toISOString(),
                         templateData: {} // This will be filled later
                     };
+
+                    const cleanRecurrenceProfile = Object.fromEntries(
+                        Object.entries(recurrenceProfile).filter(([_, v]) => v !== undefined)
+                    );
                     
                     const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
-                        ...recurrenceProfile,
+                        ...cleanRecurrenceProfile,
                         createdAt: FieldValue.serverTimestamp(),
                     });
                     recurrenceProfileId = recurrenceRef.id;
@@ -1329,8 +1333,12 @@ export async function createOperationAction(accountId: string, createdBy: string
                         templateData: {} // Will be filled later
                     };
 
+                    const cleanRecurrenceProfile = Object.fromEntries(
+                        Object.entries(recurrenceProfile).filter(([_, v]) => v !== undefined)
+                    );
+
                     const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
-                        ...recurrenceProfile,
+                        ...cleanRecurrenceProfile,
                         createdAt: FieldValue.serverTimestamp(),
                     });
                     recurrenceProfileId = recurrenceRef.id;
