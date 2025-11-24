@@ -95,89 +95,80 @@ export const checkRecurringProfiles = onSchedule("every day 06:00", async (event
     let operationCount = 0;
 
     for (const doc of snapshot.docs) {
-        const profile = doc.data() as RecurrenceProfile;
+        try {
+            const profile = doc.data() as RecurrenceProfile;
 
-        // Safety check: ensure accountId exists
-        if (!profile.accountId) {
-            console.error(`Profile ${doc.id} missing accountId, skipping.`);
-            continue;
-        }
-
-        // 1. Create the new OS (Rental or Operation)
-        const collectionName = profile.type === 'rental' ? 'rentals' : 'operations';
-        const newOsRef = db.collection(`accounts/${profile.accountId}/${collectionName}`).doc();
-
-        const newOsData = {
-            ...profile.templateData,
-            recurrenceProfileId: profile.id,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        };
-
-        // Update specific date fields based on type
-        // We use the scheduled 'nextRunDate' as the start date for the new OS
-        // to ensure consistency even if the function runs slightly late.
-        // However, if it's way in the past, maybe we should use 'now'? 
-        // For recurrence, sticking to the schedule is usually better.
-        const scheduledDate = new Date(profile.nextRunDate);
-
-        if (profile.type === 'rental') {
-            newOsData.rentalDate = profile.nextRunDate; // Keep as string if that's how it's stored
-            // If there's an endDate in template, we might need to shift it? 
-            // Usually rentals are single day or have a duration. 
-            // If template has start/end, we should probably preserve the duration.
-            // For now, assuming single day or manual adjustment.
-        } else {
-            newOsData.startDate = profile.nextRunDate;
-            // Adjust endDate if it exists in template to maintain duration
-            if (profile.templateData.startDate && profile.templateData.endDate) {
-                const originalStart = new Date(profile.templateData.startDate);
-                const originalEnd = new Date(profile.templateData.endDate);
-                const duration = originalEnd.getTime() - originalStart.getTime();
-                const newEnd = new Date(scheduledDate.getTime() + duration);
-                newOsData.endDate = newEnd.toISOString();
-            } else {
-                newOsData.endDate = profile.nextRunDate;
+            // Safety check: ensure accountId exists
+            if (!profile.accountId) {
+                console.error(`Profile ${doc.id} missing accountId, skipping.`);
+                continue;
             }
+
+            // 1. Create the new OS (Rental or Operation)
+            const collectionName = profile.type === 'rental' ? 'rentals' : 'operations';
+            const newOsRef = db.collection(`accounts/${profile.accountId}/${collectionName}`).doc();
+
+            const newOsData = {
+                ...profile.templateData,
+                recurrenceProfileId: profile.id,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+
+            const scheduledDate = new Date(profile.nextRunDate);
+
+            if (profile.type === 'rental') {
+                newOsData.rentalDate = profile.nextRunDate;
+            } else { // operation
+                newOsData.startDate = profile.nextRunDate;
+                if (profile.templateData.startDate && profile.templateData.endDate) {
+                    const originalStart = new Date(profile.templateData.startDate);
+                    const originalEnd = new Date(profile.templateData.endDate);
+                    if (!isNaN(originalStart.getTime()) && !isNaN(originalEnd.getTime())) {
+                        const duration = originalEnd.getTime() - originalStart.getTime();
+                        if (duration >= 0) {
+                            const newEnd = new Date(scheduledDate.getTime() + duration);
+                            newOsData.endDate = newEnd.toISOString();
+                        } else {
+                            newOsData.endDate = profile.nextRunDate;
+                        }
+                    } else {
+                        newOsData.endDate = profile.nextRunDate;
+                    }
+                } else {
+                    newOsData.endDate = profile.nextRunDate;
+                }
+            }
+            
+            // Set the billing type based on the recurrence profile
+            newOsData.billingType = profile.billingType === 'monthly' ? 'monthly' : 'per_service';
+
+            batch.set(newOsRef, newOsData);
+
+            // 2. Calculate next run date
+            const nextRun = calculateNextRunDate(profile.daysOfWeek, profile.time);
+
+            // 3. Update the profile
+            const profileUpdate: any = {
+                lastRunDate: now.toISOString(),
+                nextRunDate: nextRun.toISOString(),
+            };
+
+            // Check if we reached the end date
+            if (profile.endDate && new Date(profile.endDate) < nextRun) {
+                profileUpdate.status = 'completed';
+            }
+
+            batch.update(doc.ref, profileUpdate);
+            operationCount++;
+        } catch (error) {
+            console.error(`Error processing profile ${doc.id}:`, error);
+            // Optionally update the profile to a 'failed' status to prevent retries
+            // batch.update(doc.ref, { status: 'failed', error: error.message });
         }
-
-        // Handle Billing Type
-        if (profile.billingType === 'monthly') {
-            // If billing is monthly, the individual service might be $0 or marked as such.
-            // We will set a flag or zero out the value if strictly required, 
-            // but the prompt said "define service value", so maybe we keep the value 
-            // but the system knows how to bill it. 
-            // For now, let's keep the value from template but ensure billingType is set on the OS.
-            newOsData.billingType = 'monthly';
-        } else {
-            newOsData.billingType = 'per_service';
-        }
-
-        batch.set(newOsRef, newOsData);
-
-        // 2. Calculate next run date
-        // We calculate from the CURRENT scheduled date to avoid drift, 
-        // unless it's way behind, but for simple weekly recurrence, 
-        // calculating from 'now' or 'scheduledDate' is the question.
-        // If we use 'scheduledDate', we might generate a backlog if the function was down.
-        // If we use 'now', we skip missed intervals.
-        // Let's use 'now' to find the *next* valid slot from today, to avoid flooding.
-        const nextRun = calculateNextRunDate(profile.daysOfWeek, profile.time);
-
-        // 3. Update the profile
-        const profileUpdate: any = {
-            lastRunDate: now.toISOString(),
-            nextRunDate: nextRun.toISOString(),
-        };
-
-        // Check if we reached the end date
-        if (profile.endDate && new Date(profile.endDate) < nextRun) {
-            profileUpdate.status = 'completed';
-        }
-
-        batch.update(doc.ref, profileUpdate);
-        operationCount++;
     }
 
     await batch.commit();
-    console.log(`Processed ${operationCount} profiles.`);
+    console.log(`Successfully processed ${operationCount} profiles.`);
 });
+
+    

@@ -72,7 +72,12 @@ import {
     parseISO,
     startOfToday,
     format,
-    set
+    set,
+    getDay,
+    setHours,
+    setMinutes,
+    setSeconds,
+    setMilliseconds
 } from 'date-fns';
 import {
     toZonedTime
@@ -700,6 +705,36 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
 
 // #region Rental Actions
 
+// Helper function to calculate the next run date for a recurrence profile
+function calculateNextRunDate(daysOfWeek: number[], time: string): Date {
+    const [hours, minutes] = time.split(':').map(Number);
+    const now = new Date();
+    const todayIndex = getDay(now);
+
+    const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
+
+    let nextDayIndex = sortedDays.find((day) => day > todayIndex);
+
+    if (nextDayIndex === undefined) {
+        nextDayIndex = sortedDays[0];
+    }
+
+    let nextDate = new Date();
+    if (nextDayIndex > todayIndex) {
+        nextDate = addDays(now, nextDayIndex - todayIndex);
+    } else {
+        nextDate = addDays(now, 7 - (todayIndex - nextDayIndex));
+    }
+
+    nextDate = setHours(nextDate, hours);
+    nextDate = setMinutes(nextDate, minutes);
+    nextDate = setSeconds(nextDate, 0);
+    nextDate = setMilliseconds(nextDate, 0);
+
+    return nextDate;
+}
+
+
 export async function createRental(accountId: string, createdBy: string, prevState: any, formData: FormData) {
     const db = adminDb;
     const accountRef = db.doc(`accounts/${accountId}`);
@@ -757,33 +792,33 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             try {
                 const recurrenceData = JSON.parse(rawData.recurrence);
                 if (recurrenceData.enabled) {
-                    const recurrenceProfile: RecurrenceProfile = {
-                        id: '', // Will be set by Firestore
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+
+                    const recurrenceProfile: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                         accountId,
                         frequency: recurrenceData.frequency,
                         daysOfWeek: recurrenceData.daysOfWeek,
                         time: recurrenceData.time,
-                        endDate: recurrenceData.endDate ? recurrenceData.endDate : undefined,
+                        endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
                         billingType: recurrenceData.billingType,
                         status: 'active',
-                        createdAt: FieldValue.serverTimestamp(),
-                        originalOrderId: '', // Will be set after rental creation
                         type: 'rental',
+                        nextRunDate: nextRunDate.toISOString(),
+                        templateData: {} // This will be filled later
                     };
-
-                    // Validate Recurrence Profile
-                    // const validatedRecurrence = RecurrenceProfileSchema.safeParse(recurrenceProfile); // Skipping strict validation for now to avoid ID issues before creation
-
-                    const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add(recurrenceProfile);
+                    
+                    const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
+                        ...recurrenceProfile,
+                        createdAt: FieldValue.serverTimestamp(),
+                    });
                     recurrenceProfileId = recurrenceRef.id;
 
-                    // Update the profile with its own ID
                     await recurrenceRef.update({
                         id: recurrenceProfileId
                     });
                 }
             } catch (e) {
-                console.error("Failed to parse recurrence JSON");
+                console.error("Failed to parse recurrence JSON or create profile", e);
             }
         }
 
@@ -823,6 +858,16 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             ...rentalData,
             createdAt: FieldValue.serverTimestamp(),
         });
+
+        // If recurrence was created, update it with the original order details
+        if (recurrenceProfileId) {
+            const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`);
+            await recurrenceRef.update({
+                originalOrderId: rentalDocRef.id,
+                templateData: rentalData // Save the full rental data as a template
+            });
+        }
+
 
         const dumpsterNames = (await Promise.all(
             rentalData.dumpsterIds.map(id => db.doc(`accounts/${accountId}/dumpsters/${id}`).get())
@@ -1261,21 +1306,25 @@ export async function createOperationAction(accountId: string, createdBy: string
             try {
                 const recurrenceData = JSON.parse(rawData.recurrence);
                 if (recurrenceData.enabled) {
-                    const recurrenceProfile: RecurrenceProfile = {
-                        id: '', // Will be set by Firestore
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+
+                    const recurrenceProfile: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                         accountId,
                         frequency: recurrenceData.frequency,
                         daysOfWeek: recurrenceData.daysOfWeek,
                         time: recurrenceData.time,
-                        endDate: recurrenceData.endDate ? recurrenceData.endDate : undefined,
+                        endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
                         billingType: recurrenceData.billingType,
                         status: 'active',
-                        createdAt: FieldValue.serverTimestamp(),
-                        originalOrderId: '', // Will be set after operation creation
                         type: 'operation',
+                        nextRunDate: nextRunDate.toISOString(),
+                        templateData: {} // Will be filled later
                     };
 
-                    const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add(recurrenceProfile);
+                    const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
+                        ...recurrenceProfile,
+                        createdAt: FieldValue.serverTimestamp(),
+                    });
                     recurrenceProfileId = recurrenceRef.id;
 
                     await recurrenceRef.update({
@@ -1283,9 +1332,10 @@ export async function createOperationAction(accountId: string, createdBy: string
                     });
                 }
             } catch (e) {
-                console.error("Failed to parse recurrence JSON");
+                console.error("Failed to parse recurrence JSON or create profile", e);
             }
         }
+
 
         const travelCost = rawData.travelCost ? parseFloat(rawData.travelCost as string) : 0;
         const additionalCostsTotal = additionalCosts.reduce((acc, cost) => acc + (cost?.value || 0), 0);
@@ -1317,6 +1367,15 @@ export async function createOperationAction(accountId: string, createdBy: string
             ...finalData,
             createdAt: FieldValue.serverTimestamp(),
         });
+        
+         if (recurrenceProfileId) {
+            const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`);
+            await recurrenceRef.update({ 
+                originalOrderId: opDocRef.id,
+                templateData: finalData
+            });
+        }
+
 
         if (operationData.truckId) {
             await db.doc(`accounts/${accountId}/trucks/${operationData.truckId}`).update({
@@ -3154,4 +3213,5 @@ export async function cancelRecurrenceAction(accountId: string, recurrenceProfil
         };
     }
 }
+    
     
