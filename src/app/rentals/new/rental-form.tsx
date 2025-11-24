@@ -20,7 +20,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AddressInput } from '@/components/attachments-uploader';
+import { AddressInput } from '@/components/address-input';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import {
   Accordion,
@@ -50,14 +50,6 @@ export type DumpsterForForm = Dumpster & {
   disabledRanges: { start: Date; end: Date }[];
   schedules: { rentalDate: string, returnDate: string, text: string }[];
 };
-
-function SubmitButton({ isPending }: { isPending: boolean }) {
-  return (
-    <Button type="submit" disabled={isPending} size="lg">
-      {isPending ? <Spinner size="small" /> : 'Salvar OS'}
-    </Button>
-  );
-}
 
 interface RentalFormProps {
   dumpsters: DumpsterForForm[];
@@ -105,6 +97,14 @@ const WeatherIcon = ({ condition }: { condition: string }) => {
   }
   return <Sun className="h-5 w-5" />;
 };
+
+function SubmitButton({ isPending }: { isPending: boolean }) {
+  return (
+    <Button type="submit" disabled={isPending} size="lg">
+      {isPending ? <Spinner size="small" /> : 'Salvar OS'}
+    </Button>
+  );
+}
 
 export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks, rentalPrices, account, prefillData, swapOriginId, prefillClientId }: RentalFormProps) {
   const { accountId, user, userAccount, isSuperAdmin } = useAuth();

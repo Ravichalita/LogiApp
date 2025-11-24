@@ -20,7 +20,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AddressInput } from '@/components/attachments-uploader';
+import { AddressInput } from '@/components/address-input';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import {
   Accordion,
