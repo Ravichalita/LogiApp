@@ -20,7 +20,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AddressInput } from '@/components/address-input';
+import { AddressInput } from '@/components/attachments-uploader';
 import { AttachmentsUploader } from '@/components/attachments-uploader';
 import {
   Accordion,
@@ -974,7 +974,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         </div>
       </div>
 
-      <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
+       <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
         <AccordionItem value="per-day">
           <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
           <AccordionContent>
@@ -1043,7 +1043,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         </AccordionItem>
       </Accordion>
       
-      <div className="p-4 border rounded-md space-y-4 bg-card">
+       <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-destructive" />
