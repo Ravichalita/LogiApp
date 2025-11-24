@@ -1352,6 +1352,8 @@ export async function createOperationAction(accountId: string, createdBy: string
             sequentialId: newSequentialId,
             status: 'Pendente',
             recurrenceProfileId,
+            accountId,
+            createdBy,
         };
 
         const validatedFields = OperationSchema.safeParse(dataToValidate);
