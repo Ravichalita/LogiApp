@@ -191,6 +191,7 @@ export function RecurrencePanel() {
                                     <TableCell className="font-medium">
                                         {profile.details?.client?.name || profile.templateData?.client?.name || 'Cliente não encontrado'}
                                     </TableCell>
+                                    <TableCell className="font-medium">{profile.details?.client?.name || 'Cliente não encontrado'}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline">
                                             {profile.type === 'operation' ? 'Operação' : 'Aluguel'}
