@@ -3,7 +3,7 @@
 'use server';
 
 import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Operation, Truck } from './types';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck } from './types';
 import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay } from 'date-fns';
 
@@ -231,14 +231,12 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
         const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
         const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
-
+        
         const dumpsterPromises = (rentalData.dumpsterIds || []).map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get());
 
         const [clientSnap, assignedToSnap, truckSnap, ...dumpsterSnaps] = await Promise.all([clientPromise, assignedToPromise, truckPromise, ...dumpsterPromises]);
 
         const dumpsters = dumpsterSnaps.map(snap => docToSerializable(snap)).filter(d => d !== null) as Dumpster[];
-
-        const [clientSnap, assignedToSnap, truckSnap, dumpsterSnap] = await Promise.all([clientPromise, assignedToPromise, truckPromise, dumpsterPromise]);
 
         const populatedRental = {
             ...(rentalData as any),
@@ -248,9 +246,6 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
             truck: docToSerializable(truckSnap) as Truck | null,
         };
-
-        // Ensure the incorrect `dumpsters` property is not returned.
-        delete (populatedRental as any).dumpsters;
 
         return populatedRental;
     } catch (error) {
@@ -585,7 +580,7 @@ export async function getPopulatedRentalsForServer(accountId: string): Promise<P
   const rentalsData = rentalsSnap.docs.map(doc => docToSerializable(doc) as Rental);
 
   const clientIds = [...new Set(rentalsData.map(r => r.clientId))];
-  const dumpsterIds = [...new Set(rentalsData.map(r => r.dumpsterId))];
+  const dumpsterIds = [...new Set(rentalsData.flatMap(r => r.dumpsterIds || (r.dumpsterId ? [r.dumpsterId] : [])))];
   const userIds = [...new Set(rentalsData.map(r => r.assignedTo))];
 
   const [clientsSnap, dumpstersSnap, usersSnap] = await Promise.all([
@@ -598,13 +593,16 @@ export async function getPopulatedRentalsForServer(accountId: string): Promise<P
   const dumpstersMap = new Map(dumpstersSnap.docs.map(d => [d.id, docToSerializable(d)]));
   const usersMap = new Map(usersSnap.docs.map(d => [d.id, docToSerializable(d)]));
 
-  return rentalsData.map(rental => ({
-    ...rental,
-    itemType: 'rental',
-    client: clientsMap.get(rental.clientId) || null,
-    dumpster: dumpstersMap.get(rental.dumpsterId) || null,
-    assignedToUser: usersMap.get(rental.assignedTo) || null,
-  }));
+  return rentalsData.map(rental => {
+      const dumpsterIdsForRental = rental.dumpsterIds || (rental.dumpsterId ? [rental.dumpsterId] : []);
+      return {
+        ...rental,
+        itemType: 'rental',
+        client: clientsMap.get(rental.clientId) || null,
+        dumpsters: dumpsterIdsForRental.map(id => dumpstersMap.get(id)).filter(Boolean) as Dumpster[],
+        assignedToUser: usersMap.get(rental.assignedTo) || null,
+      } as PopulatedRental;
+  });
 }
 
 export async function getPopulatedOperationsForServer(accountId: string): Promise<PopulatedOperation[]> {
