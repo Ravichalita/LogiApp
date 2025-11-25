@@ -5,6 +5,8 @@ import { useEffect, useState, useTransition, useMemo } from 'react';
 import { updateRentalAction } from '@/lib/actions';
 import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment, Account, AdditionalCost, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { RecurrenceSelector, RecurrenceData } from '@/components/recurrence-selector';
+import { getRecurrenceProfileById } from '@/lib/data-server-actions';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -117,6 +119,14 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const [travelCost, setTravelCost] = useState<number | null>(null);
   const [isFetchingInfo, setIsFetchingInfo] = useState(false);
 
+  const [recurrenceData, setRecurrenceData] = useState<RecurrenceData>({
+    enabled: !!rental.recurrenceProfileId,
+    frequency: 'weekly',
+    daysOfWeek: [],
+    time: '08:00',
+    billingType: 'perService',
+  });
+
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
   const rentalDays = returnDate && rentalDate ? differenceInCalendarDays(returnDate, rentalDate) + 1 : 0;
@@ -125,6 +135,24 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const profit = totalRentalValue - totalOperationCost;
 
   const poliguindasteTrucks = trucks.filter(t => t.type?.toLowerCase().includes('poliguindaste'));
+
+  useEffect(() => {
+    if (rental.recurrenceProfileId && accountId) {
+        getRecurrenceProfileById(accountId, rental.recurrenceProfileId).then(profile => {
+            if (profile) {
+                setRecurrenceData({
+                    enabled: true,
+                    frequency: profile.frequency,
+                    daysOfWeek: profile.daysOfWeek,
+                    time: profile.time,
+                    endDate: profile.endDate ? parseISO(profile.endDate) : undefined,
+                    billingType: profile.billingType,
+                    monthlyValue: profile.monthlyValue,
+                });
+            }
+        });
+    }
+  }, [rental.recurrenceProfileId, accountId]);
 
   useEffect(() => {
     if (poliguindasteTrucks.length === 1 && !selectedTruckId) {
@@ -264,6 +292,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         formData.set('lumpSumValue', String(lumpSumValue));
         formData.set('attachments', JSON.stringify(attachments));
         formData.set('additionalCosts', JSON.stringify(additionalCosts));
+        formData.set('recurrence', JSON.stringify(recurrenceData));
 
         const boundAction = updateRentalAction.bind(null, accountId);
         const result = await boundAction(null, formData);
@@ -689,6 +718,32 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
             />
         </div>
       )}
+
+      {recurrenceData.enabled && recurrenceData.billingType === 'monthly' && (
+        <div className="p-4 border rounded-md space-y-2 bg-card">
+            <Label htmlFor="monthlyValue">Valor Mensal</Label>
+            <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                    id="monthlyValue"
+                    name="monthlyValue_display"
+                    value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+                    onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        const cents = parseInt(rawValue, 10) || 0;
+                        setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+                    }}
+                    placeholder="0,00"
+                    className="pl-8 text-right font-bold"
+                />
+            </div>
+        </div>
+      )}
+
+      <RecurrenceSelector
+        value={recurrenceData}
+        onChange={setRecurrenceData}
+      />
 
 
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
