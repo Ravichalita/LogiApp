@@ -719,6 +719,27 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         </div>
       )}
 
+      {recurrenceData.enabled && recurrenceData.billingType === 'monthly' && (
+        <div className="p-4 border rounded-md space-y-2 bg-card">
+            <Label htmlFor="monthlyValue">Valor Mensal</Label>
+            <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                    id="monthlyValue"
+                    name="monthlyValue_display"
+                    value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+                    onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        const cents = parseInt(rawValue, 10) || 0;
+                        setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+                    }}
+                    placeholder="0,00"
+                    className="pl-8 text-right font-bold"
+                />
+            </div>
+        </div>
+      )}
+
       <RecurrenceSelector
         value={recurrenceData}
         onChange={setRecurrenceData}
