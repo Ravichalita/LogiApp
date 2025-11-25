@@ -188,6 +188,9 @@ export function RecurrencePanel() {
                         <TableBody>
                             {activeProfiles.map((profile) => (
                                 <TableRow key={profile.id}>
+                                    <TableCell className="font-medium">
+                                        {profile.details?.client?.name || profile.templateData?.client?.name || 'Cliente não encontrado'}
+                                    </TableCell>
                                     <TableCell className="font-medium">{profile.details?.client?.name || 'Cliente não encontrado'}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline">

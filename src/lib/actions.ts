@@ -1281,6 +1281,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         }
 
         revalidatePath('/os');
+        revalidatePath('/settings');
     } catch (e) {
         return {
             message: 'error',
@@ -1766,6 +1767,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
         revalidatePath('/operations');
         revalidatePath('/os');
+        revalidatePath('/settings');
     } catch (e) {
         return {
             message: 'error',

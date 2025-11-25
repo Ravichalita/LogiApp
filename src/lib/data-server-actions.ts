@@ -229,17 +229,20 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
 
         // Fetch related documents
         const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
-        const dumpsterPromise = adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
         const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
 
-        const [clientSnap, dumpsterSnap, assignedToSnap, truckSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise, truckPromise]);
+        const dumpsterPromises = (rentalData.dumpsterIds || []).map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get());
+
+        const [clientSnap, assignedToSnap, truckSnap, ...dumpsterSnaps] = await Promise.all([clientPromise, assignedToPromise, truckPromise, ...dumpsterPromises]);
+
+        const dumpsters = dumpsterSnaps.map(snap => docToSerializable(snap)).filter(d => d !== null) as Dumpster[];
 
         return {
             ...rentalData,
             itemType: 'rental',
             client: docToSerializable(clientSnap) as Client | null,
-            dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+            dumpsters: dumpsters,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
             truck: docToSerializable(truckSnap) as Truck | null,
         };
