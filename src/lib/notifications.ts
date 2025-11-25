@@ -53,8 +53,10 @@ export async function sendNotification({ userId, title, body, imageUrl, linkUrl 
                     const failedToken = tokens[idx];
                     console.error(`Failed to send to token: ${failedToken}`, resp.error);
                     if (
+                        resp.error && (
                         resp.error.code === 'messaging/invalid-registration-token' ||
                         resp.error.code === 'messaging/registration-token-not-registered'
+                        )
                     ) {
                         tokensToRemove.push(failedToken);
                     }

@@ -1006,6 +1006,61 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, completedRentalData);
 
+        // If the rental is part of a recurrence, create the next one
+        if (rentalData.recurrenceProfileId) {
+            const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`);
+            const recurrenceSnap = await recurrenceRef.get();
+
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+
+                if (recurrenceData.status === 'active' && (!recurrenceData.endDate || isBefore(new Date(), parseISO(recurrenceData.endDate)))) {
+
+                    const accountRef = db.doc(`accounts/${accountId}`);
+                    const newSequentialId = await db.runTransaction(async (transaction) => {
+                        const accountSnap = await transaction.get(accountRef);
+                        if (!accountSnap.exists) throw new Error("Conta não encontrada.");
+                        const currentCounter = accountSnap.data()?.rentalCounter || 0;
+                        const newCounter = currentCounter + 1;
+                        transaction.update(accountRef, { rentalCounter: newCounter });
+                        return newCounter;
+                    });
+
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    const nextRunDate = parseISO(recurrenceData.nextRunDate);
+                    const templateData = recurrenceData.templateData as Rental;
+                    const originalStartDate = parseISO(templateData.rentalDate);
+                    const originalEndDate = parseISO(templateData.returnDate);
+                    const durationMillis = originalEndDate.getTime() - originalStartDate.getTime();
+                    const newReturnDate = new Date(nextRunDate.getTime() + durationMillis);
+
+                    const newRentalData = {
+                        ...templateData,
+                        rentalDate: nextRunDate.toISOString(),
+                        returnDate: newReturnDate.toISOString(),
+                        sequentialId: newSequentialId,
+                        status: 'Pendente',
+                        createdAt: FieldValue.serverTimestamp(),
+                        attachments: [],
+                        notificationsSent: { due: false, late: false },
+                    };
+
+                    delete (newRentalData as any).googleCalendarEventId;
+                    delete (newRentalData as any).googleCalendarSwapEventId;
+                    delete (newRentalData as any).swapDate;
+                    delete (newRentalData as any).updatedAt;
+                    delete (newRentalData as any).id;
+
+                    const newRentalRef = db.collection(`accounts/${accountId}/rentals`).doc();
+                    batch.set(newRentalRef, newRentalData);
+
+                    batch.update(recurrenceRef, {
+                        nextRunDate: newNextRunDate.toISOString()
+                    });
+                }
+            }
+        }
+
         batch.delete(rentalRef);
 
         await batch.commit();
@@ -1655,6 +1710,59 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         const newCompletedRef = db.collection(`accounts/${accountId}/completed_operations`).doc();
         batch.set(newCompletedRef, completedOpData);
+
+        if (operationData.recurrenceProfileId) {
+            const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`);
+            const recurrenceSnap = await recurrenceRef.get();
+
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+
+                if (recurrenceData.status === 'active' && (!recurrenceData.endDate || isBefore(new Date(), parseISO(recurrenceData.endDate)))) {
+
+                    const accountRef = db.doc(`accounts/${accountId}`);
+                    const newSequentialId = await db.runTransaction(async (transaction) => {
+                        const accountSnap = await transaction.get(accountRef);
+                        if (!accountSnap.exists) throw new Error("Conta não encontrada.");
+                        const currentCounter = accountSnap.data()?.operationCounter || 0;
+                        const newCounter = currentCounter + 1;
+                        transaction.update(accountRef, { operationCounter: newCounter });
+                        return newCounter;
+                    });
+
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    const nextRunDate = parseISO(recurrenceData.nextRunDate);
+                    const templateData = recurrenceData.templateData as Operation;
+
+                    const originalStartDate = parseISO(templateData.startDate);
+                    const originalEndDate = parseISO(templateData.endDate);
+                    const durationMillis = originalEndDate.getTime() - originalStartDate.getTime();
+                    const newEndDate = new Date(nextRunDate.getTime() + durationMillis);
+
+                    const newOperationData = {
+                        ...templateData,
+                        startDate: nextRunDate.toISOString(),
+                        endDate: newEndDate.toISOString(),
+                        sequentialId: newSequentialId,
+                        status: 'Pendente',
+                        createdAt: FieldValue.serverTimestamp(),
+                        attachments: [],
+                    };
+
+                    delete (newOperationData as any).googleCalendarEventId;
+                    delete (newOperationData as any).updatedAt;
+                    delete (newOperationData as any).id;
+
+                    const newOperationRef = db.collection(`accounts/${accountId}/operations`).doc();
+                    batch.set(newOperationRef, newOperationData);
+
+                    batch.update(recurrenceRef, {
+                        nextRunDate: newNextRunDate.toISOString()
+                    });
+                }
+            }
+        }
+
         batch.delete(operationRef);
 
         if (operationData.truckId) {
