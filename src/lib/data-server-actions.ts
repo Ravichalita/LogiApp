@@ -229,17 +229,20 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
 
         // Fetch related documents
         const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
-        const dumpsterPromise = adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get();
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
         const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
 
-        const [clientSnap, dumpsterSnap, assignedToSnap, truckSnap] = await Promise.all([clientPromise, dumpsterPromise, assignedToPromise, truckPromise]);
+        const dumpsterPromises = (rentalData.dumpsterIds || []).map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get());
+
+        const [clientSnap, assignedToSnap, truckSnap, ...dumpsterSnaps] = await Promise.all([clientPromise, assignedToPromise, truckPromise, ...dumpsterPromises]);
+
+        const dumpsters = dumpsterSnaps.map(snap => docToSerializable(snap)).filter(d => d !== null) as Dumpster[];
 
         return {
             ...rentalData,
             itemType: 'rental',
             client: docToSerializable(clientSnap) as Client | null,
-            dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+            dumpsters: dumpsters,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
             truck: docToSerializable(truckSnap) as Truck | null,
         };
@@ -631,5 +634,50 @@ export async function getPopulatedOperationsForServer(accountId: string): Promis
         truck: op.truckId ? trucksMap.get(op.truckId) || null : null,
         driver: driversMap.get(op.driverId) || null,
     }));
+}
+
+
+export async function getRecurrenceProfilesWithDetails(accountId: string) {
+    if (!accountId) return [];
+
+    try {
+        const profilesSnap = await adminDb.collection(`accounts/${accountId}/recurrence_profiles`).get();
+        if (profilesSnap.empty) return [];
+
+        const profilesData = profilesSnap.docs.map(doc => docToSerializable(doc));
+
+        const populatedProfiles = await Promise.all(
+            profilesData.map(async (profile) => {
+                let details = null;
+                if (profile.originalOrderId) {
+                    if (profile.type === 'operation') {
+                        details = await getPopulatedOperationById(accountId, profile.originalOrderId);
+                    } else {
+                        // Assuming 'rental' is the other type
+                        details = await getPopulatedRentalById(accountId, profile.originalOrderId);
+                    }
+                }
+                return { ...profile, details };
+            })
+        );
+
+        return populatedProfiles;
+
+    } catch (error) {
+        console.error("Error fetching recurrence profiles with details:", error);
+        return [];
+    }
+}
+
+export async function getRecurrenceProfileById(accountId: string, profileId: string) {
+    if (!accountId || !profileId) return null;
+    try {
+        const profileSnap = await adminDb.doc(`accounts/${accountId}/recurrence_profiles/${profileId}`).get();
+        if (!profileSnap.exists) return null;
+        return docToSerializable(profileSnap);
+    } catch (error) {
+        console.error("Error fetching recurrence profile by ID:", error);
+        return null;
+    }
 }
 // #endregion

@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { BaseAddressForm } from './base-address-form';
 import { OperationTypesForm } from './operation-types-form';
 import { CostSettingsForm } from './cost-settings-form';
+import { RecurrencePanel } from './recurrence-panel';
 
 
 import { useSearchParams } from 'next/navigation';
@@ -176,6 +177,24 @@ export default function SettingsPage() {
                                 <Separator />
                                 <div className="p-4">
                                     {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <CostSettingsForm account={account} />}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+
+                        <AccordionItem value="recurrence" className="border rounded-lg bg-card">
+                            <AccordionTrigger className="p-4 hover:no-underline">
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-6 w-6" />
+                                    <div className="text-left">
+                                        <h3 className="font-headline text-lg font-semibold">OS Recorrentes</h3>
+                                        <p className="text-sm text-muted-foreground font-normal">Gerencie suas Ordens de Serviço recorrentes.</p>
+                                    </div>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <Separator />
+                                <div className="p-4">
+                                     <RecurrencePanel />
                                 </div>
                             </AccordionContent>
                         </AccordionItem>

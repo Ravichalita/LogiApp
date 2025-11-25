@@ -87,6 +87,38 @@ import {
 } from 'firebase-admin/firestore';
 
 // Helper function for error handling
+function calculateNextRunDate(daysOfWeek: number[], time: string): Date {
+    if (!daysOfWeek || daysOfWeek.length === 0) {
+        throw new Error("Selecione pelo menos um dia da semana para a recorrência.");
+    }
+
+    const [hours, minutes] = time.split(':').map(Number);
+    const now = new Date();
+    const todayIndex = getDay(now);
+
+    const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
+
+    let nextDayIndex = sortedDays.find((day) => day > todayIndex);
+
+    if (nextDayIndex === undefined) {
+        nextDayIndex = sortedDays[0];
+    }
+
+    let nextDate = new Date();
+    if (nextDayIndex !== undefined && nextDayIndex > todayIndex) {
+        nextDate = addDays(now, nextDayIndex - todayIndex);
+    } else if (nextDayIndex !== undefined) {
+        nextDate = addDays(now, 7 - (todayIndex - nextDayIndex));
+    }
+
+    nextDate = setHours(nextDate, hours);
+    nextDate = setMinutes(nextDate, minutes);
+    nextDate = setSeconds(nextDate, 0);
+    nextDate = setMilliseconds(nextDate, 0);
+
+    return nextDate;
+}
+
 function handleFirebaseError(error: unknown): string {
     let message = 'Ocorreu um erro desconhecido.';
     if (error instanceof Error) {
@@ -705,40 +737,6 @@ export async function updateDumpsterStatusAction(accountId: string, dumpsterId: 
 
 // #region Rental Actions
 
-// Helper function to calculate the next run date for a recurrence profile
-function calculateNextRunDate(daysOfWeek: number[], time: string): Date {
-    if (!daysOfWeek || daysOfWeek.length === 0) {
-        throw new Error("Selecione pelo menos um dia da semana para a recorrência.");
-    }
-
-    const [hours, minutes] = time.split(':').map(Number);
-    const now = new Date();
-    const todayIndex = getDay(now);
-
-    const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
-
-    let nextDayIndex = sortedDays.find((day) => day > todayIndex);
-
-    if (nextDayIndex === undefined) {
-        nextDayIndex = sortedDays[0];
-    }
-
-    let nextDate = new Date();
-    if (nextDayIndex !== undefined && nextDayIndex > todayIndex) {
-        nextDate = addDays(now, nextDayIndex - todayIndex);
-    } else if (nextDayIndex !== undefined) {
-        nextDate = addDays(now, 7 - (todayIndex - nextDayIndex));
-    }
-
-    nextDate = setHours(nextDate, hours);
-    nextDate = setMinutes(nextDate, minutes);
-    nextDate = setSeconds(nextDate, 0);
-    nextDate = setMilliseconds(nextDate, 0);
-
-    return nextDate;
-}
-
-
 export async function createRental(accountId: string, createdBy: string, prevState: any, formData: FormData) {
     const db = adminDb;
     const accountRef = db.doc(`accounts/${accountId}`);
@@ -1201,11 +1199,54 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     try {
-        const rentalRef = adminDb.doc(`accounts/${accountId}/rentals/${id}`);
+        const db = adminDb;
+        const rentalRef = db.doc(`accounts/${accountId}/rentals/${id}`);
 
         const rentalBeforeUpdateSnap = await rentalRef.get();
         if (!rentalBeforeUpdateSnap.exists) throw new Error("OS não encontrada.");
         const rentalBeforeUpdate = rentalBeforeUpdateSnap.data() as Rental;
+
+        const recurrenceData = JSON.parse(rawData.recurrence as string);
+        let recurrenceProfileId = rentalBeforeUpdate.recurrenceProfileId;
+
+        if (recurrenceData.enabled) {
+            const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
+                accountId,
+                frequency: recurrenceData.frequency,
+                daysOfWeek: recurrenceData.daysOfWeek,
+                time: recurrenceData.time,
+                endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
+                billingType: recurrenceData.billingType,
+                monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
+                status: 'active',
+                type: 'rental',
+                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time).toISOString(),
+                templateData: { ...rentalBeforeUpdate, ...updateData },
+            };
+
+            const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v !== undefined));
+
+            if (recurrenceProfileId) {
+                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update(cleanProfileData);
+            } else {
+                const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
+                    ...cleanProfileData,
+                    originalOrderId: id,
+                    createdAt: FieldValue.serverTimestamp(),
+                });
+                recurrenceProfileId = recurrenceRef.id;
+                await recurrenceRef.update({ id: recurrenceProfileId });
+            }
+        } else if (recurrenceProfileId) {
+            await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update({ status: 'cancelled' });
+            recurrenceProfileId = undefined;
+        }
+
+        updateData.recurrenceProfileId = recurrenceProfileId;
+        if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
+            updateData.value = 0;
+            updateData.lumpSumValue = 0;
+        }
 
         await rentalRef.update({
             ...updateData,
@@ -1240,6 +1281,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         }
 
         revalidatePath('/os');
+        revalidatePath('/settings');
     } catch (e) {
         return {
             message: 'error',
@@ -1613,18 +1655,57 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         updateData.destinationGoogleMapsLink = linkValue && linkValue.trim() !== '' ? linkValue : FieldValue.delete();
     }
 
-    if (Object.keys(updateData).length === 0) {
-        return {
-            message: 'success',
-            info: 'Nenhum campo para atualizar.'
-        };
-    }
-
     try {
-        const operationRef = adminDb.doc(`accounts/${accountId}/operations/${id}`);
+        const db = adminDb;
+        const operationRef = db.doc(`accounts/${accountId}/operations/${id}`);
         const opBeforeUpdateSnap = await operationRef.get();
         if (!opBeforeUpdateSnap.exists) throw new Error("Operação não encontrada.");
         const opBeforeUpdate = opBeforeUpdateSnap.data() as Operation;
+
+        const recurrenceData = JSON.parse(rawData.recurrence as string);
+        let recurrenceProfileId = opBeforeUpdate.recurrenceProfileId;
+
+        if (recurrenceData.enabled) {
+            const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
+                accountId,
+                frequency: recurrenceData.frequency,
+                daysOfWeek: recurrenceData.daysOfWeek,
+                time: recurrenceData.time,
+                endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
+                billingType: recurrenceData.billingType,
+                monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
+                status: 'active',
+                type: 'operation',
+                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time).toISOString(),
+                templateData: { ...opBeforeUpdate, ...updateData },
+            };
+
+            const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v !== undefined));
+
+            if (recurrenceProfileId) {
+                // Update existing profile
+                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update(cleanProfileData);
+            } else {
+                // Create new profile
+                const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
+                    ...cleanProfileData,
+                    originalOrderId: id,
+                    createdAt: FieldValue.serverTimestamp(),
+                });
+                recurrenceProfileId = recurrenceRef.id;
+                await recurrenceRef.update({ id: recurrenceProfileId });
+            }
+        } else if (recurrenceProfileId) {
+            // Cancel existing profile if recurrence is disabled
+            await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update({ status: 'cancelled' });
+            recurrenceProfileId = undefined;
+        }
+
+        updateData.recurrenceProfileId = recurrenceProfileId;
+         if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
+            updateData.value = 0;
+        }
+
 
         await operationRef.update({
             ...updateData,
@@ -1686,6 +1767,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
         revalidatePath('/operations');
         revalidatePath('/os');
+        revalidatePath('/settings');
     } catch (e) {
         return {
             message: 'error',
@@ -3360,29 +3442,72 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 export async function cancelRecurrenceAction(accountId: string, recurrenceProfileId: string) {
     if (!accountId || !recurrenceProfileId) {
-        return {
-            message: 'error',
-            error: 'IDs ausentes.'
-        };
+        return { message: 'error', error: 'IDs ausentes.' };
     }
-
+    const db = adminDb;
+    const batch = db.batch();
     try {
-        const recurrenceRef = adminDb.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`);
-        await recurrenceRef.update({
+        const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`);
+        batch.update(recurrenceRef, {
             status: 'cancelled',
             updatedAt: FieldValue.serverTimestamp()
         });
 
+        // Find associated active rentals and remove recurrenceProfileId
+        const rentalsQuery = db.collection(`accounts/${accountId}/rentals`).where('recurrenceProfileId', '==', recurrenceProfileId);
+        const rentalsSnap = await rentalsQuery.get();
+        rentalsSnap.forEach(doc => {
+            batch.update(doc.ref, { recurrenceProfileId: FieldValue.delete() });
+        });
+
+        // Find associated active operations and remove recurrenceProfileId
+        const operationsQuery = db.collection(`accounts/${accountId}/operations`).where('recurrenceProfileId', '==', recurrenceProfileId);
+        const operationsSnap = await operationsQuery.get();
+        operationsSnap.forEach(doc => {
+            batch.update(doc.ref, { recurrenceProfileId: FieldValue.delete() });
+        });
+
+        await batch.commit();
+
         revalidatePath('/os');
-        return {
-            message: 'success'
-        };
+        revalidatePath('/settings');
+        return { message: 'success' };
     } catch (e) {
-        return {
-            message: 'error',
-            error: handleFirebaseError(e)
-        };
+        return { message: 'error', error: handleFirebaseError(e) };
     }
 }
-    
-    
+
+
+export async function deleteRecurrenceAction(accountId: string, recurrenceProfileId: string) {
+    if (!accountId || !recurrenceProfileId) {
+        return { message: 'error', error: 'IDs ausentes.' };
+    }
+
+    const db = adminDb;
+    const batch = db.batch();
+
+    try {
+        const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`);
+        batch.delete(recurrenceRef);
+
+        const rentalsQuery = db.collection(`accounts/${accountId}/rentals`).where('recurrenceProfileId', '==', recurrenceProfileId);
+        const rentalsSnap = await rentalsQuery.get();
+        rentalsSnap.forEach(doc => {
+            batch.update(doc.ref, { recurrenceProfileId: FieldValue.delete() });
+        });
+
+        const operationsQuery = db.collection(`accounts/${accountId}/operations`).where('recurrenceProfileId', '==', recurrenceProfileId);
+        const operationsSnap = await operationsQuery.get();
+        operationsSnap.forEach(doc => {
+            batch.update(doc.ref, { recurrenceProfileId: FieldValue.delete() });
+        });
+
+        await batch.commit();
+
+        revalidatePath('/os');
+        revalidatePath('/settings');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
