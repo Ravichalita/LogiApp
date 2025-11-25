@@ -148,6 +148,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
     daysOfWeek: [],
     time: '08:00',
     billingType: 'perService',
+    monthlyValue: 0,
   });
 
   const [isStartDateOpen, setIsStartDateOpen] = useState(false);
@@ -830,20 +831,41 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
               <Button type="button" variant="outline" className="w-full">Adicionar Custos</Button>
             </CostsDialog>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="value" className="text-muted-foreground">Valor do Serviço</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-              <Input
-                id="value"
-                name="value_display"
-                value={formatCurrencyForInput((baseValue * 100).toString())}
-                onChange={handleBaseValueChange}
-                placeholder="0,00"
-                className="pl-8 text-right font-bold"
-              />
+          {recurrenceData.billingType === 'monthly' ? (
+            <div className="grid gap-2">
+              <Label htmlFor="monthlyValue" className="text-muted-foreground">Valor Mensal</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  id="monthlyValue"
+                  name="monthlyValue_display"
+                  value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+                  onChange={(e) => {
+                    const rawValue = e.target.value.replace(/\D/g, '');
+                    const cents = parseInt(rawValue, 10) || 0;
+                    setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+                  }}
+                  placeholder="0,00"
+                  className="pl-8 text-right font-bold"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="value" className="text-muted-foreground">Valor do Serviço</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  id="value"
+                  name="value_display"
+                  value={formatCurrencyForInput((baseValue * 100).toString())}
+                  onChange={handleBaseValueChange}
+                  placeholder="0,00"
+                  className="pl-8 text-right font-bold"
+                />
+              </div>
+            </div>
+          )}
         </div>
         {additionalCosts.length > 0 && (
           <div className="pt-2 space-y-1">

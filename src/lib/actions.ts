@@ -805,6 +805,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                         time: recurrenceData.time,
                         endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
                         billingType: recurrenceData.billingType,
+                        monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                         status: 'active',
                         type: 'rental',
                         nextRunDate: nextRunDate.toISOString(),
@@ -837,7 +838,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         const dataToValidate = {
             ...rawData,
             dumpsterIds,
-            value: Number(rawData.value),
+            value: recurrenceProfileId && JSON.parse(rawData.recurrence as string).billingType === 'monthly' ? 0 : Number(rawData.value),
             lumpSumValue: Number(rawData.lumpSumValue),
             travelCost: Number(rawData.travelCost),
             totalCost: Number(rawData.totalCost),
@@ -988,7 +989,22 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const rentalDays = Math.max(diffDays, 1);
-        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
+
+        let totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
+        if (rentalData.recurrenceProfileId) {
+            const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`).get();
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+                if (recurrenceData.billingType === 'monthly') {
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    if (nextRunDate.getMonth() !== new Date().getMonth() || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                        totalValue = recurrenceData.monthlyValue || 0;
+                    } else {
+                        totalValue = 0;
+                    }
+                }
+            }
+        }
 
         const completedRentalData = {
             ...rentalData,
@@ -1339,7 +1355,8 @@ export async function createOperationAction(accountId: string, createdBy: string
         const rawData = Object.fromEntries(formData.entries());
 
         const rawValue = rawData.value as string;
-        const value = rawValue ? parseFloat(rawValue) : 0;
+        const recurrenceRaw = rawData.recurrence as string;
+        const value = recurrenceRaw && JSON.parse(recurrenceRaw).billingType === 'monthly' ? 0 : (rawValue ? parseFloat(rawValue) : 0);
 
         let additionalCosts: AdditionalCost[] = [];
         if (rawData.additionalCosts && typeof rawData.additionalCosts === 'string') {
@@ -1382,6 +1399,7 @@ export async function createOperationAction(accountId: string, createdBy: string
                         time: recurrenceData.time,
                         endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
                         billingType: recurrenceData.billingType,
+                        monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                         status: 'active',
                         type: 'operation',
                         nextRunDate: nextRunDate.toISOString(),
@@ -1702,8 +1720,26 @@ export async function finishOperationAction(accountId: string, operationId: stri
         }
 
         const operationData = operationSnap.data() as Operation;
+
+        let operationValue = operationData.value || 0;
+        if (operationData.recurrenceProfileId) {
+            const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`).get();
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+                if (recurrenceData.billingType === 'monthly') {
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    if (nextRunDate.getMonth() !== new Date().getMonth() || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                        operationValue = recurrenceData.monthlyValue || 0;
+                    } else {
+                        operationValue = 0;
+                    }
+                }
+            }
+        }
+
         const completedOpData = {
             ...operationData,
+            value: operationValue,
             status: 'Concluído',
             completedAt: FieldValue.serverTimestamp(),
         };
