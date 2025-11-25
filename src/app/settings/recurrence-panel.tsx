@@ -179,8 +179,9 @@ export function RecurrencePanel() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Cliente</TableHead>
-                                <TableHead>Tipo</TableHead>
+                                <TableHead>Valor</TableHead>
                                 <TableHead>Frequência</TableHead>
+                                <TableHead>Período</TableHead>
                                 <TableHead>Próxima Geração</TableHead>
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
@@ -188,16 +189,25 @@ export function RecurrencePanel() {
                         <TableBody>
                             {activeProfiles.map((profile) => (
                                 <TableRow key={profile.id}>
-                                    <TableCell className="font-medium">{profile.details?.client?.name || 'Cliente não encontrado'}</TableCell>
+                                    <TableCell className="font-medium">
+                                        {profile.details?.client?.name || profile.templateData?.client?.name || 'Cliente não encontrado'}
+                                    </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline">
-                                            {profile.type === 'operation' ? 'Operação' : 'Aluguel'}
-                                        </Badge>
+                                        <div className="flex flex-col">
+                                            <span>{profile.billingType === 'monthly' ? `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((profile.monthlyValue || 0) / 100)}` : `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profile.templateData?.value || 0)}`}</span>
+                                            <span className="text-xs text-muted-foreground">{profile.billingType === 'monthly' ? 'Mensal' : 'Por Serviço'}</span>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span>{getDayLabels(profile.daysOfWeek)}</span>
                                             <span className="text-xs text-muted-foreground">às {profile.time}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span>Início: {profile.createdAt && typeof profile.createdAt === 'string' ? format(parseISO(profile.createdAt), 'dd/MM/yyyy') : 'N/A'}</span>
+                                            <span className="text-xs text-muted-foreground">Fim: {profile.endDate && typeof profile.endDate === 'string' ? format(parseISO(profile.endDate), 'dd/MM/yyyy') : 'Indeterminado'}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>{profile.nextRunDate && typeof profile.nextRunDate === 'string' ? format(parseISO(profile.nextRunDate), 'dd/MM/yyyy', { locale: ptBR }) : 'N/A'}</TableCell>

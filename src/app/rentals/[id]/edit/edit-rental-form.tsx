@@ -596,74 +596,76 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         </div>
       </div>
 
-       <Accordion type="single" collapsible defaultValue={billingType} className="w-full" onValueChange={handleAccordionChange}>
-        <AccordionItem value="perDay">
-          <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
-          <AccordionContent>
-            <div className="p-4 border rounded-md space-y-4 bg-card">
-              <div className="space-y-2">
-                {(account.rentalPrices && account.rentalPrices.length > 0) ? (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um preço" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {account.rentalPrices.map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} ({formatCurrencyForDisplay(p.value)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+      {!recurrenceData.enabled || recurrenceData.billingType !== 'monthly' ? (
+        <Accordion type="single" collapsible defaultValue={billingType} className="w-full" onValueChange={handleAccordionChange}>
+            <AccordionItem value="perDay">
+            <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
+            <AccordionContent>
+                <div className="p-4 border rounded-md space-y-4 bg-card">
+                <div className="space-y-2">
+                    {(account.rentalPrices && account.rentalPrices.length > 0) ? (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Selecione um preço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {account.rentalPrices.map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                                {p.name} ({formatCurrencyForDisplay(p.value)})
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                        <Input
+                        id="value"
+                        name="value_display"
+                        value={displayValue}
+                        onChange={handleValueChange}
+                        placeholder="R$ 0,00"
+                        required={billingType === 'perDay'}
+                        className="sm:w-1/3 text-right"
+                        disabled={billingType !== 'perDay'}
+                        />
+                    </div>
+                    ) : (
                     <Input
-                      id="value"
-                      name="value_display"
-                      value={displayValue}
-                      onChange={handleValueChange}
-                      placeholder="R$ 0,00"
-                      required={billingType === 'perDay'}
-                      className="sm:w-1/3 text-right"
-                      disabled={billingType !== 'perDay'}
+                        id="value_display"
+                        name="value_display"
+                        value={displayValue}
+                        onChange={handleValueChange}
+                        placeholder="R$ 0,00"
+                        required={billingType === 'perDay'}
+                        className="text-right"
+                        disabled={billingType !== 'perDay'}
                     />
-                  </div>
-                ) : (
-                  <Input
-                    id="value_display"
-                    name="value_display"
-                    value={displayValue}
-                    onChange={handleValueChange}
+                    )}
+                </div>
+                {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
+                </div>
+            </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="lump-sum">
+            <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
+            <AccordionContent>
+                <div className="p-4 border rounded-md space-y-4 bg-card">
+                <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
+                <Input
+                    id="lumpSumValue"
+                    name="lumpSumValue_display"
+                    value={displayLumpSumValue}
+                    onChange={handleLumpSumValueChange}
                     placeholder="R$ 0,00"
-                    required={billingType === 'perDay'}
+                    required={billingType === 'lumpSum'}
                     className="text-right"
-                    disabled={billingType !== 'perDay'}
-                  />
-                )}
-              </div>
-              {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="lump-sum">
-          <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
-          <AccordionContent>
-            <div className="p-4 border rounded-md space-y-4 bg-card">
-              <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
-              <Input
-                id="lumpSumValue"
-                name="lumpSumValue_display"
-                value={displayLumpSumValue}
-                onChange={handleLumpSumValueChange}
-                placeholder="R$ 0,00"
-                required={billingType === 'lumpSum'}
-                className="text-right"
-                disabled={billingType !== 'lumpSum'}
-              />
-              {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+                    disabled={billingType !== 'lumpSum'}
+                />
+                {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
+                </div>
+            </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+      ) : null}
       
        <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -716,6 +718,27 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                 onAttachmentDeleted={handleRemoveAttachment}
                 uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
             />
+        </div>
+      )}
+
+      {recurrenceData.enabled && recurrenceData.billingType === 'monthly' && (
+        <div className="p-4 border rounded-md space-y-2 bg-card">
+            <Label htmlFor="monthlyValue">Valor Mensal</Label>
+            <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                    id="monthlyValue"
+                    name="monthlyValue_display"
+                    value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+                    onChange={(e) => {
+                        const rawValue = e.target.value.replace(/\D/g, '');
+                        const cents = parseInt(rawValue, 10) || 0;
+                        setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+                    }}
+                    placeholder="0,00"
+                    className="pl-8 text-right font-bold"
+                />
+            </div>
         </div>
       )}
 
