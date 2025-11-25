@@ -238,14 +238,21 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
 
         const dumpsters = dumpsterSnaps.map(snap => docToSerializable(snap)).filter(d => d !== null) as Dumpster[];
 
-        return {
-            ...rentalData,
-            itemType: 'rental',
+        const [clientSnap, assignedToSnap, truckSnap, dumpsterSnap] = await Promise.all([clientPromise, assignedToPromise, truckPromise, dumpsterPromise]);
+
+        const populatedRental = {
+            ...(rentalData as any),
+            itemType: 'rental' as const,
             client: docToSerializable(clientSnap) as Client | null,
             dumpsters: dumpsters,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
             truck: docToSerializable(truckSnap) as Truck | null,
         };
+
+        // Ensure the incorrect `dumpsters` property is not returned.
+        delete (populatedRental as any).dumpsters;
+
+        return populatedRental;
     } catch (error) {
         console.error(`Error fetching populated rental by ID ${rentalId}:`, error);
         return null;
