@@ -450,12 +450,14 @@ export const RecurrenceProfileSchema = z.object({
   time: z.string(), // HH:mm
   endDate: z.string().optional(), // ISO string, if null/undefined = indefinite
   billingType: z.enum(['perService', 'monthly']),
+  monthlyValue: z.number().optional(),
   status: z.enum(['active', 'cancelled', 'completed']),
   createdAt: z.custom<FieldValue>(),
   lastGeneratedAt: z.custom<FieldValue>().optional(),
   nextRunAt: z.custom<FieldValue>().optional(),
   originalOrderId: z.string(), // The ID of the first OS that created this profile
   type: z.enum(['rental', 'operation']),
+  templateData: z.any().optional(),
 });
 export type RecurrenceProfile = z.infer<typeof RecurrenceProfileSchema>;
 // #endregion

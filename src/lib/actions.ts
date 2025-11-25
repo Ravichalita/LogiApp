@@ -805,6 +805,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                         time: recurrenceData.time,
                         endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
                         billingType: recurrenceData.billingType,
+                        monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                         status: 'active',
                         type: 'rental',
                         nextRunDate: nextRunDate.toISOString(),
@@ -837,7 +838,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
         const dataToValidate = {
             ...rawData,
             dumpsterIds,
-            value: Number(rawData.value),
+            value: recurrenceProfileId && JSON.parse(rawData.recurrence as string).billingType === 'monthly' ? 0 : Number(rawData.value),
             lumpSumValue: Number(rawData.lumpSumValue),
             travelCost: Number(rawData.travelCost),
             totalCost: Number(rawData.totalCost),
@@ -988,7 +989,22 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         const diffTime = Math.abs(returnDate.getTime() - rentalDate.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const rentalDays = Math.max(diffDays, 1);
-        const totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
+
+        let totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
+        if (rentalData.recurrenceProfileId) {
+            const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`).get();
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+                if (recurrenceData.billingType === 'monthly') {
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    if (nextRunDate.getMonth() !== new Date().getMonth() || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                        totalValue = recurrenceData.monthlyValue || 0;
+                    } else {
+                        totalValue = 0;
+                    }
+                }
+            }
+        }
 
         const completedRentalData = {
             ...rentalData,
@@ -1005,6 +1021,61 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, completedRentalData);
+
+        // If the rental is part of a recurrence, create the next one
+        if (rentalData.recurrenceProfileId) {
+            const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`);
+            const recurrenceSnap = await recurrenceRef.get();
+
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+
+                if (recurrenceData.status === 'active' && (!recurrenceData.endDate || isBefore(new Date(), parseISO(recurrenceData.endDate)))) {
+
+                    const accountRef = db.doc(`accounts/${accountId}`);
+                    const newSequentialId = await db.runTransaction(async (transaction) => {
+                        const accountSnap = await transaction.get(accountRef);
+                        if (!accountSnap.exists) throw new Error("Conta não encontrada.");
+                        const currentCounter = accountSnap.data()?.rentalCounter || 0;
+                        const newCounter = currentCounter + 1;
+                        transaction.update(accountRef, { rentalCounter: newCounter });
+                        return newCounter;
+                    });
+
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    const nextRunDate = parseISO(recurrenceData.nextRunDate);
+                    const templateData = recurrenceData.templateData as Rental;
+                    const originalStartDate = parseISO(templateData.rentalDate);
+                    const originalEndDate = parseISO(templateData.returnDate);
+                    const durationMillis = originalEndDate.getTime() - originalStartDate.getTime();
+                    const newReturnDate = new Date(nextRunDate.getTime() + durationMillis);
+
+                    const newRentalData = {
+                        ...templateData,
+                        rentalDate: nextRunDate.toISOString(),
+                        returnDate: newReturnDate.toISOString(),
+                        sequentialId: newSequentialId,
+                        status: 'Pendente',
+                        createdAt: FieldValue.serverTimestamp(),
+                        attachments: [],
+                        notificationsSent: { due: false, late: false },
+                    };
+
+                    delete (newRentalData as any).googleCalendarEventId;
+                    delete (newRentalData as any).googleCalendarSwapEventId;
+                    delete (newRentalData as any).swapDate;
+                    delete (newRentalData as any).updatedAt;
+                    delete (newRentalData as any).id;
+
+                    const newRentalRef = db.collection(`accounts/${accountId}/rentals`).doc();
+                    batch.set(newRentalRef, newRentalData);
+
+                    batch.update(recurrenceRef, {
+                        nextRunDate: newNextRunDate.toISOString()
+                    });
+                }
+            }
+        }
 
         batch.delete(rentalRef);
 
@@ -1284,7 +1355,8 @@ export async function createOperationAction(accountId: string, createdBy: string
         const rawData = Object.fromEntries(formData.entries());
 
         const rawValue = rawData.value as string;
-        const value = rawValue ? parseFloat(rawValue) : 0;
+        const recurrenceRaw = rawData.recurrence as string;
+        const value = recurrenceRaw && JSON.parse(recurrenceRaw).billingType === 'monthly' ? 0 : (rawValue ? parseFloat(rawValue) : 0);
 
         let additionalCosts: AdditionalCost[] = [];
         if (rawData.additionalCosts && typeof rawData.additionalCosts === 'string') {
@@ -1327,6 +1399,7 @@ export async function createOperationAction(accountId: string, createdBy: string
                         time: recurrenceData.time,
                         endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
                         billingType: recurrenceData.billingType,
+                        monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                         status: 'active',
                         type: 'operation',
                         nextRunDate: nextRunDate.toISOString(),
@@ -1647,14 +1720,85 @@ export async function finishOperationAction(accountId: string, operationId: stri
         }
 
         const operationData = operationSnap.data() as Operation;
+
+        let operationValue = operationData.value || 0;
+        if (operationData.recurrenceProfileId) {
+            const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`).get();
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+                if (recurrenceData.billingType === 'monthly') {
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    if (nextRunDate.getMonth() !== new Date().getMonth() || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                        operationValue = recurrenceData.monthlyValue || 0;
+                    } else {
+                        operationValue = 0;
+                    }
+                }
+            }
+        }
+
         const completedOpData = {
             ...operationData,
+            value: operationValue,
             status: 'Concluído',
             completedAt: FieldValue.serverTimestamp(),
         };
 
         const newCompletedRef = db.collection(`accounts/${accountId}/completed_operations`).doc();
         batch.set(newCompletedRef, completedOpData);
+
+        if (operationData.recurrenceProfileId) {
+            const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`);
+            const recurrenceSnap = await recurrenceRef.get();
+
+            if (recurrenceSnap.exists) {
+                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+
+                if (recurrenceData.status === 'active' && (!recurrenceData.endDate || isBefore(new Date(), parseISO(recurrenceData.endDate)))) {
+
+                    const accountRef = db.doc(`accounts/${accountId}`);
+                    const newSequentialId = await db.runTransaction(async (transaction) => {
+                        const accountSnap = await transaction.get(accountRef);
+                        if (!accountSnap.exists) throw new Error("Conta não encontrada.");
+                        const currentCounter = accountSnap.data()?.operationCounter || 0;
+                        const newCounter = currentCounter + 1;
+                        transaction.update(accountRef, { operationCounter: newCounter });
+                        return newCounter;
+                    });
+
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    const nextRunDate = parseISO(recurrenceData.nextRunDate);
+                    const templateData = recurrenceData.templateData as Operation;
+
+                    const originalStartDate = parseISO(templateData.startDate);
+                    const originalEndDate = parseISO(templateData.endDate);
+                    const durationMillis = originalEndDate.getTime() - originalStartDate.getTime();
+                    const newEndDate = new Date(nextRunDate.getTime() + durationMillis);
+
+                    const newOperationData = {
+                        ...templateData,
+                        startDate: nextRunDate.toISOString(),
+                        endDate: newEndDate.toISOString(),
+                        sequentialId: newSequentialId,
+                        status: 'Pendente',
+                        createdAt: FieldValue.serverTimestamp(),
+                        attachments: [],
+                    };
+
+                    delete (newOperationData as any).googleCalendarEventId;
+                    delete (newOperationData as any).updatedAt;
+                    delete (newOperationData as any).id;
+
+                    const newOperationRef = db.collection(`accounts/${accountId}/operations`).doc();
+                    batch.set(newOperationRef, newOperationData);
+
+                    batch.update(recurrenceRef, {
+                        nextRunDate: newNextRunDate.toISOString()
+                    });
+                }
+            }
+        }
+
         batch.delete(operationRef);
 
         if (operationData.truckId) {

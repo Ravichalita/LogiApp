@@ -168,6 +168,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     daysOfWeek: [],
     time: '08:00',
     billingType: 'perService',
+    monthlyValue: 0,
   });
 
   const [isRentalDateOpen, setIsRentalDateOpen] = useState(false);
@@ -974,74 +975,92 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         </div>
       </div>
 
-       <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
-        <AccordionItem value="per-day">
-          <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
-          <AccordionContent>
-            <div className="p-4 border rounded-md space-y-4 bg-card">
-              <div className="space-y-2">
-                {(rentalPrices && rentalPrices.length > 0) ? (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um preço" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rentalPrices.map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} ({formatCurrencyForDisplay(p.value)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      id="value"
-                      name="value_display"
-                      value={displayValue}
-                      onChange={handleValueChange}
-                      placeholder="R$ 0,00"
-                      required={billingType === 'perDay'}
-                      className="sm:w-1/3 text-right"
-                      disabled={billingType !== 'perDay'}
-                    />
-                  </div>
-                ) : (
-                  <Input
-                    id="value_display"
-                    name="value_display"
-                    value={displayValue}
-                    onChange={handleValueChange}
-                    placeholder="R$ 0,00"
-                    required={billingType === 'perDay'}
-                    className="text-right"
-                    disabled={billingType !== 'perDay'}
-                  />
-                )}
-              </div>
-              {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="lump-sum">
-          <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
-          <AccordionContent>
-            <div className="p-4 border rounded-md space-y-4 bg-card">
-              <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
-              <Input
-                id="lumpSumValue"
-                name="lumpSumValue_display"
-                value={displayLumpSumValue}
-                onChange={handleLumpSumValueChange}
+      {recurrenceData.billingType === 'monthly' ? (
+        <div className="p-4 border rounded-md space-y-4 bg-card">
+            <Label htmlFor="monthlyValue">Valor Mensal</Label>
+            <Input
+                id="monthlyValue"
+                name="monthlyValue_display"
+                value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+                onChange={(e) => {
+                    const rawValue = e.target.value.replace(/\D/g, '');
+                    const cents = parseInt(rawValue, 10) || 0;
+                    setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+                }}
                 placeholder="R$ 0,00"
-                required={billingType === 'lumpSum'}
                 className="text-right"
-                disabled={billingType !== 'lumpSum'}
-              />
-              {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+            />
+        </div>
+      ) : (
+        <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
+            <AccordionItem value="per-day">
+                <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
+                <AccordionContent>
+                    <div className="p-4 border rounded-md space-y-4 bg-card">
+                        <div className="space-y-2">
+                            {(rentalPrices && rentalPrices.length > 0) ? (
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione um preço" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {rentalPrices.map(p => (
+                                                <SelectItem key={p.id} value={p.id}>
+                                                    {p.name} ({formatCurrencyForDisplay(p.value)})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Input
+                                        id="value"
+                                        name="value_display"
+                                        value={displayValue}
+                                        onChange={handleValueChange}
+                                        placeholder="R$ 0,00"
+                                        required={billingType === 'perDay'}
+                                        className="sm:w-1/3 text-right"
+                                        disabled={billingType !== 'perDay'}
+                                    />
+                                </div>
+                            ) : (
+                                <Input
+                                    id="value_display"
+                                    name="value_display"
+                                    value={displayValue}
+                                    onChange={handleValueChange}
+                                    placeholder="R$ 0,00"
+                                    required={billingType === 'perDay'}
+                                    className="text-right"
+                                    disabled={billingType !== 'perDay'}
+                                />
+                            )}
+                        </div>
+                        {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="lump-sum">
+                <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
+                <AccordionContent>
+                    <div className="p-4 border rounded-md space-y-4 bg-card">
+                        <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
+                        <Input
+                            id="lumpSumValue"
+                            name="lumpSumValue_display"
+                            value={displayLumpSumValue}
+                            onChange={handleLumpSumValueChange}
+                            placeholder="R$ 0,00"
+                            required={billingType === 'lumpSum'}
+                            className="text-right"
+                            disabled={billingType !== 'lumpSum'}
+                        />
+                        {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+      )}
       
        <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
