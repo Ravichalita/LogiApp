@@ -232,11 +232,11 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
         const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
 
-        // Reverted to fetching a single dumpster to avoid breaking changes across the app.
-        // The Rental type might be out of sync, so we access dumpsterId via `any`.
-        const dumpsterPromise = (rentalData as any).dumpsterId
-            ? adminDb.doc(`accounts/${accountId}/dumpsters/${(rentalData as any).dumpsterId}`).get()
-            : Promise.resolve(null);
+        const dumpsterPromises = (rentalData.dumpsterIds || []).map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get());
+
+        const [clientSnap, assignedToSnap, truckSnap, ...dumpsterSnaps] = await Promise.all([clientPromise, assignedToPromise, truckPromise, ...dumpsterPromises]);
+
+        const dumpsters = dumpsterSnaps.map(snap => docToSerializable(snap)).filter(d => d !== null) as Dumpster[];
 
         const [clientSnap, assignedToSnap, truckSnap, dumpsterSnap] = await Promise.all([clientPromise, assignedToPromise, truckPromise, dumpsterPromise]);
 
@@ -244,7 +244,7 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
             ...(rentalData as any),
             itemType: 'rental' as const,
             client: docToSerializable(clientSnap) as Client | null,
-            dumpster: docToSerializable(dumpsterSnap) as Dumpster | null,
+            dumpsters: dumpsters,
             assignedToUser: docToSerializable(assignedToSnap) as UserAccount | null,
             truck: docToSerializable(truckSnap) as Truck | null,
         };
