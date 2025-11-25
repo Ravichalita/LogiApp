@@ -182,6 +182,8 @@ export function RecurrencePanel() {
                                 <TableHead>Valor</TableHead>
                                 <TableHead>Frequência</TableHead>
                                 <TableHead>Período</TableHead>
+                                <TableHead>Tipo</TableHead>
+                                <TableHead>Frequência</TableHead>
                                 <TableHead>Próxima Geração</TableHead>
                                 <TableHead className="text-right"></TableHead>
                             </TableRow>
@@ -197,6 +199,11 @@ export function RecurrencePanel() {
                                             <span>{profile.billingType === 'monthly' ? `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((profile.monthlyValue || 0) / 100)}` : `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profile.templateData?.value || 0)}`}</span>
                                             <span className="text-xs text-muted-foreground">{profile.billingType === 'monthly' ? 'Mensal' : 'Por Serviço'}</span>
                                         </div>
+                                    <TableCell className="font-medium">{profile.details?.client?.name || 'Cliente não encontrado'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline">
+                                            {profile.type === 'operation' ? 'Operação' : 'Aluguel'}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
