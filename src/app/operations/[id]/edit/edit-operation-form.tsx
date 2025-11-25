@@ -17,9 +17,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { AddressInput } from '@/components/address-input';
-import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment } from '@/lib/types';
+import type { Location, Client, UserAccount, Truck, Account, AdditionalCost, OperationType, PopulatedOperation, Attachment, RecurrenceProfile } from '@/lib/types';
 import { updateOperationAction } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
+import { RecurrenceSelector, RecurrenceData } from '@/components/recurrence-selector';
+import { getRecurrenceProfileById } from '@/lib/data-server-actions';
 import {
   Accordion,
   AccordionContent,
@@ -137,10 +139,36 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
   const [clientSearch, setClientSearch] = useState('');
   const [openAccordionGroups, setOpenAccordionGroups] = useState<string[]>([]);
 
+  const [recurrenceData, setRecurrenceData] = useState<RecurrenceData>({
+    enabled: !!operation.recurrenceProfileId,
+    frequency: 'weekly',
+    daysOfWeek: [],
+    time: '08:00',
+    billingType: operation.billingType || 'perService',
+  });
+
 
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
+
+    useEffect(() => {
+        if (operation.recurrenceProfileId && accountId) {
+            getRecurrenceProfileById(accountId, operation.recurrenceProfileId).then(profile => {
+                if (profile) {
+                    setRecurrenceData({
+                        enabled: true,
+                        frequency: profile.frequency,
+                        daysOfWeek: profile.daysOfWeek,
+                        time: profile.time,
+                        endDate: profile.endDate ? parseISO(profile.endDate) : undefined,
+                        billingType: profile.billingType,
+                        monthlyValue: profile.monthlyValue,
+                    });
+                }
+            });
+        }
+    }, [operation.recurrenceProfileId, accountId]);
 
   useEffect(() => {
     if (!startLocation && startAddress) {
@@ -365,6 +393,8 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
       if (travelCost) {
         formData.set('travelCost', String(travelCost));
       }
+
+      formData.set('recurrence', JSON.stringify(recurrenceData));
 
       const boundAction = updateOperationAction.bind(null, accountId);
       const result = await boundAction(null, formData);
@@ -673,9 +703,38 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
         )}
 
       <div className="p-4 border rounded-md space-y-4 bg-card">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Label className="text-muted-foreground">Valor do Serviço:</Label>
+        <div className="grid grid-cols-2 gap-4 items-end">
+          <div className="grid gap-2">
+            <Label className="text-muted-foreground">Custos Adicionais</Label>
+            <CostsDialog
+              costs={additionalCosts}
+              onSave={setAdditionalCosts}
+            >
+              <Button type="button" variant="outline" className="w-full">Adicionar Custos</Button>
+            </CostsDialog>
+          </div>
+          {recurrenceData.billingType === 'monthly' ? (
+            <div className="grid gap-2">
+              <Label htmlFor="monthlyValue" className="text-muted-foreground">Valor Mensal</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                <Input
+                  id="monthlyValue"
+                  name="monthlyValue_display"
+                  value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+                  onChange={(e) => {
+                    const rawValue = e.target.value.replace(/\D/g, '');
+                    const cents = parseInt(rawValue, 10) || 0;
+                    setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+                  }}
+                  placeholder="0,00"
+                  className="pl-8 text-right font-bold"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="value" className="text-muted-foreground">Valor do Serviço</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
                 <Input
@@ -684,17 +743,11 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
                   value={formatCurrencyForInput((baseValue * 100).toString())}
                   onChange={handleBaseValueChange}
                   placeholder="0,00"
-                  className="pl-8 text-right font-bold w-32"
+                  className="pl-8 text-right font-bold"
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <CostsDialog costs={additionalCosts} onSave={setAdditionalCosts}>
-                  <Button type="button" variant="outline" className="w-full">
-                      {additionalCosts.length > 0 ? `Editar Custos (${additionalCosts.length})` : 'Adicionar Custos'}
-                  </Button>
-              </CostsDialog>
-            </div>
+          )}
         </div>
         {additionalCosts.length > 0 && (
             <div className="pt-2 space-y-1">
@@ -752,6 +805,11 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
         <Label htmlFor="observations">Observações</Label>
         <Textarea id="observations" name="observations" defaultValue={operation.observations ?? ''} placeholder="Ex: Material a ser coletado, informações de contato no local, etc." />
       </div>
+
+      <RecurrenceSelector
+        value={recurrenceData}
+        onChange={setRecurrenceData}
+      />
 
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <Button type="submit" disabled={isPending} size="lg">
