@@ -1002,14 +1002,14 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
                 recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
                 if (recurrenceData.billingType === 'monthly') {
                     const timeZone = 'America/Sao_Paulo';
-                    const referenceDate = toZonedTime(parseISO(rentalData.rentalDate), timeZone);
-                    const currentMonth = referenceDate.getMonth();
+                    const now = toZonedTime(new Date(), timeZone);
+                    const currentMonth = now.getMonth();
 
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
                     const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
 
                     if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
-                        totalValue = (recurrenceData.monthlyValue || 0) / 100;
+                        totalValue = recurrenceData.monthlyValue || 0;
                     } else {
                         totalValue = 0;
                     }
@@ -1828,14 +1828,14 @@ export async function finishOperationAction(accountId: string, operationId: stri
                 recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
                 if (recurrenceData.billingType === 'monthly') {
                     const timeZone = 'America/Sao_Paulo';
-                    const referenceDate = toZonedTime(parseISO(operationData.startDate), timeZone);
-                    const currentMonth = referenceDate.getMonth();
+                    const now = toZonedTime(new Date(), timeZone);
+                    const currentMonth = now.getMonth();
 
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
                     const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
 
                     if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
-                        operationValue = (recurrenceData.monthlyValue || 0) / 100;
+                        operationValue = recurrenceData.monthlyValue || 0;
                     } else {
                         operationValue = 0;
                     }
