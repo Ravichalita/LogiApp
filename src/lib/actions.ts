@@ -87,34 +87,40 @@ import {
 } from 'firebase-admin/firestore';
 
 // Helper function for error handling
-function calculateNextRunDate(daysOfWeek: number[], time: string): Date {
+function calculateNextRunDate(daysOfWeek: number[], time: string, referenceDate: Date = new Date()): Date {
     if (!daysOfWeek || daysOfWeek.length === 0) {
         throw new Error("Selecione pelo menos um dia da semana para a recorrência.");
     }
 
     const [hours, minutes] = time.split(':').map(Number);
-    const now = new Date();
+    const timeZone = 'America/Sao_Paulo';
+
+    const now = toZonedTime(referenceDate, timeZone);
     const todayIndex = getDay(now);
 
     const sortedDays = [...daysOfWeek].sort((a, b) => a - b);
 
     let nextDayIndex = sortedDays.find((day) => day > todayIndex);
 
-    if (nextDayIndex === undefined) {
+    let daysToAdd = 0;
+    if (nextDayIndex !== undefined) {
+        // Next occurrence is this week
+        daysToAdd = nextDayIndex - todayIndex;
+    } else {
+        // Next occurrence is next week
         nextDayIndex = sortedDays[0];
+        daysToAdd = 7 - (todayIndex - nextDayIndex);
     }
 
-    let nextDate = new Date();
-    if (nextDayIndex !== undefined && nextDayIndex > todayIndex) {
-        nextDate = addDays(now, nextDayIndex - todayIndex);
-    } else if (nextDayIndex !== undefined) {
-        nextDate = addDays(now, 7 - (todayIndex - nextDayIndex));
-    }
+    let nextDate = addDays(now, daysToAdd);
 
-    nextDate = setHours(nextDate, hours);
-    nextDate = setMinutes(nextDate, minutes);
-    nextDate = setSeconds(nextDate, 0);
-    nextDate = setMilliseconds(nextDate, 0);
+    // Set the time correctly
+    nextDate = set(nextDate, {
+        hours: hours,
+        minutes: minutes,
+        seconds: 0,
+        milliseconds: 0
+    });
 
     return nextDate;
 }
@@ -989,14 +995,21 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         const rentalDays = Math.max(diffDays, 1);
 
         let totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
+        let recurrenceData: RecurrenceProfile | null = null;
         if (rentalData.recurrenceProfileId) {
             const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`).get();
             if (recurrenceSnap.exists) {
-                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+                recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
                 if (recurrenceData.billingType === 'monthly') {
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
-                    if (nextRunDate.getMonth() !== new Date().getMonth() || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
-                        totalValue = recurrenceData.monthlyValue || 0;
+                    const timeZone = 'America/Sao_Paulo';
+                    const referenceDate = toZonedTime(parseISO(rentalData.rentalDate), timeZone);
+                    const currentMonth = referenceDate.getMonth();
+
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
+                    const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
+
+                    if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                        totalValue = (recurrenceData.monthlyValue || 0) / 100;
                     } else {
                         totalValue = 0;
                     }
@@ -1004,7 +1017,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
             }
         }
 
-        const completedRentalData = {
+        const completedRentalData: any = {
             ...rentalData,
             originalRentalId: rentalId,
             completedDate: FieldValue.serverTimestamp(),
@@ -1016,6 +1029,10 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
             dumpsters: dumpsters,
             assignedToUser: assignedToSnap.exists ? assignedToSnap.data() : null,
         };
+
+        if (recurrenceData) {
+            completedRentalData.parentRentalId = recurrenceData.originalOrderId;
+        }
 
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, completedRentalData);
@@ -1804,14 +1821,21 @@ export async function finishOperationAction(accountId: string, operationId: stri
         const operationData = operationSnap.data() as Operation;
 
         let operationValue = operationData.value || 0;
+        let recurrenceData: RecurrenceProfile | null = null;
         if (operationData.recurrenceProfileId) {
             const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`).get();
             if (recurrenceSnap.exists) {
-                const recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
+                recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
                 if (recurrenceData.billingType === 'monthly') {
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
-                    if (nextRunDate.getMonth() !== new Date().getMonth() || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
-                        operationValue = recurrenceData.monthlyValue || 0;
+                    const timeZone = 'America/Sao_Paulo';
+                    const referenceDate = toZonedTime(parseISO(operationData.startDate), timeZone);
+                    const currentMonth = referenceDate.getMonth();
+
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
+                    const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
+
+                    if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                        operationValue = (recurrenceData.monthlyValue || 0) / 100;
                     } else {
                         operationValue = 0;
                     }
@@ -1819,12 +1843,16 @@ export async function finishOperationAction(accountId: string, operationId: stri
             }
         }
 
-        const completedOpData = {
+        const completedOpData: any = {
             ...operationData,
             value: operationValue,
             status: 'Concluído',
             completedAt: FieldValue.serverTimestamp(),
         };
+
+        if (recurrenceData) {
+            completedOpData.parentOperationId = recurrenceData.originalOrderId;
+        }
 
         const newCompletedRef = db.collection(`accounts/${accountId}/completed_operations`).doc();
         batch.set(newCompletedRef, completedOpData);
