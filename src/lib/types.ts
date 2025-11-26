@@ -239,6 +239,7 @@ export type Operation = z.infer<typeof OperationSchema> & { id: string };
 export const CompletedOperationSchema = BaseOperationSchema.extend({
   sequentialId: z.number().int().positive(),
   completedAt: z.custom<FieldValue | Timestamp | string>(),
+  parentOperationId: z.string().optional(),
 });
 
 export type CompletedOperation = z.infer<typeof CompletedOperationSchema> & { id: string, completedAt: string };
@@ -366,6 +367,7 @@ export const CompletedRentalSchema = RentalSchema.extend({
   completedDate: z.custom<FieldValue>(),
   rentalDays: z.number().positive(),
   totalValue: z.number().positive(),
+  parentRentalId: z.string().optional(),
 });
 
 
