@@ -872,8 +872,12 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
         const rentalData = validatedFields.data;
 
+        const cleanRentalData = Object.fromEntries(
+            Object.entries(rentalData).filter(([_, v]) => v !== undefined)
+        );
+
         rentalDocRef = await db.collection(`accounts/${accountId}/rentals`).add({
-            ...rentalData,
+            ...cleanRentalData,
             createdAt: FieldValue.serverTimestamp(),
         });
 
