@@ -872,8 +872,12 @@ export async function createRental(accountId: string, createdBy: string, prevSta
 
         const rentalData = validatedFields.data;
 
+        const cleanRentalData = Object.fromEntries(
+            Object.entries(rentalData).filter(([_, v]) => v !== undefined)
+        );
+
         rentalDocRef = await db.collection(`accounts/${accountId}/rentals`).add({
-            ...rentalData,
+            ...cleanRentalData,
             createdAt: FieldValue.serverTimestamp(),
         });
 
@@ -1224,46 +1228,48 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         if (!rentalBeforeUpdateSnap.exists) throw new Error("OS não encontrada.");
         const rentalBeforeUpdate = rentalBeforeUpdateSnap.data() as Rental;
 
-        const recurrenceData = JSON.parse(rawData.recurrence as string);
+        const recurrenceData = rawData.recurrence ? JSON.parse(rawData.recurrence as string) : null;
         let recurrenceProfileId = rentalBeforeUpdate.recurrenceProfileId;
 
-        if (recurrenceData.enabled) {
-            const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
-                accountId,
-                frequency: recurrenceData.frequency,
-                daysOfWeek: recurrenceData.daysOfWeek,
-                time: recurrenceData.time,
-                endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
-                billingType: recurrenceData.billingType,
-                monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
-                status: 'active',
-                type: 'rental',
-                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time).toISOString(),
-                templateData: { ...rentalBeforeUpdate, ...updateData },
-            };
+        if (recurrenceData) {
+            if (recurrenceData.enabled) {
+                const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
+                    accountId,
+                    frequency: recurrenceData.frequency,
+                    daysOfWeek: recurrenceData.daysOfWeek,
+                    time: recurrenceData.time,
+                    endDate: recurrenceData.endDate ? new Date(recurrenceData.endDate).toISOString() : undefined,
+                    billingType: recurrenceData.billingType,
+                    monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
+                    status: 'active',
+                    type: 'rental',
+                    nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time).toISOString(),
+                    templateData: { ...rentalBeforeUpdate, ...updateData },
+                };
 
-            const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v !== undefined));
+                const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v !== undefined));
 
-            if (recurrenceProfileId) {
-                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update(cleanProfileData);
-            } else {
-                const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
-                    ...cleanProfileData,
-                    originalOrderId: id,
-                    createdAt: FieldValue.serverTimestamp(),
-                });
-                recurrenceProfileId = recurrenceRef.id;
-                await recurrenceRef.update({ id: recurrenceProfileId });
+                if (recurrenceProfileId) {
+                    await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update(cleanProfileData);
+                } else {
+                    const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
+                        ...cleanProfileData,
+                        originalOrderId: id,
+                        createdAt: FieldValue.serverTimestamp(),
+                    });
+                    recurrenceProfileId = recurrenceRef.id;
+                    await recurrenceRef.update({ id: recurrenceProfileId });
+                }
+            } else if (recurrenceProfileId) {
+                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update({ status: 'cancelled' });
+                recurrenceProfileId = undefined;
             }
-        } else if (recurrenceProfileId) {
-            await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update({ status: 'cancelled' });
-            recurrenceProfileId = undefined;
-        }
 
-        updateData.recurrenceProfileId = recurrenceProfileId;
-        if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
-            updateData.value = 0;
-            updateData.lumpSumValue = 0;
+            updateData.recurrenceProfileId = recurrenceProfileId;
+            if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
+                updateData.value = 0;
+                updateData.lumpSumValue = 0;
+            }
         }
 
         await rentalRef.update({
