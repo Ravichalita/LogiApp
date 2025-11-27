@@ -731,6 +731,9 @@ export default function OSPage() {
                                                     {rental.recurrenceProfileId && (
                                                         <div className="flex items-center gap-1 ml-2 text-blue-600" title="OS Recorrente">
                                                             <RefreshCw className="h-3 w-3" />
+                                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                                                                Serviço Recorrente
+                                                            </Badge>
                                                         </div>
                                                     )}
                                                 </div>
@@ -823,6 +826,9 @@ export default function OSPage() {
                                                     {op.recurrenceProfileId && (
                                                         <div className="flex items-center gap-1 ml-2 text-blue-600" title="OS Recorrente">
                                                             <RefreshCw className="h-3 w-3" />
+                                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                                                                Serviço Recorrente
+                                                            </Badge>
                                                         </div>
                                                     )}
                                                 </div>
