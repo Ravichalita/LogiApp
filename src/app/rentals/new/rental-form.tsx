@@ -882,7 +882,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Data de Entrega</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <Popover open={isRentalDateOpen} onOpenChange={setIsRentalDateOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -918,7 +918,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                 />
               </PopoverContent>
             </Popover>
-            <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-auto" />
+            <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-full sm:w-auto" />
           </div>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
           {sameDaySwapWarning && (
@@ -932,7 +932,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         </div>
         <div className="space-y-2">
           <Label>Data de Retirada (Prevista)</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <Popover open={isReturnDateOpen} onOpenChange={setIsReturnDateOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -969,7 +969,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                 />
               </PopoverContent>
             </Popover>
-            <Input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="w-auto" />
+            <Input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="w-full sm:w-auto" />
           </div>
           {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
