@@ -8,7 +8,7 @@ import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction, 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X, Download, BarChart, ArrowUp, ArrowDown } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X, Download, BarChart, ArrowUp, ArrowDown, ChevronRight, ChevronDown } from 'lucide-react';
 import { format, parseISO, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -24,7 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToCompletedOperationAction, addAttachmentToCompletedRentalAction, deleteAttachmentFromCompletedItemAction } from '@/lib/actions';
+import { addAttachmentToOperationAction, addAttachmentToRentalAction, deleteAttachmentAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
@@ -262,6 +262,7 @@ export default function FinancePage() {
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(new Date().getMonth());
     const [showYearlyChart, setShowYearlyChart] = useState(false);
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
 
     const availableYears = useMemo(() => {
@@ -356,6 +357,65 @@ export default function FinancePage() {
         });
     }, [allHistoricItems, activeTab, selectedYear, selectedMonth]);
 
+    const groupedItems = useMemo(() => {
+        const groups: Record<string, HistoricItem[]> = {};
+        const standalone: HistoricItem[] = [];
+
+        filteredItems.forEach(item => {
+            const data = item.data as any;
+            const isMonthly = data.billingType === 'monthly';
+            const parentId = item.kind === 'rental' ? data.parentRentalId : data.parentOperationId;
+
+            if (isMonthly && parentId) {
+                if (!groups[parentId]) {
+                    groups[parentId] = [];
+                }
+                groups[parentId].push(item);
+            } else {
+                standalone.push(item);
+            }
+        });
+
+        const result: (
+            | { type: 'item'; item: HistoricItem }
+            | { type: 'group'; id: string; items: HistoricItem[]; mainItem: HistoricItem; totalValue: number; completedDate: string }
+        )[] = [];
+
+        standalone.forEach(item => result.push({ type: 'item', item }));
+
+        Object.entries(groups).forEach(([parentId, groupItems]) => {
+             const totalValue = groupItems.reduce((sum, i) => sum + (i.totalValue || 0), 0);
+             groupItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
+             const latestItem = groupItems[0];
+
+             result.push({
+                 type: 'group',
+                 id: parentId,
+                 items: groupItems,
+                 mainItem: latestItem,
+                 totalValue,
+                 completedDate: latestItem.completedDate
+             });
+        });
+
+        return result.sort((a, b) => {
+            const dateA = a.type === 'item' ? a.item.completedDate : a.completedDate;
+            const dateB = b.type === 'item' ? b.item.completedDate : b.completedDate;
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+
+    }, [filteredItems]);
+
+    const toggleGroup = (groupId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setExpandedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(groupId)) next.delete(groupId);
+            else next.add(groupId);
+            return next;
+        });
+    };
+
      useEffect(() => {
         if (filteredItems.length > 0) {
             const processAddresses = async () => {
@@ -363,7 +423,9 @@ export default function FinancePage() {
                 const revenueByNeighborhood: Record<string, number> = {};
 
                 for (const item of filteredItems) {
-                    const address = item.kind === 'rental' ? item.data.deliveryAddress : (item.data as PopulatedOperation).destinationAddress;
+                    const address = item.kind === 'rental'
+                        ? (item.data as CompletedRental).deliveryAddress
+                        : (item.data as PopulatedOperation).destinationAddress;
                     if (!address) continue;
 
                     let city = cityCache.get(address);
@@ -401,34 +463,62 @@ export default function FinancePage() {
 
     const owner = useMemo(() => team.find(m => m.role === 'owner'), [team]);
 
-    const handleAttachmentUploaded = (itemId: string, newAttachment: Attachment) => {
-        setAllHistoricItems(prevItems => prevItems.map(item => {
-            if (item.id === itemId) {
-                const updatedAttachments = [...(item.data.attachments || []), newAttachment];
-                const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
-                if (selectedItem?.id === itemId) {
-                    setSelectedItem(updatedItem);
+    const handleAttachmentUploaded = async (itemId: string, newAttachment: Attachment) => {
+        if (!accountId) return;
+        const item = allHistoricItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        let result;
+        if (item.kind === 'rental') {
+            result = await addAttachmentToRentalAction(accountId, itemId, newAttachment, 'completed_rentals');
+        } else {
+            result = await addAttachmentToOperationAction(accountId, itemId, newAttachment, 'completed_operations');
+        }
+
+        if (result.message === 'success') {
+            setAllHistoricItems(prevItems => prevItems.map(item => {
+                if (item.id === itemId) {
+                    const updatedAttachments = [...(item.data.attachments || []), newAttachment];
+                    const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
+                    if (selectedItem?.id === itemId) {
+                        setSelectedItem(updatedItem);
+                    }
+                    return updatedItem;
                 }
-                return updatedItem;
-            }
-            return item;
-        }));
+                return item;
+            }));
+            toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
+        } else {
+             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+        }
     };
     
-     const handleAttachmentDeleted = (itemId: string, attachmentToDelete: Attachment) => {
-        setAllHistoricItems(prevItems => prevItems.map(item => {
-            if (item.id === itemId) {
-                const updatedAttachments = (item.data.attachments || []).filter(
-                    (att: Attachment) => att.url !== attachmentToDelete.url
-                );
-                 const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
-                 if (selectedItem?.id === itemId) {
-                    setSelectedItem(updatedItem);
+     const handleAttachmentDeleted = async (itemId: string, attachmentToDelete: Attachment) => {
+        if (!accountId) return;
+        const item = allHistoricItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        const collectionName = item.kind === 'rental' ? 'completed_rentals' : 'completed_operations';
+        const result = await deleteAttachmentAction(accountId, itemId, collectionName, attachmentToDelete);
+
+        if (result.message === 'success') {
+            setAllHistoricItems(prevItems => prevItems.map(item => {
+                if (item.id === itemId) {
+                    const updatedAttachments = (item.data.attachments || []).filter(
+                        (att: Attachment) => att.url !== attachmentToDelete.url
+                    );
+                    const updatedItem = { ...item, data: { ...item.data, attachments: updatedAttachments } };
+                    if (selectedItem?.id === itemId) {
+                        setSelectedItem(updatedItem);
+                    }
+                    return updatedItem;
                 }
-                return updatedItem;
-            }
-            return item;
-        }));
+                return item;
+            }));
+             toast({ title: 'Sucesso!', description: 'Anexo removido.' });
+        } else {
+            toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+        }
     };
     
     const periodRevenue = filteredItems.reduce((acc, item) => acc + (item.totalValue || 0), 0);
@@ -688,22 +778,73 @@ export default function FinancePage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredItems.length > 0 ? filteredItems.map(item => (
-                                        <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer">
-                                            <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
-                                            <TableCell className="w-[20px] p-2 text-center">
-                                                {item.data.attachments && item.data.attachments.length > 0 && (
-                                                    <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="font-medium capitalize">
-                                                {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
-                                            </TableCell>
-                                            <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
-                                            <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                                            <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
-                                        </TableRow>
-                                    )) : (
+                                    {groupedItems.length > 0 ? groupedItems.map((rowItem) => {
+                                        if (rowItem.type === 'item') {
+                                            const item = rowItem.item;
+                                            return (
+                                                <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
+                                                    <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
+                                                    <TableCell className="w-[20px] p-2 text-center">
+                                                        {item.data.attachments && item.data.attachments.length > 0 && (
+                                                            <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium capitalize">
+                                                        {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
+                                                    <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                                                    <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
+                                                </TableRow>
+                                            );
+                                        } else {
+                                            const group = rowItem;
+                                            const isExpanded = expandedGroups.has(group.id);
+                                            return (
+                                                <React.Fragment key={group.id}>
+                                                    <TableRow
+                                                        className="cursor-pointer hover:bg-muted/50 bg-muted/20"
+                                                        onClick={(e) => toggleGroup(group.id, e)}
+                                                    >
+                                                         <TableCell className="font-mono text-xs font-bold">
+                                                             <div className="flex items-center gap-2">
+                                                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                                <span>{group.items.length} Serviços</span>
+                                                             </div>
+                                                         </TableCell>
+                                                         <TableCell className="w-[20px] p-2 text-center">
+                                                         </TableCell>
+                                                         <TableCell className="font-medium capitalize">
+                                                            {group.mainItem.kind === 'rental' ? 'Aluguel (Mensal)' : 'Operação (Mensal)'}
+                                                         </TableCell>
+                                                         <TableCell className="font-medium whitespace-nowrap">{group.mainItem.clientName}</TableCell>
+                                                         <TableCell className="text-right whitespace-nowrap">{format(parseISO(group.completedDate), 'MM/yyyy', { locale: ptBR })}</TableCell>
+                                                         <TableCell className="text-right whitespace-nowrap font-bold">{formatCurrency(group.totalValue)}</TableCell>
+                                                    </TableRow>
+                                                    {isExpanded && group.items.map(item => (
+                                                        <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50 bg-muted/5">
+                                                             <TableCell className="font-mono text-xs font-bold pl-8">
+                                                                <div className="flex items-center gap-2">
+                                                                     {item.prefix}{item.sequentialId}
+                                                                </div>
+                                                             </TableCell>
+                                                             <TableCell className="w-[20px] p-2 text-center">
+                                                                {item.data.attachments && item.data.attachments.length > 0 && (
+                                                                    <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
+                                                                )}
+                                                             </TableCell>
+                                                             <TableCell className="font-medium capitalize text-muted-foreground">
+                                                                {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                                             </TableCell>
+                                                             <TableCell className="font-medium whitespace-nowrap text-muted-foreground">{item.clientName}</TableCell>
+                                                             <TableCell className="text-right whitespace-nowrap text-muted-foreground">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                                                             <TableCell className="text-right whitespace-nowrap text-muted-foreground">{formatCurrency(item.totalValue)}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </React.Fragment>
+                                            )
+                                        }
+                                    }) : (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center h-24">Nenhum serviço finalizado no período selecionado.</TableCell>
                                         </TableRow>
