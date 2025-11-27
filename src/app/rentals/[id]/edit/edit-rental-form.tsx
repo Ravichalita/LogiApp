@@ -540,7 +540,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "flex-1 justify-start text-left font-normal",
                     !rentalDate && "text-muted-foreground"
                   )}
                 >
@@ -570,7 +570,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                 <Button
                   variant={"outline"}
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    "flex-1 justify-start text-left font-normal",
                     !returnDate && "text-muted-foreground"
                   )}
                   disabled={!rentalDate}
