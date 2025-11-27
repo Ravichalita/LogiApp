@@ -457,6 +457,7 @@ export const RecurrenceProfileSchema = z.object({
   createdAt: z.custom<FieldValue>(),
   lastGeneratedAt: z.custom<FieldValue>().optional(),
   nextRunAt: z.custom<FieldValue>().optional(),
+  nextRunDate: z.string().optional(),
   originalOrderId: z.string(), // The ID of the first OS that created this profile
   type: z.enum(['rental', 'operation']),
   templateData: z.any().optional(),
