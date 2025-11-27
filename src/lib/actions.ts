@@ -80,7 +80,8 @@ import {
     setMilliseconds
 } from 'date-fns';
 import {
-    toZonedTime
+    toZonedTime,
+    fromZonedTime
 } from 'date-fns-tz';
 import {
     FieldValue
@@ -122,7 +123,7 @@ function calculateNextRunDate(daysOfWeek: number[], time: string, referenceDate:
         milliseconds: 0
     });
 
-    return nextDate;
+    return fromZonedTime(nextDate, timeZone);
 }
 
 function handleFirebaseError(error: unknown): string {
@@ -1009,7 +1010,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
                     const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
 
                     if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
-                        totalValue = recurrenceData.monthlyValue || 0;
+                        totalValue = (recurrenceData.monthlyValue || 0) / 100;
                     } else {
                         totalValue = 0;
                     }
@@ -1835,7 +1836,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
                     const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
 
                     if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
-                        operationValue = recurrenceData.monthlyValue || 0;
+                        operationValue = (recurrenceData.monthlyValue || 0) / 100;
                     } else {
                         operationValue = 0;
                     }
