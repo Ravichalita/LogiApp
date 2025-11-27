@@ -261,6 +261,7 @@ export default function FinancePage() {
     
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(new Date().getMonth());
+    const [selectedResponsible, setSelectedResponsible] = useState<string>('all');
     const [showYearlyChart, setShowYearlyChart] = useState(false);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -353,9 +354,21 @@ export default function FinancePage() {
             const completedDate = parseISO(item.completedDate);
             const yearMatch = getYear(completedDate) === selectedYear;
             const monthMatch = selectedMonth === 'all' || getMonth(completedDate) === selectedMonth;
-            return yearMatch && monthMatch;
+
+            let responsibleMatch = true;
+            if (selectedResponsible !== 'all') {
+                if (item.kind === 'rental') {
+                    const rental = item.data as CompletedRental;
+                    responsibleMatch = rental.assignedToUser?.id === selectedResponsible;
+                } else {
+                    const operation = item.data as PopulatedOperation;
+                    responsibleMatch = operation.driver?.id === selectedResponsible;
+                }
+            }
+
+            return yearMatch && monthMatch && responsibleMatch;
         });
-    }, [allHistoricItems, activeTab, selectedYear, selectedMonth]);
+    }, [allHistoricItems, activeTab, selectedYear, selectedMonth, selectedResponsible]);
 
     const groupedItems = useMemo(() => {
         const groups: Record<string, HistoricItem[]> = {};
@@ -659,6 +672,17 @@ export default function FinancePage() {
                     <SelectContent>
                         {availableYears.map(year => (
                             <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                <Select value={selectedResponsible} onValueChange={setSelectedResponsible}>
+                    <SelectTrigger className="w-full md:w-[200px]">
+                        <SelectValue placeholder="Selecione o Responsável" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Todos os Responsáveis</SelectItem>
+                        {team.map(member => (
+                            <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
