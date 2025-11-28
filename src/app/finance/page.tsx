@@ -27,6 +27,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -287,7 +288,6 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                     </Button>
                 </DialogFooter>
             </DialogContent>
-        </Dialog>
         </>
     );
 }
@@ -521,7 +521,7 @@ export default function FinancePage() {
                     revenueByNeighborhood[neighborhood] += value;
                 }
                 setCityRevenue(revenueByCity);
-                setNeighborhoodRevenue(revenueByNeighborhood);
+                setNeighborhoodRevenue(neighborhoodRevenue);
             };
             processAddresses();
         } else {
