@@ -3618,8 +3618,13 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
     if (rawData.startDate) updateData.startDate = rawData.startDate;
     if (rawData.endDate) updateData.endDate = rawData.endDate;
     if (rawData.completedAt) updateData.completedAt = rawData.completedAt;
-    if (rawData.value) updateData.value = parseFloat(rawData.value as string);
-    if (rawData.observations) updateData.observations = rawData.observations;
+
+    // Check for undefined to allow 0
+    if (rawData.value !== undefined) {
+        updateData.value = parseFloat(rawData.value as string);
+    }
+
+    if (rawData.observations !== undefined) updateData.observations = rawData.observations;
 
     if (rawData.typeIds && typeof rawData.typeIds === 'string') {
         try {
@@ -3639,7 +3644,12 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
 
     try {
         const docRef = adminDb.doc(`accounts/${accountId}/completed_operations/${id}`);
-        await docRef.update(updateData);
+
+        // Ensure we are not sending an empty update
+        if (Object.keys(updateData).length > 0) {
+            await docRef.update(updateData);
+        }
+
         revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {
