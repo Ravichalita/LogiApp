@@ -6,7 +6,8 @@ import { google } from 'googleapis';
 import { getPopulatedRentalsForServer, getPopulatedOperationsForServer } from './data-server-actions';
 import {
     adminAuth,
-    adminDb
+    adminDb,
+    adminApp
 } from './firebase-admin';
 import {
     z
@@ -56,7 +57,9 @@ import type {
     RecurrenceProfile,
     PopulatedRental,
     PopulatedOperation,
-    Dumpster
+    Dumpster,
+    CompletedRental,
+    CompletedOperation
 } from './types';
 import {
     ensureUserDocument
@@ -3424,57 +3427,6 @@ export async function deleteClientAccountAction(accountId: string, ownerId: stri
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export async function cancelRecurrenceAction(accountId: string, recurrenceProfileId: string) {
     if (!accountId || !recurrenceProfileId) {
         return { message: 'error', error: 'IDs ausentes.' };
@@ -3546,3 +3498,198 @@ export async function deleteRecurrenceAction(accountId: string, recurrenceProfil
         return { message: 'error', error: handleFirebaseError(e) };
     }
 }
+
+// #region Completed Items Actions (Update, Delete, Restore)
+
+export async function updateCompletedRentalAction(accountId: string, prevState: any, formData: FormData) {
+    const rawData = Object.fromEntries(formData.entries());
+    const id = rawData.id as string;
+
+    if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
+
+    const updateData: any = {};
+    if (rawData.assignedTo) updateData.assignedTo = rawData.assignedTo;
+    if (rawData.deliveryAddress) updateData.deliveryAddress = rawData.deliveryAddress;
+    if (rawData.latitude) updateData.latitude = parseFloat(rawData.latitude as string);
+    if (rawData.longitude) updateData.longitude = parseFloat(rawData.longitude as string);
+    if (rawData.rentalDate) updateData.rentalDate = rawData.rentalDate;
+    if (rawData.returnDate) updateData.returnDate = rawData.returnDate;
+    if (rawData.completedDate) updateData.completedDate = rawData.completedDate;
+    if (rawData.totalValue) updateData.totalValue = parseFloat(rawData.totalValue as string);
+    if (rawData.observations) updateData.observations = rawData.observations;
+
+    if (rawData.attachments && typeof rawData.attachments === 'string') {
+        try {
+            updateData.attachments = JSON.parse(rawData.attachments);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    try {
+        const docRef = adminDb.doc(`accounts/${accountId}/completed_rentals/${id}`);
+        await docRef.update(updateData);
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteCompletedRentalAction(accountId: string, id: string) {
+    if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
+
+    try {
+        const docRef = adminDb.doc(`accounts/${accountId}/completed_rentals/${id}`);
+        const snap = await docRef.get();
+        if (snap.exists) {
+            const data = snap.data();
+            if (data?.attachments) {
+                 for (const att of data.attachments) {
+                    await deleteStorageFileAction(att.path);
+                 }
+            }
+            await docRef.delete();
+        }
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function restoreRentalAction(accountId: string, id: string) {
+    if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
+
+    const db = adminDb;
+    try {
+        const completedRef = db.doc(`accounts/${accountId}/completed_rentals/${id}`);
+        const completedSnap = await completedRef.get();
+
+        if (!completedSnap.exists) throw new Error("Item não encontrado.");
+
+        const data = completedSnap.data() as CompletedRental;
+
+        // Remove completion-specific fields to restore to active state
+        const { completedDate, totalValue, rentalDays, originalRentalId, ...rentalData } = data as any;
+
+        // Ensure status is active/pending
+        rentalData.status = 'Ativo';
+
+        // Use a new ID or try to use original?
+        // Safer to generate new ID but keep sequentialId if it's unique enough (it is per account).
+        // However, restoring implies moving it back. We can just add it to 'rentals' collection.
+
+        const newRentalRef = db.collection(`accounts/${accountId}/rentals`).doc();
+
+        await db.runTransaction(async (t) => {
+            t.set(newRentalRef, rentalData);
+            t.delete(completedRef);
+        });
+
+        revalidatePath('/finance');
+        revalidatePath('/os');
+        return { message: 'success' };
+    } catch (e) {
+         return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+
+export async function updateCompletedOperationAction(accountId: string, prevState: any, formData: FormData) {
+    const rawData = Object.fromEntries(formData.entries());
+    const id = rawData.id as string;
+
+    if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
+
+    const updateData: any = {};
+    if (rawData.driverId) updateData.driverId = rawData.driverId;
+    if (rawData.destinationAddress) updateData.destinationAddress = rawData.destinationAddress;
+    if (rawData.destinationLatitude) updateData.destinationLatitude = parseFloat(rawData.destinationLatitude as string);
+    if (rawData.destinationLongitude) updateData.destinationLongitude = parseFloat(rawData.destinationLongitude as string);
+    if (rawData.startDate) updateData.startDate = rawData.startDate;
+    if (rawData.endDate) updateData.endDate = rawData.endDate;
+    if (rawData.completedAt) updateData.completedAt = rawData.completedAt;
+    if (rawData.value) updateData.value = parseFloat(rawData.value as string);
+    if (rawData.observations) updateData.observations = rawData.observations;
+
+    if (rawData.typeIds && typeof rawData.typeIds === 'string') {
+        try {
+            updateData.typeIds = JSON.parse(rawData.typeIds);
+        } catch (e) {
+             // ignore
+        }
+    }
+
+    if (rawData.attachments && typeof rawData.attachments === 'string') {
+        try {
+            updateData.attachments = JSON.parse(rawData.attachments);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    try {
+        const docRef = adminDb.doc(`accounts/${accountId}/completed_operations/${id}`);
+        await docRef.update(updateData);
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteCompletedOperationAction(accountId: string, id: string) {
+    if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
+
+    try {
+        const docRef = adminDb.doc(`accounts/${accountId}/completed_operations/${id}`);
+        const snap = await docRef.get();
+        if (snap.exists) {
+            const data = snap.data();
+            if (data?.attachments) {
+                 for (const att of data.attachments) {
+                    await deleteStorageFileAction(att.path);
+                 }
+            }
+            await docRef.delete();
+        }
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function restoreOperationAction(accountId: string, id: string) {
+    if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
+
+    const db = adminDb;
+    try {
+        const completedRef = db.doc(`accounts/${accountId}/completed_operations/${id}`);
+        const completedSnap = await completedRef.get();
+
+        if (!completedSnap.exists) throw new Error("Item não encontrado.");
+
+        const data = completedSnap.data() as CompletedOperation;
+
+        const { completedAt, parentOperationId, ...opData } = data as any;
+
+        opData.status = 'Pendente';
+
+        const newOpRef = db.collection(`accounts/${accountId}/operations`).doc();
+
+        await db.runTransaction(async (t) => {
+            t.set(newOpRef, opData);
+            t.delete(completedRef);
+        });
+
+        revalidatePath('/finance');
+        revalidatePath('/os');
+        return { message: 'success' };
+    } catch (e) {
+         return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+// #endregion
