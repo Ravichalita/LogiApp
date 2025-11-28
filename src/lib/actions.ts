@@ -1689,10 +1689,17 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         if (!opBeforeUpdateSnap.exists) throw new Error("Operação não encontrada.");
         const opBeforeUpdate = opBeforeUpdateSnap.data() as Operation;
 
-        const recurrenceData = JSON.parse(rawData.recurrence as string);
+        let recurrenceData;
+        try {
+            recurrenceData = rawData.recurrence ? JSON.parse(rawData.recurrence as string) : null;
+        } catch (e) {
+            console.error("Failed to parse recurrence data:", e);
+            // Non-blocking, continue without recurrence update if failed
+        }
+
         let recurrenceProfileId = opBeforeUpdate.recurrenceProfileId;
 
-        if (recurrenceData.enabled) {
+        if (recurrenceData && recurrenceData.enabled) {
             const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                 accountId,
                 frequency: recurrenceData.frequency,
@@ -1729,7 +1736,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         }
 
         updateData.recurrenceProfileId = recurrenceProfileId;
-         if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
+         if (recurrenceData && recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
             updateData.value = 0;
         }
 
@@ -3618,8 +3625,13 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
     if (rawData.startDate) updateData.startDate = rawData.startDate;
     if (rawData.endDate) updateData.endDate = rawData.endDate;
     if (rawData.completedAt) updateData.completedAt = rawData.completedAt;
-    if (rawData.value) updateData.value = parseFloat(rawData.value as string);
-    if (rawData.observations) updateData.observations = rawData.observations;
+
+    // Check for undefined to allow 0
+    if (rawData.value !== undefined) {
+        updateData.value = parseFloat(rawData.value as string);
+    }
+
+    if (rawData.observations !== undefined) updateData.observations = rawData.observations;
 
     if (rawData.typeIds && typeof rawData.typeIds === 'string') {
         try {
@@ -3639,7 +3651,12 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
 
     try {
         const docRef = adminDb.doc(`accounts/${accountId}/completed_operations/${id}`);
-        await docRef.update(updateData);
+
+        // Ensure we are not sending an empty update
+        if (Object.keys(updateData).length > 0) {
+            await docRef.update(updateData);
+        }
+
         revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {

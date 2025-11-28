@@ -148,32 +148,33 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     } as PopulatedRental | PopulatedOperation;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            {/* Hidden div for PDF rendering */}
+        <>
+            {/* Hidden div for PDF rendering - moved outside Dialog to prevent event capturing issues */}
             <div style={{ position: 'fixed', left: '-220mm', top: 0, zIndex: -1 }}>
                  <OsPdfDocument item={itemForPdf} owner={owner} />
             </div>
 
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <div className="flex justify-between items-start gap-4">
-                        <div className="space-y-1">
-                            <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
-                            <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+            <Dialog open={isOpen} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <div className="flex justify-between items-start gap-4">
+                            <div className="space-y-1">
+                                <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
+                                <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Restaurar para Ativo" onClick={(e) => { e.stopPropagation(); onRestore(item); }}>
+                                    <Undo2 className="h-4 w-4" />
+                                </Button>
+                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Excluir" onClick={(e) => { e.stopPropagation(); onDelete(item); }}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                             <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Restaurar para Ativo" onClick={() => onRestore(item)}>
-                                <Undo2 className="h-4 w-4" />
-                            </Button>
-                             <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Excluir" onClick={() => onDelete(item)}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </DialogHeader>
+                    </DialogHeader>
                 <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
                      {item.kind === 'operation' && (
                         <div className="flex items-start gap-3">
@@ -260,6 +261,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        </>
     );
 }
 
