@@ -563,7 +563,10 @@ export default function FinancePage() {
 
     const handleDeleteItem = async (item: HistoricItem) => {
         if (!confirm('Tem certeza que deseja excluir permanentemente este item do histórico?')) return;
-        if (!accountId) return;
+        if (!accountId) {
+            toast({ title: "Erro", description: "Conta não identificada.", variant: "destructive" });
+            return;
+        }
 
         let result;
         if (item.kind === 'rental') {
@@ -583,7 +586,10 @@ export default function FinancePage() {
 
     const handleRestoreItem = async (item: HistoricItem) => {
         if (!confirm('Tem certeza que deseja restaurar este item? Ele voltará a ser uma OS ativa.')) return;
-        if (!accountId) return;
+        if (!accountId) {
+            toast({ title: "Erro", description: "Conta não identificada.", variant: "destructive" });
+            return;
+        }
 
         let result;
         if (item.kind === 'rental') {

@@ -29,6 +29,7 @@ if (!getApps().length) {
 
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
+adminDb.settings({ ignoreUndefinedProperties: true });
 export const adminMessaging = getMessaging(adminApp);
 // Exportamos o app inteiro para garantir que a configuração seja usada corretamente
 export { adminApp };
