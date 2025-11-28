@@ -66,6 +66,10 @@ export async function fetchAccount(accountId: string): Promise<Account | null> {
     }
     return null;
 }
+
+export async function getAccountData(accountId: string): Promise<Account | null> {
+    return fetchAccount(accountId);
+}
 // #endregion
 
 // #region Client Data
