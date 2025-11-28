@@ -156,9 +156,12 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
 
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="flex justify-between items-center pr-8">
-                        <span>Detalhes da OS #{item.prefix}{item.sequentialId}</span>
-                         <div className="flex gap-1">
+                    <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                            <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
+                            <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
                                 <Edit className="h-4 w-4" />
                             </Button>
@@ -169,8 +172,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
-                    </DialogTitle>
-                    <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                    </div>
                 </DialogHeader>
                 <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
                      {item.kind === 'operation' && (
@@ -287,6 +289,7 @@ export default function FinancePage() {
 
     const [isEditing, setIsEditing] = useState(false);
     const [itemToEdit, setItemToEdit] = useState<HistoricItem | null>(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const availableYears = useMemo(() => {
         const currentYear = new Date().getFullYear();
@@ -366,7 +369,7 @@ export default function FinancePage() {
         
         fetchData();
 
-    }, [accountId, authLoading, canAccessFinance, canAccessRentals, canAccessOperations]);
+    }, [accountId, authLoading, canAccessFinance, canAccessRentals, canAccessOperations, refreshTrigger]);
 
     const filteredItems = useMemo(() => {
         let items = allHistoricItems;
@@ -574,7 +577,7 @@ export default function FinancePage() {
             setSelectedItem(null);
             toast({ title: "Excluído", description: "Item removido do histórico." });
         } else {
-            toast({ title: "Erro", description: "Não foi possível excluir o item.", variant: "destructive" });
+            toast({ title: "Erro", description: result.error || "Não foi possível excluir o item.", variant: "destructive" });
         }
     };
 
@@ -594,7 +597,7 @@ export default function FinancePage() {
             setSelectedItem(null);
             toast({ title: "Restaurado", description: "O serviço foi movido de volta para a lista ativa." });
         } else {
-            toast({ title: "Erro", description: "Falha ao restaurar o item.", variant: "destructive" });
+            toast({ title: "Erro", description: result.error || "Falha ao restaurar o item.", variant: "destructive" });
         }
     };
 
@@ -614,7 +617,7 @@ export default function FinancePage() {
     const handleEditSuccess = () => {
         setIsEditing(false);
         setItemToEdit(null);
-        window.location.reload();
+        setRefreshTrigger(prev => prev + 1);
     };
     
     const periodRevenue = filteredItems.reduce((acc, item) => acc + (item.totalValue || 0), 0);

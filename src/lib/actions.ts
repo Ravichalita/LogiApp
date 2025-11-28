@@ -3544,9 +3544,15 @@ export async function deleteCompletedRentalAction(accountId: string, id: string)
         const snap = await docRef.get();
         if (snap.exists) {
             const data = snap.data();
-            if (data?.attachments) {
+            if (data?.attachments && Array.isArray(data.attachments)) {
                  for (const att of data.attachments) {
-                    await deleteStorageFileAction(att.path);
+                    if (att?.path) {
+                        try {
+                            await deleteStorageFileAction(att.path);
+                        } catch (err) {
+                            console.error("Failed to delete attachment", err);
+                        }
+                    }
                  }
             }
             await docRef.delete();
@@ -3571,14 +3577,15 @@ export async function restoreRentalAction(accountId: string, id: string) {
         const data = completedSnap.data() as CompletedRental;
 
         // Remove completion-specific fields to restore to active state
-        const { completedDate, totalValue, rentalDays, originalRentalId, ...rentalData } = data as any;
+        // Also ensure 'id' is removed if present in data, to avoid ID mismatch with new doc
+        // We KEEP originalRentalId if it exists, as it might link to recurrence templates or logic, though for rentals recurrence uses recurrenceProfileId.
+        // originalRentalId is usually the ID of the rental itself when it was completed.
+        // We strip it to avoid confusion, or keep it? The logic usually relies on recurrenceProfileId.
+        // Let's strip completion metadata but keep potential structural links if any.
+        const { completedDate, totalValue, rentalDays, id: _ignoreId, ...rentalData } = data as any;
 
         // Ensure status is active/pending
         rentalData.status = 'Ativo';
-
-        // Use a new ID or try to use original?
-        // Safer to generate new ID but keep sequentialId if it's unique enough (it is per account).
-        // However, restoring implies moving it back. We can just add it to 'rentals' collection.
 
         const newRentalRef = db.collection(`accounts/${accountId}/rentals`).doc();
 
@@ -3589,6 +3596,7 @@ export async function restoreRentalAction(accountId: string, id: string) {
 
         revalidatePath('/finance');
         revalidatePath('/os');
+        revalidatePath('/');
         return { message: 'success' };
     } catch (e) {
          return { message: 'error', error: handleFirebaseError(e) };
@@ -3647,9 +3655,15 @@ export async function deleteCompletedOperationAction(accountId: string, id: stri
         const snap = await docRef.get();
         if (snap.exists) {
             const data = snap.data();
-            if (data?.attachments) {
+            if (data?.attachments && Array.isArray(data.attachments)) {
                  for (const att of data.attachments) {
-                    await deleteStorageFileAction(att.path);
+                    if (att?.path) {
+                        try {
+                            await deleteStorageFileAction(att.path);
+                        } catch (err) {
+                            console.error("Failed to delete attachment", err);
+                        }
+                    }
                  }
             }
             await docRef.delete();
@@ -3673,7 +3687,8 @@ export async function restoreOperationAction(accountId: string, id: string) {
 
         const data = completedSnap.data() as CompletedOperation;
 
-        const { completedAt, parentOperationId, ...opData } = data as any;
+        // Ensure we strip 'id' if present to avoid conflicts, but KEEP parentOperationId to preserve recurrence links
+        const { completedAt, id: _ignoreId, ...opData } = data as any;
 
         opData.status = 'Pendente';
 
@@ -3686,6 +3701,7 @@ export async function restoreOperationAction(accountId: string, id: string) {
 
         revalidatePath('/finance');
         revalidatePath('/os');
+        revalidatePath('/operations');
         return { message: 'success' };
     } catch (e) {
          return { message: 'error', error: handleFirebaseError(e) };
