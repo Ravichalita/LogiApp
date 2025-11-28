@@ -1040,6 +1040,10 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
         if (recurrenceData) {
             completedRentalData.parentRentalId = recurrenceData.originalOrderId;
+            // Ensure billingType is carried over from recurrence profile if it's monthly
+            if (recurrenceData.billingType === 'monthly') {
+                completedRentalData.billingType = 'monthly';
+            }
         }
 
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
@@ -1880,6 +1884,10 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         if (recurrenceData) {
             completedOpData.parentOperationId = recurrenceData.originalOrderId;
+            // Ensure billingType is carried over from recurrence profile if it's monthly
+            if (recurrenceData.billingType === 'monthly') {
+                completedOpData.billingType = 'monthly';
+            }
         }
 
         const newCompletedRef = db.collection(`accounts/${accountId}/completed_operations`).doc();
