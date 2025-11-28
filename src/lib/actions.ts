@@ -1689,10 +1689,17 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         if (!opBeforeUpdateSnap.exists) throw new Error("Operação não encontrada.");
         const opBeforeUpdate = opBeforeUpdateSnap.data() as Operation;
 
-        const recurrenceData = JSON.parse(rawData.recurrence as string);
+        let recurrenceData;
+        try {
+            recurrenceData = rawData.recurrence ? JSON.parse(rawData.recurrence as string) : null;
+        } catch (e) {
+            console.error("Failed to parse recurrence data:", e);
+            // Non-blocking, continue without recurrence update if failed
+        }
+
         let recurrenceProfileId = opBeforeUpdate.recurrenceProfileId;
 
-        if (recurrenceData.enabled) {
+        if (recurrenceData && recurrenceData.enabled) {
             const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                 accountId,
                 frequency: recurrenceData.frequency,
@@ -1729,7 +1736,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         }
 
         updateData.recurrenceProfileId = recurrenceProfileId;
-         if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
+         if (recurrenceData && recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
             updateData.value = 0;
         }
 
