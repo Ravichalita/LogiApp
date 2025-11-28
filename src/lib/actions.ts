@@ -1040,9 +1040,11 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
 
         if (recurrenceData) {
             completedRentalData.parentRentalId = recurrenceData.originalOrderId;
-            // Ensure billingType is carried over from recurrence profile if it's monthly
+            // Ensure billingType is carried over from recurrence profile
             if (recurrenceData.billingType === 'monthly') {
                 completedRentalData.billingType = 'monthly';
+            } else {
+                completedRentalData.billingType = 'perService';
             }
         }
 
@@ -1884,9 +1886,11 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         if (recurrenceData) {
             completedOpData.parentOperationId = recurrenceData.originalOrderId;
-            // Ensure billingType is carried over from recurrence profile if it's monthly
+            // Ensure billingType is carried over from recurrence profile
             if (recurrenceData.billingType === 'monthly') {
                 completedOpData.billingType = 'monthly';
+            } else {
+                completedOpData.billingType = 'perService';
             }
         }
 
