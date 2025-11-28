@@ -3,12 +3,12 @@
 
 import React, { useEffect, useState, useTransition, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
-import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment, PopulatedRental, UserAccount } from '@/lib/types';
+import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment, PopulatedRental, UserAccount, Account } from '@/lib/types';
 import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction, getNeighborhoodFromAddressAction } from '@/lib/data-server-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X, Download, BarChart, ArrowUp, ArrowDown, ChevronRight, ChevronDown } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, ShieldAlert, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, X, Download, BarChart, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Edit, Trash2, Undo2 } from 'lucide-react';
 import { format, parseISO, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from './revenue-by-client-chart';
@@ -24,7 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToOperationAction, addAttachmentToRentalAction, deleteAttachmentAction } from '@/lib/actions';
+import { addAttachmentToOperationAction, addAttachmentToRentalAction, deleteAttachmentAction, deleteCompletedRentalAction, deleteCompletedOperationAction, restoreRentalAction, restoreOperationAction } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
@@ -38,10 +38,12 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel"
-import { fetchTeamMembers } from '@/lib/data';
+import { fetchTeamMembers, getAccountData } from '@/lib/data';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { MonthlyRevenueChart } from './monthly-revenue-chart';
 import { cn } from '@/lib/utils';
+import { EditHistoricRentalForm } from './edit-historic-rental-form';
+import { EditHistoricOperationForm } from './edit-historic-operation-form';
 
 
 function formatCurrency(value: number | undefined | null) {
@@ -75,13 +77,16 @@ function StatCard({ title, value, icon: Icon, loading, description }: { title: s
     )
 }
 
-function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUploaded, onAttachmentDeleted, owner }: { 
+function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUploaded, onAttachmentDeleted, owner, onEdit, onDelete, onRestore }: {
     item: HistoricItem | null, 
     isOpen: boolean, 
     onOpenChange: (open: boolean) => void, 
     onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void 
     onAttachmentDeleted: (itemId: string, attachment: Attachment) => void;
     owner?: UserAccount | null;
+    onEdit: (item: HistoricItem) => void;
+    onDelete: (item: HistoricItem) => void;
+    onRestore: (item: HistoricItem) => void;
 }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
@@ -151,8 +156,23 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
 
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
-                    <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                    <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                            <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
+                            <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
+                                <Edit className="h-4 w-4" />
+                            </Button>
+                             <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Restaurar para Ativo" onClick={() => onRestore(item)}>
+                                <Undo2 className="h-4 w-4" />
+                            </Button>
+                             <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Excluir" onClick={() => onDelete(item)}>
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </DialogHeader>
                 <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
                      {item.kind === 'operation' && (
@@ -250,8 +270,10 @@ const months = [
 
 export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
+    const { toast } = useToast();
     const [allHistoricItems, setAllHistoricItems] = useState<HistoricItem[]>([]);
     const [team, setTeam] = useState<UserAccount[]>([]);
+    const [account, setAccount] = useState<Account | null>(null);
     const [loadingData, setLoadingData] = useState(true);
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
     const [cityRevenue, setCityRevenue] = useState<Record<string, number>>({});
@@ -265,6 +287,9 @@ export default function FinancePage() {
     const [showYearlyChart, setShowYearlyChart] = useState(false);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
+    const [isEditing, setIsEditing] = useState(false);
+    const [itemToEdit, setItemToEdit] = useState<HistoricItem | null>(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     const availableYears = useMemo(() => {
         const currentYear = new Date().getFullYear();
@@ -299,12 +324,14 @@ export default function FinancePage() {
         async function fetchData() {
             setLoadingData(true);
             try {
-                const [rentals, operations, teamData] = await Promise.all([
+                const [rentals, operations, teamData, accountData] = await Promise.all([
                     canAccessRentals ? getCompletedRentals(accountId!) : Promise.resolve([]),
                     canAccessOperations ? getCompletedOperations(accountId!) : Promise.resolve([]),
                     fetchTeamMembers(accountId!),
+                    getAccountData(accountId!),
                 ]);
                 setTeam(teamData);
+                setAccount(accountData);
                 
                 const combinedItems: HistoricItem[] = [
                     ...rentals.map(r => ({
@@ -342,7 +369,7 @@ export default function FinancePage() {
         
         fetchData();
 
-    }, [accountId, authLoading, canAccessFinance, canAccessRentals, canAccessOperations]);
+    }, [accountId, authLoading, canAccessFinance, canAccessRentals, canAccessOperations, refreshTrigger]);
 
     const filteredItems = useMemo(() => {
         let items = allHistoricItems;
@@ -532,6 +559,65 @@ export default function FinancePage() {
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }
+    };
+
+    const handleDeleteItem = async (item: HistoricItem) => {
+        if (!confirm('Tem certeza que deseja excluir permanentemente este item do histórico?')) return;
+        if (!accountId) return;
+
+        let result;
+        if (item.kind === 'rental') {
+            result = await deleteCompletedRentalAction(accountId, item.id);
+        } else {
+            result = await deleteCompletedOperationAction(accountId, item.id);
+        }
+
+        if (result.message === 'success') {
+            setAllHistoricItems(prev => prev.filter(i => i.id !== item.id));
+            setSelectedItem(null);
+            toast({ title: "Excluído", description: "Item removido do histórico." });
+        } else {
+            toast({ title: "Erro", description: result.error || "Não foi possível excluir o item.", variant: "destructive" });
+        }
+    };
+
+    const handleRestoreItem = async (item: HistoricItem) => {
+        if (!confirm('Tem certeza que deseja restaurar este item? Ele voltará a ser uma OS ativa.')) return;
+        if (!accountId) return;
+
+        let result;
+        if (item.kind === 'rental') {
+            result = await restoreRentalAction(accountId, item.id);
+        } else {
+            result = await restoreOperationAction(accountId, item.id);
+        }
+
+        if (result.message === 'success') {
+            setAllHistoricItems(prev => prev.filter(i => i.id !== item.id));
+            setSelectedItem(null);
+            toast({ title: "Restaurado", description: "O serviço foi movido de volta para a lista ativa." });
+        } else {
+            toast({ title: "Erro", description: result.error || "Falha ao restaurar o item.", variant: "destructive" });
+        }
+    };
+
+    const handleEditItem = (item: HistoricItem) => {
+        setSelectedItem(null); // Close details dialog
+        setItemToEdit(item);
+        setIsEditing(true);
+    };
+
+    const handleEditClose = (open: boolean) => {
+        if (!open) {
+            setIsEditing(false);
+            setItemToEdit(null);
+        }
+    };
+
+    const handleEditSuccess = () => {
+        setIsEditing(false);
+        setItemToEdit(null);
+        setRefreshTrigger(prev => prev + 1);
     };
     
     const periodRevenue = filteredItems.reduce((acc, item) => acc + (item.totalValue || 0), 0);
@@ -880,6 +966,8 @@ export default function FinancePage() {
                     </CardContent>
                 </Card>
              </div>
+
+             {/* Read-only details dialog */}
              <HistoricItemDetailsDialog 
                 item={selectedItem} 
                 isOpen={!!selectedItem} 
@@ -887,7 +975,32 @@ export default function FinancePage() {
                 onAttachmentUploaded={handleAttachmentUploaded}
                 onAttachmentDeleted={handleAttachmentDeleted}
                 owner={owner}
+                onEdit={handleEditItem}
+                onDelete={handleDeleteItem}
+                onRestore={handleRestoreItem}
              />
+
+             {/* Edit Forms */}
+             {isEditing && itemToEdit && itemToEdit.kind === 'rental' && (
+                <EditHistoricRentalForm
+                    rental={itemToEdit.data as CompletedRental}
+                    team={team}
+                    isOpen={isEditing}
+                    onOpenChange={handleEditClose}
+                    onSuccess={handleEditSuccess}
+                />
+             )}
+
+             {isEditing && itemToEdit && itemToEdit.kind === 'operation' && account && (
+                <EditHistoricOperationForm
+                    operation={itemToEdit.data as PopulatedOperation}
+                    team={team}
+                    account={account}
+                    isOpen={isEditing}
+                    onOpenChange={handleEditClose}
+                    onSuccess={handleEditSuccess}
+                />
+             )}
         </div>
     );
 }
