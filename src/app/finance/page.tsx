@@ -81,7 +81,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     item: HistoricItem | null, 
     isOpen: boolean, 
     onOpenChange: (open: boolean) => void, 
-    onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void 
+    onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void;
     onAttachmentDeleted: (itemId: string, attachment: Attachment) => void;
     owner?: UserAccount | null;
     onEdit: (item: HistoricItem) => void;
@@ -142,10 +142,10 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
         }
     };
 
-    const itemForPdf = {
+    const itemForPdf = ({
         ...item.data,
         itemType: item.kind,
-    } as PopulatedRental | PopulatedOperation;
+    } as unknown) as PopulatedRental | PopulatedOperation;
 
     return (
         <>
