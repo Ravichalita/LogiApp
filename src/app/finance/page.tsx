@@ -90,9 +90,9 @@ function StatCard({ title, value, icon: Icon, loading, description }: { title: s
 }
 
 function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUploaded, onAttachmentDeleted, owner, onEdit, onDelete, onRestore }: {
-    item: HistoricItem | null, 
-    isOpen: boolean, 
-    onOpenChange: (open: boolean) => void, 
+    item: HistoricItem | null;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
     onAttachmentUploaded: (itemId: string, newAttachment: Attachment) => void;
     onAttachmentDeleted: (itemId: string, attachment: Attachment) => void;
     owner?: UserAccount | null;
@@ -157,7 +157,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     const itemForPdf = ({
         ...item.data,
         itemType: item.kind,
-    } as unknown) as PopulatedRental | PopulatedOperation;
+    } as any;
 
     return (
         <>
