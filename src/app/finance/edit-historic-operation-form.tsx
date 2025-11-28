@@ -150,23 +150,24 @@ export function EditHistoricOperationForm({ operation, team, account, isOpen, on
         const finalEndDate = combineDateTime(endDate, endTime);
         const finalCompletedDate = combineDateTime(completedDate, completedTime);
 
-        formData.append('id', operation.id);
-        if (driverId) formData.append('driverId', driverId);
+        // We use .set() to ensure we overwrite any existing values in formData (if any)
+        formData.set('id', operation.id);
+        if (driverId) formData.set('driverId', driverId);
 
-        formData.append('destinationAddress', destinationAddress);
+        formData.set('destinationAddress', destinationAddress);
         if (destinationLocation) {
-             formData.append('destinationLatitude', String(destinationLocation.lat));
-             formData.append('destinationLongitude', String(destinationLocation.lng));
+             formData.set('destinationLatitude', String(destinationLocation.lat));
+             formData.set('destinationLongitude', String(destinationLocation.lng));
         }
 
-        if (finalStartDate) formData.append('startDate', finalStartDate);
-        if (finalEndDate) formData.append('endDate', finalEndDate);
-        if (finalCompletedDate) formData.append('completedAt', finalCompletedDate);
+        if (finalStartDate) formData.set('startDate', finalStartDate);
+        if (finalEndDate) formData.set('endDate', finalEndDate);
+        if (finalCompletedDate) formData.set('completedAt', finalCompletedDate);
 
-        formData.append('value', String(value));
-        formData.append('observations', observations);
-        formData.append('attachments', JSON.stringify(attachments));
-        formData.append('typeIds', JSON.stringify(selectedTypeIds));
+        formData.set('value', String(value));
+        formData.set('observations', observations);
+        formData.set('attachments', JSON.stringify(attachments));
+        formData.set('typeIds', JSON.stringify(selectedTypeIds));
 
         const result = await updateCompletedOperationAction(accountId, null, formData);
 
