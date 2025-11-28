@@ -441,10 +441,11 @@ export default function FinancePage() {
 
         filteredItems.forEach(item => {
             const data = item.data as any;
-            const isMonthly = data.billingType === 'monthly';
+            // Group all recurring items (those with a parentId) to ensure both new and legacy data (which might miss billingType) are grouped.
+            // This also improves the view for 'Per Service' recurrence by grouping them.
             const parentId = item.kind === 'rental' ? data.parentRentalId : data.parentOperationId;
 
-            if (isMonthly && parentId) {
+            if (parentId) {
                 if (!groups[parentId]) {
                     groups[parentId] = [];
                 }
@@ -961,7 +962,15 @@ export default function FinancePage() {
                                                          <TableCell className="w-[20px] p-2 text-center">
                                                          </TableCell>
                                                          <TableCell className="font-medium capitalize">
-                                                            {group.mainItem.kind === 'rental' ? 'Aluguel (Mensal)' : 'Operação (Mensal)'}
+                                                            {(() => {
+                                                                // Determine label based on billing type or heuristic (0 value items imply monthly)
+                                                                const isMonthlyGroup = group.items.some(i => (i.data as any).billingType === 'monthly') || group.items.some(i => i.totalValue === 0);
+                                                                if (group.mainItem.kind === 'rental') {
+                                                                    return isMonthlyGroup ? 'Aluguel (Mensal)' : 'Aluguel (Recorrente)';
+                                                                } else {
+                                                                    return isMonthlyGroup ? 'Operação (Mensal)' : 'Operação (Recorrente)';
+                                                                }
+                                                            })()}
                                                          </TableCell>
                                                          <TableCell className="font-medium whitespace-nowrap">{group.mainItem.clientName}</TableCell>
                                                          <TableCell className="text-right whitespace-nowrap">{format(parseISO(group.completedDate), 'MM/yyyy', { locale: ptBR })}</TableCell>
