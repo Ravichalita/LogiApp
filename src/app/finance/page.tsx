@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useTransition, useMemo } from 'react';
@@ -21,6 +22,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { AttachmentsUploader } from '@/components/attachments-uploader';
@@ -142,7 +154,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
         }
     };
 
-    const itemForPdf = {
+    const itemForPdf = ({
         ...item.data,
         itemType: item.kind,
     } as any;
@@ -162,16 +174,48 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                 <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
                                 <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                             </div>
-                            <div className="flex gap-1 shrink-0">
+                             <div className="flex gap-1 shrink-0">
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
                                     <Edit className="h-4 w-4" />
                                 </Button>
-                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Restaurar para Ativo" onClick={(e) => { e.stopPropagation(); onRestore(item); }}>
-                                    <Undo2 className="h-4 w-4" />
-                                </Button>
-                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Excluir" onClick={(e) => { e.stopPropagation(); onDelete(item); }}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50" title="Restaurar para Ativo">
+                                            <Undo2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Restaurar Ordem de Serviço?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Esta ação irá mover o registro de volta para a lista de serviços ativos. Tem certeza que deseja continuar?
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => onRestore(item)}>Confirmar Restauração</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50" title="Excluir">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Tem certeza que deseja excluir?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Esta ação não pode ser desfeita e excluirá permanentemente este item do histórico.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => onDelete(item)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </div>
                     </DialogHeader>
@@ -260,7 +304,6 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                     </Button>
                 </DialogFooter>
             </DialogContent>
-        </Dialog>
         </>
     );
 }
@@ -494,7 +537,7 @@ export default function FinancePage() {
                     revenueByNeighborhood[neighborhood] += value;
                 }
                 setCityRevenue(revenueByCity);
-                setNeighborhoodRevenue(revenueByNeighborhood);
+                setNeighborhoodRevenue(neighborhoodRevenue);
             };
             processAddresses();
         } else {
@@ -564,7 +607,6 @@ export default function FinancePage() {
     };
 
     const handleDeleteItem = async (item: HistoricItem) => {
-        if (!confirm('Tem certeza que deseja excluir permanentemente este item do histórico?')) return;
         if (!accountId) return;
 
         let result;
@@ -584,7 +626,6 @@ export default function FinancePage() {
     };
 
     const handleRestoreItem = async (item: HistoricItem) => {
-        if (!confirm('Tem certeza que deseja restaurar este item? Ele voltará a ser uma OS ativa.')) return;
         if (!accountId) return;
 
         let result;
