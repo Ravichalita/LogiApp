@@ -1231,8 +1231,14 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         if (!rentalBeforeUpdateSnap.exists) throw new Error("OS não encontrada.");
         const rentalBeforeUpdate = rentalBeforeUpdateSnap.data() as Rental;
 
-        const recurrenceData = rawData.recurrence ? JSON.parse(rawData.recurrence as string) : null;
-        let recurrenceProfileId = rentalBeforeUpdate.recurrenceProfileId;
+        let recurrenceData;
+        try {
+            recurrenceData = rawData.recurrence ? JSON.parse(rawData.recurrence as string) : null;
+        } catch (e) {
+            console.error("Failed to parse recurrence data:", e);
+        }
+
+        let recurrenceProfileId: string | FieldValue | undefined = rentalBeforeUpdate.recurrenceProfileId;
 
         if (recurrenceData) {
             if (recurrenceData.enabled) {
@@ -1253,7 +1259,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                 const cleanProfileData = Object.fromEntries(Object.entries(profileData).filter(([_, v]) => v !== undefined));
 
                 if (recurrenceProfileId) {
-                    await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update(cleanProfileData);
+                    await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId as string}`).update(cleanProfileData);
                 } else {
                     const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
                         ...cleanProfileData,
@@ -1264,11 +1270,14 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                     await recurrenceRef.update({ id: recurrenceProfileId });
                 }
             } else if (recurrenceProfileId) {
-                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update({ status: 'cancelled' });
-                recurrenceProfileId = undefined;
+                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId as string}`).update({ status: 'cancelled' });
+                recurrenceProfileId = FieldValue.delete();
             }
 
-            updateData.recurrenceProfileId = recurrenceProfileId;
+            if (recurrenceProfileId !== undefined) {
+                updateData.recurrenceProfileId = recurrenceProfileId;
+            }
+
             if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
                 updateData.value = 0;
                 updateData.lumpSumValue = 0;
@@ -1689,10 +1698,17 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         if (!opBeforeUpdateSnap.exists) throw new Error("Operação não encontrada.");
         const opBeforeUpdate = opBeforeUpdateSnap.data() as Operation;
 
-        const recurrenceData = JSON.parse(rawData.recurrence as string);
-        let recurrenceProfileId = opBeforeUpdate.recurrenceProfileId;
+        let recurrenceData;
+        try {
+            recurrenceData = rawData.recurrence ? JSON.parse(rawData.recurrence as string) : null;
+        } catch (e) {
+            console.error("Failed to parse recurrence data:", e);
+            // Non-blocking, continue without recurrence update if failed
+        }
 
-        if (recurrenceData.enabled) {
+        let recurrenceProfileId: string | FieldValue | undefined = opBeforeUpdate.recurrenceProfileId;
+
+        if (recurrenceData && recurrenceData.enabled) {
             const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                 accountId,
                 frequency: recurrenceData.frequency,
@@ -1711,7 +1727,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
             if (recurrenceProfileId) {
                 // Update existing profile
-                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update(cleanProfileData);
+                await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId as string}`).update(cleanProfileData);
             } else {
                 // Create new profile
                 const recurrenceRef = await db.collection(`accounts/${accountId}/recurrence_profiles`).add({
@@ -1724,12 +1740,14 @@ export async function updateOperationAction(accountId: string, prevState: any, f
             }
         } else if (recurrenceProfileId) {
             // Cancel existing profile if recurrence is disabled
-            await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId}`).update({ status: 'cancelled' });
-            recurrenceProfileId = undefined;
+            await db.doc(`accounts/${accountId}/recurrence_profiles/${recurrenceProfileId as string}`).update({ status: 'cancelled' });
+            recurrenceProfileId = FieldValue.delete();
         }
 
-        updateData.recurrenceProfileId = recurrenceProfileId;
-         if (recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
+        if (recurrenceProfileId !== undefined) {
+            updateData.recurrenceProfileId = recurrenceProfileId;
+        }
+         if (recurrenceData && recurrenceData.billingType === 'monthly' && recurrenceData.enabled) {
             updateData.value = 0;
         }
 
@@ -3618,8 +3636,13 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
     if (rawData.startDate) updateData.startDate = rawData.startDate;
     if (rawData.endDate) updateData.endDate = rawData.endDate;
     if (rawData.completedAt) updateData.completedAt = rawData.completedAt;
-    if (rawData.value) updateData.value = parseFloat(rawData.value as string);
-    if (rawData.observations) updateData.observations = rawData.observations;
+
+    // Check for undefined to allow 0
+    if (rawData.value !== undefined) {
+        updateData.value = parseFloat(rawData.value as string);
+    }
+
+    if (rawData.observations !== undefined) updateData.observations = rawData.observations;
 
     if (rawData.typeIds && typeof rawData.typeIds === 'string') {
         try {
@@ -3639,7 +3662,12 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
 
     try {
         const docRef = adminDb.doc(`accounts/${accountId}/completed_operations/${id}`);
-        await docRef.update(updateData);
+
+        // Ensure we are not sending an empty update
+        if (Object.keys(updateData).length > 0) {
+            await docRef.update(updateData);
+        }
+
         revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {

@@ -375,7 +375,8 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
           variant: "destructive"
         });
       } else if (result?.message && result.message !== 'success') {
-        toast({ title: "Erro", description: result.message, variant: "destructive"});
+        const description = (result as any).error || result.message;
+        toast({ title: "Erro", description: description, variant: "destructive"});
       } else if (!result?.errors) {
         toast({ title: "Sucesso!", description: "Operação atualizada."});
       }
