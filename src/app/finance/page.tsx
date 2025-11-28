@@ -27,10 +27,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter as AlertDialogFooterComponent,
-  AlertDialogHeader as AlertDialogHeaderComponent,
-  AlertDialogTitle as AlertDialogTitleComponent,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -106,6 +102,11 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     
     if (!item) return null;
 
+    const itemForPdf = {
+        ...item.data,
+        itemType: item.kind,
+    };
+    
     const isRental = item.kind === 'rental';
     const rental = isRental ? (item.data as CompletedRental) : null;
     const operation = !isRental ? (item.data as PopulatedOperation) : null;
@@ -145,11 +146,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
             setIsGeneratingPdf(false);
         }
     };
-
-    const itemForPdf = {
-        ...item.data,
-        itemType: item.kind,
-    } as any
+    
 
     return (
         <>
@@ -177,16 +174,16 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
-                                        <AlertDialogHeaderComponent>
-                                            <AlertDialogTitleComponent>Restaurar Ordem de Serviço?</AlertDialogTitleComponent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Restaurar Ordem de Serviço?</AlertDialogTitle>
                                             <AlertDialogDescription>
                                                 Esta ação irá mover o registro de volta para a lista de serviços ativos. Tem certeza que deseja continuar?
                                             </AlertDialogDescription>
-                                        </AlertDialogHeaderComponent>
-                                        <AlertDialogFooterComponent>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                             <AlertDialogAction onClick={() => onRestore(item)}>Confirmar Restauração</AlertDialogAction>
-                                        </AlertDialogFooterComponent>
+                                        </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
                                 <AlertDialog>
@@ -196,16 +193,16 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                         </Button>
                                     </AlertDialogTrigger>
                                      <AlertDialogContent>
-                                        <AlertDialogHeaderComponent>
-                                            <AlertDialogTitleComponent>Tem certeza que deseja excluir?</AlertDialogTitleComponent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Tem certeza que deseja excluir?</AlertDialogTitle>
                                             <AlertDialogDescription>
                                                 Esta ação não pode ser desfeita e excluirá permanentemente este item do histórico.
                                             </AlertDialogDescription>
-                                        </AlertDialogHeaderComponent>
-                                        <AlertDialogFooterComponent>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                             <AlertDialogAction onClick={() => onDelete(item)} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
-                                        </AlertDialogFooterComponent>
+                                        </AlertDialogFooter>
                                     </AlertDialogContent>
                                 </AlertDialog>
                             </div>
@@ -282,8 +279,8 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                             <AttachmentsUploader 
                                 accountId={accountId}
                                 attachments={item.data.attachments || []}
-                                onAttachmentUploaded={handleAttachmentAdded}
-                                onAttachmentDeleted={handleAttachmentDeleted}
+                                onAttachmentUploaded={(newAttachment) => onAttachmentUploaded(item.id, newAttachment)}
+                                onAttachmentDeleted={(attachment) => onAttachmentDeleted(item.id, attachment)}
                                 uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
                             />
                         )}
