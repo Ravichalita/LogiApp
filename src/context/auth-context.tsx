@@ -59,28 +59,6 @@ const publicRoutes = [...nonAuthRoutes, '/verify-email', '/restore-from-backup',
 // Define o email do Super Admin. Somente este usuário poderá criar novas contas de cliente.
 const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
 
-const checkAndTriggerAutoBackup = (accountId: string, account: Account | null) => {
-    if (!accountId || !account) return;
-
-    const { lastBackupDate, backupPeriodicityDays, backupRetentionDays } = account;
-    
-    if (!lastBackupDate) {
-        console.log("No previous backup found. Triggering initial automatic backup.");
-        createFirestoreBackupAction(accountId, backupRetentionDays).catch(e => console.error("Auto-backup failed:", e));
-        return;
-    }
-
-    const lastBackup = parseISO(lastBackupDate);
-    const today = new Date();
-    const daysSinceLastBackup = differenceInDays(today, lastBackup);
-    
-    if (daysSinceLastBackup >= (backupPeriodicityDays || 7)) {
-        console.log(`Last backup was ${daysSinceLastBackup} days ago. Triggering automatic backup.`);
-        createFirestoreBackupAction(accountId, backupRetentionDays).catch(e => console.error("Auto-backup failed:", e));
-    }
-}
-
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userAccount, setUserAccount] = useState<UserAccount | null>(null);
@@ -350,7 +328,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user && userAccount && account && !sessionWorkPerformed.current) {
         
-        checkAndTriggerAutoBackup(account.id, account);
         checkAndSendDueNotificationsAction(account.id);
 
         sessionWorkPerformed.current = true; 

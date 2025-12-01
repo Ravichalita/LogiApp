@@ -87,7 +87,8 @@ import {
     fromZonedTime
 } from 'date-fns-tz';
 import {
-    FieldValue
+    FieldValue,
+    FieldPath
 } from 'firebase-admin/firestore';
 
 // Helper function for error handling
@@ -2264,7 +2265,7 @@ export async function updateRentalPricesAction(accountId: string, prices: Rental
 
 async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number): Promise < string[] > {
     const collectionRef = db.collection(collectionPath);
-    let query = collectionRef.orderBy(FieldValue.documentId()).limit(batchSize);
+    let query = collectionRef.orderBy(FieldPath.documentId()).limit(batchSize);
     let attachmentPaths: string[] = [];
 
     while (true) {
@@ -2288,7 +2289,7 @@ async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectio
         await batch.commit();
 
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        query = collectionRef.orderBy(FieldValue.documentId()).startAfter(lastVisible).limit(batchSize);
+        query = collectionRef.orderBy(FieldPath.documentId()).startAfter(lastVisible).limit(batchSize);
     }
 
     return attachmentPaths;
