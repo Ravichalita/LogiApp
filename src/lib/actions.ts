@@ -40,7 +40,10 @@ import {
     UpdateOperationSchema,
     RecurrenceProfileSchema,
     UpdateBasesSchema,
-    UpdateOperationalCostsSchema
+    UpdateOperationalCostsSchema,
+    OperationTypeSchema,
+    TruckTypeSchema,
+    UploadedImageSchema
 } from './types';
 import type {
     UserAccount,
@@ -59,7 +62,11 @@ import type {
     PopulatedOperation,
     Dumpster,
     CompletedRental,
-    CompletedOperation
+    CompletedOperation,
+    Attachment,
+    OperationType,
+    Truck,
+    OperationalCost
 } from './types';
 import {
     ensureUserDocument
@@ -1333,7 +1340,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     // Only redirect if coming from the edit page, not from a simple attachment update
-    const headersList = headers();
+    const headersList = await headers();
     const referer = headersList.get('referer');
     if (referer?.includes('/edit')) {
         redirect('/os');
@@ -1590,7 +1597,7 @@ export async function createOperationAction(accountId: string, createdBy: string
 
                 const populatedOpForSync: PopulatedOperation = {
                     id: opDocRef.id,
-                    ...operationData,
+                    ...(operationData as any),
                     itemType: 'operation',
                     client: clientSnap.exists ? {
                         id: clientSnap.id,
@@ -1790,7 +1797,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 
                     const populatedOpForSync: PopulatedOperation = {
                         id,
-                        ...updatedOpData,
+                        ...(updatedOpData as any),
                         itemType: 'operation',
                         client: clientSnap.exists ? {
                             id: clientSnap.id,
@@ -1828,7 +1835,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 
     // Only redirect if coming from the edit page
-    const headersList = headers();
+    const headersList = await headers();
     const referer = headersList.get('referer');
     if (referer?.includes('/edit')) {
         redirect('/os');
@@ -1926,7 +1933,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
                     const durationMillis = originalEndDate.getTime() - originalStartDate.getTime();
                     const newEndDate = new Date(nextRunDate.getTime() + durationMillis);
 
-                    const newOperationData = {
+                    const newOperationData: any = {
                         ...templateData,
                         startDate: nextRunDate.toISOString(),
                         endDate: newEndDate.toISOString(),

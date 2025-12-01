@@ -23,8 +23,9 @@ import { RecurrencePanel } from './recurrence-panel';
 
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { Suspense } from 'react';
 
-function GoogleAuthFeedback() {
+function GoogleAuthFeedbackContent() {
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const error = searchParams.get('error');
@@ -70,6 +71,14 @@ function GoogleAuthFeedback() {
     }, [error, success, toast]);
 
     return null; // This component does not render anything itself
+}
+
+function GoogleAuthFeedback() {
+    return (
+        <Suspense fallback={null}>
+            <GoogleAuthFeedbackContent />
+        </Suspense>
+    );
 }
 
 
