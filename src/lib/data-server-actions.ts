@@ -1,9 +1,8 @@
 
-
 'use server';
 
-import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck } from './types';
+import { getFirestore, Timestamp, FieldPath } from 'firebase-admin/firestore';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Operation } from './types';
 import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay } from 'date-fns';
 
@@ -49,17 +48,21 @@ export async function getCompletedRentals(accountId: string): Promise<CompletedR
 
         const populatedRentalsPromises = rentalsSnap.docs.map(async (doc) => {
              const rentalData = toSerializableObject({ id: doc.id, ...doc.data() }) as CompletedRental;
+             const anyRentalData = rentalData as any;
+             const dumpsterId = anyRentalData.dumpsterId; // Legacy support
 
-             const [clientSnap, dumpsterSnap, assignedToSnap] = await Promise.all([
+             const dumpsterIds = rentalData.dumpsterIds || (dumpsterId ? [dumpsterId] : []);
+
+             const [clientSnap, assignedToSnap, ...dumpsterSnaps] = await Promise.all([
                 rentalData.clientId ? adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get() : Promise.resolve(null),
-                rentalData.dumpsterId ? adminDb.doc(`accounts/${accountId}/dumpsters/${rentalData.dumpsterId}`).get() : Promise.resolve(null),
                 rentalData.assignedTo ? adminDb.doc(`users/${rentalData.assignedTo}`).get() : Promise.resolve(null),
+                ...dumpsterIds.map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get())
             ]);
             
             return {
                 ...rentalData,
                 client: docToSerializable(clientSnap),
-                dumpster: docToSerializable(dumpsterSnap),
+                dumpsters: dumpsterSnaps.map(s => docToSerializable(s)).filter(Boolean),
                 assignedToUser: docToSerializable(assignedToSnap),
             };
         });
@@ -116,7 +119,7 @@ export async function getCompletedOperations(accountId: string): Promise<Populat
         });
 
         const populatedOps = await Promise.all(populatedOpsPromises);
-        return populatedOps;
+        return populatedOps as any as PopulatedOperation[];
 
     } catch (error) {
         console.error("Error fetching completed operations:", error);
@@ -195,10 +198,10 @@ export async function getAllClientAccountsAction(superAdminId: string): Promise<
                 ownerEmail: ownerData.email,
                 ownerStatus: ownerData.status ?? 'ativo',
                 hasSeenWelcome: ownerData.hasSeenWelcome ?? false,
-                createdAt: ownerData.createdAt,
+                createdAt: typeof ownerData.createdAt === 'string' ? ownerData.createdAt : (ownerData.createdAt as any)?.toDate?.().toISOString() || new Date().toISOString(),
                 firstAccessAt: ownerData.firstAccessAt,
                 members: members,
-            };
+            } as AdminClientView;
         });
 
         const results = await Promise.all(clientViewPromises);
@@ -226,13 +229,16 @@ export async function getPopulatedRentalById(accountId: string, rentalId: string
         }
 
         const rentalData = docToSerializable(rentalDoc) as Rental;
+        const anyRentalData = rentalData as any;
+        const dumpsterId = anyRentalData.dumpsterId; // Legacy support
+        const dumpsterIds = rentalData.dumpsterIds || (dumpsterId ? [dumpsterId] : []);
 
         // Fetch related documents
         const clientPromise = adminDb.doc(`accounts/${accountId}/clients/${rentalData.clientId}`).get();
         const assignedToPromise = adminDb.doc(`users/${rentalData.assignedTo}`).get();
         const truckPromise = rentalData.truckId ? adminDb.doc(`accounts/${accountId}/trucks/${rentalData.truckId}`).get() : Promise.resolve(null);
         
-        const dumpsterPromises = (rentalData.dumpsterIds || []).map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get());
+        const dumpsterPromises = dumpsterIds.map(id => adminDb.doc(`accounts/${accountId}/dumpsters/${id}`).get());
 
         const [clientSnap, assignedToSnap, truckSnap, ...dumpsterSnaps] = await Promise.all([clientPromise, assignedToPromise, truckPromise, ...dumpsterPromises]);
 
@@ -294,7 +300,7 @@ export async function getPopulatedOperationById(accountId: string, operationId: 
         client: docToSerializable(clientSnap),
         truck: docToSerializable(truckSnap),
         driver: docToSerializable(driverSnap),
-    }) as PopulatedOperation;
+    }) as any as PopulatedOperation;
 
   } catch (error) {
     console.error(`Error fetching populated operation by ID ${operationId}:`, error);
@@ -580,7 +586,7 @@ export async function getPopulatedRentalsForServer(accountId: string): Promise<P
   const rentalsData = rentalsSnap.docs.map(doc => docToSerializable(doc) as Rental);
 
   const clientIds = [...new Set(rentalsData.map(r => r.clientId))];
-  const dumpsterIds = [...new Set(rentalsData.flatMap(r => r.dumpsterIds || (r.dumpsterId ? [r.dumpsterId] : [])))];
+  const dumpsterIds = [...new Set(rentalsData.flatMap(r => r.dumpsterIds || ((r as any).dumpsterId ? [(r as any).dumpsterId] : [])))];
   const userIds = [...new Set(rentalsData.map(r => r.assignedTo))];
 
   const [clientsSnap, dumpstersSnap, usersSnap] = await Promise.all([
@@ -594,7 +600,7 @@ export async function getPopulatedRentalsForServer(accountId: string): Promise<P
   const usersMap = new Map(usersSnap.docs.map(d => [d.id, docToSerializable(d)]));
 
   return rentalsData.map(rental => {
-      const dumpsterIdsForRental = rental.dumpsterIds || (rental.dumpsterId ? [rental.dumpsterId] : []);
+      const dumpsterIdsForRental = rental.dumpsterIds || ((rental as any).dumpsterId ? [(rental as any).dumpsterId] : []);
       return {
         ...rental,
         itemType: 'rental',

@@ -12,9 +12,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   // This is required for Server Actions to work with the Firebase Admin SDK
   serverExternalPackages: ['firebase-admin'],
   experimental: {

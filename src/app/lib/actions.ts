@@ -1167,7 +1167,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
     }
 
     // Only redirect if coming from the edit page, not from a simple attachment update
-    const headersList = headers();
+    const headersList = await headers();
     const referer = headersList.get('referer');
     if (referer?.includes('/edit')) {
         redirect('/os');
@@ -1598,7 +1598,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
     }
 
     // Only redirect if coming from the edit page
-    const headersList = headers();
+    const headersList = await headers();
     const referer = headersList.get('referer');
     if (referer?.includes('/edit')) {
         redirect('/os');
