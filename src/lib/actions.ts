@@ -2289,7 +2289,7 @@ async function deleteCollectionByPath(db: FirebaseFirestore.Firestore, collectio
         await batch.commit();
 
         const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-        query = collectionRef.orderBy(FieldValue.documentId()).startAfter(lastVisible).limit(batchSize);
+        query = collectionRef.orderBy(FieldPath.documentId()).startAfter(lastVisible).limit(batchSize);
     }
 
     return attachmentPaths;
