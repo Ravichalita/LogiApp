@@ -1,6 +1,7 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
-import { addDays, setHours, setMinutes, getDay } from "date-fns";
+import { addDays, setHours, setMinutes, getDay, differenceInDays, parseISO } from "date-fns";
+// import { getStorage } from "firebase-admin/storage";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -20,6 +21,13 @@ interface RecurrenceProfile {
     nextRunDate: string;
     templateData: any;
     lastRunDate?: string;
+}
+
+interface Account {
+    id: string;
+    lastBackupDate?: string;
+    backupPeriodicityDays?: number;
+    backupRetentionDays?: number;
 }
 
 // --- Helpers ---
@@ -71,7 +79,119 @@ function setMilliseconds(date: Date, ms: number): Date {
     return d;
 }
 
-// --- Cloud Function ---
+async function copyCollection(
+    firestore: FirebaseFirestore.Firestore,
+    sourcePath: string,
+    destPath: string
+) {
+    const sourceRef = firestore.collection(sourcePath);
+    const documents = await sourceRef.get();
+
+    if (documents.empty) return;
+
+    let batch = firestore.batch();
+    let i = 0;
+    for (const doc of documents.docs) {
+        const destRef = firestore.doc(`${destPath}/${doc.id}`);
+        batch.set(destRef, doc.data());
+        i++;
+        if (i % 500 === 0) { // Commit every 500 documents
+            await batch.commit();
+            batch = firestore.batch();
+        }
+    }
+    if (i % 500 !== 0) {
+        await batch.commit();
+    }
+}
+
+async function deleteCollectionByPath(firestore: FirebaseFirestore.Firestore, collectionPath: string, batchSize: number): Promise<string[]> {
+    const collectionRef = firestore.collection(collectionPath);
+    let query = collectionRef.orderBy(admin.firestore.FieldPath.documentId()).limit(batchSize);
+    const attachmentPaths: string[] = [];
+
+    while (true) {
+        const snapshot = await query.get();
+        if (snapshot.empty) {
+            break;
+        }
+
+        const batch = firestore.batch();
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.attachments && Array.isArray(data.attachments)) {
+                for (const attachment of data.attachments) {
+                    if (attachment.path) {
+                        attachmentPaths.push(attachment.path);
+                    }
+                }
+            }
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+        query = collectionRef.orderBy(admin.firestore.FieldPath.documentId()).startAfter(lastVisible).limit(batchSize);
+    }
+
+    return attachmentPaths;
+}
+
+// async function deleteStorageFile(pathOrUrl: string) {
+//     try {
+//         let objectPath = pathOrUrl;
+//         if (/^https?:\/\//.test(objectPath)) {
+//             const url = new URL(objectPath);
+//             const decodedPath = decodeURIComponent(url.pathname);
+//             const pathSegments = decodedPath.split('/o/');
+//             if (pathSegments.length > 1) {
+//                 objectPath = pathSegments[1];
+//             }
+//         }
+//         const bucket = getStorage().bucket();
+//         await bucket.file(objectPath).delete({ ignoreNotFound: true });
+//     } catch (e) {
+//         console.error("Error deleting storage file:", e);
+//     }
+// }
+
+async function cleanupOldBackups(accountId: string, retentionDays: number) {
+    const now = new Date();
+    const retentionDate = new Date(now.setDate(now.getDate() - retentionDays));
+
+    const oldBackupsQuery = db.collection('backups')
+        .where('accountId', '==', accountId)
+        .where('createdAt', '<', retentionDate)
+        .where('status', '==', 'completed');
+
+    const snapshot = await oldBackupsQuery.get();
+
+    if (snapshot.empty) return;
+
+    console.log(`Deleting ${snapshot.size} old backups for account ${accountId}`);
+
+    for (const doc of snapshot.docs) {
+        const backupId = doc.id;
+        // const subcollections = ['accounts']; // Start with accounts subcollection wrapper
+
+        // Note: The structure in backups is backups/{backupId}/accounts/{accountId}/{collection}
+        // We first delete the subcollections under accounts/{accountId}
+        const accountBackupRef = db.doc(`backups/${backupId}/accounts/${accountId}`);
+        const innerCollections = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
+
+        for (const col of innerCollections) {
+            await deleteCollectionByPath(db, `backups/${backupId}/accounts/${accountId}/${col}`, 50);
+        }
+
+        // Delete the account doc itself in backup
+        await accountBackupRef.delete();
+
+        // Delete the backup document itself
+        await db.doc(`backups/${backupId}`).delete();
+    }
+}
+
+// --- Cloud Functions ---
 
 export const checkRecurringProfiles = onSchedule("every day 06:00", async (event) => {
     const now = new Date();
@@ -108,7 +228,7 @@ export const checkRecurringProfiles = onSchedule("every day 06:00", async (event
             const collectionName = profile.type === 'rental' ? 'rentals' : 'operations';
             const newOsRef = db.collection(`accounts/${profile.accountId}/${collectionName}`).doc();
 
-            const newOsData = {
+            const newOsData: any = {
                 ...profile.templateData,
                 recurrenceProfileId: profile.id,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -171,4 +291,82 @@ export const checkRecurringProfiles = onSchedule("every day 06:00", async (event
     console.log(`Successfully processed ${operationCount} profiles.`);
 });
 
-    
+export const scheduledBackups = onSchedule("every day 01:00", async (event) => {
+    const now = new Date();
+    console.log("Running scheduledBackups at", now.toISOString());
+
+    const accountsSnap = await db.collection("accounts").get();
+
+    if (accountsSnap.empty) {
+        console.log("No accounts found.");
+        return;
+    }
+
+    for (const doc of accountsSnap.docs) {
+        const account = doc.data() as Account;
+        const accountId = doc.id;
+
+        const backupPeriodicityDays = account.backupPeriodicityDays || 7;
+        const lastBackupDate = account.lastBackupDate;
+
+        let shouldBackup = false;
+
+        if (!lastBackupDate) {
+            shouldBackup = true;
+        } else {
+            const daysSinceLastBackup = differenceInDays(now, parseISO(lastBackupDate));
+            if (daysSinceLastBackup >= backupPeriodicityDays) {
+                shouldBackup = true;
+            }
+        }
+
+        if (shouldBackup) {
+            console.log(`Starting backup for account ${accountId}...`);
+            const timestamp = new Date();
+            const backupId = `backup-${timestamp.toISOString()}`;
+            const backupDocRef = db.collection(`backups`).doc(backupId);
+
+            try {
+                await backupDocRef.set({
+                    accountId: accountId,
+                    createdAt: timestamp,
+                    status: 'in-progress'
+                });
+
+                const subcollectionsToBackup = ['clients', 'dumpsters', 'rentals', 'completed_rentals', 'trucks', 'operations', 'completed_operations'];
+
+                // Backup account doc
+                const backupAccountRef = db.doc(`backups/${backupId}/accounts/${accountId}`);
+                await backupAccountRef.set(account);
+
+                // Backup subcollections
+                for (const subcollection of subcollectionsToBackup) {
+                    const sourcePath = `accounts/${accountId}/${subcollection}`;
+                    const destPath = `backups/${backupId}/accounts/${accountId}/${subcollection}`;
+                    await copyCollection(db, sourcePath, destPath);
+                }
+
+                await backupDocRef.update({
+                    status: 'completed'
+                });
+
+                await db.doc(`accounts/${accountId}`).update({
+                    lastBackupDate: timestamp.toISOString()
+                });
+
+                console.log(`Backup completed for account ${accountId}.`);
+
+                if (account.backupRetentionDays && account.backupRetentionDays > 0) {
+                    await cleanupOldBackups(accountId, account.backupRetentionDays);
+                }
+
+            } catch (error) {
+                console.error(`Backup failed for account ${accountId}:`, error);
+                await backupDocRef.update({
+                    status: 'failed',
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }
+    }
+});
