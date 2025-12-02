@@ -253,25 +253,54 @@ export default function RoutePlanningPage() {
                 accountId: accountId,
             });
 
-            updateOperationRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
+            updateOperationRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: false });
             
-            const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
-            const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
-
-            const trafficResult = await analyzeTraffic({
-                routeStops: [...new Set(routeStops)],
-                date: departureTime.toISOString(),
-                totalDuration: optimizedRoute.totalDuration || 'não calculado',
-            });
-
-             updateOperationRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
-
         } catch (error) {
             console.error("Optimization failed:", error);
             toast({ title: 'Erro na Otimização', description: 'Não foi possível calcular a rota. Tente novamente.', variant: 'destructive' });
             updateOperationRouteState({ isOptimizing: false, isAnalyzingTraffic: false });
         }
     };
+
+    const handleAnalyzeTrafficOperation = async (driverId: string, routeIndex: number) => {
+        const driverGroup = tasksByDriver.find(g => g.driverId === driverId);
+        const route = driverGroup?.operationRoutes[routeIndex];
+
+        if (!driverGroup || !route || !route.optimizedRoute || !accountId) {
+             toast({ title: 'Erro', description: 'Rota otimizada não encontrada.', variant: 'destructive' });
+             return;
+        }
+
+        const updateOperationRouteState = (updates: Partial<RouteGroup>) => {
+            setTasksByDriver(prev => prev.map(d => {
+                if (d.driverId === driverId) {
+                    const newRoutes = [...d.operationRoutes];
+                    newRoutes[routeIndex] = { ...newRoutes[routeIndex], ...updates };
+                    return { ...d, operationRoutes: newRoutes };
+                }
+                return d;
+            }));
+        };
+
+        updateOperationRouteState({ isAnalyzingTraffic: true });
+
+        try {
+            const routeStops = [route.startAddress, ...route.optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
+            const departureTime = route.optimizedRoute.baseDepartureTime ? parseISO(route.optimizedRoute.baseDepartureTime) : selectedDate;
+
+            const trafficResult = await analyzeTraffic({
+                routeStops: [...new Set(routeStops)],
+                date: departureTime.toISOString(),
+                totalDuration: route.optimizedRoute.totalDuration || 'não calculado',
+            });
+
+             updateOperationRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+        } catch (error) {
+             console.error("Traffic analysis failed:", error);
+            toast({ title: 'Erro na Análise', description: 'Não foi possível analisar o trânsito.', variant: 'destructive' });
+            updateOperationRouteState({ isAnalyzingTraffic: false });
+        }
+    }
     
     const handleOptimizeRentalRoute = async (driverId: string, routeIndex: number) => {
         const driverGroup = tasksByDriver.find(g => g.driverId === driverId);
@@ -311,18 +340,7 @@ export default function RoutePlanningPage() {
                 baseDepartureTime: routeToOptimize.departureTime,
             });
 
-            updateRentalRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: true });
-            
-            const routeStops = [startLocation.address, ...optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
-            const departureTime = optimizedRoute.baseDepartureTime ? parseISO(optimizedRoute.baseDepartureTime) : selectedDate;
-
-            const trafficResult = await analyzeTraffic({
-                routeStops: [...new Set(routeStops)],
-                date: departureTime.toISOString(),
-                totalDuration: optimizedRoute.totalDuration || 'não calculado',
-            });
-            
-            updateRentalRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+            updateRentalRouteState({ optimizedRoute, isOptimizing: false, isAnalyzingTraffic: false });
 
         } catch (error) {
              console.error("Rental route optimization failed:", error);
@@ -330,6 +348,47 @@ export default function RoutePlanningPage() {
             updateRentalRouteState({ isOptimizing: false, isAnalyzingTraffic: false });
         }
     };
+
+    const handleAnalyzeTrafficRental = async (driverId: string, routeIndex: number) => {
+        const driverGroup = tasksByDriver.find(g => g.driverId === driverId);
+        const route = driverGroup?.rentalRoutes[routeIndex];
+
+         if (!driverGroup || !route || !route.optimizedRoute || !accountId) {
+             toast({ title: 'Erro', description: 'Rota otimizada não encontrada.', variant: 'destructive' });
+             return;
+        }
+
+        const updateRentalRouteState = (updates: Partial<RentalRouteGroup>) => {
+            setTasksByDriver(prev => prev.map(d => {
+                if (d.driverId === driverId) {
+                    const newRoutes = [...d.rentalRoutes];
+                    newRoutes[routeIndex] = { ...newRoutes[routeIndex], ...updates };
+                    return { ...d, rentalRoutes: newRoutes };
+                }
+                return d;
+            }));
+        };
+
+        updateRentalRouteState({ isAnalyzingTraffic: true });
+
+        try {
+            const routeStops = [route.startAddress, ...route.optimizedRoute.stops.map(s => s.ordemServico.destinationAddress!)];
+            const departureTime = route.optimizedRoute.baseDepartureTime ? parseISO(route.optimizedRoute.baseDepartureTime) : selectedDate;
+
+            const trafficResult = await analyzeTraffic({
+                routeStops: [...new Set(routeStops)],
+                date: departureTime.toISOString(),
+                totalDuration: route.optimizedRoute.totalDuration || 'não calculado',
+            });
+            
+            updateRentalRouteState({ trafficAnalysis: trafficResult, isAnalyzingTraffic: false });
+
+        } catch (error) {
+             console.error("Traffic analysis failed:", error);
+            toast({ title: 'Erro na Análise', description: 'Não foi possível analisar o trânsito.', variant: 'destructive' });
+            updateRentalRouteState({ isAnalyzingTraffic: false });
+        }
+    }
     
     const handleDepartureTimeChange = (driverId: string, routeIndex: number, time: string) => {
         setTasksByDriver(prev => prev.map(d => {
@@ -469,6 +528,14 @@ export default function RoutePlanningPage() {
                                                             
                                                             {!route.isOptimizing && route.optimizedRoute && route.optimizedRoute.stops.length > 0 && account && (
                                                                 <div className="space-y-4 pt-4">
+                                                                    <div className="flex justify-end">
+                                                                        {!route.trafficAnalysis && (
+                                                                             <Button variant="outline" size="sm" onClick={() => handleAnalyzeTrafficOperation(group.driverId, index)} disabled={route.isAnalyzingTraffic}>
+                                                                                {route.isAnalyzingTraffic ? <Spinner size="small" className="mr-2"/> : <Sparkles className="mr-2 h-4 w-4 text-yellow-500" />}
+                                                                                Analisar Trânsito com IA
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
                                                                     <div className="h-96 w-full rounded-md overflow-hidden border">
                                                                         <OptimizedRouteMap 
                                                                             baseLocation={{address: route.startAddress, lat: route.optimizedRoute.stops[0]?.ordemServico.startLatitude || 0, lng: route.optimizedRoute.stops[0]?.ordemServico.startLongitude || 0}} 
@@ -592,6 +659,14 @@ export default function RoutePlanningPage() {
                                                             
                                                             {!route.isOptimizing && route.optimizedRoute && route.optimizedRoute.stops.length > 0 && account && (
                                                                 <div className="space-y-4 pt-4">
+                                                                     <div className="flex justify-end">
+                                                                        {!route.trafficAnalysis && (
+                                                                             <Button variant="outline" size="sm" onClick={() => handleAnalyzeTrafficRental(group.driverId, index)} disabled={route.isAnalyzingTraffic}>
+                                                                                {route.isAnalyzingTraffic ? <Spinner size="small" className="mr-2"/> : <Sparkles className="mr-2 h-4 w-4 text-yellow-500" />}
+                                                                                Analisar Trânsito com IA
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
                                                                     <div className="h-96 w-full rounded-md overflow-hidden border">
                                                                         <OptimizedRouteMap
                                                                             baseLocation={{ address: route.startAddress, lat: route.optimizedRoute.stops[0]?.ordemServico.startLatitude || 0, lng: route.optimizedRoute.stops[0]?.ordemServico.startLongitude || 0 }}
