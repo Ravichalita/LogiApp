@@ -45,6 +45,7 @@ import {
     TruckTypeSchema,
     UploadedImageSchema
 } from './types';
+import { createTransactionFromService, deleteTransactionByServiceId, updateTransactionByServiceId } from './finance-actions';
 import type {
     UserAccount,
     UserRole,
@@ -1084,6 +1085,16 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, completedRentalData);
 
+        await createTransactionFromService(
+            accountId,
+            rentalId,
+            'rental',
+            totalValue,
+            clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
+            new Date(), // Current date as completion date
+            rentalData.sequentialId
+        );
+
         // If the rental is part of a recurrence, create the next one
         if (rentalData.recurrenceProfileId) {
             const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`);
@@ -1934,6 +1945,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         const completedOpData: any = {
             ...operationData,
+            originalOperationId: operationId,
             value: operationValue,
             status: 'Concluído',
             completedAt: FieldValue.serverTimestamp(),
@@ -1952,6 +1964,18 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         const newCompletedRef = db.collection(`accounts/${accountId}/completed_operations`).doc();
         batch.set(newCompletedRef, completedOpData);
+
+        const clientSnap = await db.doc(`accounts/${accountId}/clients/${operationData.clientId}`).get();
+
+        await createTransactionFromService(
+            accountId,
+            operationId,
+            'operation',
+            operationValue,
+            clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
+            new Date(),
+            operationData.sequentialId
+        );
 
         if (operationData.recurrenceProfileId) {
             const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`);
@@ -3615,6 +3639,24 @@ export async function updateCompletedRentalAction(accountId: string, prevState: 
     try {
         const docRef = adminDb.doc(`accounts/${accountId}/completed_rentals/${id}`);
         await docRef.update(updateData);
+
+        // Update transaction if value changed
+        if (updateData.totalValue !== undefined) {
+            // Find original rental ID. It might be in the form data if we are lucky, or we need to fetch.
+            // But usually 'id' IS the completed rental ID, and the transaction is linked to the ORIGINAL rental ID.
+            // Wait, createTransactionFromService uses `rentalData.sequentialId` for description but `rentalId` (original) for `relatedResourceId`.
+
+            // We need to fetch the completed doc to get 'originalRentalId' if we don't have it.
+            // But updateData doesn't have it.
+            const snap = await docRef.get();
+            if (snap.exists) {
+                const data = snap.data() as CompletedRental;
+                if (data.originalRentalId) {
+                    await updateTransactionByServiceId(accountId, data.originalRentalId, updateData.totalValue);
+                }
+            }
+        }
+
         revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {
@@ -3626,6 +3668,17 @@ export async function deleteCompletedRentalAction(accountId: string, id: string)
     if (!id || !accountId) return { message: 'error', error: 'IDs ausentes' };
 
     try {
+        // Find original rental ID if stored in data to delete transaction
+        // However, 'id' here is usually the ID of the completed rental doc,
+        // which matches the 'originalRentalId' stored in transaction 'relatedResourceId'
+        // wait, finishRentalAction sets: originalRentalId: rentalId.
+        // But the completed rental doc ID is NEW (auto-generated).
+        // Let's check finishRentalAction again.
+
+        // completedRentalData.originalRentalId = rentalId;
+        // The transaction relatedResourceId is set to rentalId (the original active ID).
+        // BUT, when we delete the completed rental, the 'originalRentalId' field holds that ID.
+
         const docRef = adminDb.doc(`accounts/${accountId}/completed_rentals/${id}`);
         const snap = await docRef.get();
         if (snap.exists) {
@@ -3641,6 +3694,12 @@ export async function deleteCompletedRentalAction(accountId: string, id: string)
                     }
                  }
             }
+
+            // Delete associated transaction
+            if (data?.originalRentalId) {
+                await deleteTransactionByServiceId(accountId, data.originalRentalId as string);
+            }
+
             await docRef.delete();
         }
         revalidatePath('/finance');
@@ -3661,6 +3720,11 @@ export async function restoreRentalAction(accountId: string, id: string) {
         if (!completedSnap.exists) throw new Error("Item não encontrado.");
 
         const data = completedSnap.data() as CompletedRental;
+
+        // Remove associated transaction
+        if (data.originalRentalId) {
+            await deleteTransactionByServiceId(accountId, data.originalRentalId);
+        }
 
         // Remove completion-specific fields to restore to active state
         // Also ensure 'id' is removed if present in data, to avoid ID mismatch with new doc
@@ -3736,6 +3800,23 @@ export async function updateCompletedOperationAction(accountId: string, prevStat
             await docRef.update(updateData);
         }
 
+        // Update transaction if value changed
+        if (updateData.value !== undefined) {
+             const snap = await docRef.get();
+             if (snap.exists) {
+                // For operations, we didn't save original ID explicitly before (bug fixed in next steps),
+                // but let's try to get it if available or use 'id' if it happens to match (unlikely for new docs).
+                // We will add 'originalOperationId' to `CompletedOperation` schema and save logic.
+                const data = snap.data();
+                const originalId = (data as any).originalOperationId || (data as any).id;
+                // Note: data.id inside data object (if saved) might be the original ID.
+
+                if (originalId) {
+                    await updateTransactionByServiceId(accountId, originalId, updateData.value);
+                }
+             }
+        }
+
         revalidatePath('/finance');
         return { message: 'success' };
     } catch (e) {
@@ -3762,6 +3843,33 @@ export async function deleteCompletedOperationAction(accountId: string, id: stri
                     }
                  }
             }
+
+            // Delete associated transaction
+            if (data?.parentOperationId) {
+                 // Warning: parentOperationId is used for recurrence linking, NOT the original ID of this specific instance usually?
+                 // Let's check finishOperationAction.
+                 // completedOpData.parentOperationId = recurrenceData.originalOrderId;
+                 // It seems we DON'T store the original active operation ID in completed operations like we do for rentals (originalRentalId).
+                 // We only store parentOperationId if it's recurrent.
+                 // If it's not recurrent, we lose the ID?
+                 // Wait, `finishOperationAction` copies `operationData`. `operationData` has `id` (the document ID).
+                 // But when we save it to `completed_operations`, we generate a NEW doc ID.
+                 // The original `id` field from `operationData` might be preserved inside the data object if we spread it?
+                 // `const completedOpData: any = { ...operationData, ... }`
+                 // Yes, `id` is inside `operationData`.
+                 // So `data.id` (property of data object) should be the original ID, while `snap.id` is the new completed doc ID.
+            }
+
+            // The `Operation` type includes `id: string`.
+            // When spread `...operationData`, `id` is included.
+            // So `data.id` is indeed the original ID.
+             if (data?.originalOperationId) {
+                await deleteTransactionByServiceId(accountId, data.originalOperationId as string);
+            } else if (data?.id) {
+                // Fallback for legacy items
+                await deleteTransactionByServiceId(accountId, data.id as string);
+            }
+
             await docRef.delete();
         }
         revalidatePath('/finance');
@@ -3783,8 +3891,15 @@ export async function restoreOperationAction(accountId: string, id: string) {
 
         const data = completedSnap.data() as CompletedOperation;
 
+        // Remove associated transaction
+        // Use originalOperationId or fallback to ID inside data
+        const originalId = data.originalOperationId || (data as any).id;
+        if (originalId) {
+             await deleteTransactionByServiceId(accountId, originalId);
+        }
+
         // Ensure we strip 'id' if present to avoid conflicts, but KEEP parentOperationId to preserve recurrence links
-        const { completedAt, id: _ignoreId, ...opData } = data as any;
+        const { completedAt, originalOperationId: _ignoreOriginalId, id: _ignoreId, ...opData } = data as any;
 
         opData.status = 'Pendente';
 

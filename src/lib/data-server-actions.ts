@@ -1,8 +1,8 @@
 
 'use server';
 
-import { getFirestore, Timestamp, FieldPath } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Operation } from './types';
+import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/firestore';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Transaction, TransactionCategory } from './types';
 import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay } from 'date-fns';
 
@@ -35,6 +35,38 @@ const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot | null | unde
   }
   return toSerializableObject({ id: doc.id, ...doc.data() });
 };
+
+// #region Finance
+
+export async function getTransactions(accountId: string): Promise<Transaction[]> {
+    try {
+        const transCol = adminDb.collection(`accounts/${accountId}/transactions`);
+        // Default sort by date desc
+        const snap = await transCol.orderBy('dueDate', 'desc').get();
+
+        if (snap.empty) return [];
+
+        return snap.docs.map(doc => toSerializableObject({ id: doc.id, ...doc.data() }) as Transaction);
+    } catch (error) {
+        console.error("Error fetching transactions:", error);
+        return [];
+    }
+}
+
+export async function getFinancialCategories(accountId: string): Promise<TransactionCategory[]> {
+    try {
+        const accountSnap = await adminDb.doc(`accounts/${accountId}`).get();
+        if (!accountSnap.exists) return [];
+
+        const data = accountSnap.data() as Account;
+        return data.financialCategories || [];
+    } catch (error) {
+        console.error("Error fetching categories:", error);
+        return [];
+    }
+}
+
+// #endregion
 
 
 export async function getCompletedRentals(accountId: string): Promise<CompletedRental[]> {
