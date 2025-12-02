@@ -43,6 +43,10 @@ const docToSerializable = (doc: DocumentData | null | undefined): any => {
 // #region Account Data
 export function getAccount(accountId: string, callback: (account: Account | null) => void): Unsubscribe {
     const { db } = getFirebase();
+    if (!db) {
+        callback(null);
+        return () => {};
+    }
     const accountRef = doc(db, `accounts/${accountId}`);
     const unsubscribe = onSnapshot(accountRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -59,6 +63,7 @@ export function getAccount(accountId: string, callback: (account: Account | null
 
 export async function fetchAccount(accountId: string): Promise<Account | null> {
     const { db } = getFirebase();
+    if (!db) return null;
     const accountRef = doc(db, `accounts/${accountId}`);
     const docSnap = await getDoc(accountRef);
     if (docSnap.exists()) {
@@ -75,6 +80,10 @@ export async function getAccountData(accountId: string): Promise<Account | null>
 // #region Client Data
 export function getClients(accountId: string, callback: (clients: Client[]) => void): Unsubscribe {
   const { db } = getFirebase();
+  if (!db) {
+      callback([]);
+      return () => {};
+  }
   const clientsCollection = collection(db, `accounts/${accountId}/clients`);
   const q = query(clientsCollection, where("accountId", "==", accountId));
   
@@ -92,6 +101,7 @@ export function getClients(accountId: string, callback: (clients: Client[]) => v
 
 export async function fetchClients(accountId: string): Promise<Client[]> {
     const { db } = getFirebase();
+    if (!db) return [];
     const clientsCollection = collection(db, `accounts/${accountId}/clients`);
     const q = query(clientsCollection, where("accountId", "==", accountId));
     const querySnapshot = await getDocs(q);
@@ -105,6 +115,10 @@ export async function fetchClients(accountId: string): Promise<Client[]> {
 // #region Dumpster Data
 export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]) => void): Unsubscribe {
     const { db } = getFirebase();
+    if (!db) {
+        callback([]);
+        return () => {};
+    }
     const dumpstersCollection = collection(db, `accounts/${accountId}/dumpsters`);
     const q = query(dumpstersCollection, where("accountId", "==", accountId));
 
@@ -123,6 +137,10 @@ export function getDumpsters(accountId: string, callback: (dumpsters: Dumpster[]
 // #region Rental Data
 export function getRentals(accountId: string, callback: (rentals: Rental[]) => void): Unsubscribe {
     const { db } = getFirebase();
+    if (!db) {
+        callback([]);
+        return () => {};
+    }
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     const q = query(rentalsCollection, where("accountId", "==", accountId));
 
@@ -140,6 +158,7 @@ export function getRentals(accountId: string, callback: (rentals: Rental[]) => v
 export async function getActiveRentalsForUser(accountId: string, id: string, field: 'assignedTo' | 'clientId' = 'assignedTo'): Promise<Rental[]> {
     if (!accountId || !id) return [];
     const { db } = getFirebase();
+    if (!db) return [];
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     const q = query(rentalsCollection, where(field, "==", id));
     const querySnapshot = await getDocs(q);
@@ -154,6 +173,10 @@ export function getPopulatedRentals(
     assignedToId?: string
 ): Unsubscribe {
     const { db } = getFirebase();
+    if (!db) {
+        onData([]);
+        return () => {};
+    }
     const rentalsCollection = collection(db, `accounts/${accountId}/rentals`);
     
     let q: Query<DocumentData> = query(rentalsCollection, where("accountId", "==", accountId));
@@ -189,12 +212,13 @@ export function getPopulatedRentals(
 
             const rentalPromises = querySnapshot.docs.map(async (rentalDoc) => {
                 const rentalData = docToSerializable(rentalDoc) as Omit<Rental, 'id'> & { id: string };
+                const anyRentalData = rentalData as any;
 
                 const clientPromise = getDoc(doc(db, `accounts/${accountId}/clients`, rentalData.clientId));
                 const assignedToPromise = getDoc(doc(db, `users`, rentalData.assignedTo));
                 const truckPromise = rentalData.truckId ? getDoc(doc(db, `accounts/${accountId}/trucks`, rentalData.truckId)) : Promise.resolve(null);
                 
-                const dumpsterIds = rentalData.dumpsterIds || (rentalData.dumpsterId ? [rentalData.dumpsterId] : []);
+                const dumpsterIds = rentalData.dumpsterIds || (anyRentalData.dumpsterId ? [anyRentalData.dumpsterId] : []);
 
                 const [clientSnap, assignedToSnap, truckSnap] = await Promise.all([clientPromise, assignedToPromise, truckPromise]);
 
@@ -236,6 +260,10 @@ export function getPopulatedOperations(
     driverId?: string,
 ): Unsubscribe {
     const { db } = getFirebase();
+    if (!db) {
+        onData([]);
+        return () => {};
+    }
     const opsCollection = collection(db, `accounts/${accountId}/operations`);
     let q: Query<DocumentData> = query(opsCollection, where("accountId", "==", accountId));
 
@@ -330,6 +358,10 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
     return () => {};
   }
   const { db } = getFirebase();
+  if (!db) {
+      callback([]);
+      return () => {};
+  }
   const accountRef = doc(db, 'accounts', accountId);
   
   const unsubscribe = onSnapshot(accountRef, async (accountSnap) => {
@@ -370,6 +402,7 @@ export function getTeamMembers(accountId: string, callback: (users: UserAccount[
 export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]> {
   if (!accountId) return [];
   const { db } = getFirebase();
+  if (!db) return [];
   const accountRef = doc(db, 'accounts', accountId);
   const accountSnap = await getDoc(accountRef);
   if (!accountSnap.exists()) return [];
@@ -394,6 +427,10 @@ export async function fetchTeamMembers(accountId: string): Promise<UserAccount[]
 // #region Fleet Data
 export function getTrucks(accountId: string, callback: (trucks: Truck[]) => void): Unsubscribe {
   const { db } = getFirebase();
+  if (!db) {
+      callback([]);
+      return () => {};
+  }
   const trucksCollection = collection(db, `accounts/${accountId}/trucks`);
   const q = query(trucksCollection, where("accountId", "==", accountId));
 

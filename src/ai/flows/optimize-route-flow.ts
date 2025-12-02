@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Flow para otimização de rotas de Ordens de Serviço.
@@ -9,7 +8,6 @@
  * - OptimizedStop - O tipo de cada parada na rota otimizada retornada.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import type { PopulatedOperation, Location, Account, Truck } from '@/lib/types';
 import { getDirectionsAction } from '@/lib/data-server-actions';
@@ -58,17 +56,7 @@ export type OptimizeRouteOutput = z.infer<typeof OptimizeRouteOutputSchema>;
 
 
 export async function optimizeRoute(input: OptimizeRouteInput): Promise<OptimizeRouteOutput> {
-  return optimizeRouteFlow(input);
-}
-
-
-const optimizeRouteFlow = ai.defineFlow(
-  {
-    name: 'optimizeRouteFlow',
-    inputSchema: OptimizeRouteInputSchema,
-    outputSchema: OptimizeRouteOutputSchema,
-  },
-  async ({ operations, accountId, startLocation, startBaseId }) => {
+    const { operations, accountId, startLocation, startBaseId } = input;
     
     if (!startLocation) {
         throw new Error("Endereço da base de partida não fornecido.");
@@ -91,7 +79,6 @@ const optimizeRouteFlow = ai.defineFlow(
 
     const rotaOtimizada: OptimizedStop[] = [];
     let pontoDePartidaAtual = startLocation;
-    let horarioDeTerminoPontoAnterior = new Date(); // Will be set correctly in the loop.
 
     let baseDepartureTime: string | undefined;
 
@@ -133,8 +120,10 @@ const optimizeRouteFlow = ai.defineFlow(
             baseDepartureTime = formatISO(horarioSugeridoSaida);
             horarioPrevistoChegada = addSeconds(horarioSugeridoSaida, tempoViagemSeg);
         } else {
-            const saidaPontoAnterior = subMinutes(horarioAgendado, (tempoViagemSeg / 60) + MARGEM_SEGURANCA_MIN);
-            horarioPrevistoChegada = addSeconds(saidaPontoAnterior, tempoViagemSeg);
+            // Re-calculate based on previous arrival/departure if needed, but here we strictly follow the schedule
+            // The logic implies we depart from previous point at 'horarioSugeridoSaida' calculated backwards from THIS appointment.
+            // This is valid if we assume the driver waits at the previous point if they finish early.
+             horarioPrevistoChegada = addSeconds(horarioSugeridoSaida, tempoViagemSeg);
         }
         
         // O serviço só pode começar no horário agendado, nunca antes.
@@ -162,7 +151,6 @@ const optimizeRouteFlow = ai.defineFlow(
             lat: os.destinationLatitude!,
             lng: os.destinationLongitude!,
         };
-        horarioDeTerminoPontoAnterior = horarioTerminoServico; 
     }
     
     // Calculate return to base
@@ -203,5 +191,4 @@ const optimizeRouteFlow = ai.defineFlow(
         totalRevenue,
         profit,
     };
-  }
-);
+}
