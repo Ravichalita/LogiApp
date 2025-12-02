@@ -46,7 +46,7 @@ const PromptInputSchema = z.object({
 const trafficAnalysisPrompt = ai.definePrompt({
   name: 'trafficAnalysisPrompt',
   input: { schema: PromptInputSchema },
-  model: googleAI.model('gemini-2.5-pro'),
+  model: googleAI.model('gemini-1.5-pro'),
   prompt: `
 [INÍCIO DO PROMPT]
 1. Missão
