@@ -728,22 +728,22 @@ export default function OSPage() {
                                                 <div className="absolute top-2 left-3 flex items-center gap-1.5 text-xs font-mono font-bold text-primary">
                                                     <Container className="h-3 w-3" />
                                                     <span>AL{rental.sequentialId}</span>
-                                                    {rental.recurrenceProfileId && (
-                                                        <div className="flex items-center gap-1 ml-2" title="OS Recorrente">
-                                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1">
-                                                                <RefreshCw className="h-3 w-3" />
-                                                                Serviço Recorrente
-                                                            </Badge>
-                                                        </div>
-                                                    )}
                                                 </div>
                                                 <CardHeader className="pb-4 pt-8">
-                                                    <div className="flex items-start justify-between">
+                                                    <div className="flex items-start justify-between mb-2">
                                                         <div className="pr-4">
                                                             <CardTitle className="text-xl font-headline">{title}</CardTitle>
                                                             <CardDescription>{subtitle}</CardDescription>
                                                         </div>
                                                         <div className="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
+                                                            {rental.recurrenceProfileId && (
+                                                                <div title="OS Recorrente">
+                                                                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1">
+                                                                        <RefreshCw className="h-3 w-3" />
+                                                                        Recorrente
+                                                                    </Badge>
+                                                                </div>
+                                                            )}
                                                             <Badge variant={status.variant} className="text-center">{status.text}</Badge>
                                                         </div>
                                                     </div>
@@ -823,14 +823,6 @@ export default function OSPage() {
                                                 <div className="absolute top-2 left-3 flex items-center gap-1.5 text-xs font-mono font-bold text-primary">
                                                     <Workflow className="h-3 w-3" />
                                                     <span>OP{op.sequentialId}</span>
-                                                    {op.recurrenceProfileId && (
-                                                        <div className="flex items-center gap-1 ml-2" title="OS Recorrente">
-                                                            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1">
-                                                                <RefreshCw className="h-3 w-3" />
-                                                                Serviço Recorrente
-                                                            </Badge>
-                                                        </div>
-                                                    )}
                                                 </div>
                                                 <CardHeader className="pb-4 pt-8">
                                                     <div className="flex items-start justify-between mb-2">
@@ -838,7 +830,17 @@ export default function OSPage() {
                                                             <CardTitle className="text-xl font-headline">{title}</CardTitle>
                                                             <CardDescription>{subtitle}</CardDescription>
                                                         </div>
-                                                        <Badge variant={status.variant} className="text-center flex-shrink-0">{status.text}</Badge>
+                                                        <div className="flex flex-col items-end gap-1 ml-2 flex-shrink-0">
+                                                            {op.recurrenceProfileId && (
+                                                                <div title="OS Recorrente">
+                                                                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1">
+                                                                        <RefreshCw className="h-3 w-3" />
+                                                                        Recorrente
+                                                                    </Badge>
+                                                                </div>
+                                                            )}
+                                                            <Badge variant={status.variant} className="text-center flex-shrink-0">{status.text}</Badge>
+                                                        </div>
                                                     </div>
                                                     <CardDescription className="text-sm mt-4">
                                                         <div className="flex flex-col md:flex-row justify-between items-start gap-y-2 gap-x-4">
