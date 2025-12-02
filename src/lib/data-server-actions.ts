@@ -668,6 +668,22 @@ export async function getRecurrenceProfilesWithDetails(accountId: string) {
                         details = await getPopulatedRentalById(accountId, profile.originalOrderId);
                     }
                 }
+
+                // Fallback: Populate client in templateData if missing in details
+                if ((!details || !details.client) && profile.templateData?.clientId) {
+                    // Check if client is already populated in templateData (avoid re-fetching if possible, though unlikely here)
+                    if (!profile.templateData.client?.name) {
+                        try {
+                            const clientSnap = await adminDb.doc(`accounts/${accountId}/clients/${profile.templateData.clientId}`).get();
+                            if (clientSnap.exists) {
+                                profile.templateData.client = docToSerializable(clientSnap);
+                            }
+                        } catch (err) {
+                            console.error(`Error fetching fallback client for profile ${profile.id}:`, err);
+                        }
+                    }
+                }
+
                 return { ...profile, details };
             })
         );
