@@ -20,7 +20,7 @@ export interface RecurrenceData {
     daysOfWeek: number[];
     time: string;
     endDate?: Date;
-    billingType: 'perService' | 'monthly';
+    billingType: 'perService' | 'monthly' | 'weekly' | 'biweekly';
 }
 
 interface RecurrenceSelectorProps {
@@ -121,7 +121,7 @@ export function RecurrenceSelector({ value, onChange, disabled }: RecurrenceSele
                             <Label>Tipo de Cobrança</Label>
                             <Select
                                 value={value.billingType}
-                                onValueChange={(v: 'perService' | 'monthly') => onChange({ ...value, billingType: v })}
+                                onValueChange={(v: 'perService' | 'monthly' | 'weekly' | 'biweekly') => onChange({ ...value, billingType: v })}
                                 disabled={disabled}
                             >
                                 <SelectTrigger>
@@ -129,6 +129,8 @@ export function RecurrenceSelector({ value, onChange, disabled }: RecurrenceSele
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="perService">Por Serviço (Gerar valor em cada OS)</SelectItem>
+                                    <SelectItem value="weekly">Semanal (Valor fixo por semana)</SelectItem>
+                                    <SelectItem value="biweekly">Quinzenal (Valor fixo por quinzena)</SelectItem>
                                     <SelectItem value="monthly">Mensal (Valor fixo por mês)</SelectItem>
                                 </SelectContent>
                             </Select>
