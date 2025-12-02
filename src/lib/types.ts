@@ -1,5 +1,4 @@
 
-
 import { z } from 'zod';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -66,6 +65,35 @@ export const OperationalCostSchema = z.object({
 });
 export type OperationalCost = z.infer<typeof OperationalCostSchema>;
 
+// #region Finance
+export const TransactionCategorySchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "O nome da categoria é obrigatório."),
+  type: z.enum(['income', 'expense']),
+  color: z.string().optional(),
+  isDefault: z.boolean().optional(),
+});
+export type TransactionCategory = z.infer<typeof TransactionCategorySchema>;
+
+export const TransactionSchema = z.object({
+  description: z.string().min(1, "A descrição é obrigatória."),
+  amount: z.coerce.number(),
+  type: z.enum(['income', 'expense']),
+  status: z.enum(['pending', 'paid', 'overdue', 'cancelled']),
+  dueDate: z.string(), // ISO String
+  paymentDate: z.string().optional(), // ISO String
+  categoryId: z.string().optional(),
+  source: z.enum(['manual', 'service']).default('manual'),
+  relatedResourceId: z.string().optional(), // ID of the rental or operation
+  accountId: z.string(),
+  createdAt: z.custom<FieldValue>().optional(),
+});
+export type Transaction = z.infer<typeof TransactionSchema> & { id: string };
+
+export const UpdateTransactionSchema = TransactionSchema.partial().extend({
+  id: z.string(),
+});
+// #endregion
 
 export const AccountSchema = z.object({
   id: z.string(),
@@ -81,6 +109,7 @@ export const AccountSchema = z.object({
   backupRetentionDays: z.number().int().min(1).optional().default(90),
   bases: z.array(BaseSchema).optional().default([]),
   operationalCosts: z.array(OperationalCostSchema).optional().default([]),
+  financialCategories: z.array(TransactionCategorySchema).optional().default([]),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -240,6 +269,7 @@ export const CompletedOperationSchema = BaseOperationSchema.extend({
   sequentialId: z.number().int().positive(),
   completedAt: z.custom<FieldValue | Timestamp | string>(),
   parentOperationId: z.string().optional(),
+  originalOperationId: z.string().optional(),
 });
 
 export type CompletedOperation = z.infer<typeof CompletedOperationSchema> & { id: string, completedAt: string };
@@ -544,6 +574,3 @@ export type HistoricItem = {
   data: CompletedRental | PopulatedOperation;
 };
 // #endregion
-
-
-
