@@ -87,7 +87,9 @@ import {
     setHours,
     setMinutes,
     setSeconds,
-    setMilliseconds
+    setMilliseconds,
+    getWeek,
+    getDate
 } from 'date-fns';
 import {
     toZonedTime,
@@ -1016,15 +1018,38 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
             const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`).get();
             if (recurrenceSnap.exists) {
                 recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
-                if (recurrenceData.billingType === 'monthly') {
-                    const timeZone = 'America/Sao_Paulo';
-                    const now = toZonedTime(new Date(), timeZone);
-                    const currentMonth = now.getMonth();
+                const timeZone = 'America/Sao_Paulo';
+                const now = toZonedTime(new Date(), timeZone);
+                const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                const nextRunZoned = toZonedTime(nextRunDate, timeZone);
 
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
-                    const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
+                const isEndOfPeriod = () => {
+                    if (recurrenceData?.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate))) return true;
 
-                    if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                    if (recurrenceData?.billingType === 'monthly') {
+                        return nextRunZoned.getMonth() !== now.getMonth();
+                    }
+                    if (recurrenceData?.billingType === 'weekly') {
+                        // Check if next run is in a different week
+                        return getWeek(nextRunZoned) !== getWeek(now);
+                    }
+                    if (recurrenceData?.billingType === 'biweekly') {
+                        const currentDay = getDate(now);
+                        const nextDay = getDate(nextRunZoned);
+                        const currentMonth = now.getMonth();
+                        const nextMonth = nextRunZoned.getMonth();
+
+                        const currentQuinzena = currentDay <= 15 ? 1 : 2;
+                        const nextQuinzena = nextDay <= 15 ? 1 : 2;
+
+                        return currentMonth !== nextMonth || currentQuinzena !== nextQuinzena;
+                    }
+                    return false;
+                };
+
+                const billingType = recurrenceData.billingType as string;
+                if (['monthly', 'weekly', 'biweekly'].includes(billingType)) {
+                    if (isEndOfPeriod()) {
                         totalValue = (recurrenceData.monthlyValue || 0) / 100;
                     } else {
                         totalValue = 0;
@@ -1868,15 +1893,37 @@ export async function finishOperationAction(accountId: string, operationId: stri
             const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`).get();
             if (recurrenceSnap.exists) {
                 recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
-                if (recurrenceData.billingType === 'monthly') {
-                    const timeZone = 'America/Sao_Paulo';
-                    const now = toZonedTime(new Date(), timeZone);
-                    const currentMonth = now.getMonth();
+                const timeZone = 'America/Sao_Paulo';
+                const now = toZonedTime(new Date(), timeZone);
+                const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                const nextRunZoned = toZonedTime(nextRunDate, timeZone);
 
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
-                    const nextRunMonth = toZonedTime(nextRunDate, timeZone).getMonth();
+                const isEndOfPeriod = () => {
+                    if (recurrenceData?.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate))) return true;
 
-                    if (nextRunMonth !== currentMonth || (recurrenceData.endDate && isAfter(nextRunDate, parseISO(recurrenceData.endDate)))) {
+                    if (recurrenceData?.billingType === 'monthly') {
+                        return nextRunZoned.getMonth() !== now.getMonth();
+                    }
+                    if (recurrenceData?.billingType === 'weekly') {
+                        return getWeek(nextRunZoned) !== getWeek(now);
+                    }
+                    if (recurrenceData?.billingType === 'biweekly') {
+                        const currentDay = getDate(now);
+                        const nextDay = getDate(nextRunZoned);
+                        const currentMonth = now.getMonth();
+                        const nextMonth = nextRunZoned.getMonth();
+
+                        const currentQuinzena = currentDay <= 15 ? 1 : 2;
+                        const nextQuinzena = nextDay <= 15 ? 1 : 2;
+
+                        return currentMonth !== nextMonth || currentQuinzena !== nextQuinzena;
+                    }
+                    return false;
+                };
+
+                const billingType = recurrenceData.billingType as string;
+                if (['monthly', 'weekly', 'biweekly'].includes(billingType)) {
+                    if (isEndOfPeriod()) {
                         operationValue = (recurrenceData.monthlyValue || 0) / 100;
                     } else {
                         operationValue = 0;
@@ -1895,7 +1942,8 @@ export async function finishOperationAction(accountId: string, operationId: stri
         if (recurrenceData) {
             completedOpData.parentOperationId = recurrenceData.originalOrderId;
             // Ensure billingType is carried over from recurrence profile
-            if (recurrenceData.billingType === 'monthly') {
+            const billingType = recurrenceData.billingType as string;
+            if (['monthly', 'weekly', 'biweekly'].includes(billingType)) {
                 completedOpData.billingType = 'monthly';
             } else {
                 completedOpData.billingType = 'perService';
