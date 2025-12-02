@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Flow para otimização de rotas de entrega e retirada de caçambas.
@@ -8,11 +7,10 @@
  * - OptimizeRouteOutput - O tipo de saída da função optimizeRentalRoute.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import type { PopulatedRental, Location, Account, Truck, PopulatedOperation } from '@/lib/types';
+import type { PopulatedRental, Location, Account, PopulatedOperation } from '@/lib/types';
 import { getDirectionsAction } from '@/lib/data-server-actions';
-import { addMinutes, formatISO, max, parseISO, subMinutes, differenceInMinutes, addSeconds, set, startOfDay, isSameDay } from 'date-fns';
+import { addMinutes, formatISO, parseISO, addSeconds, set, startOfDay, isSameDay } from 'date-fns';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const LocationSchema = z.object({
@@ -57,17 +55,7 @@ const OptimizeRouteOutputSchema = z.object({
 export type OptimizeRouteOutput = z.infer<typeof OptimizeRouteOutputSchema>;
 
 export async function optimizeRentalRoute(input: OptimizeRentalRouteInput): Promise<OptimizeRouteOutput> {
-  return optimizeRentalRouteFlow(input);
-}
-
-
-const optimizeRentalRouteFlow = ai.defineFlow(
-  {
-    name: 'optimizeRentalRouteFlow',
-    inputSchema: OptimizeRentalRouteInputSchema,
-    outputSchema: OptimizeRouteOutputSchema,
-  },
-  async ({ rentals, day, accountId, startLocation, baseId, baseDepartureTime }) => {
+    const { rentals, day, accountId, startLocation, baseId, baseDepartureTime } = input;
     
     if (!startLocation) {
         throw new Error("Endereço da base de partida não fornecido.");
@@ -124,13 +112,13 @@ const optimizeRentalRouteFlow = ai.defineFlow(
         return dateA - dateB;
     });
 
-    const rotaOtimizada: OptimizedStop[] = [];
+    const rotaOtimizada: z.infer<typeof OptimizedStopSchema>[] = [];
     let pontoDePartidaAtual = startLocation;
     let horarioDePartidaAtual: Date;
 
     if (baseDepartureTime) {
       const [hours, minutes] = baseDepartureTime.split(':').map(Number);
-      // Adding 3 hours to compensate for timezone differences
+      // Adding 3 hours to compensate for timezone differences (naive fix, should use date-fns-tz in future)
       horarioDePartidaAtual = set(today, { hours: hours + 3, minutes, seconds: 0, milliseconds: 0 });
     } else {
       // Fallback to a default time if not provided
@@ -161,7 +149,7 @@ const optimizeRentalRouteFlow = ai.defineFlow(
         const duracaoServicoMin = 30; // Assume 30 mins for a drop-off/pick-up
         const horarioTerminoServico = addMinutes(horarioInicioEfetivo, duracaoServicoMin);
 
-        const novaParada: OptimizedStop = {
+        const novaParada: z.infer<typeof OptimizedStopSchema> = {
             ordemServico: os,
             ordemNaRota: i + 1,
             tempoViagemAteAquiMin: Math.round(tempoViagemSeg / 60),
@@ -223,5 +211,4 @@ const optimizeRentalRouteFlow = ai.defineFlow(
         totalDuration: `${totalDurationHours}h ${totalDurationMins}min`,
         totalCost,
     };
-  }
-);
+}

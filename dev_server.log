@@ -1,0 +1,23 @@
+
+> nextn@0.1.0 dev
+> next dev -p 9002
+
+   ▲ Next.js 16.0.6 (Turbopack)
+   - Local:         http://localhost:9002
+   - Network:       http://192.168.0.2:9002
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+   We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+   The following mandatory changes were made to your tsconfig.json:
+
+	- jsx was set to react-jsx (next.js uses the React automatic runtime)
+
+ ✓ Ready in 1173ms
+ ○ Compiling /route-planning ...
+ GET /route-planning 200 in 27.0s (compile: 25.9s, render: 1081ms)
