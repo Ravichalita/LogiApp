@@ -740,7 +740,7 @@ export default function OSPage() {
                                                                 <div title="OS Recorrente">
                                                                     <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1">
                                                                         <RefreshCw className="h-3 w-3" />
-                                                                        Recorrente
+                                                                        Serviço Recorrente
                                                                     </Badge>
                                                                 </div>
                                                             )}
@@ -835,7 +835,7 @@ export default function OSPage() {
                                                                 <div title="OS Recorrente">
                                                                     <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 flex items-center gap-1">
                                                                         <RefreshCw className="h-3 w-3" />
-                                                                        Recorrente
+                                                                        Serviço Recorrente
                                                                     </Badge>
                                                                 </div>
                                                             )}
