@@ -925,7 +925,25 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                             )}
                                                             </TableCell>
                                                             <TableCell className="font-medium capitalize text-muted-foreground">
-                                                            {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                                            {(() => {
+                                                                const billingType = (item.data as any)?.billingType;
+
+                                                                // Recurrence logic specific to individual items inside a group
+                                                                let typeLabel = '';
+                                                                if (billingType === 'monthly') typeLabel = ' (Mensal)';
+                                                                else if (billingType === 'weekly') typeLabel = ' (Semanal)';
+                                                                else if (billingType === 'biweekly') typeLabel = ' (Quinzenal)';
+                                                                else if (billingType === 'perService') typeLabel = ' (Por Serviço)';
+                                                                // Legacy check: if no billing type but totalValue is 0, it might be monthly legacy
+                                                                else if (!billingType && item.totalValue === 0) typeLabel = ' (Mensal)';
+
+                                                                if (item.kind === 'rental') {
+                                                                    return `Aluguel${typeLabel}`;
+                                                                } else {
+                                                                    const opName = item.operationTypes?.map(t => t.name).join(', ') || 'Operação';
+                                                                    return `${opName}${typeLabel}`;
+                                                                }
+                                                            })()}
                                                             </TableCell>
                                                             <TableCell className="font-medium whitespace-nowrap text-muted-foreground">{item.clientName}</TableCell>
                                                             <TableCell className="text-right whitespace-nowrap text-muted-foreground">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
