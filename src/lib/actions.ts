@@ -815,7 +815,8 @@ export async function createRental(accountId: string, createdBy: string, prevSta
             try {
                 const recurrenceData = JSON.parse(rawData.recurrence);
                 if (recurrenceData.enabled) {
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    const referenceDate = rawData.rentalDate ? parseISO(rawData.rentalDate as string) : new Date();
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
 
                     const recurrenceProfile: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                         accountId,
@@ -1075,11 +1076,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
         if (recurrenceData) {
             completedRentalData.parentRentalId = recurrenceData.originalOrderId;
             // Ensure billingType is carried over from recurrence profile
-            if (recurrenceData.billingType === 'monthly') {
-                completedRentalData.billingType = 'monthly';
-            } else {
-                completedRentalData.billingType = 'perService';
-            }
+            completedRentalData.billingType = recurrenceData.billingType;
         }
 
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
@@ -1115,8 +1112,8 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
                         return newCounter;
                     });
 
-                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
                     const nextRunDate = parseISO(recurrenceData.nextRunDate);
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate);
                     const templateData = recurrenceData.templateData as Rental;
                     const originalStartDate = parseISO(templateData.rentalDate);
                     const originalEndDate = parseISO(templateData.returnDate);
@@ -1292,6 +1289,10 @@ export async function updateRentalAction(accountId: string, prevState: any, form
 
         if (recurrenceData) {
             if (recurrenceData.enabled) {
+                const referenceDate = updateData.rentalDate
+                    ? parseISO(updateData.rentalDate)
+                    : (rentalBeforeUpdate.rentalDate ? parseISO(rentalBeforeUpdate.rentalDate) : new Date());
+
                 const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                     accountId,
                     frequency: recurrenceData.frequency,
@@ -1302,7 +1303,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                     monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                     status: 'active',
                     type: 'rental',
-                    nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time).toISOString(),
+                    nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate).toISOString(),
                     templateData: { ...rentalBeforeUpdate, ...updateData },
                 };
 
@@ -1518,7 +1519,8 @@ export async function createOperationAction(accountId: string, createdBy: string
             try {
                 const recurrenceData = JSON.parse(rawData.recurrence);
                 if (recurrenceData.enabled) {
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                    const referenceDate = rawData.startDate ? parseISO(rawData.startDate as string) : new Date();
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
 
                     const recurrenceProfile: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                         accountId,
@@ -1759,6 +1761,10 @@ export async function updateOperationAction(accountId: string, prevState: any, f
         let recurrenceProfileId: string | FieldValue | undefined = opBeforeUpdate.recurrenceProfileId;
 
         if (recurrenceData && recurrenceData.enabled) {
+            const referenceDate = updateData.startDate
+                ? parseISO(updateData.startDate)
+                : (opBeforeUpdate.startDate ? parseISO(opBeforeUpdate.startDate) : new Date());
+
             const profileData: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                 accountId,
                 frequency: recurrenceData.frequency,
@@ -1769,7 +1775,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
                 monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                 status: 'active',
                 type: 'operation',
-                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time).toISOString(),
+                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate).toISOString(),
                 templateData: { ...opBeforeUpdate, ...updateData },
             };
 
@@ -1954,12 +1960,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
         if (recurrenceData) {
             completedOpData.parentOperationId = recurrenceData.originalOrderId;
             // Ensure billingType is carried over from recurrence profile
-            const billingType = recurrenceData.billingType as string;
-            if (['monthly', 'weekly', 'biweekly'].includes(billingType)) {
-                completedOpData.billingType = 'monthly';
-            } else {
-                completedOpData.billingType = 'perService';
-            }
+            completedOpData.billingType = recurrenceData.billingType;
         }
 
         const newCompletedRef = db.collection(`accounts/${accountId}/completed_operations`).doc();
@@ -1996,8 +1997,8 @@ export async function finishOperationAction(accountId: string, operationId: stri
                         return newCounter;
                     });
 
-                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
                     const nextRunDate = parseISO(recurrenceData.nextRunDate);
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate);
                     const templateData = recurrenceData.templateData as Operation;
 
                     const originalStartDate = parseISO(templateData.startDate);
