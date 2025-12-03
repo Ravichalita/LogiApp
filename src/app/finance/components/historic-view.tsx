@@ -889,7 +889,9 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                         </TableCell>
                                                         <TableCell className="font-medium capitalize">
                                                         {(() => {
-                                                            const billingType = group.items.find(i => (i.data as any).billingType)?.data?.billingType;
+                                                            const itemWithBilling = group.items.find(i => (i.data as any).billingType);
+                                                            const billingType = (itemWithBilling?.data as any)?.billingType;
+
                                                             // Fallback to existing logic if billingType is missing but looks like monthly (legacy)
                                                             const isMonthlyLegacy = group.items.some(i => i.totalValue === 0);
 
@@ -897,11 +899,13 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                             if (billingType === 'monthly' || isMonthlyLegacy) typeLabel = 'Mensal';
                                                             else if (billingType === 'weekly') typeLabel = 'Semanal';
                                                             else if (billingType === 'biweekly') typeLabel = 'Quinzenal';
+                                                            else if (billingType === 'perService') typeLabel = 'Por Serviço';
 
                                                             if (group.mainItem.kind === 'rental') {
                                                                 return `Aluguel (${typeLabel})`;
                                                             } else {
-                                                                return `Operação (${typeLabel})`;
+                                                                const opName = (group.mainItem.data as any).operationTypes?.map((t: any) => t.name).join(', ') || 'Operação';
+                                                                return `${opName} (${typeLabel})`;
                                                             }
                                                         })()}
                                                         </TableCell>
@@ -922,7 +926,25 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                             )}
                                                             </TableCell>
                                                             <TableCell className="font-medium capitalize text-muted-foreground">
-                                                            {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                                            {(() => {
+                                                                const billingType = (item.data as any)?.billingType;
+
+                                                                // Recurrence logic specific to individual items inside a group
+                                                                let typeLabel = '';
+                                                                if (billingType === 'monthly') typeLabel = ' (Mensal)';
+                                                                else if (billingType === 'weekly') typeLabel = ' (Semanal)';
+                                                                else if (billingType === 'biweekly') typeLabel = ' (Quinzenal)';
+                                                                else if (billingType === 'perService') typeLabel = ' (Por Serviço)';
+                                                                // Legacy check: if no billing type but totalValue is 0, it might be monthly legacy
+                                                                else if (!billingType && item.totalValue === 0) typeLabel = ' (Mensal)';
+
+                                                                if (item.kind === 'rental') {
+                                                                    return `Aluguel${typeLabel}`;
+                                                                } else {
+                                                                    const opName = item.operationTypes?.map(t => t.name).join(', ') || 'Operação';
+                                                                    return `${opName}${typeLabel}`;
+                                                                }
+                                                            })()}
                                                             </TableCell>
                                                             <TableCell className="font-medium whitespace-nowrap text-muted-foreground">{item.clientName}</TableCell>
                                                             <TableCell className="text-right whitespace-nowrap text-muted-foreground">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
