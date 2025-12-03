@@ -16,7 +16,7 @@ import { Calendar } from '@/components/ui/calendar';
 
 export interface RecurrenceData {
     enabled: boolean;
-    frequency: 'weekly' | 'custom';
+    frequency: 'weekly' | 'biweekly' | 'monthly' | 'custom';
     daysOfWeek: number[];
     time: string;
     endDate?: Date;
@@ -72,7 +72,7 @@ export function RecurrenceSelector({ value, onChange, disabled }: RecurrenceSele
                             <Label>Frequência</Label>
                             <Select
                                 value={value.frequency}
-                                onValueChange={(v: 'weekly' | 'custom') => onChange({ ...value, frequency: v })}
+                                onValueChange={(v: 'weekly' | 'biweekly' | 'monthly' | 'custom') => onChange({ ...value, frequency: v })}
                                 disabled={disabled}
                             >
                                 <SelectTrigger>
@@ -80,6 +80,8 @@ export function RecurrenceSelector({ value, onChange, disabled }: RecurrenceSele
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="weekly">Semanal</SelectItem>
+                                    <SelectItem value="biweekly">Quinzenal</SelectItem>
+                                    <SelectItem value="monthly">Mensal</SelectItem>
                                     {/* <SelectItem value="custom">Personalizado</SelectItem> */}
                                 </SelectContent>
                             </Select>
