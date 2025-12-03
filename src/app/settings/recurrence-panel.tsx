@@ -195,8 +195,12 @@ export function RecurrencePanel() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span>{profile.billingType === 'monthly' ? `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((profile.monthlyValue || 0) / 100)}` : `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profile.templateData?.value || 0)}`}</span>
-                                            <span className="text-xs text-muted-foreground">{profile.billingType === 'monthly' ? 'Mensal' : 'Por Serviço'}</span>
+                                            <span>{['monthly', 'weekly', 'biweekly'].includes(profile.billingType) ? `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((profile.monthlyValue || 0) / 100)}` : `${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(profile.templateData?.value || 0)}`}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                                {profile.billingType === 'monthly' ? 'Mensal' :
+                                                 profile.billingType === 'weekly' ? 'Semanal' :
+                                                 profile.billingType === 'biweekly' ? 'Quinzenal' : 'Por Serviço'}
+                                            </span>
                                         </div>
                                     </TableCell>
                                     <TableCell>

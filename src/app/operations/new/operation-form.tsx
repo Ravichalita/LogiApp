@@ -124,6 +124,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const [destinationAddress, setDestinationAddress] = useState('');
   const [destinationLocation, setDestinationLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [destinationMapsLink, setDestinationMapsLink] = useState('');
+  const [observations, setObservations] = useState<string>('');
   const [selectedClientId, setSelectedClientId] = useState<string | undefined>(prefillClientId);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>();
 
@@ -257,6 +258,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
       if (client) {
         setDestinationAddress(client.address);
         setDestinationMapsLink(client.googleMapsLink || '');
+        setObservations(client.observations || '');
         if (client.latitude && client.longitude) {
           setDestinationLocation({ lat: client.latitude, lng: client.longitude });
         } else {
@@ -270,6 +272,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
       setDestinationAddress('');
       setDestinationLocation(null);
       setDestinationMapsLink('');
+      setObservations('');
     }
   }, [selectedClientId, clients]);
 
@@ -924,7 +927,13 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
 
       <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
-        <Textarea id="observations" name="observations" placeholder="Ex: Material a ser coletado, informações de contato no local, etc." />
+        <Textarea
+          id="observations"
+          name="observations"
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          placeholder="Ex: Material a ser coletado, informações de contato no local, etc."
+        />
       </div>
 
       <RecurrenceSelector

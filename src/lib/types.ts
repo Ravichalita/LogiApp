@@ -227,7 +227,7 @@ const BaseOperationSchema = z.object({
   createdAt: z.custom<FieldValue>().optional(),
   attachments: z.array(AttachmentSchema).optional(),
   recurrenceProfileId: z.string().optional(),
-  billingType: z.enum(['perService', 'monthly']).optional().default('perService'),
+  billingType: z.enum(['perService', 'monthly', 'weekly', 'biweekly']).optional().default('perService'),
 });
 
 export const OperationSchema = BaseOperationSchema.extend({
@@ -481,7 +481,7 @@ export const RecurrenceProfileSchema = z.object({
   daysOfWeek: z.array(z.number().min(0).max(6)), // 0 = Sunday, 1 = Monday, etc.
   time: z.string(), // HH:mm
   endDate: z.string().optional(), // ISO string, if null/undefined = indefinite
-  billingType: z.enum(['perService', 'monthly']),
+  billingType: z.enum(['perService', 'monthly', 'weekly', 'biweekly']),
   monthlyValue: z.number().optional(),
   status: z.enum(['active', 'cancelled', 'completed']),
   createdAt: z.custom<FieldValue>(),

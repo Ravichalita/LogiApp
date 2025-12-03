@@ -889,11 +889,19 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                         </TableCell>
                                                         <TableCell className="font-medium capitalize">
                                                         {(() => {
-                                                            const isMonthlyGroup = group.items.some(i => (i.data as any).billingType === 'monthly') || group.items.some(i => i.totalValue === 0);
+                                                            const billingType = group.items.find(i => (i.data as any).billingType)?.data?.billingType;
+                                                            // Fallback to existing logic if billingType is missing but looks like monthly (legacy)
+                                                            const isMonthlyLegacy = group.items.some(i => i.totalValue === 0);
+
+                                                            let typeLabel = 'Recorrente';
+                                                            if (billingType === 'monthly' || isMonthlyLegacy) typeLabel = 'Mensal';
+                                                            else if (billingType === 'weekly') typeLabel = 'Semanal';
+                                                            else if (billingType === 'biweekly') typeLabel = 'Quinzenal';
+
                                                             if (group.mainItem.kind === 'rental') {
-                                                                return isMonthlyGroup ? 'Aluguel (Mensal)' : 'Aluguel (Recorrente)';
+                                                                return `Aluguel (${typeLabel})`;
                                                             } else {
-                                                                return isMonthlyGroup ? 'Operação (Mensal)' : 'Operação (Recorrente)';
+                                                                return `Operação (${typeLabel})`;
                                                             }
                                                         })()}
                                                         </TableCell>
