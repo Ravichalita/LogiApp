@@ -904,7 +904,8 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                             if (group.mainItem.kind === 'rental') {
                                                                 return `Aluguel (${typeLabel})`;
                                                             } else {
-                                                                return `Operação (${typeLabel})`;
+                                                                const opName = (group.mainItem.data as any).operationTypes?.map((t: any) => t.name).join(', ') || 'Operação';
+                                                                return `${opName} (${typeLabel})`;
                                                             }
                                                         })()}
                                                         </TableCell>
