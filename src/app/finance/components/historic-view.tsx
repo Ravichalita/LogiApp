@@ -889,7 +889,8 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                         </TableCell>
                                                         <TableCell className="font-medium capitalize">
                                                         {(() => {
-                                                            const itemWithBilling = group.items.find(i => (i.data as any).billingType);
+                                                            const validTypes = ['weekly', 'biweekly', 'monthly', 'perService'];
+                                                            const itemWithBilling = group.items.find(i => validTypes.includes((i.data as any).billingType));
                                                             const billingType = (itemWithBilling?.data as any)?.billingType;
 
                                                             // Fallback to existing logic if billingType is missing but looks like monthly (legacy)
