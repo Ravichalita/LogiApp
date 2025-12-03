@@ -477,7 +477,7 @@ export const SuperAdminCreationSchema = BaseSignupSchema;
 export const RecurrenceProfileSchema = z.object({
   id: z.string(),
   accountId: z.string(),
-  frequency: z.enum(['weekly', 'custom']), // Simplified for now, can be expanded
+  frequency: z.enum(['weekly', 'biweekly', 'monthly', 'custom']), // Simplified for now, can be expanded
   daysOfWeek: z.array(z.number().min(0).max(6)), // 0 = Sunday, 1 = Monday, etc.
   time: z.string(), // HH:mm
   endDate: z.string().optional(), // ISO string, if null/undefined = indefinite

@@ -102,7 +102,7 @@ import {
 } from 'firebase-admin/firestore';
 
 // Helper function for error handling
-function calculateNextRunDate(daysOfWeek: number[], time: string, referenceDate: Date = new Date()): Date {
+function calculateNextRunDate(daysOfWeek: number[], time: string, referenceDate: Date = new Date(), frequency: 'weekly' | 'biweekly' | 'monthly' | 'custom' = 'weekly'): Date {
     if (!daysOfWeek || daysOfWeek.length === 0) {
         throw new Error("Selecione pelo menos um dia da semana para a recorrência.");
     }
@@ -122,9 +122,13 @@ function calculateNextRunDate(daysOfWeek: number[], time: string, referenceDate:
         // Next occurrence is this week
         daysToAdd = nextDayIndex - todayIndex;
     } else {
-        // Next occurrence is next week
+        // Next occurrence is next cycle
         nextDayIndex = sortedDays[0];
-        daysToAdd = 7 - (todayIndex - nextDayIndex);
+        let cycleDays = 7;
+        if (frequency === 'biweekly') cycleDays = 14;
+        if (frequency === 'monthly') cycleDays = 28;
+
+        daysToAdd = cycleDays - (todayIndex - nextDayIndex);
     }
 
     let nextDate = addDays(now, daysToAdd);
@@ -816,7 +820,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
                 const recurrenceData = JSON.parse(rawData.recurrence);
                 if (recurrenceData.enabled) {
                     const referenceDate = rawData.rentalDate ? parseISO(rawData.rentalDate as string) : new Date();
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate, recurrenceData.frequency);
 
                     const recurrenceProfile: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                         accountId,
@@ -1022,7 +1026,7 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
                 recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
                 const timeZone = 'America/Sao_Paulo';
                 const now = toZonedTime(new Date(), timeZone);
-                const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, new Date(), recurrenceData.frequency);
                 const nextRunZoned = toZonedTime(nextRunDate, timeZone);
 
                 const isEndOfPeriod = () => {
@@ -1112,8 +1116,8 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
                         return newCounter;
                     });
 
-                    const nextRunDate = parseISO(recurrenceData.nextRunDate);
-                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate);
+                    const nextRunDate = parseISO(recurrenceData.nextRunDate || '');
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate, recurrenceData.frequency);
                     const templateData = recurrenceData.templateData as Rental;
                     const originalStartDate = parseISO(templateData.rentalDate);
                     const originalEndDate = parseISO(templateData.returnDate);
@@ -1303,7 +1307,7 @@ export async function updateRentalAction(accountId: string, prevState: any, form
                     monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                     status: 'active',
                     type: 'rental',
-                    nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate).toISOString(),
+                        nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate, recurrenceData.frequency).toISOString(),
                     templateData: { ...rentalBeforeUpdate, ...updateData },
                 };
 
@@ -1520,7 +1524,7 @@ export async function createOperationAction(accountId: string, createdBy: string
                 const recurrenceData = JSON.parse(rawData.recurrence);
                 if (recurrenceData.enabled) {
                     const referenceDate = rawData.startDate ? parseISO(rawData.startDate as string) : new Date();
-                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate);
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate, recurrenceData.frequency);
 
                     const recurrenceProfile: Omit<RecurrenceProfile, 'id' | 'createdAt' | 'originalOrderId'> = {
                         accountId,
@@ -1775,7 +1779,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
                 monthlyValue: recurrenceData.monthlyValue ? Number(recurrenceData.monthlyValue) : undefined,
                 status: 'active',
                 type: 'operation',
-                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate).toISOString(),
+                nextRunDate: calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDate, recurrenceData.frequency).toISOString(),
                 templateData: { ...opBeforeUpdate, ...updateData },
             };
 
@@ -1912,7 +1916,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
                 recurrenceData = recurrenceSnap.data() as RecurrenceProfile;
                 const timeZone = 'America/Sao_Paulo';
                 const now = toZonedTime(new Date(), timeZone);
-                const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time);
+                const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, new Date(), recurrenceData.frequency);
                 const nextRunZoned = toZonedTime(nextRunDate, timeZone);
 
                 const isEndOfPeriod = () => {
@@ -1997,8 +2001,8 @@ export async function finishOperationAction(accountId: string, operationId: stri
                         return newCounter;
                     });
 
-                    const nextRunDate = parseISO(recurrenceData.nextRunDate);
-                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate);
+                    const nextRunDate = parseISO(recurrenceData.nextRunDate || '');
+                    const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate, recurrenceData.frequency);
                     const templateData = recurrenceData.templateData as Operation;
 
                     const originalStartDate = parseISO(templateData.startDate);
