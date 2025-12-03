@@ -889,7 +889,9 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                         </TableCell>
                                                         <TableCell className="font-medium capitalize">
                                                         {(() => {
-                                                            const billingType = group.items.find(i => (i.data as any).billingType)?.data?.billingType;
+                                                            const itemWithBilling = group.items.find(i => (i.data as any).billingType);
+                                                            const billingType = (itemWithBilling?.data as any)?.billingType;
+
                                                             // Fallback to existing logic if billingType is missing but looks like monthly (legacy)
                                                             const isMonthlyLegacy = group.items.some(i => i.totalValue === 0);
 
@@ -897,6 +899,7 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                             if (billingType === 'monthly' || isMonthlyLegacy) typeLabel = 'Mensal';
                                                             else if (billingType === 'weekly') typeLabel = 'Semanal';
                                                             else if (billingType === 'biweekly') typeLabel = 'Quinzenal';
+                                                            else if (billingType === 'perService') typeLabel = 'Por Serviço';
 
                                                             if (group.mainItem.kind === 'rental') {
                                                                 return `Aluguel (${typeLabel})`;
