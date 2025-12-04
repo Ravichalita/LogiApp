@@ -20,7 +20,7 @@ import type { HistoricItem, Transaction, TransactionCategory, CompletedRental, P
 import { FinanceDashboard } from './components/finance-dashboard';
 import { TransactionsList } from './components/transactions-list';
 import { CategoriesSettings } from './components/categories-settings';
-import { default as HistoricView } from './components/historic-view'; // We'll move the old page content here
+import HistoricView from './components/historic-view'; // We'll move the old page content here
 
 export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();

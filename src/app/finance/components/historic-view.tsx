@@ -26,7 +26,7 @@ import {
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogDescription,
+  AlertDialogDescription as RealAlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
@@ -101,12 +101,13 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     if (!item) return null;
-
+    
     // Definição do objeto para o PDF
     const itemForPdf = {
         ...item.data,
         itemType: item.kind,
-    };
+    } as PopulatedRental | PopulatedOperation;
+
 
     const isRental = item.kind === 'rental';
     const rental = isRental ? (item.data as CompletedRental) : null;
@@ -176,9 +177,9 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Restaurar Ordem de Serviço?</AlertDialogTitle>
-                                            <AlertDialogDescription>
+                                            <RealAlertDialogDescription>
                                                 Esta ação irá mover o registro de volta para a lista de serviços ativos. Tem certeza que deseja continuar?
-                                            </AlertDialogDescription>
+                                            </RealAlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -195,9 +196,9 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                      <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Tem certeza que deseja excluir?</AlertDialogTitle>
-                                            <AlertDialogDescription>
+                                            <RealAlertDialogDescription>
                                                 Esta ação não pode ser desfeita e excluirá permanentemente este item do histórico.
-                                            </AlertDialogDescription>
+                                            </RealAlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -889,18 +890,15 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                         </TableCell>
                                                         <TableCell className="font-medium capitalize">
                                                         {(() => {
-                                                            const validTypes = ['weekly', 'biweekly', 'monthly', 'perService'];
-                                                            const itemWithBilling = group.items.find(i => validTypes.includes((i.data as any).billingType));
+                                                            const itemWithBilling = group.items.find(i => (i.data as any).billingType);
                                                             const billingType = (itemWithBilling?.data as any)?.billingType;
-
-                                                            // Fallback to existing logic if billingType is missing but looks like monthly (legacy)
-                                                            const isMonthlyLegacy = group.items.some(i => i.totalValue === 0);
-
+                                                            
                                                             let typeLabel = 'Recorrente';
-                                                            if (billingType === 'monthly' || isMonthlyLegacy) typeLabel = 'Mensal';
+                                                            if (billingType === 'monthly') typeLabel = 'Mensal';
                                                             else if (billingType === 'weekly') typeLabel = 'Semanal';
                                                             else if (billingType === 'biweekly') typeLabel = 'Quinzenal';
                                                             else if (billingType === 'perService') typeLabel = 'Por Serviço';
+                                                            else if (group.items.some(i => i.totalValue === 0)) typeLabel = 'Mensal'; // Legacy fallback
 
                                                             if (group.mainItem.kind === 'rental') {
                                                                 return `Aluguel (${typeLabel})`;
@@ -930,14 +928,12 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                                                             {(() => {
                                                                 const billingType = (item.data as any)?.billingType;
 
-                                                                // Recurrence logic specific to individual items inside a group
                                                                 let typeLabel = '';
                                                                 if (billingType === 'monthly') typeLabel = ' (Mensal)';
                                                                 else if (billingType === 'weekly') typeLabel = ' (Semanal)';
                                                                 else if (billingType === 'biweekly') typeLabel = ' (Quinzenal)';
                                                                 else if (billingType === 'perService') typeLabel = ' (Por Serviço)';
-                                                                // Legacy check: if no billing type but totalValue is 0, it might be monthly legacy
-                                                                else if (!billingType && item.totalValue === 0) typeLabel = ' (Mensal)';
+                                                                else if (!billingType && item.totalValue === 0) typeLabel = ' (Fatura Mensal)';
 
                                                                 if (item.kind === 'rental') {
                                                                     return `Aluguel${typeLabel}`;
