@@ -11,8 +11,8 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex flex-col md:flex-row h-auto md:h-16 items-center justify-between py-2 md:py-0">
-          <div className="flex items-center space-x-2 mb-2 md:mb-0">
+        <div className="container flex flex-row items-center justify-between h-16 py-0">
+          <div className="flex items-center space-x-2">
              <Image
                 src="/192x192.png"
                 alt="LogiApp Logo"

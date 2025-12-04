@@ -16,7 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Label } from '@/components/ui/label';
+import { LogIn } from 'lucide-react';
 
 export function HeaderLogin() {
   const [email, setEmail] = useState('');
@@ -103,15 +109,14 @@ export function HeaderLogin() {
     }
   }
 
-  return (
-    <div className="flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
-      <form onSubmit={handleLogin} className="flex flex-col md:flex-row items-stretch md:items-center gap-2 w-full">
-        <Input
+  const LoginFormFields = ({ isMobile = false }: { isMobile?: boolean }) => (
+    <div className={`flex ${isMobile ? 'flex-col gap-3' : 'flex-row items-center gap-2'}`}>
+       <Input
           type="email"
           placeholder="E-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="h-9 w-full md:w-48 bg-background"
+          className={`h-9 bg-background ${isMobile ? 'w-full' : 'w-48'}`}
           aria-label="Email"
         />
         <Input
@@ -119,18 +124,20 @@ export function HeaderLogin() {
           placeholder="Senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="h-9 w-full md:w-48 bg-background"
+          className={`h-9 bg-background ${isMobile ? 'w-full' : 'w-48'}`}
            aria-label="Senha"
         />
-        <Button type="submit" size="sm" disabled={isSubmitting} className="h-9 px-4 whitespace-nowrap">
+        <Button type="submit" size="sm" disabled={isSubmitting} className={`h-9 px-4 whitespace-nowrap ${isMobile ? 'w-full' : ''}`}>
           {isSubmitting ? <Spinner size="small" className="mr-2" /> : null}
           Entrar
         </Button>
-      </form>
+    </div>
+  );
 
-      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+  const ForgotPasswordLink = ({ className }: { className?: string }) => (
+    <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
         <DialogTrigger asChild>
-             <Button variant="link" size="sm" className="text-xs text-muted-foreground h-auto p-0 md:ml-2 whitespace-nowrap">
+             <Button variant="link" size="sm" className={`text-xs text-muted-foreground h-auto p-0 whitespace-nowrap ${className}`}>
                 Esqueci a senha
             </Button>
         </DialogTrigger>
@@ -162,6 +169,43 @@ export function HeaderLogin() {
             </form>
         </DialogContent>
       </Dialog>
-    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop View */}
+      <div className="hidden md:flex flex-row items-center gap-2">
+         <form onSubmit={handleLogin} className="flex flex-row items-center gap-2">
+            <LoginFormFields />
+         </form>
+         <ForgotPasswordLink className="ml-2" />
+      </div>
+
+      {/* Mobile View */}
+      <div className="md:hidden">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <LogIn className="h-6 w-6" />
+              <span className="sr-only">Login</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 mr-4">
+             <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                   <h4 className="font-medium leading-none">Acessar Conta</h4>
+                   <p className="text-sm text-muted-foreground">
+                     Entre com suas credenciais para continuar.
+                   </p>
+                </div>
+                <LoginFormFields isMobile={true} />
+                <div className="flex justify-center">
+                    <ForgotPasswordLink />
+                </div>
+             </form>
+          </PopoverContent>
+        </Popover>
+      </div>
+    </>
   );
 }
