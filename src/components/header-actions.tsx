@@ -1,7 +1,7 @@
 
 "use client";
 
-import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User, History, UserCog } from "lucide-react";
+import { BarChart, Menu, ShieldCheck, Users, Megaphone, Settings, Download, Bell, User, History, UserCog, BarChart3 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -30,8 +30,8 @@ const navActions = [
     },
     {
     href: "/finance",
-    icon: <History className="h-5 w-5" />,
-    label: "Histórico",
+    icon: <BarChart3 className="h-5 w-5" />,
+    label: "Financeiro",
     shouldRender: (isSuperAdmin: boolean, permissions: any, isMobile: boolean) => permissions?.canAccessFinance && !isMobile,
     },
     {
