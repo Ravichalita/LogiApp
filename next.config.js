@@ -19,13 +19,7 @@ const nextConfig = {
   },
   // Redirect root to /os
   async redirects() {
-    return [
-      {
-        source: '/',
-        destination: '/os',
-        permanent: true,
-      },
-    ];
+    return [];
   },
   // Allow the service worker to be served from the public directory
   async rewrites() {
