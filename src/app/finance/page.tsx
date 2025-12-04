@@ -19,12 +19,12 @@ import type { HistoricItem, Transaction, TransactionCategory, CompletedRental, P
 // Components
 import { FinanceDashboard } from './components/finance-dashboard';
 import { TransactionsList } from './components/transactions-list';
-import { CategoriesSettings } from './components/categories-settings';
-import HistoricView from './components/historic-view'; // We'll move the old page content here
+import HistoricView from './components/historic-view';
 
 export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [loadingData, setLoadingData] = useState(true);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     
     // Financial Data
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -37,6 +37,10 @@ export default function FinancePage() {
 
     const permissions = userAccount?.permissions;
     const canAccessFinance = isSuperAdmin || permissions?.canAccessFinance;
+
+    const refreshData = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
 
     useEffect(() => {
         if (authLoading || !accountId || !canAccessFinance) {
@@ -103,7 +107,7 @@ export default function FinancePage() {
         }
 
         fetchData();
-    }, [accountId, authLoading, canAccessFinance, permissions]);
+    }, [accountId, authLoading, canAccessFinance, permissions, refreshTrigger]);
 
     if (authLoading || (loadingData && canAccessFinance)) {
         return (
@@ -134,7 +138,7 @@ export default function FinancePage() {
             </div>
 
             <Tabs defaultValue="dashboard" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 lg:w-[600px] mb-6">
+                <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-6">
                     <TabsTrigger value="dashboard">
                         <BarChart3 className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">Dashboard</span>
@@ -142,10 +146,6 @@ export default function FinancePage() {
                     <TabsTrigger value="transactions">
                         <ListTodo className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">Transações</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="categories">
-                        <Settings2 className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Categorias</span>
                     </TabsTrigger>
                     <TabsTrigger value="history">
                         <HistoryIcon className="h-4 w-4 mr-2" />
@@ -158,11 +158,11 @@ export default function FinancePage() {
                 </TabsContent>
 
                 <TabsContent value="transactions">
-                    <TransactionsList transactions={transactions} categories={categories} />
-                </TabsContent>
-
-                <TabsContent value="categories">
-                    <CategoriesSettings categories={categories} />
+                    <TransactionsList
+                        transactions={transactions}
+                        categories={categories}
+                        onRefresh={refreshData}
+                    />
                 </TabsContent>
 
                 <TabsContent value="history">

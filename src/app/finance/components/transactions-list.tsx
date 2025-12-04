@@ -2,23 +2,22 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Transaction, TransactionCategory } from '@/lib/types';
 import { createTransactionAction, updateTransactionAction, deleteTransactionAction, toggleTransactionStatusAction } from '@/lib/finance-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
+import { ManageCategories } from './categories-settings';
 
 type TransactionStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
 
@@ -43,13 +42,22 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
-export function TransactionsList({ transactions, categories }: { transactions: Transaction[], categories: TransactionCategory[] }) {
+export function TransactionsList({
+    transactions,
+    categories,
+    onRefresh
+}: {
+    transactions: Transaction[],
+    categories: TransactionCategory[],
+    onRefresh?: () => void
+}) {
     const { accountId } = useAuth();
     const { toast } = useToast();
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
@@ -59,9 +67,6 @@ export function TransactionsList({ transactions, categories }: { transactions: T
         const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesStatus && matchesType && matchesSearch;
     });
-
-    const incomeCategories = categories.filter(c => c.type === 'income');
-    const expenseCategories = categories.filter(c => c.type === 'expense');
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -84,6 +89,7 @@ export function TransactionsList({ transactions, categories }: { transactions: T
             toast({ title: 'Sucesso', description: editingTransaction ? 'Transação atualizada.' : 'Transação criada.' });
             setIsAddDialogOpen(false);
             setEditingTransaction(null);
+            if (onRefresh) onRefresh();
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }
@@ -96,6 +102,7 @@ export function TransactionsList({ transactions, categories }: { transactions: T
         const result = await deleteTransactionAction(accountId, id);
         if (result.message === 'success') {
             toast({ title: 'Sucesso', description: 'Transação excluída.' });
+            if (onRefresh) onRefresh();
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }
@@ -104,7 +111,9 @@ export function TransactionsList({ transactions, categories }: { transactions: T
     const handleToggleStatus = async (id: string, currentStatus: string) => {
         if (!accountId) return;
         const result = await toggleTransactionStatusAction(accountId, id, currentStatus);
-        if (result.message !== 'success') {
+        if (result.message === 'success') {
+            if (onRefresh) onRefresh();
+        } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }
     };
@@ -146,6 +155,10 @@ export function TransactionsList({ transactions, categories }: { transactions: T
                             <SelectItem value="overdue">Vencidos</SelectItem>
                         </SelectContent>
                     </Select>
+
+                    <Button variant="outline" onClick={() => setIsCategoriesDialogOpen(true)}>
+                        Categorias
+                    </Button>
                     <Button onClick={() => { setEditingTransaction(null); setIsAddDialogOpen(true); }}>
                         <Plus className="mr-2 h-4 w-4" /> Nova
                     </Button>
@@ -304,6 +317,16 @@ export function TransactionsList({ transactions, categories }: { transactions: T
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isCategoriesDialogOpen} onOpenChange={setIsCategoriesDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <ManageCategories
+                        categories={categories}
+                        onClose={() => setIsCategoriesDialogOpen(false)}
+                        onRefresh={onRefresh}
+                    />
                 </DialogContent>
             </Dialog>
         </div>
