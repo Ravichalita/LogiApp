@@ -303,7 +303,7 @@ const months = [
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
-interface HistoricViewProps {
+interface OperationalHistoryProps {
     items: HistoricItem[];
     team: UserAccount[];
     account: Account | null;
@@ -311,7 +311,7 @@ interface HistoricViewProps {
     isSuperAdmin: boolean;
 }
 
-export default function HistoricView({ items: allHistoricItems, team, account, permissions, isSuperAdmin }: HistoricViewProps) {
+export function OperationalHistory({ items: allHistoricItems, team, account, permissions, isSuperAdmin }: OperationalHistoryProps) {
     const { accountId } = useAuth();
     const { toast } = useToast();
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
@@ -778,14 +778,14 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
                  <StatCard
-                    title={`Receita (${selectedMonth === 'all' ? selectedYear : `${months[selectedMonth]}/${selectedYear}`})`}
+                    title={`Produção (${selectedMonth === 'all' ? selectedYear : `${months[selectedMonth]}/${selectedYear}`})`}
                     value={formatCurrency(periodRevenue)}
                     icon={DollarSign}
                     loading={false}
                     description={monthlyRevenueDescription}
                 />
                  <StatCard
-                    title={`Receita (Ano de ${selectedYear})`}
+                    title={`Produção (Ano de ${selectedYear})`}
                     value={formatCurrency(yearlyRevenue)}
                     icon={TrendingUp}
                     loading={false}
@@ -800,8 +800,8 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                         <CarouselContent>
                              <CarouselItem>
                                  <CardHeader>
-                                    <CardTitle className="font-headline">Faturamento por Tipo de Serviço</CardTitle>
-                                    <CardDescription>Receita gerada por cada tipo de serviço no período.</CardDescription>
+                                    <CardTitle className="font-headline">Produção por Tipo de Serviço</CardTitle>
+                                    <CardDescription>Valor gerado por cada tipo de serviço no período.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <RevenueByClientChart data={serviceTypeChartData} />
@@ -809,8 +809,8 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                             </CarouselItem>
                              <CarouselItem>
                                  <CardHeader>
-                                    <CardTitle className="font-headline">Faturamento por Cidade</CardTitle>
-                                    <CardDescription>Receita gerada em cada cidade no período selecionado.</CardDescription>
+                                    <CardTitle className="font-headline">Produção por Cidade</CardTitle>
+                                    <CardDescription>Valor gerado em cada cidade no período selecionado.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <RevenueByClientChart data={cityChartData} />
@@ -818,8 +818,8 @@ export default function HistoricView({ items: allHistoricItems, team, account, p
                             </CarouselItem>
                             <CarouselItem>
                                  <CardHeader>
-                                    <CardTitle className="font-headline">Faturamento por Bairro</CardTitle>
-                                    <CardDescription>Receita gerada em cada bairro no período selecionado.</CardDescription>
+                                    <CardTitle className="font-headline">Produção por Bairro</CardTitle>
+                                    <CardDescription>Valor gerado em cada bairro no período selecionado.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <RevenueByClientChart data={neighborhoodChartData} />
