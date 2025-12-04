@@ -1,19 +1,18 @@
-
 'use client';
 
 import Image from "next/image";
 import Link from "next/link";
 import { HeaderLogin } from "@/components/home/header-login";
-import { Button } from "@/components/ui/button";
-import { CheckCircle2, Truck, Calendar, PieChart, ShieldCheck } from "lucide-react";
+import { FeatureCard } from "@/components/home/feature-card";
+import { Truck, Calendar, PieChart, ShieldCheck } from "lucide-react";
 
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex flex-col md:flex-row h-auto md:h-16 items-center justify-between py-2 md:py-0">
-          <div className="flex items-center space-x-2 mb-2 md:mb-0">
+        <div className="container flex flex-row items-center justify-between h-16 py-0">
+          <div className="flex items-center space-x-2">
              <Image
                 src="/192x192.png"
                 alt="LogiApp Logo"
@@ -47,34 +46,27 @@ export default function HomePage() {
         {/* Benefits Section */}
         <section className="py-16 md:py-24 bg-muted/50">
             <div className="container px-4 md:px-6">
-                 <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-3">
-                    <div className="flex flex-col items-center space-y-4 text-center">
-                        <div className="p-4 bg-primary/10 rounded-full">
-                             <Truck className="h-10 w-10 text-primary" />
-                        </div>
-                        <h3 className="text-xl font-bold">Logística Inteligente</h3>
-                        <p className="text-muted-foreground">
-                            Roteirização automática para motoristas e acompanhamento de status em tempo real. Saiba onde sua frota está.
-                        </p>
-                    </div>
-                    <div className="flex flex-col items-center space-y-4 text-center">
-                        <div className="p-4 bg-primary/10 rounded-full">
-                             <Calendar className="h-10 w-10 text-primary" />
-                        </div>
-                        <h3 className="text-xl font-bold">Gestão Financeira</h3>
-                        <p className="text-muted-foreground">
-                            Faturamento automático de locações recorrentes e serviços avulsos. Chega de perder cobranças por esquecimento.
-                        </p>
-                    </div>
-                    <div className="flex flex-col items-center space-y-4 text-center">
-                         <div className="p-4 bg-primary/10 rounded-full">
-                             <PieChart className="h-10 w-10 text-primary" />
-                        </div>
-                        <h3 className="text-xl font-bold">Controle de Ativos</h3>
-                        <p className="text-muted-foreground">
-                            Rastreamento total de caçambas e histórico de manutenção de caminhões. Gestão proativa da sua frota.
-                        </p>
-                    </div>
+                 <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-3 items-start">
+                    <FeatureCard
+                        title="Logística Inteligente"
+                        icon={<Truck className="h-10 w-10 text-primary" />}
+                        summary="Roteirização automática para motoristas e acompanhamento de status em tempo real. Saiba onde sua frota está."
+                        description="Maximize a eficiência da sua frota com nosso sistema de roteirização inteligente. O LogiApp utiliza Inteligência Artificial para calcular as melhores rotas, economizando combustível e tempo. Visualize o trajeto no mapa, receba previsões de trânsito em tempo real e distribua tarefas automaticamente entre seus motoristas. Acompanhe cada etapa, desde a saída da base até a conclusão do serviço, garantindo pontualidade e redução de custos operacionais."
+                    />
+
+                    <FeatureCard
+                        title="Gestão Financeira"
+                        icon={<Calendar className="h-10 w-10 text-primary" />}
+                        summary="Faturamento automático de locações recorrentes e serviços avulsos. Chega de perder cobranças por esquecimento."
+                        description="Tenha controle total sobre o fluxo de caixa da sua empresa. O módulo financeiro permite gerenciar receitas e despesas, categorizar transações e visualizar relatórios detalhados de lucro e faturamento. Automatize cobranças com suporte a faturamento recorrente (mensal, semanal ou quinzenal) e mantenha um histórico completo de todas as ordens de serviço e locações finalizadas. Tome decisões baseadas em dados concretos."
+                    />
+
+                    <FeatureCard
+                        title="Controle de Ativos"
+                        icon={<PieChart className="h-10 w-10 text-primary" />}
+                        summary="Rastreamento total de caçambas e histórico de manutenção de caminhões. Gestão proativa da sua frota."
+                        description="Monitore todos os seus bens em um só lugar. Gerencie o ciclo de vida completo das suas caçambas, sabendo exatamente onde cada uma está, seu status (alugada, disponível, em manutenção) e histórico de locações. Controle sua frota de caminhões, agende manutenções e vincule veículos a motoristas e rotas. Evite perdas e maximize a utilização dos seus equipamentos com nosso inventário digital detalhado."
+                    />
                  </div>
             </div>
         </section>
