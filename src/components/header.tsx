@@ -119,7 +119,7 @@ export function Header({ className }: { className?: string }) {
 
 
   // Hide header on auth pages
-  if (!user || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email') || pathname.startsWith('/restore-from-backup') || pathname.startsWith('/access-denied')) {
+  if (!user || pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/verify-email') || pathname.startsWith('/restore-from-backup') || pathname.startsWith('/access-denied')) {
     return null;
   }
 

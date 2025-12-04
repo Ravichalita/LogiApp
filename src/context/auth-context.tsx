@@ -99,7 +99,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccountMissing(false);
     sessionWorkPerformed.current = false; // Reset session work on logout
     cleanupFcm(); // Clean up FCM listener on logout
-    await signOut(auth);
+    if (auth) {
+        await signOut(auth);
+    }
     router.push('/login');
   }, [auth, router]);
 
@@ -141,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     
     const handleCloseWelcomeDialog = () => {
-        if (!user) return;
+        if (!user || !db) return;
         const userRef = doc(db, 'users', user.uid);
         updateDoc(userRef, { 
             hasSeenWelcome: true,
@@ -151,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
   useEffect(() => {
+    if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       setIsSuperAdmin(false);
@@ -219,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         fcmUnsubscribe.current = await setupFcm(firebaseUser.uid);
         
+        if (!db) return;
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         userDocUnsubscribe.current = onSnapshot(userDocRef, async (userDocSnap) => {
             if (userDocSnap.exists()) {
@@ -292,6 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await logout();
         });
 
+        if (!db) return;
         const accountDocRef = doc(db, 'accounts', effectiveAccountId);
         accountDocUnsubscribe.current = onSnapshot(accountDocRef, async (accountSnap) => {
             if (accountSnap.exists()) {
@@ -317,7 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-        unsubscribe();
+        if (unsubscribe) unsubscribe();
         if (fcmUnsubscribe.current) {
             fcmUnsubscribe.current();
         }
@@ -340,6 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (loading) return;
 
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+    const isHomePage = pathname === '/';
 
     if (accountMissing && !pathname.startsWith('/restore-from-backup')) {
         router.push('/restore-from-backup');
@@ -347,16 +353,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
 
-    if (!user && !isPublicRoute) {
-      router.push('/login');
+    if (!user && !isPublicRoute && !isHomePage) {
+      router.push('/');
     } else if (user) {
        const isSuperAdminUser = role === 'superadmin';
        if (!user.emailVerified && !isSuperAdminUser) {
          if (!pathname.startsWith('/verify-email')) {
             router.push('/verify-email');
          }
-       } else if ((user.emailVerified || isSuperAdminUser) && nonAuthRoutes.includes(pathname)) {
-         router.push('/os');
+       } else if (user.emailVerified || isSuperAdminUser) {
+          if (nonAuthRoutes.includes(pathname) || isHomePage) {
+             router.push('/os');
+          }
       }
     }
   }, [user, loading, pathname, router, accountMissing, role]);

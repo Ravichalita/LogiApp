@@ -24,7 +24,7 @@ const SUPER_ADMIN_EMAIL = 'contato@econtrol.com.br';
  * @throws An error if the transaction fails or if the auth user can't be cleaned up on failure.
  */
 export async function ensureUserDocument(
-    userPayload: Omit<z.infer<typeof SignupSchema>, 'confirmPassword'>, 
+    userPayload: Omit<z.infer<typeof SignupSchema>, 'confirmPassword'> | { name: string; email: string; password?: string },
     inviterAccountId?: string | null,
     forceRole?: UserRole
 ): Promise<{ accountId: string; userId: string }> {
