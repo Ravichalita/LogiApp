@@ -18,6 +18,18 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 import { ManageCategories } from './categories-settings';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription as RealAlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 type TransactionStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
 
@@ -138,7 +150,6 @@ export function TransactionsList({
 
     const handleDelete = async (id: string) => {
         if (!accountId) return;
-        if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
 
         setDeletingId(id);
         const result = await deleteTransactionAction(accountId, id);
@@ -285,15 +296,32 @@ export function TransactionsList({
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingTransaction(t); setIsAddDialogOpen(true); }}>
                                             <Edit className="h-4 w-4" />
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-destructive hover:text-destructive"
-                                            onClick={() => handleDelete(t.id)}
-                                            disabled={deletingId === t.id}
-                                        >
-                                            {deletingId === t.id ? <Spinner size="small" /> : <Trash2 className="h-4 w-4" />}
-                                        </Button>
+                                         <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                                    disabled={deletingId === t.id}
+                                                >
+                                                    {deletingId === t.id ? <Spinner size="small" /> : <Trash2 className="h-4 w-4" />}
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Tem certeza que deseja excluir esta transação?</AlertDialogTitle>
+                                                    <RealAlertDialogDescription>
+                                                        Esta ação não pode ser desfeita e excluirá permanentemente o registro desta transação.
+                                                    </RealAlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDelete(t.id)}>
+                                                        Excluir
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </TableCell>
                                 </TableRow>
                             );
