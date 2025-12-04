@@ -37,6 +37,20 @@ export default function FinancePage() {
     const permissions = userAccount?.permissions;
     const canAccessFinance = isSuperAdmin || permissions?.canAccessFinance;
 
+    const handleTransactionChange = (updatedTransaction: Transaction | null, action: 'create' | 'update' | 'delete') => {
+        if (action === 'delete' && updatedTransaction) {
+            setTransactions(prev => prev.filter(t => t.id !== updatedTransaction.id));
+        } else if (action === 'create' && updatedTransaction) {
+            setTransactions(prev => [updatedTransaction, ...prev]);
+        } else if (action === 'update' && updatedTransaction) {
+            setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
+        } else {
+             // Fallback for full refresh if needed (e.g., complex state changes)
+             setRefreshTrigger(prev => prev + 1);
+        }
+    };
+
+    // Kept for other components that might need full refresh
     const refreshData = () => {
         setRefreshTrigger(prev => prev + 1);
     };
@@ -48,7 +62,14 @@ export default function FinancePage() {
         }
 
         async function fetchData() {
-            setLoadingData(true);
+            // Only show full loading if it's the first load or if we explicitly want to block UI
+            // But we keep loadingData for initial skeleton
+            // If transactions already exist, we might not want to set loadingData=true again to avoid flicker
+            // unless permissions/account change.
+            if (transactions.length === 0 && historicItems.length === 0) {
+                 setLoadingData(true);
+            }
+
             try {
                 const [
                     fetchedTransactions,
@@ -163,6 +184,7 @@ export default function FinancePage() {
                     <TransactionsList
                         transactions={transactions}
                         categories={categories}
+                        onTransactionChange={handleTransactionChange}
                         onRefresh={refreshData}
                     />
                 </TabsContent>
