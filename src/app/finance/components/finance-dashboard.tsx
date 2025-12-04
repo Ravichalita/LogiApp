@@ -3,10 +3,12 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { ArrowUp, ArrowDown, DollarSign, Wallet } from 'lucide-react';
-import { Transaction } from '@/lib/types';
+import { Transaction, HistoricItem, UserAccount, Account, Permissions } from '@/lib/types';
 import { format } from 'date-fns';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, Legend } from 'recharts';
+import { OperationalHistory } from './operational-history';
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('pt-BR', {
@@ -15,7 +17,16 @@ function formatCurrency(value: number) {
     }).format(value);
 }
 
-export function FinanceDashboard({ transactions }: { transactions: Transaction[] }) {
+interface FinanceDashboardProps {
+    transactions: Transaction[];
+    historicItems: HistoricItem[];
+    team: UserAccount[];
+    account: Account | null;
+    permissions: Permissions | undefined;
+    isSuperAdmin: boolean;
+}
+
+export function FinanceDashboard({ transactions, historicItems, team, account, permissions, isSuperAdmin }: FinanceDashboardProps) {
     // Summary Metrics
     const totalIncome = transactions
         .filter(t => t.type === 'income' && t.status !== 'cancelled')
@@ -60,7 +71,11 @@ export function FinanceDashboard({ transactions }: { transactions: Transaction[]
         .slice(-6); // Last 6 months
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                     <h2 className="text-xl font-semibold tracking-tight">Visão Financeira (Caixa)</h2>
+                </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -166,6 +181,22 @@ export function FinanceDashboard({ transactions }: { transactions: Transaction[]
                     </CardContent>
                 </Card>
             </div>
+            </section>
+
+            <Separator />
+
+            <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                     <h2 className="text-xl font-semibold tracking-tight">Histórico Operacional</h2>
+                </div>
+                <OperationalHistory
+                    items={historicItems}
+                    team={team}
+                    account={account}
+                    permissions={permissions}
+                    isSuperAdmin={isSuperAdmin}
+                />
+            </section>
         </div>
     );
 }

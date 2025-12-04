@@ -19,7 +19,6 @@ import type { HistoricItem, Transaction, TransactionCategory, CompletedRental, P
 // Components
 import { FinanceDashboard } from './components/finance-dashboard';
 import { TransactionsList } from './components/transactions-list';
-import HistoricView from './components/historic-view';
 
 export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
@@ -138,7 +137,7 @@ export default function FinancePage() {
             </div>
 
             <Tabs defaultValue="dashboard" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 lg:w-[600px] mb-6">
+                <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
                     <TabsTrigger value="dashboard">
                         <BarChart3 className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">Dashboard</span>
@@ -147,14 +146,17 @@ export default function FinancePage() {
                         <ListTodo className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">Transações</span>
                     </TabsTrigger>
-                    <TabsTrigger value="history">
-                        <HistoryIcon className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Histórico OS</span>
-                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="dashboard">
-                    <FinanceDashboard transactions={transactions} />
+                    <FinanceDashboard
+                        transactions={transactions}
+                        historicItems={historicItems}
+                        team={team}
+                        account={account}
+                        permissions={permissions}
+                        isSuperAdmin={isSuperAdmin}
+                    />
                 </TabsContent>
 
                 <TabsContent value="transactions">
@@ -162,16 +164,6 @@ export default function FinancePage() {
                         transactions={transactions}
                         categories={categories}
                         onRefresh={refreshData}
-                    />
-                </TabsContent>
-
-                <TabsContent value="history">
-                    <HistoricView
-                        items={historicItems}
-                        team={team}
-                        account={account}
-                        permissions={permissions}
-                        isSuperAdmin={isSuperAdmin}
                     />
                 </TabsContent>
             </Tabs>
