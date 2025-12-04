@@ -33,6 +33,19 @@ export default function PrivacyPolicyPage() {
                     </div>
 
                     <div className="space-y-2">
+                        <h3 className="text-lg font-semibold font-headline">1.1 Uso de Dados do Usuário Google</h3>
+                        <p>
+                            Em conformidade com as diretrizes de dados do usuário do Google, declaramos explicitamente que, ao optar pelo login via Google (Google OAuth), o LogiApp acessa, usa, armazena e compartilha os dados do usuário Google da seguinte maneira:
+                        </p>
+                        <ul className="list-disc space-y-1 pl-6">
+                            <li><strong>Acesso:</strong> Acessamos apenas o seu nome, endereço de e-mail e foto de perfil fornecidos pela API do Google. Também podemos solicitar acesso ao seu Google Calendar para sincronizar agendamentos, caso você ative essa funcionalidade.</li>
+                            <li><strong>Uso:</strong> Utilizamos esses dados estritamente para autenticar sua identidade no sistema, criar seu perfil de usuário e, se autorizado, gerenciar eventos no seu calendário.</li>
+                            <li><strong>Armazenamento:</strong> Armazenamos seu nome, e-mail e URL da foto em nosso banco de dados seguro para manter sua sessão ativa e identificar suas ações no sistema.</li>
+                            <li><strong>Compartilhamento:</strong> Não compartilhamos seus dados de usuário Google com terceiros, exceto com o próprio Google para fins de validação de login e integração de calendário.</li>
+                        </ul>
+                    </div>
+
+                    <div className="space-y-2">
                         <h2 className="text-xl font-semibold font-headline">2. Finalidade do Tratamento</h2>
                         <p>Os dados coletados são utilizados para:</p>
                          <ul className="list-disc space-y-1 pl-6">
@@ -97,6 +110,7 @@ export default function PrivacyPolicyPage() {
                     <div className="space-y-2">
                         <h2 className="text-xl font-semibold font-headline">8. Alterações na Política de Privacidade</h2>
                         <p>Esta política pode ser atualizada periodicamente. Sempre que houver mudanças relevantes, notificaremos os usuários pelo site ou e-mail cadastrado.</p>
+                        <p className="mt-2"><strong>Aviso sobre Dados do Google:</strong> Caso haja qualquer alteração na forma como acessamos, usamos ou compartilhamos seus dados de usuário Google, você será notificado com destaque e solicitaremos seu novo consentimento, se aplicável.</p>
                     </div>
 
                      <div className="space-y-2">
