@@ -4,22 +4,21 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Truck, Users, Cog, Container, Workflow, History, Map } from 'lucide-react';
+import { Truck, Users, Cog, Container, Workflow, DollarSign, Map } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
 
 const allNavLinks = [
   { href: '/os', label: 'OS', icon: Workflow, permission: ['canAccessRentals', 'canAccessOperations'] as const },
-  { href: '/route-planning', label: 'Rotas', icon: Map, permission: ['canAccessRoutes'] as const },
   { href: '/dumpsters', label: 'Caçambas', icon: Container, permission: ['canAccessRentals'] as const },
   { href: '/fleet', label: 'Frota', icon: Truck, permission: ['canAccessFleet'] as const },
   { href: '/clients', label: 'Clientes', icon: Users, permission: ['canAccessClients'] as const },
-  { href: '/finance', label: 'Histórico', icon: History, permission: ['canAccessFinance'] as const },
+  { href: '/finance', label: 'Financeiro', icon: DollarSign, permission: ['canAccessFinance'] as const },
 ];
 
 
-export function BottomNav() {
+export function BottomNav({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, userAccount, isSuperAdmin } = useAuth();
 
@@ -37,7 +36,7 @@ export function BottomNav() {
   });
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t">
+    <nav className={cn("fixed bottom-0 left-0 right-0 z-50 bg-card border-t", className)}>
       <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${visibleLinks.length > 0 ? visibleLinks.length : 1}, 1fr)`}}>
         {visibleLinks.map(({ href, label, icon: Icon }) => (
           <Link
