@@ -979,7 +979,7 @@ export async function createRental(accountId: string, createdBy: string, prevSta
     redirect('/os');
 }
 
-export async function finishRentalAction(accountId: string, rentalId: string) {
+export async function finishRentalAction(accountId: string, rentalId: string, isPaid: boolean = false) {
     if (!rentalId || !accountId) {
         return {
             message: 'error',
@@ -1093,7 +1093,8 @@ export async function finishRentalAction(accountId: string, rentalId: string) {
             totalValue,
             clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
             new Date(), // Current date as completion date
-            rentalData.sequentialId
+            rentalData.sequentialId,
+            isPaid ? 'paid' : 'pending'
         );
 
         // If the rental is part of a recurrence, create the next one
@@ -1889,7 +1890,7 @@ export async function updateOperationAction(accountId: string, prevState: any, f
 }
 
 
-export async function finishOperationAction(accountId: string, operationId: string) {
+export async function finishOperationAction(accountId: string, operationId: string, isPaid: boolean = false) {
     if (!accountId || !operationId) {
         return {
             message: 'error',
@@ -1979,7 +1980,8 @@ export async function finishOperationAction(accountId: string, operationId: stri
             operationValue,
             clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
             new Date(),
-            operationData.sequentialId
+            operationData.sequentialId,
+            isPaid ? 'paid' : 'pending'
         );
 
         if (operationData.recurrenceProfileId) {
