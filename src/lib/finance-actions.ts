@@ -9,13 +9,16 @@ import {
     TransactionCategorySchema,
     TransactionSchema,
     UpdateTransactionSchema,
-    AccountSchema
+    AccountSchema,
+    RecurringTransactionProfileSchema
 } from './types';
 import type {
     Transaction,
     TransactionCategory,
-    Account
+    Account,
+    RecurringTransactionProfile
 } from './types';
+import { generateTransactionsForProfile } from './recurring-utils';
 
 // #region Helper Functions
 
@@ -92,6 +95,170 @@ export async function deleteCategoryAction(accountId: string, categoryId: string
         await accountRef.update({
             financialCategories: updatedCategories
         });
+
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+// #endregion
+
+// #region Recurring Transaction Actions
+
+export async function saveRecurringTransactionProfileAction(accountId: string, prevState: any, formData: FormData) {
+    const rawData = Object.fromEntries(formData.entries());
+
+    // Parse daysOfWeek manually since it comes as individual checkboxes or not at all
+    // We expect the form to send `daysOfWeek` as a JSON string or we handle checkbox convention
+    // Let's assume the client sends a JSON string for complex arrays to simplify
+    let daysOfWeek: number[] = [];
+    if (rawData.daysOfWeek && typeof rawData.daysOfWeek === 'string') {
+        try {
+            daysOfWeek = JSON.parse(rawData.daysOfWeek);
+        } catch (e) {
+            console.error("Failed to parse daysOfWeek", e);
+        }
+    }
+
+    const dataToValidate = {
+        ...rawData,
+        amount: Number(rawData.amount),
+        daysOfWeek: daysOfWeek.length > 0 ? daysOfWeek : undefined,
+        accountId
+    };
+
+    const validated = RecurringTransactionProfileSchema.safeParse(dataToValidate);
+
+    if (!validated.success) {
+        return {
+            message: 'error',
+            error: JSON.stringify(validated.error.flatten().fieldErrors)
+        };
+    }
+
+    // Sanitize profile to remove undefined values (Firestore limitation)
+    const profile = JSON.parse(JSON.stringify(validated.data));
+    const accountRef = adminDb.doc(`accounts/${accountId}`);
+
+    try {
+        // 1. Update Profile in Account
+        await adminDb.runTransaction(async (t) => {
+            const accountSnap = await t.get(accountRef);
+            if (!accountSnap.exists) throw new Error("Conta não encontrada.");
+
+            const accountData = accountSnap.data() as Account;
+            let profiles = accountData.recurringTransactionProfiles || [];
+
+            const existingIndex = profiles.findIndex(p => p.id === profile.id);
+            if (existingIndex >= 0) {
+                profiles[existingIndex] = profile;
+            } else {
+                profiles.push(profile);
+            }
+
+            t.update(accountRef, { recurringTransactionProfiles: profiles });
+        });
+
+        // 2. Cleanup Old Future Transactions (Batched)
+        // We do this AFTER updating profile to ensure consistency eventually,
+        // though technically there is a small race condition window.
+        // Given the 500 limit, splitting is safer.
+
+        const transactionsRef = adminDb.collection(`accounts/${accountId}/transactions`);
+
+        // Find future pending transactions for this profile
+        // NOTE: We only query by profile and status to avoid composite index requirement.
+        // We filter by date in memory.
+        const cleanupQuery = transactionsRef
+            .where('recurringProfileId', '==', profile.id)
+            .where('status', '==', 'pending');
+
+        const cleanupSnap = await cleanupQuery.get();
+
+        // Filter in memory for future dates
+        const docsToDelete = cleanupSnap.docs.filter(doc => {
+            const data = doc.data() as Transaction;
+            return new Date(data.dueDate) > new Date();
+        });
+
+        // Batch Delete
+        const batchSize = 400; // Safety margin
+
+        for (let i = 0; i < docsToDelete.length; i += batchSize) {
+            const batch = adminDb.batch();
+            docsToDelete.slice(i, i + batchSize).forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
+
+        // 3. Generate New Transactions (Batched)
+        const newTransactions = generateTransactionsForProfile(profile, accountId);
+        const futureTransactions = newTransactions.filter(tr => new Date(tr.dueDate) > new Date());
+
+        for (let i = 0; i < futureTransactions.length; i += batchSize) {
+            const batch = adminDb.batch();
+            futureTransactions.slice(i, i + batchSize).forEach(tr => {
+                const newDocRef = transactionsRef.doc();
+                batch.set(newDocRef, tr);
+            });
+            await batch.commit();
+        }
+
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export async function deleteRecurringTransactionProfileAction(accountId: string, profileId: string) {
+    if (!accountId || !profileId) return { message: 'error', error: 'IDs ausentes.' };
+
+    const accountRef = adminDb.doc(`accounts/${accountId}`);
+
+    try {
+        // 1. Update Account Profile
+        await adminDb.runTransaction(async (t) => {
+            const accountSnap = await t.get(accountRef);
+            if (!accountSnap.exists) throw new Error("Conta não encontrada.");
+
+            const accountData = accountSnap.data() as Account;
+            const profiles = accountData.recurringTransactionProfiles || [];
+
+            const newProfiles = profiles.filter(p => p.id !== profileId);
+
+            if (newProfiles.length === profiles.length) return;
+
+            t.update(accountRef, { recurringTransactionProfiles: newProfiles });
+        });
+
+        // 2. Delete Future Transactions (Batched)
+        const transactionsRef = adminDb.collection(`accounts/${accountId}/transactions`);
+        // Avoid composite index by querying only profile + status
+        const q = transactionsRef
+            .where('recurringProfileId', '==', profileId)
+            .where('status', '==', 'pending');
+
+        const querySnap = await q.get();
+
+        // Filter in memory
+        const docsToDelete = querySnap.docs.filter(doc => {
+            const data = doc.data() as Transaction;
+            return new Date(data.dueDate) > new Date();
+        });
+
+        const batchSize = 400;
+
+        for (let i = 0; i < docsToDelete.length; i += batchSize) {
+            const batch = adminDb.batch();
+            docsToDelete.slice(i, i + batchSize).forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
 
         revalidatePath('/finance');
         return { message: 'success' };
