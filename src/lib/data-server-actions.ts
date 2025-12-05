@@ -4,7 +4,7 @@
 import { getFirestore, Timestamp, FieldPath } from 'firebase-admin/firestore';
 import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Transaction, TransactionCategory, Operation } from './types';
 import { adminDb } from './firebase-admin';
-import { differenceInDays, isSameDay, startOfMonth, endOfMonth, set } from 'date-fns';
+import { differenceInDays, isSameDay, startOfMonth, endOfMonth, set, format } from 'date-fns';
 
 // Helper to convert Timestamps to serializable format
 const toSerializableObject = (obj: any): any => {
@@ -45,7 +45,9 @@ export async function getTransactions(accountId: string, month?: number, year?: 
 
         if (month !== undefined && year !== undefined) {
             const date = set(new Date(), { year, month, date: 1 });
-            const start = startOfMonth(date).toISOString();
+            // Use YYYY-MM-DD for start to include transactions created with just the date string (e.g. "2025-12-01")
+            // "2025-12-01" < "2025-12-01T00:00:00.000Z", so ISOString() would exclude the 1st of the month if no time is present.
+            const start = format(startOfMonth(date), 'yyyy-MM-dd');
             const end = endOfMonth(date).toISOString();
 
             query = transCol
