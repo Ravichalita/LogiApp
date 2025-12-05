@@ -215,6 +215,8 @@ export default function OSPage() {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('Todas');
     const [selectedDate, setSelectedDate] = useState<Date | undefined>();
     const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+    const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+    const [itemToFinalize, setItemToFinalize] = useState<PopulatedRental | PopulatedOperation | null>(null);
     const [ownerAvatarDataUri, setOwnerAvatarDataUri] = useState<string | undefined>();
     const [titleViewMode, setTitleViewMode] = useState<TitleViewMode>(() => {
         if (typeof window !== 'undefined') {
@@ -478,12 +480,22 @@ export default function OSPage() {
                 router.push(`/${isRental ? 'rentals' : 'operations'}/${item.id}/edit`);
                 break;
             case 'finalize': {
-                const finalizeAction = isRental ? finishRentalAction : finishOperationAction;
-                const result = await finalizeAction(accountId, item.id);
-                if (result?.message === 'error') {
-                    toast({ title: 'Erro ao finalizar', description: result.error, variant: 'destructive' });
+                if (item.recurrenceProfileId) {
+                    // Bypass dialog for recurring items, default to pending (isPaid=false)
+                    // Or follow standard logic (pending).
+                    const isRental = item.itemType === 'rental';
+                    const finalizeAction = isRental ? finishRentalAction : finishOperationAction;
+
+                    const result = await finalizeAction(accountId, item.id, false); // false = pending
+
+                    if (result?.message === 'error') {
+                         toast({ title: 'Erro ao finalizar', description: result.error, variant: 'destructive' });
+                    } else {
+                         toast({ title: 'Sucesso', description: 'OS recorrente finalizada (Pendente).' });
+                    }
                 } else {
-                    toast({ title: 'Sucesso', description: 'OS finalizada.' });
+                    setItemToFinalize(item);
+                    setIsPaymentDialogOpen(true);
                 }
                 break;
             }
@@ -546,6 +558,24 @@ export default function OSPage() {
                     router.push(`/rentals/new?${query}`);
                 }
                 break;
+        }
+    };
+
+    const handleFinalizeConfirm = async (isPaid: boolean) => {
+        if (!accountId || !itemToFinalize) return;
+
+        const isRental = itemToFinalize.itemType === 'rental';
+        const finalizeAction = isRental ? finishRentalAction : finishOperationAction;
+
+        const result = await finalizeAction(accountId, itemToFinalize.id, isPaid);
+
+        setIsPaymentDialogOpen(false);
+        setItemToFinalize(null);
+
+        if (result?.message === 'error') {
+            toast({ title: 'Erro ao finalizar', description: result.error, variant: 'destructive' });
+        } else {
+            toast({ title: 'Sucesso', description: `OS finalizada e marcada como ${isPaid ? 'paga' : 'pendente'}.` });
         }
     };
 
@@ -1064,6 +1094,25 @@ export default function OSPage() {
                 )}
             </div>
             {pageContent}
+
+            <AlertDialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmação de Pagamento</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            O serviço desta OS já foi pago pelo cliente?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <Button variant="outline" onClick={() => handleFinalizeConfirm(false)}>
+                            Não (Pendente)
+                        </Button>
+                        <Button onClick={() => handleFinalizeConfirm(true)}>
+                            Sim (Pago)
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

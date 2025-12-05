@@ -24,6 +24,7 @@ export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [loadingData, setLoadingData] = useState(true);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     
     // Financial Data
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -79,7 +80,7 @@ export default function FinancePage() {
                     teamData,
                     accountData
                 ] = await Promise.all([
-                    getTransactions(accountId!),
+                    getTransactions(accountId!, selectedDate.getMonth(), selectedDate.getFullYear()),
                     getFinancialCategories(accountId!),
                     permissions?.canAccessRentals ? getCompletedRentals(accountId!) : Promise.resolve([]),
                     permissions?.canAccessOperations ? getCompletedOperations(accountId!) : Promise.resolve([]),
@@ -127,7 +128,7 @@ export default function FinancePage() {
         }
 
         fetchData();
-    }, [accountId, authLoading, canAccessFinance, permissions, refreshTrigger]);
+    }, [accountId, authLoading, canAccessFinance, permissions, refreshTrigger, selectedDate]);
 
     if (authLoading || (loadingData && canAccessFinance)) {
         return (
@@ -186,6 +187,8 @@ export default function FinancePage() {
                         categories={categories}
                         onTransactionChange={handleTransactionChange}
                         onRefresh={refreshData}
+                        selectedDate={selectedDate}
+                        onDateChange={setSelectedDate}
                     />
                 </TabsContent>
             </Tabs>

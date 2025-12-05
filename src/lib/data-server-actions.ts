@@ -1,10 +1,10 @@
 
 'use server';
 
-import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/firestore';
-import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Transaction, TransactionCategory } from './types';
+import { getFirestore, Timestamp, FieldPath } from 'firebase-admin/firestore';
+import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Transaction, TransactionCategory, Operation } from './types';
 import { adminDb } from './firebase-admin';
-import { differenceInDays, isSameDay } from 'date-fns';
+import { differenceInDays, isSameDay, startOfMonth, endOfMonth, set } from 'date-fns';
 
 // Helper to convert Timestamps to serializable format
 const toSerializableObject = (obj: any): any => {
@@ -38,11 +38,23 @@ const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot | null | unde
 
 // #region Finance
 
-export async function getTransactions(accountId: string): Promise<Transaction[]> {
+export async function getTransactions(accountId: string, month?: number, year?: number): Promise<Transaction[]> {
     try {
         const transCol = adminDb.collection(`accounts/${accountId}/transactions`);
-        // Default sort by date desc
-        const snap = await transCol.orderBy('dueDate', 'desc').get();
+        let query = transCol.orderBy('dueDate', 'desc');
+
+        if (month !== undefined && year !== undefined) {
+            const date = set(new Date(), { year, month, date: 1 });
+            const start = startOfMonth(date).toISOString();
+            const end = endOfMonth(date).toISOString();
+
+            query = transCol
+                .where('dueDate', '>=', start)
+                .where('dueDate', '<=', end)
+                .orderBy('dueDate', 'desc');
+        }
+
+        const snap = await query.get();
 
         if (snap.empty) return [];
 
