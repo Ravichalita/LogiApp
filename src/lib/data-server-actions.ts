@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, Timestamp, onSnapshot, FieldPath } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldPath } from 'firebase-admin/firestore';
 import type { CompletedRental, Client, Dumpster, Account, UserAccount, Backup, AdminClientView, PopulatedRental, Rental, Attachment, Location, PopulatedOperation, CompletedOperation, OperationType, Truck, Transaction, TransactionCategory, Operation } from './types';
 import { adminDb } from './firebase-admin';
 import { differenceInDays, isSameDay, startOfMonth, endOfMonth, set } from 'date-fns';

@@ -480,8 +480,23 @@ export default function OSPage() {
                 router.push(`/${isRental ? 'rentals' : 'operations'}/${item.id}/edit`);
                 break;
             case 'finalize': {
-                setItemToFinalize(item);
-                setIsPaymentDialogOpen(true);
+                if (item.recurrenceProfileId) {
+                    // Bypass dialog for recurring items, default to pending (isPaid=false)
+                    // Or follow standard logic (pending).
+                    const isRental = item.itemType === 'rental';
+                    const finalizeAction = isRental ? finishRentalAction : finishOperationAction;
+
+                    const result = await finalizeAction(accountId, item.id, false); // false = pending
+
+                    if (result?.message === 'error') {
+                         toast({ title: 'Erro ao finalizar', description: result.error, variant: 'destructive' });
+                    } else {
+                         toast({ title: 'Sucesso', description: 'OS recorrente finalizada (Pendente).' });
+                    }
+                } else {
+                    setItemToFinalize(item);
+                    setIsPaymentDialogOpen(true);
+                }
                 break;
             }
             case 'pdf': {

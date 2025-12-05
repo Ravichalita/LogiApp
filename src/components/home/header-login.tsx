@@ -24,6 +24,40 @@ import {
 import { Label } from '@/components/ui/label';
 import { LogIn } from 'lucide-react';
 
+interface LoginFormFieldsProps {
+    email: string;
+    setEmail: (value: string) => void;
+    password: string;
+    setPassword: (value: string) => void;
+    isSubmitting: boolean;
+    isMobile?: boolean;
+}
+
+const LoginFormFields = ({ email, setEmail, password, setPassword, isSubmitting, isMobile = false }: LoginFormFieldsProps) => (
+    <div className={`flex ${isMobile ? 'flex-col gap-3' : 'flex-row items-center gap-2'}`}>
+       <Input
+          type="email"
+          placeholder="E-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={`h-9 bg-background ${isMobile ? 'w-full' : 'w-48'}`}
+          aria-label="Email"
+        />
+        <Input
+          type="password"
+          placeholder="Senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={`h-9 bg-background ${isMobile ? 'w-full' : 'w-48'}`}
+           aria-label="Senha"
+        />
+        <Button type="submit" size="sm" disabled={isSubmitting} className={`h-9 px-4 whitespace-nowrap ${isMobile ? 'w-full' : ''}`}>
+          {isSubmitting ? <Spinner size="small" className="mr-2" /> : null}
+          Entrar
+        </Button>
+    </div>
+);
+
 export function HeaderLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -109,31 +143,6 @@ export function HeaderLogin() {
     }
   }
 
-  const LoginFormFields = ({ isMobile = false }: { isMobile?: boolean }) => (
-    <div className={`flex ${isMobile ? 'flex-col gap-3' : 'flex-row items-center gap-2'}`}>
-       <Input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={`h-9 bg-background ${isMobile ? 'w-full' : 'w-48'}`}
-          aria-label="Email"
-        />
-        <Input
-          type="password"
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={`h-9 bg-background ${isMobile ? 'w-full' : 'w-48'}`}
-           aria-label="Senha"
-        />
-        <Button type="submit" size="sm" disabled={isSubmitting} className={`h-9 px-4 whitespace-nowrap ${isMobile ? 'w-full' : ''}`}>
-          {isSubmitting ? <Spinner size="small" className="mr-2" /> : null}
-          Entrar
-        </Button>
-    </div>
-  );
-
   const ForgotPasswordLink = ({ className }: { className?: string }) => (
     <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
         <DialogTrigger asChild>
@@ -176,7 +185,13 @@ export function HeaderLogin() {
       {/* Desktop View */}
       <div className="hidden md:flex flex-row items-center gap-2">
          <form onSubmit={handleLogin} className="flex flex-row items-center gap-2">
-            <LoginFormFields />
+            <LoginFormFields
+                email={email}
+                setEmail={setEmail}
+                password={password}
+                setPassword={setPassword}
+                isSubmitting={isSubmitting}
+            />
          </form>
          <ForgotPasswordLink className="ml-2" />
       </div>
@@ -198,7 +213,14 @@ export function HeaderLogin() {
                      Entre com suas credenciais para continuar.
                    </p>
                 </div>
-                <LoginFormFields isMobile={true} />
+                <LoginFormFields
+                    email={email}
+                    setEmail={setEmail}
+                    password={password}
+                    setPassword={setPassword}
+                    isSubmitting={isSubmitting}
+                    isMobile={true}
+                />
                 <div className="flex justify-center">
                     <ForgotPasswordLink />
                 </div>
