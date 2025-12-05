@@ -138,7 +138,8 @@ export async function saveRecurringTransactionProfileAction(accountId: string, p
         };
     }
 
-    const profile = validated.data;
+    // Sanitize profile to remove undefined values (Firestore limitation)
+    const profile = JSON.parse(JSON.stringify(validated.data));
     const accountRef = adminDb.doc(`accounts/${accountId}`);
 
     try {
