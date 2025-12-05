@@ -66,6 +66,20 @@ export const OperationalCostSchema = z.object({
 export type OperationalCost = z.infer<typeof OperationalCostSchema>;
 
 // #region Finance
+export const RecurringTransactionProfileSchema = z.object({
+  id: z.string(),
+  description: z.string().min(1, "A descrição é obrigatória."),
+  amount: z.coerce.number().min(0.01, "O valor deve ser maior que zero."),
+  type: z.enum(['income', 'expense']),
+  categoryId: z.string().min(1, "A categoria é obrigatória."),
+  frequency: z.enum(['daily', 'weekly', 'biweekly', 'monthly']),
+  daysOfWeek: z.array(z.number().min(0).max(6)).optional(), // 0 = Sunday
+  startDate: z.string({ required_error: "A data de início é obrigatória." }),
+  endDate: z.string().optional(),
+  accountId: z.string(),
+});
+export type RecurringTransactionProfile = z.infer<typeof RecurringTransactionProfileSchema>;
+
 export const TransactionCategorySchema = z.object({
   id: z.string(),
   name: z.string().min(1, "O nome da categoria é obrigatório."),
@@ -85,6 +99,7 @@ export const TransactionSchema = z.object({
   categoryId: z.string().optional(),
   source: z.enum(['manual', 'service']).default('manual'),
   relatedResourceId: z.string().optional(), // ID of the rental or operation
+  recurringProfileId: z.string().optional(),
   accountId: z.string(),
   createdAt: z.custom<FieldValue>().optional(),
 });
@@ -110,6 +125,7 @@ export const AccountSchema = z.object({
   bases: z.array(BaseSchema).optional().default([]),
   operationalCosts: z.array(OperationalCostSchema).optional().default([]),
   financialCategories: z.array(TransactionCategorySchema).optional().default([]),
+  recurringTransactionProfiles: z.array(RecurringTransactionProfileSchema).optional().default([]),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
