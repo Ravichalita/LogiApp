@@ -31,6 +31,17 @@ import {
     DialogTrigger,
     DialogDescription
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -39,6 +50,8 @@ import { Trash2, Edit2, Plus, CalendarClock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
+import { Spinner } from '@/components/ui/spinner';
+
 
 interface RecurringTransactionsSettingsProps {
     profiles: RecurringTransactionProfile[];
@@ -166,8 +179,6 @@ function DeleteProfileButton({ accountId, profileId, description }: { accountId:
     const { toast } = useToast();
 
     const handleDelete = () => {
-        if (!confirm(`Tem certeza que deseja excluir a recorrência "${description}"? Isso removerá todos os lançamentos futuros pendentes.`)) return;
-
         startTransition(async () => {
             const result = await deleteRecurringTransactionProfileAction(accountId, profileId);
             if (result.message === 'success') {
@@ -179,15 +190,32 @@ function DeleteProfileButton({ accountId, profileId, description }: { accountId:
     };
 
     return (
-        <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive hover:text-destructive"
-            onClick={handleDelete}
-            disabled={isPending}
-        >
-            <Trash2 className="h-4 w-4" />
-        </Button>
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    disabled={isPending}
+                >
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir Recorrência?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Tem certeza que deseja excluir a recorrência "{description}"? Isso removerá todos os lançamentos futuros pendentes.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                        {isPending ? <Spinner size="small" /> : 'Excluir'}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }
 
