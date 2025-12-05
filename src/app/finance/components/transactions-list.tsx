@@ -464,13 +464,12 @@ export function TransactionsList({
 
             <Dialog open={isRecurringDialogOpen} onOpenChange={setIsRecurringDialogOpen}>
                 <DialogContent className="sm:max-w-[600px]">
-                    {/* The Header is inside RecurringTransactionsSettings or we can put it here */}
-                    {/* Since RecurringTransactionsSettings has its own styling, let's just wrap it */}
-                    {/* But we need to update data on close/change. */}
-                    {/* Ideally RecurringTransactionsSettings triggers refresh on save. */}
-                    {/* We can pass onRefresh there if we modify it, but currently it just saves. */}
-                    {/* We used revalidatePath in actions, but client refresh is needed if we are in client component state */}
-                    {/* Actually `RecurringTransactionsSettings` calls `revalidatePath`, but for immediate update we might need `onRefresh` */}
+                    <DialogHeader>
+                        <DialogTitle>Configuração de Recorrências</DialogTitle>
+                        <DialogDescription>
+                             Gerencie suas receitas e despesas fixas.
+                        </DialogDescription>
+                    </DialogHeader>
                     <RecurringTransactionsSettings
                         profiles={recurringProfiles || []}
                         categories={categories}

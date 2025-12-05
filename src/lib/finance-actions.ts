@@ -169,16 +169,22 @@ export async function saveRecurringTransactionProfileAction(accountId: string, p
         const transactionsRef = adminDb.collection(`accounts/${accountId}/transactions`);
 
         // Find future pending transactions for this profile
+        // NOTE: We only query by profile and status to avoid composite index requirement.
+        // We filter by date in memory.
         const cleanupQuery = transactionsRef
             .where('recurringProfileId', '==', profile.id)
-            .where('status', '==', 'pending')
-            .where('dueDate', '>', new Date().toISOString());
+            .where('status', '==', 'pending');
 
         const cleanupSnap = await cleanupQuery.get();
 
+        // Filter in memory for future dates
+        const docsToDelete = cleanupSnap.docs.filter(doc => {
+            const data = doc.data() as Transaction;
+            return new Date(data.dueDate) > new Date();
+        });
+
         // Batch Delete
         const batchSize = 400; // Safety margin
-        const docsToDelete = cleanupSnap.docs;
 
         for (let i = 0; i < docsToDelete.length; i += batchSize) {
             const batch = adminDb.batch();
@@ -231,14 +237,20 @@ export async function deleteRecurringTransactionProfileAction(accountId: string,
 
         // 2. Delete Future Transactions (Batched)
         const transactionsRef = adminDb.collection(`accounts/${accountId}/transactions`);
+        // Avoid composite index by querying only profile + status
         const q = transactionsRef
             .where('recurringProfileId', '==', profileId)
-            .where('status', '==', 'pending')
-            .where('dueDate', '>', new Date().toISOString());
+            .where('status', '==', 'pending');
 
         const querySnap = await q.get();
+
+        // Filter in memory
+        const docsToDelete = querySnap.docs.filter(doc => {
+            const data = doc.data() as Transaction;
+            return new Date(data.dueDate) > new Date();
+        });
+
         const batchSize = 400;
-        const docsToDelete = querySnap.docs;
 
         for (let i = 0; i < docsToDelete.length; i += batchSize) {
             const batch = adminDb.batch();
