@@ -9,16 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User } from 'lucide-react';
-import { format, parseISO, addMonths, subMonths } from 'date-fns';
+import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User, CalendarClock } from 'lucide-react';
+import { format, parseISO, addMonths, subMonths, isAfter, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
-import { Transaction, TransactionCategory } from '@/lib/types';
+import { Transaction, TransactionCategory, RecurringTransactionProfile } from '@/lib/types';
 import { createTransactionAction, updateTransactionAction, deleteTransactionAction, toggleTransactionStatusAction } from '@/lib/finance-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 import { ManageCategories } from './categories-settings';
+import { RecurringTransactionsSettings } from './recurring-transactions-settings';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +65,7 @@ function formatCurrency(value: number) {
 export function TransactionsList({
     transactions,
     categories,
+    recurringProfiles,
     onTransactionChange,
     onRefresh,
     selectedDate,
@@ -71,6 +73,7 @@ export function TransactionsList({
 }: {
     transactions: Transaction[],
     categories: TransactionCategory[],
+    recurringProfiles?: RecurringTransactionProfile[],
     onTransactionChange?: (transaction: Transaction | null, action: 'create' | 'update' | 'delete') => void,
     onRefresh?: () => void,
     selectedDate: Date,
@@ -83,6 +86,7 @@ export function TransactionsList({
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
+    const [isRecurringDialogOpen, setIsRecurringDialogOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -277,8 +281,11 @@ export function TransactionsList({
                     <TableBody>
                         {filteredTransactions.length > 0 ? filteredTransactions.map((t) => {
                             const category = categories.find(c => c.id === t.categoryId);
+                            const isFuture = isAfter(parseISO(t.dueDate), startOfDay(new Date()));
+                            const isRecurringFuture = t.recurringProfileId && isFuture && t.status === 'pending';
+
                             return (
-                                <TableRow key={t.id}>
+                                <TableRow key={t.id} className={cn(isFuture && t.status === 'pending' && "opacity-60 hover:opacity-100 transition-opacity")}>
                                     <TableCell className="font-medium">
                                         <div className="flex items-center gap-2">
                                             {t.type === 'income' ?
@@ -287,6 +294,11 @@ export function TransactionsList({
                                             }
                                             {t.description}
                                             {t.source === 'service' && <Badge variant="outline" className="text-[10px] h-5">Auto</Badge>}
+                                            {isRecurringFuture && (
+                                                <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                                                    Transação Futura
+                                                </Badge>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -450,6 +462,23 @@ export function TransactionsList({
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={isRecurringDialogOpen} onOpenChange={setIsRecurringDialogOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    {/* The Header is inside RecurringTransactionsSettings or we can put it here */}
+                    {/* Since RecurringTransactionsSettings has its own styling, let's just wrap it */}
+                    {/* But we need to update data on close/change. */}
+                    {/* Ideally RecurringTransactionsSettings triggers refresh on save. */}
+                    {/* We can pass onRefresh there if we modify it, but currently it just saves. */}
+                    {/* We used revalidatePath in actions, but client refresh is needed if we are in client component state */}
+                    {/* Actually `RecurringTransactionsSettings` calls `revalidatePath`, but for immediate update we might need `onRefresh` */}
+                    <RecurringTransactionsSettings
+                        profiles={recurringProfiles || []}
+                        categories={categories}
+                        accountId={accountId || ''}
+                    />
+                </DialogContent>
+            </Dialog>
+
             <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -480,6 +509,13 @@ export function TransactionsList({
                         >
                             <TrendingDown className="mr-2 h-4 w-4 text-red-600" />
                             <span>Despesa</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="py-3 cursor-pointer"
+                            onSelect={() => setIsRecurringDialogOpen(true)}
+                        >
+                            <CalendarClock className="mr-2 h-4 w-4 text-blue-600" />
+                            <span>Recorrências Fixas</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             className="py-3 cursor-pointer"
