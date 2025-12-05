@@ -14,7 +14,7 @@ import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction, 
 import { fetchTeamMembers, getAccountData } from '@/lib/data';
 
 // Types
-import type { HistoricItem, Transaction, TransactionCategory, CompletedRental, PopulatedOperation, UserAccount, Account } from '@/lib/types';
+import type { HistoricItem, Transaction, TransactionCategory, CompletedRental, PopulatedOperation, UserAccount, Account, RecurringTransactionProfile } from '@/lib/types';
 
 // Components
 import { FinanceDashboard } from './components/finance-dashboard';
@@ -29,6 +29,7 @@ export default function FinancePage() {
     // Financial Data
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [categories, setCategories] = useState<TransactionCategory[]>([]);
+    const [recurringProfiles, setRecurringProfiles] = useState<RecurringTransactionProfile[]>([]);
     
     // Historic Data (Legacy/Detailed View)
     const [historicItems, setHistoricItems] = useState<HistoricItem[]>([]);
@@ -90,6 +91,7 @@ export default function FinancePage() {
 
                 setTransactions(fetchedTransactions);
                 setCategories(fetchedCategories);
+                setRecurringProfiles(accountData?.recurringTransactionProfiles || []);
                 setTeam(teamData);
                 setAccount(accountData);
 
@@ -185,6 +187,7 @@ export default function FinancePage() {
                     <TransactionsList
                         transactions={transactions}
                         categories={categories}
+                        recurringProfiles={recurringProfiles}
                         onTransactionChange={handleTransactionChange}
                         onRefresh={refreshData}
                         selectedDate={selectedDate}
