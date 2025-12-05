@@ -36,7 +36,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Trash2, Edit2, Plus, CalendarClock } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
 
@@ -163,6 +163,7 @@ export function RecurringTransactionsSettings({
 
 function DeleteProfileButton({ accountId, profileId, description }: { accountId: string, profileId: string, description: string }) {
     const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
 
     const handleDelete = () => {
         if (!confirm(`Tem certeza que deseja excluir a recorrência "${description}"? Isso removerá todos os lançamentos futuros pendentes.`)) return;
@@ -170,9 +171,9 @@ function DeleteProfileButton({ accountId, profileId, description }: { accountId:
         startTransition(async () => {
             const result = await deleteRecurringTransactionProfileAction(accountId, profileId);
             if (result.message === 'success') {
-                toast.success('Recorrência excluída com sucesso.');
+                toast({ title: 'Sucesso', description: 'Recorrência excluída com sucesso.' });
             } else {
-                toast.error('Erro ao excluir: ' + result.error);
+                toast({ title: 'Erro', description: 'Erro ao excluir: ' + result.error, variant: 'destructive' });
             }
         });
     };
@@ -202,6 +203,7 @@ function RecurringProfileForm({
     onSuccess: () => void
 }) {
     const [isPending, startTransition] = useTransition();
+    const { toast } = useToast();
     const [type, setType] = useState<'income' | 'expense'>(profile?.type || 'expense');
     const [frequency, setFrequency] = useState<string>(profile?.frequency || 'monthly');
     const [daysOfWeek, setDaysOfWeek] = useState<number[]>(profile?.daysOfWeek || [1, 2, 3, 4, 5]);
@@ -234,10 +236,10 @@ function RecurringProfileForm({
         startTransition(async () => {
             const result = await saveRecurringTransactionProfileAction(accountId, null, formData);
             if (result.message === 'success') {
-                toast.success(profile ? 'Recorrência atualizada!' : 'Recorrência criada!');
+                toast({ title: 'Sucesso', description: profile ? 'Recorrência atualizada!' : 'Recorrência criada!' });
                 onSuccess();
             } else {
-                toast.error('Erro: ' + result.error);
+                toast({ title: 'Erro', description: 'Erro: ' + result.error, variant: 'destructive' });
             }
         });
     };
