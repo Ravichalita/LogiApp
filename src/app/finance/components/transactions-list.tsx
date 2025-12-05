@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User } from 'lucide-react';
+import { format, parseISO, addMonths, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Transaction, TransactionCategory } from '@/lib/types';
 import { createTransactionAction, updateTransactionAction, deleteTransactionAction, toggleTransactionStatusAction } from '@/lib/finance-actions';
@@ -18,6 +19,12 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 import { ManageCategories } from './categories-settings';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,12 +65,16 @@ export function TransactionsList({
     transactions,
     categories,
     onTransactionChange,
-    onRefresh
+    onRefresh,
+    selectedDate,
+    onDateChange
 }: {
     transactions: Transaction[],
     categories: TransactionCategory[],
     onTransactionChange?: (transaction: Transaction | null, action: 'create' | 'update' | 'delete') => void,
-    onRefresh?: () => void
+    onRefresh?: () => void,
+    selectedDate: Date,
+    onDateChange: (date: Date) => void
 }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
@@ -75,6 +86,7 @@ export function TransactionsList({
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [defaultTransactionType, setDefaultTransactionType] = useState<'income' | 'expense'>('expense');
 
     const filteredTransactions = transactions.filter(t => {
         const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
@@ -192,9 +204,9 @@ export function TransactionsList({
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 relative">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="flex gap-2 w-full md:w-auto">
+                <div className="flex gap-2 w-full md:w-auto items-center">
                     <div className="relative w-full md:w-64">
                         <Input
                             placeholder="Buscar transação..."
@@ -202,9 +214,28 @@ export function TransactionsList({
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" size="icon">
-                        <Filter className="h-4 w-4" />
-                    </Button>
+
+                    <div className="flex items-center bg-muted/50 rounded-md border">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => onDateChange(subMonths(selectedDate, 1))}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <div className="px-4 font-medium min-w-[140px] text-center capitalize text-sm">
+                            {format(selectedDate, 'MMMM yyyy', { locale: ptBR })}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9"
+                            onClick={() => onDateChange(addMonths(selectedDate, 1))}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                     <Select value={filterType} onValueChange={setFilterType}>
@@ -228,13 +259,6 @@ export function TransactionsList({
                             <SelectItem value="overdue">Vencidos</SelectItem>
                         </SelectContent>
                     </Select>
-
-                    <Button variant="outline" onClick={() => setIsCategoriesDialogOpen(true)}>
-                        Categorias
-                    </Button>
-                    <Button onClick={() => { setEditingTransaction(null); setIsAddDialogOpen(true); }}>
-                        <Plus className="mr-2 h-4 w-4" /> Nova
-                    </Button>
                 </div>
             </div>
 
@@ -356,7 +380,7 @@ export function TransactionsList({
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="type">Tipo</Label>
-                                <Select name="type" defaultValue={editingTransaction?.type || 'expense'}>
+                                <Select name="type" defaultValue={editingTransaction?.type || defaultTransactionType}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
@@ -425,6 +449,48 @@ export function TransactionsList({
                     />
                 </DialogContent>
             </Dialog>
+
+            <div className="fixed bottom-20 right-4 z-50 md:bottom-6 md:right-6">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button className="h-16 w-16 rounded-full shadow-lg">
+                            <Plus className="h-8 w-8" />
+                            <span className="sr-only">Menu Financeiro</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="mb-2 w-56">
+                        <DropdownMenuItem
+                            className="py-3 cursor-pointer"
+                            onSelect={() => {
+                                setDefaultTransactionType('income');
+                                setEditingTransaction(null);
+                                setIsAddDialogOpen(true);
+                            }}
+                        >
+                            <TrendingUp className="mr-2 h-4 w-4 text-green-600" />
+                            <span>Receita</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="py-3 cursor-pointer"
+                            onSelect={() => {
+                                setDefaultTransactionType('expense');
+                                setEditingTransaction(null);
+                                setIsAddDialogOpen(true);
+                            }}
+                        >
+                            <TrendingDown className="mr-2 h-4 w-4 text-red-600" />
+                            <span>Despesa</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            className="py-3 cursor-pointer"
+                            onSelect={() => setIsCategoriesDialogOpen(true)}
+                        >
+                            <LayoutList className="mr-2 h-4 w-4" />
+                            <span>Categorias</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
     );
 }
