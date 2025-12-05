@@ -1064,6 +1064,9 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
             }
         }
 
+        // Logic to prevent creating a transaction for intermediate recurring items
+        const shouldCreateTransaction = !(recurrenceData && ['monthly', 'weekly', 'biweekly'].includes(recurrenceData.billingType) && totalValue === 0);
+
         const completedRentalData: any = {
             ...rentalData,
             originalRentalId: rentalId,
@@ -1086,16 +1089,18 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
         const newCompletedRentalRef = db.collection(`accounts/${accountId}/completed_rentals`).doc();
         batch.set(newCompletedRentalRef, completedRentalData);
 
-        await createTransactionFromService(
-            accountId,
-            rentalId,
-            'rental',
-            totalValue,
-            clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
-            new Date(), // Current date as completion date
-            rentalData.sequentialId,
-            isPaid ? 'paid' : 'pending'
-        );
+        if (shouldCreateTransaction) {
+            await createTransactionFromService(
+                accountId,
+                rentalId,
+                'rental',
+                totalValue,
+                clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
+                new Date(), // Current date as completion date
+                rentalData.sequentialId,
+                isPaid ? 'paid' : 'pending'
+            );
+        }
 
         // If the rental is part of a recurrence, create the next one
         if (rentalData.recurrenceProfileId) {
@@ -1954,6 +1959,8 @@ export async function finishOperationAction(accountId: string, operationId: stri
             }
         }
 
+        const shouldCreateTransaction = !(recurrenceData && ['monthly', 'weekly', 'biweekly'].includes(recurrenceData.billingType) && operationValue === 0);
+
         const completedOpData: any = {
             ...operationData,
             originalOperationId: operationId,
@@ -1973,16 +1980,18 @@ export async function finishOperationAction(accountId: string, operationId: stri
 
         const clientSnap = await db.doc(`accounts/${accountId}/clients/${operationData.clientId}`).get();
 
-        await createTransactionFromService(
-            accountId,
-            operationId,
-            'operation',
-            operationValue,
-            clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
-            new Date(),
-            operationData.sequentialId,
-            isPaid ? 'paid' : 'pending'
-        );
+        if (shouldCreateTransaction) {
+            await createTransactionFromService(
+                accountId,
+                operationId,
+                'operation',
+                operationValue,
+                clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
+                new Date(),
+                operationData.sequentialId,
+                isPaid ? 'paid' : 'pending'
+            );
+        }
 
         if (operationData.recurrenceProfileId) {
             const recurrenceRef = db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`);
