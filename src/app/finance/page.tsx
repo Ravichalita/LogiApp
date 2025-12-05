@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -23,6 +22,7 @@ import { TransactionsList } from './components/transactions-list';
 export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [loadingData, setLoadingData] = useState(true);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     
@@ -57,28 +57,25 @@ export default function FinancePage() {
         setRefreshTrigger(prev => prev + 1);
     };
 
+    // 1. Fetch Static/Global Data + Historic Items (Heavy)
+    // Only fetches when account changes or refresh is triggered manually.
+    // Does NOT depend on selectedDate.
     useEffect(() => {
         if (authLoading || !accountId || !canAccessFinance) {
             if (!authLoading) setLoadingData(false);
             return;
         }
 
-        async function fetchData() {
-            const isInitialLoad = transactions.length === 0 && historicItems.length === 0;
-            if (isInitialLoad) {
-                setLoadingData(true);
-            }
-
+        async function fetchStaticAndHistoricData() {
+            setLoadingData(true);
             try {
                 const [
-                    fetchedTransactions,
                     fetchedCategories,
                     rentals,
                     operations,
                     teamData,
                     accountData
                 ] = await Promise.all([
-                    getTransactions(accountId!, selectedDate.getMonth(), selectedDate.getFullYear()),
                     getFinancialCategories(accountId!),
                     permissions?.canAccessRentals ? getCompletedRentals(accountId!) : Promise.resolve([]),
                     permissions?.canAccessOperations ? getCompletedOperations(accountId!) : Promise.resolve([]),
@@ -86,7 +83,6 @@ export default function FinancePage() {
                     getAccountData(accountId!),
                 ]);
 
-                setTransactions(fetchedTransactions);
                 setCategories(fetchedCategories);
                 setRecurringProfiles(accountData?.recurringTransactionProfiles || []);
                 setTeam(teamData);
@@ -120,16 +116,37 @@ export default function FinancePage() {
                 setHistoricItems(combinedItems);
 
             } catch (error) {
-                console.error("Failed to fetch finance data:", error);
+                console.error("Failed to fetch finance static data:", error);
             } finally {
-                if (isInitialLoad) {
-                    setLoadingData(false);
-                }
+                setLoadingData(false);
             }
         }
 
-        fetchData();
-    }, [accountId, authLoading, canAccessFinance, permissions, refreshTrigger, selectedDate]);
+        fetchStaticAndHistoricData();
+    }, [accountId, authLoading, canAccessFinance, permissions, refreshTrigger]);
+
+    // 2. Fetch Transactions (Lightweight)
+    // Fetches when Date or Refresh changes.
+    useEffect(() => {
+        if (authLoading || !accountId || !canAccessFinance) {
+            return;
+        }
+
+        async function fetchTransactionsData() {
+            setLoadingTransactions(true);
+            try {
+                const fetchedTransactions = await getTransactions(accountId!, selectedDate.getMonth(), selectedDate.getFullYear());
+                setTransactions(fetchedTransactions);
+            } catch (error) {
+                console.error("Failed to fetch transactions:", error);
+            } finally {
+                setLoadingTransactions(false);
+            }
+        }
+
+        fetchTransactionsData();
+    }, [accountId, authLoading, canAccessFinance, selectedDate, refreshTrigger]);
+
 
     if (authLoading || (loadingData && canAccessFinance)) {
         return (
@@ -192,6 +209,14 @@ export default function FinancePage() {
                         selectedDate={selectedDate}
                         onDateChange={setSelectedDate}
                     />
+                     {loadingTransactions && (
+                        <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
+                            <Skeleton className="h-full w-full opacity-20" />
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-4 rounded-lg shadow-lg">
+                                Carregando transações...
+                            </div>
+                        </div>
+                     )}
                 </TabsContent>
             </Tabs>
         </div>
