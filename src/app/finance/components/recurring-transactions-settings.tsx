@@ -57,6 +57,7 @@ interface RecurringTransactionsSettingsProps {
     profiles: RecurringTransactionProfile[];
     categories: TransactionCategory[];
     accountId: string;
+    onRefresh?: () => void;
 }
 
 const DAYS_OF_WEEK = [
@@ -72,7 +73,8 @@ const DAYS_OF_WEEK = [
 export function RecurringTransactionsSettings({
     profiles,
     categories,
-    accountId
+    accountId,
+    onRefresh
 }: RecurringTransactionsSettingsProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<RecurringTransactionProfile | null>(null);
@@ -86,6 +88,13 @@ export function RecurringTransactionsSettings({
         setEditingProfile(null);
         setIsOpen(true);
     };
+
+    const handleSuccess = () => {
+        setIsOpen(false);
+        if (onRefresh) {
+            onRefresh();
+        }
+    }
 
     return (
         <div className="space-y-4">
@@ -148,6 +157,7 @@ export function RecurringTransactionsSettings({
                                 accountId={accountId}
                                 profileId={profile.id}
                                 description={profile.description}
+                                onRefresh={onRefresh}
                             />
                         </div>
                     </div>
@@ -166,7 +176,7 @@ export function RecurringTransactionsSettings({
                         profile={editingProfile}
                         categories={categories}
                         accountId={accountId}
-                        onSuccess={() => setIsOpen(false)}
+                        onSuccess={handleSuccess}
                     />
                 </DialogContent>
             </Dialog>
@@ -174,7 +184,7 @@ export function RecurringTransactionsSettings({
     );
 }
 
-function DeleteProfileButton({ accountId, profileId, description }: { accountId: string, profileId: string, description: string }) {
+function DeleteProfileButton({ accountId, profileId, description, onRefresh }: { accountId: string, profileId: string, description: string, onRefresh?: () => void }) {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
@@ -183,6 +193,7 @@ function DeleteProfileButton({ accountId, profileId, description }: { accountId:
             const result = await deleteRecurringTransactionProfileAction(accountId, profileId);
             if (result.message === 'success') {
                 toast({ title: 'Sucesso', description: 'Recorrência excluída com sucesso.' });
+                if (onRefresh) onRefresh();
             } else {
                 toast({ title: 'Erro', description: 'Erro ao excluir: ' + result.error, variant: 'destructive' });
             }
@@ -252,12 +263,6 @@ function RecurringProfileForm({
         if (profile) {
             formData.set('id', profile.id);
         } else {
-             // Generate ID for new
-             // We can generate client side or server side. Server action expects ID for updates.
-             // For create, we usually rely on server or send a new uuid.
-             // The schema requires ID. Let's let the server handle ID creation or pass a dummy if creating?
-             // Actually, the server action `saveRecurringTransactionProfileAction` expects `id` in `profile` object because of schema.
-             // Let's generate a random ID here if new.
              formData.set('id', crypto.randomUUID());
         }
 

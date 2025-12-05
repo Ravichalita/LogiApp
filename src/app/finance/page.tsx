@@ -52,7 +52,7 @@ export default function FinancePage() {
         }
     };
 
-    // Kept for other components that might need full refresh
+    // This function will be passed down to trigger a soft refresh of data.
     const refreshData = () => {
         setRefreshTrigger(prev => prev + 1);
     };
@@ -64,12 +64,9 @@ export default function FinancePage() {
         }
 
         async function fetchData() {
-            // Only show full loading if it's the first load or if we explicitly want to block UI
-            // But we keep loadingData for initial skeleton
-            // If transactions already exist, we might not want to set loadingData=true again to avoid flicker
-            // unless permissions/account change.
-            if (transactions.length === 0 && historicItems.length === 0) {
-                 setLoadingData(true);
+            const isInitialLoad = transactions.length === 0 && historicItems.length === 0;
+            if (isInitialLoad) {
+                setLoadingData(true);
             }
 
             try {
@@ -125,7 +122,9 @@ export default function FinancePage() {
             } catch (error) {
                 console.error("Failed to fetch finance data:", error);
             } finally {
-                setLoadingData(false);
+                if (isInitialLoad) {
+                    setLoadingData(false);
+                }
             }
         }
 

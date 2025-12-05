@@ -119,44 +119,6 @@ export function TransactionsList({
         if (result.message === 'success') {
             toast({ title: 'Sucesso', description: editingTransaction ? 'Transação atualizada.' : 'Transação criada.' });
             setIsAddDialogOpen(false);
-
-            // Construct optimistic object or use returned data if available
-            // Currently server actions don't return the full object, so we might need to rely on revalidation
-            // OR we can try to guess it.
-            // Ideally server action returns the object.
-            // Since we can't easily change server action return type safely without checking all usages,
-            // we will use onRefresh if onTransactionChange is not provided,
-            // BUT if we want to avoid refresh we should ideally get the data back.
-            // For now, let's trigger a silent background refresh via onRefresh if available?
-            // NO, the user wants NO page refresh.
-            // We need to trigger the parent update.
-            // Since `createTransactionAction` DOES NOT return the object, we have a problem implementing TRUE optimistic UI without fetching.
-            // However, we can use the form data to create a temporary object.
-
-            // If the server action returns 'success', we can assume it worked.
-            // But we don't have the generated ID for creates.
-            // So for CREATE, we might still need a fetch or simply call onRefresh() but modify FinancePage to NOT show loading skeleton for that.
-            // BUT the user specific request is "sem precisar de refresh em toda a página".
-            // So calling onRefresh (which sets loadingData=true) is bad.
-
-            // Strategy:
-            // 1. If we have `onTransactionChange` and it's an UPDATE, we can merge existing + changes.
-            // 2. If it's a CREATE, we really need the ID.
-            // Let's modify `createTransactionAction` to return the ID?
-            // I'd rather not change shared server logic if possible to avoid breaking other things, but `createTransactionAction` is likely only used here or in limited places.
-            // I will assume for now we fall back to `onRefresh` but try to suppress the loading state in parent? No, parent controls that.
-
-            // Wait, looking at `createTransactionAction` in `src/lib/finance-actions.ts`:
-            // It calls `revalidatePath('/finance')`. This implicitly causes Next.js to reload data on next navigation.
-            // But client side fetch in `FinancePage` is manual.
-
-            // Compromise: We will call `onRefresh` but `FinancePage` should be smart enough to NOT show full skeleton if we just want a background data update?
-            // Currently `FinancePage` sets `setLoadingData(true)` on refresh.
-            // We should fix `FinancePage` to not block UI on refresh.
-
-            // Let's stick to the plan: I'll use `onTransactionChange` for DELETE (easy).
-            // For CREATE/UPDATE: I will call `onRefresh`. AND I will modify FinancePage to make `loadingData` false during refresh if data already exists.
-
             if (onRefresh) onRefresh();
             setEditingTransaction(null);
         } else {
@@ -411,7 +373,6 @@ export function TransactionsList({
                                         <SelectValue placeholder="Selecione..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {/* TODO: Dynamically filter based on selected type if needed, but showing all is okay for now */}
                                         {categories.map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.name} ({c.type === 'income' ? 'Entrada' : 'Saída'})</SelectItem>
                                         ))}
@@ -474,6 +435,7 @@ export function TransactionsList({
                         profiles={recurringProfiles || []}
                         categories={categories}
                         accountId={accountId || ''}
+                        onRefresh={onRefresh}
                     />
                 </DialogContent>
             </Dialog>
