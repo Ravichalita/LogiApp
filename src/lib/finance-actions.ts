@@ -220,7 +220,8 @@ export async function createTransactionFromService(
     totalValue: number,
     clientName: string,
     completedDate: Date,
-    sequentialId: number
+    sequentialId: number,
+    status: 'pending' | 'paid' = 'pending'
 ) {
     try {
         // 1. Get default category for services ("Receita de Serviços") or create one if not exists
@@ -257,8 +258,9 @@ export async function createTransactionFromService(
             description: `Receita ${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`,
             amount: totalValue,
             type: 'income',
-            status: 'pending', // Default to pending so they can confirm receipt
+            status: status,
             dueDate: completedDate.toISOString(), // Default due date = completion date
+            paymentDate: status === 'paid' ? completedDate.toISOString() : undefined,
             categoryId,
             source: 'service',
             relatedResourceId: serviceId,
