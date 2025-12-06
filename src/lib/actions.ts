@@ -102,6 +102,7 @@ import {
 } from 'firebase-admin/firestore';
 
 // Helper function for error handling
+// Explicitly accepts referenceDate to fix recurrence duplication bug (timezone shift issues)
 function calculateNextRunDate(daysOfWeek: number[], time: string, referenceDate: Date = new Date(), frequency: 'weekly' | 'biweekly' | 'monthly' | 'custom' = 'weekly'): Date {
     if (!daysOfWeek || daysOfWeek.length === 0) {
         throw new Error("Selecione pelo menos um dia da semana para a recorrência.");
@@ -1122,8 +1123,16 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
                         return newCounter;
                     });
 
-                    const nextRunDate = parseISO(recurrenceData.nextRunDate || '');
+                    // We use the rentalDate of the COMPLETED rental as the reference date for the calculation
+                    // This ensures that even if nextRunDate stored in the profile is outdated or "same day",
+                    // we always jump to the NEXT valid occurrence relative to the one just finished.
+                    // This prevents "infinite loop" duplicates where finishing today's task spawns another task for today.
+                    const referenceDateForRecurrence = parseISO(rentalData.rentalDate);
+
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDateForRecurrence, recurrenceData.frequency);
+                    // The "next next" run date will be relative to the one we are about to create
                     const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate, recurrenceData.frequency);
+
                     const templateData = recurrenceData.templateData as Rental;
                     const originalStartDate = parseISO(templateData.rentalDate);
                     const originalEndDate = parseISO(templateData.returnDate);
@@ -1355,7 +1364,6 @@ export async function updateRentalAction(accountId: string, prevState: any, form
         };
 
         const fullUpdatedRental: PopulatedRental = {
-            id,
             itemType: 'rental',
             ...updatedRentalData,
             client: (await adminDb.doc(`accounts/${accountId}/clients/${updatedRentalData.clientId}`).get()).data() as any,
@@ -1848,8 +1856,8 @@ export async function updateOperationAction(accountId: string, prevState: any, f
                     const opTypeMap = new Map(operationTypes.map(t => [t.id, t.name]));
 
                     const populatedOpForSync: PopulatedOperation = {
-                        id,
                         ...(updatedOpData as any),
+                        id: id as string,
                         itemType: 'operation',
                         client: clientSnap.exists ? {
                             id: clientSnap.id,
@@ -2012,8 +2020,12 @@ export async function finishOperationAction(accountId: string, operationId: stri
                         return newCounter;
                     });
 
-                    const nextRunDate = parseISO(recurrenceData.nextRunDate || '');
+                    // Using the COMPLETED operation's startDate as reference ensures we calculate the NEXT occurrence properly
+                    const referenceDateForRecurrence = parseISO(operationData.startDate!);
+
+                    const nextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, referenceDateForRecurrence, recurrenceData.frequency);
                     const newNextRunDate = calculateNextRunDate(recurrenceData.daysOfWeek, recurrenceData.time, nextRunDate, recurrenceData.frequency);
+
                     const templateData = recurrenceData.templateData as Operation;
 
                     const originalStartDate = parseISO(templateData.startDate);
