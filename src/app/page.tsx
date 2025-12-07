@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from "next/image";
@@ -5,6 +6,7 @@ import Link from "next/link";
 import { HeaderLogin } from "@/components/home/header-login";
 import { FeatureCard } from "@/components/home/feature-card";
 import { Truck, Calendar, PieChart, ShieldCheck } from "lucide-react";
+import { HoneycombAnimation } from "@/components/home/honeycomb-animation";
 
 export default function HomePage() {
   return (
@@ -27,7 +29,8 @@ export default function HomePage() {
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="honeycomb-bg relative py-20 lg:py-32 overflow-hidden">
+        <section className="relative py-20 lg:py-32 overflow-hidden bg-background">
+             <HoneycombAnimation />
              <div className="container px-4 md:px-6 relative z-10">
                 <div className="flex flex-col items-center space-y-4 text-center">
                     <div className="space-y-2">
