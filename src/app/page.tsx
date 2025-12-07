@@ -29,16 +29,16 @@ export default function HomePage() {
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="relative py-20 lg:py-32 overflow-hidden bg-background">
+        <section className="relative py-20 lg:py-32 overflow-hidden">
              <HoneycombAnimation />
              <div className="container px-4 md:px-6 relative z-10">
                 <div className="flex flex-col items-center space-y-4 text-center">
                     <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-foreground">
+                        <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-foreground [text-shadow:_0_2px_4px_rgba(0,0,0,0.7)]">
                             Gestão Completa para Empresas de <br className="hidden md:inline" />
                             <span className="text-primary">Limpa Fossa</span> e <span className="text-primary">Locação de Caçambas</span>
                         </h1>
-                        <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
+                        <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl [text-shadow:_0_1px_2px_rgba(0,0,0,0.5)]">
                              Elimine planilhas e otimize sua logística. Do agendamento do caminhão vácuo à retirada da caçamba, controle tudo em um só lugar.
                         </p>
                     </div>
