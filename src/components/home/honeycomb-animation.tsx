@@ -11,9 +11,11 @@ const LogoSVG = React.memo(({ className }: { className?: string }) => (
     xmlns="http://www.w3.org/2000/svg"
     fill="#ff9e00" 
   >
-    <path d="M380.22,156.65l-137.4-79.27c-7.91-4.57-17.66-4.56-25.57,0l-68.63,39.65c-4.42,2.55-4.13,8.79.33,11.29.04.03.09.05.13.08l141.55,80.33c8.16,4.63,13.21,13.29,13.21,22.68l.04,159.99c0,.06,0,.11,0,.17-.03,5.4,5.56,8.92,10.23,6.22l66.16-38.22c7.91-4.57,12.78-13.01,12.78-22.15l-.04-158.62c0-9.13-4.88-17.57-12.79-22.14ZM458.04,153.18c0-16.48-8.87-31.83-23.15-40.07L253.16,8.25C238.89.01,221.15.02,206.88,8.26L25.21,113.22c-14.27,8.24-23.13,23.6-23.13,40.08l.06,209.81c0,16.49,8.88,31.84,23.15,40.07l181.73,104.86c7.14,4.12,15.14,6.18,23.14,6.17,8,0,16-2.06,23.14-6.19l181.68-104.95c14.27-8.24,23.13-23.6,23.13-40.08l-.06-209.81ZM422.51,381.5l-181.68,104.96c-6.59,3.81-14.78,3.8-21.36,0l-181.73-104.86c-6.59-3.8-10.68-10.88-10.68-18.49l-.06-209.81c0-7.61,4.09-14.7,10.68-18.5L219.34,29.84c3.29-1.9,6.99-2.85,10.68-2.85,3.69,0,7.39.95,10.68,2.85l181.73,104.86c6.59,3.81,10.69,10.89,10.69,18.5l.06,209.81c0,7.6-4.09,14.69-10.68,18.5Z"/>
+    <path d="M380.22,156.65l-137.4-79.27c-7.91-4.57-17.66-4.56-25.57,0l-68.63,39.65c-4.42,2.55-4.13,8.79.33,11.29.04.03.09.05.13.08l141.55,80.33c8.16,4.63,13.21,13.29,13.21,22.68l.04,159.99c0,.06,0,.11,0,.17-.03,5.4,5.56,8.92,10.23,6.22l66.16-38.22c7.91-4.57,12.78-13.01,12.78-22.15l-.04-158.62c0-9.13-4.88-17.57-12.79-22.14ZM458.04,153.18c0-16.48-8.87-31.83-23.15-40.07L253.16,8.25C238.89.01,221.15.02,206.88,8.26L25.21,113.22c-14.27,8.24-23.13,23.6-23.13,40.08l.06,209.81c0,16.49,8.88,31.84,23.15,40.07l181.73,104.86c7.14,4.12,15.14,6.18,23.14,6.17,8,0,16-2.06,23.14-6.19l181.68-104.95c14.27,8.24,23.13,23.6,23.13,40.08l-.06-209.81ZM422.51,381.5l-181.68,104.96c-6.59,3.81-14.78,3.8-21.36,0l-181.73-104.86c-6.59-3.8-10.68-10.88-10.68-18.49l-.06-209.81c0-7.61,4.09-14.7,10.68-18.5L219.34,29.84c3.29-1.9,6.99-2.85,10.68-2.85,3.69,0,7.39.95,10.68,2.85l181.73,104.86c6.59,3.81,10.69,10.89,10.69,18.5l.06,209.81c0,7.6-4.09,14.69-10.68,18.5Z"/>
   </svg>
 ));
+
+LogoSVG.displayName = 'LogoSVG';
 
 const Hexagon = React.memo(({ isGlowing, onHover }: { isGlowing: boolean, onHover: () => void }) => {
   return (
@@ -24,7 +26,7 @@ const Hexagon = React.memo(({ isGlowing, onHover }: { isGlowing: boolean, onHove
         className={`
           w-full h-full flex items-center justify-center 
           transition-all duration-300 ease-in-out cursor-pointer
-          clip-hexagon scale-90 hover:scale-95 hover:z-20
+          scale-90 hover:scale-95 hover:z-20
           group
         `}
         style={{
@@ -49,6 +51,8 @@ const Hexagon = React.memo(({ isGlowing, onHover }: { isGlowing: boolean, onHove
   );
 });
 
+Hexagon.displayName = 'Hexagon';
+
 const HoneycombRow = React.memo(({ count, rowIndex, activeColsInRow, onCellHover }: { count: number, rowIndex: number, activeColsInRow: Set<number>, onCellHover: (rowIndex: number, colIndex: number) => void }) => {
   return (
     <div 
@@ -71,6 +75,8 @@ const HoneycombRow = React.memo(({ count, rowIndex, activeColsInRow, onCellHover
     </div>
   );
 });
+HoneycombRow.displayName = 'HoneycombRow';
+
 
 export function HoneycombAnimation() {
   const [dimensions, setDimensions] = useState({ cols: 0, rows: 0 });
@@ -203,8 +209,8 @@ export function HoneycombAnimation() {
   }, [activeCells]);
 
   return (
-    <div className="absolute inset-0 z-0 overflow-hidden backdrop-blur-sm">
-      <div className="absolute inset-0 bg-background/90" />
+    <div className="absolute inset-0 z-0 overflow-hidden bg-background">
+      <div className="absolute inset-0 bg-background/95" />
 
       <div className="scale-105 opacity-50">
         {Array.from({ length: dimensions.rows }).map((_, rowIndex) => (
