@@ -8,6 +8,8 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ShieldAlert, BarChart3, ListTodo } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 // Server Actions
 import { getTransactions, getFinancialCategories } from '@/lib/data-server-actions';
@@ -20,14 +22,27 @@ import type { HistoricItem, Transaction, TransactionCategory, UserAccount, Accou
 // Components
 import { FinanceDashboard } from './components/finance-dashboard';
 import { TransactionsList } from './components/transactions-list';
+import { PeriodSelector, PeriodType } from './components/period-selector';
 
 function FinanceContent() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [loadingData, setLoadingData] = useState(true);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     
+    // Transactions Tab State
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+    // Dashboard Tab State
+    const [dashboardPeriodType, setDashboardPeriodType] = useState<PeriodType>('month');
+    const [dashboardSelectedDate, setDashboardSelectedDate] = useState<Date>(new Date());
+    const [dashboardDateRange, setDashboardDateRange] = useState<DateRange | undefined>({
+        from: startOfMonth(new Date()),
+        to: endOfMonth(new Date())
+    });
+    const [dashboardTransactions, setDashboardTransactions] = useState<Transaction[]>([]);
+    const [loadingDashboardTransactions, setLoadingDashboardTransactions] = useState(false);
+
     // URL State for Tabs
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -54,6 +69,7 @@ function FinanceContent() {
     const canAccessFinance = isSuperAdmin || permissions?.canAccessFinance;
 
     const handleTransactionChange = (updatedTransaction: Transaction | null, action: 'create' | 'update' | 'delete') => {
+        // Update main transaction list
         if (action === 'delete' && updatedTransaction) {
             setTransactions(prev => prev.filter(t => t.id !== updatedTransaction.id));
         } else if (action === 'create' && updatedTransaction) {
@@ -61,15 +77,17 @@ function FinanceContent() {
         } else if (action === 'update' && updatedTransaction) {
             setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
         } else {
-             // Fallback for full refresh if needed (e.g., complex state changes)
              setRefreshTrigger(prev => prev + 1);
         }
+
+        // Also trigger dashboard refresh (simplified)
+        // Ideally we would optimize this to not re-fetch if not needed, but safe to fetch
+        fetchDashboardTransactions();
     };
 
     const fetchAllData = async () => {
         if (!accountId) return;
 
-        // Fetch everything, but don't show loading spinner for soft refresh
         try {
             const [
                 fetchedCategories,
@@ -92,6 +110,9 @@ function FinanceContent() {
             setTeam(teamData);
             setAccount(accountData);
             setTransactions(fetchedTransactions);
+
+            // Also load dashboard transactions initially
+            await fetchDashboardTransactions();
 
             // Process Historic Items
             const combinedItems: HistoricItem[] = [
@@ -125,6 +146,26 @@ function FinanceContent() {
         }
     };
 
+    async function fetchDashboardTransactions() {
+        if (!accountId || !dashboardDateRange?.from || !dashboardDateRange?.to) return;
+
+        setLoadingDashboardTransactions(true);
+        try {
+            const startDate = format(dashboardDateRange.from, 'yyyy-MM-dd');
+            const endDate = format(dashboardDateRange.to, 'yyyy-MM-dd');
+
+            const data = await getTransactions(accountId, {
+                startDate,
+                endDate
+            });
+            setDashboardTransactions(data);
+        } catch (error) {
+            console.error("Failed to fetch dashboard transactions:", error);
+        } finally {
+            setLoadingDashboardTransactions(false);
+        }
+    }
+
     // Initial data load
     useEffect(() => {
         if (authLoading || !accountId || !canAccessFinance) {
@@ -147,7 +188,14 @@ function FinanceContent() {
         }
     }, [refreshTrigger]);
 
-    // Date-specific transaction loading
+    // Dashboard Data Fetching (When filter changes)
+    useEffect(() => {
+        if (!loadingData && accountId) {
+            fetchDashboardTransactions();
+        }
+    }, [dashboardDateRange, accountId]); // Intentionally not including loadingData as dep to avoid loop, but guard inside
+
+    // Transactions Tab Data Fetching
     useEffect(() => {
         if (authLoading || !accountId || !canAccessFinance || loadingData) {
             return;
@@ -201,20 +249,40 @@ function FinanceContent() {
             </div>
 
             <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
-                    <TabsTrigger value="dashboard">
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Dashboard</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="transactions">
-                        <ListTodo className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Transações</span>
-                    </TabsTrigger>
-                </TabsList>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                    <TabsList className="grid w-full sm:w-[400px] grid-cols-2">
+                        <TabsTrigger value="dashboard">
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            <span className="hidden sm:inline">Dashboard</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="transactions">
+                            <ListTodo className="h-4 w-4 mr-2" />
+                            <span className="hidden sm:inline">Transações</span>
+                        </TabsTrigger>
+                    </TabsList>
 
-                <TabsContent value="dashboard">
+                    {currentTab === 'dashboard' && (
+                        <PeriodSelector
+                            periodType={dashboardPeriodType}
+                            onPeriodTypeChange={setDashboardPeriodType}
+                            dateRange={dashboardDateRange}
+                            onDateRangeChange={setDashboardDateRange}
+                            selectedDate={dashboardSelectedDate}
+                            onSelectedDateChange={setDashboardSelectedDate}
+                        />
+                    )}
+                </div>
+
+                <TabsContent value="dashboard" className="relative">
+                    {loadingDashboardTransactions && (
+                         <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10 rounded-lg">
+                            <div className="bg-background p-4 rounded-lg shadow-lg border">
+                                <span className="text-sm font-medium">Carregando dados...</span>
+                            </div>
+                        </div>
+                    )}
                     <FinanceDashboard
-                        transactions={transactions}
+                        transactions={dashboardTransactions} // Pass the filtered dashboard transactions
                         historicItems={historicItems}
                         team={team}
                         account={account}
