@@ -48,7 +48,7 @@ export async function createCategoryAction(accountId: string, category: Omit<Tra
             financialCategories: FieldValue.arrayUnion(newCategory)
         });
 
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
         return { message: 'success', category: newCategory };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -72,7 +72,7 @@ export async function updateCategoryAction(accountId: string, category: Transact
             financialCategories: updatedCategories
         });
 
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
         return { message: 'success', category };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -96,7 +96,7 @@ export async function deleteCategoryAction(accountId: string, categoryId: string
             financialCategories: updatedCategories
         });
 
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -300,7 +300,7 @@ export async function createTransactionAction(accountId: string, prevState: any,
         };
 
         const docRef = await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
 
         return {
             message: 'success',
@@ -343,7 +343,7 @@ export async function updateTransactionAction(accountId: string, prevState: any,
             ...cleanUpdateData,
             updatedAt: FieldValue.serverTimestamp()
         });
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
 
         // Return updated data (excluding id, assuming caller has it, or we can add it back)
         // Ideally we merge with existing, but here we just return what changed + id
@@ -365,7 +365,7 @@ export async function deleteTransactionAction(accountId: string, transactionId: 
 
     try {
         await adminDb.doc(`accounts/${accountId}/transactions/${transactionId}`).delete();
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -386,7 +386,7 @@ export async function toggleTransactionStatusAction(accountId: string, transacti
 
      try {
         await adminDb.doc(`accounts/${accountId}/transactions/${transactionId}`).update(updateData);
-        revalidatePath('/finance');
+        // revalidatePath('/finance'); // Removed to prevent full page reload
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
