@@ -102,6 +102,8 @@ export const TransactionSchema = z.object({
   recurringProfileId: z.string().optional(),
   accountId: z.string(),
   createdAt: z.custom<FieldValue>().optional(),
+  truckId: z.string().optional(),
+  userId: z.string().optional(),
 });
 export type Transaction = z.infer<typeof TransactionSchema> & { id: string };
 
@@ -558,7 +560,7 @@ export type PopulatedOperation = Operation & {
   client: Client | null;
   truck: Truck | null;
   driver: UserAccount | null;
-  createdAt?: Timestamp | string; // Allow string for serialized data
+  createdAt?: Timestamp | string | FieldValue; // Allow string for serialized data
   completedAt?: string; // Serialized ISO string for completed operations
 };
 export type PopulatedCompletedRental = Omit<CompletedRental, 'clientId'> & {
@@ -587,6 +589,6 @@ export type HistoricItem = {
   sequentialId: number;
   operationTypeName?: string | null; // Keep for backward compatibility in historic items view
   operationTypes?: { id: string, name: string }[]; // For new items
-  data: CompletedRental | PopulatedOperation;
+  data: CompletedRental | PopulatedOperation | any;
 };
 // #endregion

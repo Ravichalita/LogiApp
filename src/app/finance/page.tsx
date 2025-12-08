@@ -12,12 +12,12 @@ import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 // Server Actions
-import { getTransactions, getFinancialCategories } from '@/lib/data-server-actions';
+import { getTransactions, getFinancialCategories, fetchTrucksAction } from '@/lib/data-server-actions';
 import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { fetchTeamMembers, getAccountData } from '@/lib/data';
 
 // Types
-import type { HistoricItem, Transaction, TransactionCategory, UserAccount, Account, RecurringTransactionProfile } from '@/lib/types';
+import type { HistoricItem, Transaction, TransactionCategory, UserAccount, Account, RecurringTransactionProfile, Truck } from '@/lib/types';
 
 // Components
 import { FinanceDashboard } from './components/finance-dashboard';
@@ -63,6 +63,7 @@ function FinanceContent() {
     // Historic Data (Legacy/Detailed View)
     const [historicItems, setHistoricItems] = useState<HistoricItem[]>([]);
     const [team, setTeam] = useState<UserAccount[]>([]);
+    const [trucks, setTrucks] = useState<Truck[]>([]);
     const [account, setAccount] = useState<Account | null>(null);
 
     const permissions = userAccount?.permissions;
@@ -95,14 +96,16 @@ function FinanceContent() {
                 operations,
                 teamData,
                 accountData,
-                fetchedTransactions
+                fetchedTransactions,
+                trucksData
             ] = await Promise.all([
                 getFinancialCategories(accountId),
                 permissions?.canAccessRentals ? getCompletedRentals(accountId) : Promise.resolve([]),
                 permissions?.canAccessOperations ? getCompletedOperations(accountId) : Promise.resolve([]),
                 fetchTeamMembers(accountId),
                 getAccountData(accountId),
-                getTransactions(accountId, selectedDate.getMonth(), selectedDate.getFullYear())
+                getTransactions(accountId, selectedDate.getMonth(), selectedDate.getFullYear()),
+                fetchTrucksAction(accountId)
             ]);
 
             setCategories(fetchedCategories);
@@ -110,6 +113,7 @@ function FinanceContent() {
             setTeam(teamData);
             setAccount(accountData);
             setTransactions(fetchedTransactions);
+            setTrucks(trucksData);
 
             // Also load dashboard transactions initially
             await fetchDashboardTransactions();
@@ -131,7 +135,7 @@ function FinanceContent() {
                     kind: 'operation' as const,
                     prefix: 'OP',
                     clientName: o.client?.name ?? 'N/A',
-                    completedDate: o.completedAt,
+                    completedDate: o.completedAt || '',
                     totalValue: o.value ?? 0,
                     sequentialId: o.sequentialId,
                     operationTypes: o.operationTypes,
@@ -296,6 +300,8 @@ function FinanceContent() {
                         transactions={transactions}
                         categories={categories}
                         recurringProfiles={recurringProfiles}
+                        team={team}
+                        trucks={trucks}
                         onTransactionChange={handleTransactionChange}
                         onRefresh={() => setRefreshTrigger(t => t + 1)}
                         selectedDate={selectedDate}

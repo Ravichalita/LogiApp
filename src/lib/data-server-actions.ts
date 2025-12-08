@@ -779,3 +779,16 @@ export async function getRecurrenceProfileById(accountId: string, profileId: str
     }
 }
 // #endregion
+
+export async function fetchTrucksAction(accountId: string): Promise<Truck[]> {
+    if (!accountId) return [];
+    try {
+        const trucksCol = adminDb.collection(`accounts/${accountId}/trucks`);
+        const snapshot = await trucksCol.get();
+        if (snapshot.empty) return [];
+        return snapshot.docs.map(doc => toSerializableObject({ id: doc.id, ...doc.data() }) as Truck).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (e) {
+        console.error("Error fetching trucks server action:", e);
+        return [];
+    }
+}
