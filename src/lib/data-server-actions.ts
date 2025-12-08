@@ -38,12 +38,37 @@ const docToSerializable = (doc: FirebaseFirestore.DocumentSnapshot | null | unde
 
 // #region Finance
 
-export async function getTransactions(accountId: string, month?: number, year?: number): Promise<Transaction[]> {
+export async function getTransactions(
+    accountId: string,
+    filtersOrMonth?: { month?: number, year?: number, startDate?: string, endDate?: string } | number,
+    legacyYear?: number
+): Promise<Transaction[]> {
     try {
+        // Handle overload signatures
+        let month: number | undefined;
+        let year: number | undefined;
+        let startDate: string | undefined;
+        let endDate: string | undefined;
+
+        if (typeof filtersOrMonth === 'number') {
+            month = filtersOrMonth;
+            year = legacyYear;
+        } else if (filtersOrMonth) {
+            month = filtersOrMonth.month;
+            year = filtersOrMonth.year;
+            startDate = filtersOrMonth.startDate;
+            endDate = filtersOrMonth.endDate;
+        }
+
         const transCol = adminDb.collection(`accounts/${accountId}/transactions`);
         let query = transCol.orderBy('dueDate', 'desc');
 
-        if (month !== undefined && year !== undefined) {
+        if (startDate && endDate) {
+             query = transCol
+                .where('dueDate', '>=', startDate)
+                .where('dueDate', '<=', endDate)
+                .orderBy('dueDate', 'desc');
+        } else if (month !== undefined && year !== undefined) {
             const date = set(new Date(), { year, month, date: 1 });
             // Use YYYY-MM-DD for start to include transactions created with just the date string (e.g. "2025-12-01")
             // "2025-12-01" < "2025-12-01T00:00:00.000Z", so ISOString() would exclude the 1st of the month if no time is present.

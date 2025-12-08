@@ -67,8 +67,8 @@ export function FinanceDashboard({ transactions, historicItems, team, account, p
 
     const chartData = Array.from(monthlyDataMap.keys())
         .sort()
-        .map(key => monthlyDataMap.get(key)!)
-        .slice(-6); // Last 6 months
+        .map(key => monthlyDataMap.get(key)!);
+        // Removed .slice(-6) to show all data within the selected period
 
     return (
         <div className="space-y-8">
@@ -134,7 +134,7 @@ export function FinanceDashboard({ transactions, historicItems, team, account, p
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="col-span-2 md:col-span-1">
                     <CardHeader>
-                        <CardTitle>Fluxo de Caixa (Últimos 6 meses)</CardTitle>
+                        <CardTitle>Fluxo de Caixa (Período Selecionado)</CardTitle>
                     </CardHeader>
                     <CardContent className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
