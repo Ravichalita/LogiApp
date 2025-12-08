@@ -1,31 +1,44 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { ShieldAlert, BarChart3, ListTodo, Wallet, History as HistoryIcon, Settings2 } from 'lucide-react';
+import { ShieldAlert, BarChart3, ListTodo } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 // Server Actions
 import { getTransactions, getFinancialCategories } from '@/lib/data-server-actions';
-import { getCompletedRentals, getCompletedOperations, getCityFromAddressAction, getNeighborhoodFromAddressAction } from '@/lib/data-server-actions';
+import { getCompletedRentals, getCompletedOperations } from '@/lib/data-server-actions';
 import { fetchTeamMembers, getAccountData } from '@/lib/data';
 
 // Types
-import type { HistoricItem, Transaction, TransactionCategory, CompletedRental, PopulatedOperation, UserAccount, Account, RecurringTransactionProfile } from '@/lib/types';
+import type { HistoricItem, Transaction, TransactionCategory, UserAccount, Account, RecurringTransactionProfile } from '@/lib/types';
 
 // Components
 import { FinanceDashboard } from './components/finance-dashboard';
 import { TransactionsList } from './components/transactions-list';
 
-export default function FinancePage() {
+function FinanceContent() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [loadingData, setLoadingData] = useState(true);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     
+    // URL State for Tabs
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+    const currentTab = searchParams.get('tab') || 'dashboard';
+
+    const handleTabChange = (value: string) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('tab', value);
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
     // Financial Data
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [categories, setCategories] = useState<TransactionCategory[]>([]);
@@ -176,7 +189,7 @@ export default function FinancePage() {
                 <p className="text-muted-foreground mt-1">Controle completo de receitas, despesas e histórico operacional.</p>
             </div>
 
-            <Tabs defaultValue="dashboard" className="w-full">
+            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 lg:w-[400px] mb-6">
                     <TabsTrigger value="dashboard">
                         <BarChart3 className="h-4 w-4 mr-2" />
@@ -220,5 +233,13 @@ export default function FinancePage() {
                 </TabsContent>
             </Tabs>
         </div>
+    );
+}
+
+export default function FinancePage() {
+    return (
+        <Suspense fallback={<div className="container mx-auto py-8 px-4 md:px-6"><Skeleton className="h-12 w-48" /></div>}>
+            <FinanceContent />
+        </Suspense>
     );
 }
