@@ -369,17 +369,24 @@ export async function updateTransactionAction(accountId: string, prevState: any,
         const freshSnap = await adminDb.doc(`accounts/${accountId}/transactions/${id}`).get();
         const freshData = freshSnap.data() as Transaction;
 
+        // Ensure we sanitize all fields that might be Timestamp objects
+        const sanitizedData = { ...freshData };
+        if (sanitizedData.createdAt && typeof (sanitizedData.createdAt as any).toDate === 'function') {
+            sanitizedData.createdAt = (sanitizedData.createdAt as any).toDate().toISOString();
+        }
+
+        // Remove updatedAt from the spread if it exists as a Timestamp, or convert it.
+        // Since Transaction type doesn't officially support updatedAt in the interface for UI (it's internal),
+        // we can either add it or ignore it. To prevent the error, we must handle it.
+        // Let's remove it to be safe and strictly adhere to the known type,
+        // OR convert it if we want to expose it later.
+        // Given the error "Only plain objects...", it's better to remove unknown/complex objects.
+        const { updatedAt, ...rest } = sanitizedData as any;
+
         const returnedTransaction: Transaction = {
-            ...freshData,
+            ...rest,
             id,
-            // Serialize timestamps if necessary (though firestore returns Timestamp objects,
-            // the client expects strings usually for dates or we handle it in serialization).
-            // However, this is a Server Action return value. Next.js serializes it.
-            // Timestamp objects survive serialization? No, they become objects.
-            // Let's ensure dates are strings if the Type expects them or keep them as is if valid.
-            // The Transaction type has `createdAt: FieldValue | optional`.
-            // But usually we want strings for the UI.
-            createdAt: freshData.createdAt ? (freshData.createdAt as any).toDate?.().toISOString() || freshData.createdAt : undefined,
+            createdAt: sanitizedData.createdAt || undefined,
             paymentDate: freshData.paymentDate, // Already string
             dueDate: freshData.dueDate // Already string
         };
