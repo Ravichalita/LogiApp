@@ -9,11 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User, CalendarClock, ChevronsUpDown } from 'lucide-react';
+import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User, CalendarClock, ChevronsUpDown, Truck as TruckIcon, User as UserIcon } from 'lucide-react';
 import { format, parseISO, addMonths, subMonths, isAfter, startOfDay, setMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
-import { Transaction, TransactionCategory, RecurringTransactionProfile } from '@/lib/types';
+import { Transaction, TransactionCategory, RecurringTransactionProfile, Truck, UserAccount } from '@/lib/types';
 import { createTransactionAction, updateTransactionAction, deleteTransactionAction, toggleTransactionStatusAction } from '@/lib/finance-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -72,6 +72,8 @@ export function TransactionsList({
     transactions,
     categories,
     recurringProfiles,
+    team,
+    trucks,
     onTransactionChange,
     onRefresh,
     selectedDate,
@@ -80,6 +82,8 @@ export function TransactionsList({
     transactions: Transaction[],
     categories: TransactionCategory[],
     recurringProfiles?: RecurringTransactionProfile[],
+    team?: UserAccount[],
+    trucks?: Truck[],
     onTransactionChange?: (transaction: Transaction | null, action: 'create' | 'update' | 'delete') => void,
     onRefresh?: () => void,
     selectedDate: Date,
@@ -89,6 +93,8 @@ export function TransactionsList({
     const { toast } = useToast();
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
+    const [filterUser, setFilterUser] = useState<string>('all');
+    const [filterTruck, setFilterTruck] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isCategoriesDialogOpen, setIsCategoriesDialogOpen] = useState(false);
@@ -101,8 +107,10 @@ export function TransactionsList({
     const filteredTransactions = transactions.filter(t => {
         const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
         const matchesType = filterType === 'all' || t.type === filterType;
+        const matchesUser = filterUser === 'all' || t.userId === filterUser;
+        const matchesTruck = filterTruck === 'all' || t.truckId === filterTruck;
         const matchesSearch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesStatus && matchesType && matchesSearch;
+        return matchesStatus && matchesType && matchesUser && matchesTruck && matchesSearch;
     });
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -237,7 +245,33 @@ export function TransactionsList({
                         </Button>
                     </div>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto items-center">
+                    {team && team.length > 0 && (
+                        <Select value={filterUser} onValueChange={setFilterUser}>
+                            <SelectTrigger className="w-[130px]">
+                                <SelectValue placeholder="Usuário" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos os Usuários</SelectItem>
+                                {team.map(user => (
+                                    <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    {trucks && trucks.length > 0 && (
+                        <Select value={filterTruck} onValueChange={setFilterTruck}>
+                            <SelectTrigger className="w-[130px]">
+                                <SelectValue placeholder="Caminhão" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Todos os Caminhões</SelectItem>
+                                {trucks.map(truck => (
+                                    <SelectItem key={truck.id} value={truck.id}>{truck.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
                     <Select value={filterType} onValueChange={setFilterType}>
                         <SelectTrigger className="w-[130px]">
                             <SelectValue placeholder="Tipo" />
@@ -267,6 +301,8 @@ export function TransactionsList({
                     <TableHeader>
                         <TableRow>
                             <TableHead>Descrição</TableHead>
+                            <TableHead>Usuário</TableHead>
+                            <TableHead>Caminhão</TableHead>
                             <TableHead>Categoria</TableHead>
                             <TableHead>Vencimento</TableHead>
                             <TableHead>Status</TableHead>
@@ -277,6 +313,8 @@ export function TransactionsList({
                     <TableBody>
                         {filteredTransactions.length > 0 ? filteredTransactions.map((t) => {
                             const category = categories.find(c => c.id === t.categoryId);
+                            const user = team?.find(u => u.id === t.userId);
+                            const truck = trucks?.find(tr => tr.id === t.truckId);
                             const isFuture = isAfter(parseISO(t.dueDate), startOfDay(new Date()));
                             const isRecurringFuture = t.recurringProfileId && isFuture && t.status === 'pending';
 
@@ -288,7 +326,7 @@ export function TransactionsList({
                                                 <ArrowUpCircle className="h-4 w-4 text-green-500" /> :
                                                 <ArrowDownCircle className="h-4 w-4 text-red-500" />
                                             }
-                                            {t.description}
+                                            <span className="truncate max-w-[200px]" title={t.description}>{t.description}</span>
                                             {t.source === 'service' && <Badge variant="outline" className="text-[10px] h-5">Auto</Badge>}
                                             {isRecurringFuture && (
                                                 <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
@@ -296,6 +334,22 @@ export function TransactionsList({
                                                 </Badge>
                                             )}
                                         </div>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                        {user ? (
+                                            <div className="flex items-center gap-1">
+                                                <UserIcon className="h-3 w-3" />
+                                                {user.name.split(' ')[0]}
+                                            </div>
+                                        ) : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                        {truck ? (
+                                            <div className="flex items-center gap-1">
+                                                <TruckIcon className="h-3 w-3" />
+                                                {truck.name}
+                                            </div>
+                                        ) : '-'}
                                     </TableCell>
                                     <TableCell>
                                         {category ? (
@@ -416,6 +470,37 @@ export function TransactionsList({
                             <div className="grid gap-2">
                                 <Label htmlFor="dueDate">Data de Vencimento</Label>
                                 <Input id="dueDate" name="dueDate" type="date" required defaultValue={editingTransaction?.dueDate ? format(parseISO(editingTransaction.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="userId">Usuário (Opcional)</Label>
+                                <Select name="userId" defaultValue={editingTransaction?.userId || "none"}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Nenhum</SelectItem>
+                                        {team?.map(u => (
+                                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="truckId">Caminhão (Opcional)</Label>
+                                <Select name="truckId" defaultValue={editingTransaction?.truckId || "none"}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecione..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Nenhum</SelectItem>
+                                        {trucks?.map(t => (
+                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 

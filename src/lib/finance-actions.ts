@@ -275,7 +275,7 @@ export async function createTransactionAction(accountId: string, prevState: any,
     const rawData = Object.fromEntries(formData.entries());
 
     // Manual parsing/conversion
-    const dataToValidate = {
+    const dataToValidate: any = {
         ...rawData,
         amount: Number(rawData.amount),
         accountId,
@@ -283,6 +283,9 @@ export async function createTransactionAction(accountId: string, prevState: any,
         status: rawData.status || 'pending',
         type: rawData.type || 'expense', // Default to expense for manual if not specified
     };
+
+    if (rawData.userId) dataToValidate.userId = rawData.userId;
+    if (rawData.truckId) dataToValidate.truckId = rawData.truckId;
 
     const validated = TransactionSchema.safeParse(dataToValidate);
 
@@ -323,6 +326,8 @@ export async function updateTransactionAction(accountId: string, prevState: any,
 
     const dataToValidate: any = { ...rawData };
     if (rawData.amount) dataToValidate.amount = Number(rawData.amount);
+    if (rawData.userId) dataToValidate.userId = rawData.userId;
+    if (rawData.truckId) dataToValidate.truckId = rawData.truckId;
 
     const validated = UpdateTransactionSchema.safeParse(dataToValidate);
 
@@ -442,7 +447,9 @@ export async function createTransactionFromService(
     clientName: string,
     completedDate: Date,
     sequentialId: number,
-    status: 'pending' | 'paid' = 'pending'
+    status: 'pending' | 'paid' = 'pending',
+    userId?: string,
+    truckId?: string
 ) {
     try {
         // 1. Get default category for services ("Receita de Serviços") or create one if not exists
@@ -487,6 +494,9 @@ export async function createTransactionFromService(
             accountId,
             createdAt: FieldValue.serverTimestamp(),
         };
+
+        if (userId) transactionData.userId = userId;
+        if (truckId) transactionData.truckId = truckId;
 
         if (status === 'paid') {
             transactionData.paymentDate = completedDate.toISOString();

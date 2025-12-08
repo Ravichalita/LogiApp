@@ -1099,7 +1099,9 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
                 clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
                 new Date(), // Current date as completion date
                 rentalData.sequentialId,
-                isPaid ? 'paid' : 'pending'
+                isPaid ? 'paid' : 'pending',
+                rentalData.assignedTo,
+                rentalData.truckId
             );
         }
 
@@ -1997,7 +1999,9 @@ export async function finishOperationAction(accountId: string, operationId: stri
                 clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
                 new Date(),
                 operationData.sequentialId,
-                isPaid ? 'paid' : 'pending'
+                isPaid ? 'paid' : 'pending',
+                operationData.driverId,
+                operationData.truckId
             );
         }
 
