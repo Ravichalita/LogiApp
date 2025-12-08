@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User, CalendarClock } from 'lucide-react';
-import { format, parseISO, addMonths, subMonths, isAfter, startOfDay } from 'date-fns';
+import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User, CalendarClock, ChevronsUpDown } from 'lucide-react';
+import { format, parseISO, addMonths, subMonths, isAfter, startOfDay, setMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/context/auth-context';
 import { Transaction, TransactionCategory, RecurringTransactionProfile } from '@/lib/types';
@@ -25,6 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -54,6 +55,11 @@ const STATUS_COLORS: Record<TransactionStatus, string> = {
     overdue: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
 };
+
+const months = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat('pt-BR', {
@@ -174,6 +180,14 @@ export function TransactionsList({
              if (!onTransactionChange && onRefresh) onRefresh();
         }
     };
+    
+    const handleMonthSelect = (monthIndex: number | 'all') => {
+        if (monthIndex === 'all') {
+            onDateChange(new Date(selectedDate.getFullYear(), 0, 1));
+        } else {
+            onDateChange(setMonth(selectedDate, monthIndex));
+        }
+    }
 
     return (
         <div className="space-y-4 relative">
@@ -196,9 +210,23 @@ export function TransactionsList({
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <div className="px-4 font-medium min-w-[140px] text-center capitalize text-sm">
-                            {format(selectedDate, 'MMMM yyyy', { locale: ptBR })}
-                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="px-4 font-medium min-w-[140px] text-center capitalize text-sm">
+                                    {format(selectedDate, 'MMMM yyyy', { locale: ptBR })}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                <DropdownMenuItem onSelect={() => handleMonthSelect('all')}>Ano Inteiro</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {months.map((month, index) => (
+                                    <DropdownMenuItem key={index} onSelect={() => handleMonthSelect(index)}>
+                                        {month}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                             variant="ghost"
                             size="icon"

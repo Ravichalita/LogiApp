@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
@@ -65,83 +66,90 @@ function FinanceContent() {
         }
     };
 
-    // This function will be passed down to trigger a soft refresh of data.
-    const refreshData = () => {
-        setRefreshTrigger(prev => prev + 1);
+    const fetchAllData = async () => {
+        if (!accountId) return;
+
+        // Fetch everything, but don't show loading spinner for soft refresh
+        try {
+            const [
+                fetchedCategories,
+                rentals,
+                operations,
+                teamData,
+                accountData,
+                fetchedTransactions
+            ] = await Promise.all([
+                getFinancialCategories(accountId),
+                permissions?.canAccessRentals ? getCompletedRentals(accountId) : Promise.resolve([]),
+                permissions?.canAccessOperations ? getCompletedOperations(accountId) : Promise.resolve([]),
+                fetchTeamMembers(accountId),
+                getAccountData(accountId),
+                getTransactions(accountId, selectedDate.getMonth(), selectedDate.getFullYear())
+            ]);
+
+            setCategories(fetchedCategories);
+            setRecurringProfiles(accountData?.recurringTransactionProfiles || []);
+            setTeam(teamData);
+            setAccount(accountData);
+            setTransactions(fetchedTransactions);
+
+            // Process Historic Items
+            const combinedItems: HistoricItem[] = [
+                ...rentals.map(r => ({
+                    id: r.id,
+                    kind: 'rental' as const,
+                    prefix: 'AL',
+                    clientName: r.client?.name ?? 'N/A',
+                    completedDate: r.completedDate,
+                    totalValue: r.totalValue,
+                    sequentialId: r.sequentialId,
+                    data: r,
+                })),
+                ...operations.map(o => ({
+                    id: o.id,
+                    kind: 'operation' as const,
+                    prefix: 'OP',
+                    clientName: o.client?.name ?? 'N/A',
+                    completedDate: o.completedAt,
+                    totalValue: o.value ?? 0,
+                    sequentialId: o.sequentialId,
+                    operationTypes: o.operationTypes,
+                    data: o,
+                }))
+            ];
+            combinedItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
+            setHistoricItems(combinedItems);
+
+        } catch (error) {
+            console.error("Failed to fetch all finance data:", error);
+        }
     };
 
-    // 1. Fetch Static/Global Data + Historic Items (Heavy)
-    // Only fetches when account changes or refresh is triggered manually.
-    // Does NOT depend on selectedDate.
+    // Initial data load
     useEffect(() => {
         if (authLoading || !accountId || !canAccessFinance) {
             if (!authLoading) setLoadingData(false);
             return;
         }
-
-        async function fetchStaticAndHistoricData() {
+        
+        async function initialLoad() {
             setLoadingData(true);
-            try {
-                const [
-                    fetchedCategories,
-                    rentals,
-                    operations,
-                    teamData,
-                    accountData
-                ] = await Promise.all([
-                    getFinancialCategories(accountId!),
-                    permissions?.canAccessRentals ? getCompletedRentals(accountId!) : Promise.resolve([]),
-                    permissions?.canAccessOperations ? getCompletedOperations(accountId!) : Promise.resolve([]),
-                    fetchTeamMembers(accountId!),
-                    getAccountData(accountId!),
-                ]);
-
-                setCategories(fetchedCategories);
-                setRecurringProfiles(accountData?.recurringTransactionProfiles || []);
-                setTeam(teamData);
-                setAccount(accountData);
-
-                // Process Historic Items
-                const combinedItems: HistoricItem[] = [
-                    ...rentals.map(r => ({
-                        id: r.id,
-                        kind: 'rental' as const,
-                        prefix: 'AL',
-                        clientName: r.client?.name ?? 'N/A',
-                        completedDate: r.completedDate,
-                        totalValue: r.totalValue,
-                        sequentialId: r.sequentialId,
-                        data: r,
-                    })),
-                    ...operations.map(o => ({
-                        id: o.id,
-                        kind: 'operation' as const,
-                        prefix: 'OP',
-                        clientName: o.client?.name ?? 'N/A',
-                        completedDate: o.completedAt,
-                        totalValue: o.value ?? 0,
-                        sequentialId: o.sequentialId,
-                        operationTypes: o.operationTypes,
-                        data: o,
-                    }))
-                ];
-                combinedItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
-                setHistoricItems(combinedItems);
-
-            } catch (error) {
-                console.error("Failed to fetch finance static data:", error);
-            } finally {
-                setLoadingData(false);
-            }
+            await fetchAllData();
+            setLoadingData(false);
         }
+        initialLoad();
+    }, [accountId, authLoading, canAccessFinance, permissions]);
 
-        fetchStaticAndHistoricData();
-    }, [accountId, authLoading, canAccessFinance, permissions, refreshTrigger]);
-
-    // 2. Fetch Transactions (Lightweight)
-    // Fetches when Date or Refresh changes.
+    // Subsequent refreshes (soft)
     useEffect(() => {
-        if (authLoading || !accountId || !canAccessFinance) {
+        if (refreshTrigger > 0) {
+            fetchAllData();
+        }
+    }, [refreshTrigger]);
+
+    // Date-specific transaction loading
+    useEffect(() => {
+        if (authLoading || !accountId || !canAccessFinance || loadingData) {
             return;
         }
 
@@ -156,9 +164,12 @@ function FinanceContent() {
                 setLoadingTransactions(false);
             }
         }
-
-        fetchTransactionsData();
-    }, [accountId, authLoading, canAccessFinance, selectedDate, refreshTrigger]);
+        
+        // Skip the very first render's fetch since initialLoad handles it
+        if (!loadingData && refreshTrigger === 0) {
+            fetchTransactionsData();
+        }
+    }, [selectedDate, loadingData]);
 
 
     if (authLoading || (loadingData && canAccessFinance)) {
@@ -218,7 +229,7 @@ function FinanceContent() {
                         categories={categories}
                         recurringProfiles={recurringProfiles}
                         onTransactionChange={handleTransactionChange}
-                        onRefresh={refreshData}
+                        onRefresh={() => setRefreshTrigger(t => t + 1)}
                         selectedDate={selectedDate}
                         onDateChange={setSelectedDate}
                     />
