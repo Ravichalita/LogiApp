@@ -475,19 +475,22 @@ export async function createTransactionFromService(
             }
         }
 
-        const transactionData = {
-            description: `${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`,
+        const transactionData: Record<string, any> = {
+            description: `Receita ${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`,
             amount: totalValue,
             type: 'income',
             status: status,
             dueDate: completedDate.toISOString(), // Default due date = completion date
-            paymentDate: status === 'paid' ? completedDate.toISOString() : undefined,
             categoryId,
             source: 'service',
             relatedResourceId: serviceId,
             accountId,
             createdAt: FieldValue.serverTimestamp(),
         };
+
+        if (status === 'paid') {
+            transactionData.paymentDate = completedDate.toISOString();
+        }
 
         // We use .set with merge:true in case it already exists (idempotency safety) or just add
         // Since we don't have a transaction ID here easily unless we query, let's just use add.
