@@ -58,9 +58,21 @@ function FinanceContent() {
         } else if (action === 'create' && updatedTransaction) {
             setTransactions(prev => [updatedTransaction, ...prev]);
         } else if (action === 'update' && updatedTransaction) {
-            setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));
+            setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? { ...t, ...updatedTransaction } : t));
         } else {
              // Fallback for full refresh if needed (e.g., complex state changes)
+             setRefreshTrigger(prev => prev + 1);
+        }
+    };
+
+    const handleCategoryChange = (updatedCategory: TransactionCategory | null, action: 'create' | 'update' | 'delete') => {
+        if (action === 'delete' && updatedCategory) {
+            setCategories(prev => prev.filter(c => c.id !== updatedCategory.id));
+        } else if (action === 'create' && updatedCategory) {
+            setCategories(prev => [...prev, updatedCategory]);
+        } else if (action === 'update' && updatedCategory) {
+            setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+        } else {
              setRefreshTrigger(prev => prev + 1);
         }
     };
@@ -218,6 +230,7 @@ function FinanceContent() {
                         categories={categories}
                         recurringProfiles={recurringProfiles}
                         onTransactionChange={handleTransactionChange}
+                        onCategoryChange={handleCategoryChange}
                         onRefresh={refreshData}
                         selectedDate={selectedDate}
                         onDateChange={setSelectedDate}

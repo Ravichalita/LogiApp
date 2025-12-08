@@ -19,11 +19,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export function ManageCategories({
     categories,
     onClose,
-    onRefresh
+    onRefresh,
+    onCategoryChange
 }: {
     categories: TransactionCategory[],
     onClose?: () => void,
-    onRefresh?: () => void
+    onRefresh?: () => void,
+    onCategoryChange?: (category: TransactionCategory | null, action: 'create' | 'update' | 'delete') => void
 }) {
     const { accountId } = useAuth();
     const { toast } = useToast();
@@ -54,7 +56,13 @@ export function ManageCategories({
 
         if (result.message === 'success') {
             toast({ title: 'Sucesso', description: 'Categoria salva.' });
-            if (onRefresh) onRefresh();
+
+            if (result.category && onCategoryChange) {
+                onCategoryChange(result.category, editingCategory ? 'update' : 'create');
+            } else if (onRefresh) {
+                onRefresh();
+            }
+
             setView('list');
             setEditingCategory(null);
         } else {
@@ -69,7 +77,11 @@ export function ManageCategories({
         const result = await deleteCategoryAction(accountId, id);
         if (result.message === 'success') {
             toast({ title: 'Sucesso', description: 'Categoria excluída.' });
-            if (onRefresh) onRefresh();
+            if (onCategoryChange) {
+                onCategoryChange({ id } as TransactionCategory, 'delete');
+            } else if (onRefresh) {
+                onRefresh();
+            }
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }

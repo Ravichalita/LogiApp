@@ -73,7 +73,7 @@ export async function updateCategoryAction(accountId: string, category: Transact
         });
 
         revalidatePath('/finance');
-        return { message: 'success' };
+        return { message: 'success', category };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
@@ -299,9 +299,17 @@ export async function createTransactionAction(accountId: string, prevState: any,
             createdAt: FieldValue.serverTimestamp(),
         };
 
-        await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
+        const docRef = await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
         revalidatePath('/finance');
-        return { message: 'success' };
+
+        return {
+            message: 'success',
+            transaction: {
+                id: docRef.id,
+                ...validated.data,
+                createdAt: new Date().toISOString()
+            }
+        };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
@@ -336,7 +344,17 @@ export async function updateTransactionAction(accountId: string, prevState: any,
             updatedAt: FieldValue.serverTimestamp()
         });
         revalidatePath('/finance');
-        return { message: 'success' };
+
+        // Return updated data (excluding id, assuming caller has it, or we can add it back)
+        // Ideally we merge with existing, but here we just return what changed + id
+        return {
+            message: 'success',
+            transaction: {
+                id,
+                ...cleanUpdateData,
+                updatedAt: new Date().toISOString()
+            }
+        };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }

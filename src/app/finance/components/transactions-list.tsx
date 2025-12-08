@@ -67,6 +67,7 @@ export function TransactionsList({
     categories,
     recurringProfiles,
     onTransactionChange,
+    onCategoryChange,
     onRefresh,
     selectedDate,
     onDateChange
@@ -75,6 +76,7 @@ export function TransactionsList({
     categories: TransactionCategory[],
     recurringProfiles?: RecurringTransactionProfile[],
     onTransactionChange?: (transaction: Transaction | null, action: 'create' | 'update' | 'delete') => void,
+    onCategoryChange?: (category: TransactionCategory | null, action: 'create' | 'update' | 'delete') => void,
     onRefresh?: () => void,
     selectedDate: Date,
     onDateChange: (date: Date) => void
@@ -119,7 +121,15 @@ export function TransactionsList({
         if (result.message === 'success') {
             toast({ title: 'Sucesso', description: editingTransaction ? 'Transação atualizada.' : 'Transação criada.' });
             setIsAddDialogOpen(false);
-            if (onRefresh) onRefresh();
+
+            // Granular update if data is returned and handler exists
+            if (result.transaction && onTransactionChange) {
+                onTransactionChange(result.transaction as Transaction, editingTransaction ? 'update' : 'create');
+            } else if (onRefresh) {
+                 // Fallback to full refresh
+                onRefresh();
+            }
+
             setEditingTransaction(null);
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
@@ -419,6 +429,7 @@ export function TransactionsList({
                         categories={categories}
                         onClose={() => setIsCategoriesDialogOpen(false)}
                         onRefresh={onRefresh}
+                        onCategoryChange={onCategoryChange}
                     />
                 </DialogContent>
             </Dialog>
