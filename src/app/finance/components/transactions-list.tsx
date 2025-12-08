@@ -106,7 +106,7 @@ export function TransactionsList({
         const formData = new FormData(e.currentTarget);
         setLoadingAction('save');
 
-        let result;
+        let result: any;
         if (editingTransaction) {
             formData.set('id', editingTransaction.id);
             result = await updateTransactionAction(accountId, null, formData);
@@ -119,7 +119,13 @@ export function TransactionsList({
         if (result.message === 'success') {
             toast({ title: 'Sucesso', description: editingTransaction ? 'Transação atualizada.' : 'Transação criada.' });
             setIsAddDialogOpen(false);
-            if (onRefresh) onRefresh();
+
+            if (onTransactionChange && result.transaction) {
+                onTransactionChange(result.transaction, editingTransaction ? 'update' : 'create');
+            } else if (onRefresh) {
+                onRefresh();
+            }
+
             setEditingTransaction(null);
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });

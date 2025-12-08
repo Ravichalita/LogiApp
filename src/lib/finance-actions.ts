@@ -299,9 +299,17 @@ export async function createTransactionAction(accountId: string, prevState: any,
             createdAt: FieldValue.serverTimestamp(),
         };
 
-        await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
-        revalidatePath('/finance');
-        return { message: 'success' };
+        const docRef = await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
+
+        // Construct the object to return for client-side state update
+        const returnedTransaction: Transaction = {
+            id: docRef.id,
+            ...validated.data,
+            // Approximate createdAt for immediate UI display without refetching
+            createdAt: new Date().toISOString() as any,
+        };
+
+        return { message: 'success', transaction: returnedTransaction };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
@@ -335,8 +343,48 @@ export async function updateTransactionAction(accountId: string, prevState: any,
             ...cleanUpdateData,
             updatedAt: FieldValue.serverTimestamp()
         });
-        revalidatePath('/finance');
-        return { message: 'success' };
+
+        // We need to return the FULL transaction object for the state update.
+        // Since we did a partial update, we merge with what we know,
+        // but ideally the client should merge this result with its existing state.
+        // However, to be safe and consistent, we return the object that mimics a Transaction.
+        // Note: We might miss fields that weren't in the form (like original createdAt),
+        // but the client-side merge logic usually handles "updatedTransaction" by replacing the old one.
+        // Wait, if we replace the whole object in the client state with this partial one, we might lose fields.
+        // So the client must be careful or we must fetch the full doc.
+        // Fetching the full doc adds latency.
+        // Better approach: The client should merge.
+        // BUT `TransactionsList.tsx` implementation does:
+        // `setTransactions(prev => prev.map(t => t.id === updatedTransaction.id ? updatedTransaction : t));`
+        // This REPLACES the object. So we need to return the FULL object or at least enough to not break the UI.
+        // The UI needs: id, description, categoryId, amount, type, status, dueDate, recurringProfileId...
+
+        // Let's assume the client has the old object.
+        // Actually, to fully support the "Return object" pattern safely without refetching,
+        // we should probably fetch the updated doc or ensure we return all fields.
+        // But for performance, let's construct it merging `cleanUpdateData` with what we can't know?
+        // No, we can't know the fields we didn't touch without fetching.
+        // Let's fetch the fresh document to be 100% sure and safe. It's one read, very fast.
+
+        const freshSnap = await adminDb.doc(`accounts/${accountId}/transactions/${id}`).get();
+        const freshData = freshSnap.data() as Transaction;
+
+        const returnedTransaction: Transaction = {
+            ...freshData,
+            id,
+            // Serialize timestamps if necessary (though firestore returns Timestamp objects,
+            // the client expects strings usually for dates or we handle it in serialization).
+            // However, this is a Server Action return value. Next.js serializes it.
+            // Timestamp objects survive serialization? No, they become objects.
+            // Let's ensure dates are strings if the Type expects them or keep them as is if valid.
+            // The Transaction type has `createdAt: FieldValue | optional`.
+            // But usually we want strings for the UI.
+            createdAt: freshData.createdAt ? (freshData.createdAt as any).toDate?.().toISOString() || freshData.createdAt : undefined,
+            paymentDate: freshData.paymentDate, // Already string
+            dueDate: freshData.dueDate // Already string
+        };
+
+        return { message: 'success', transaction: returnedTransaction };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
     }
@@ -347,7 +395,7 @@ export async function deleteTransactionAction(accountId: string, transactionId: 
 
     try {
         await adminDb.doc(`accounts/${accountId}/transactions/${transactionId}`).delete();
-        revalidatePath('/finance');
+        // Removed revalidatePath to allow client-side optimistic updates without reload
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
@@ -368,7 +416,7 @@ export async function toggleTransactionStatusAction(accountId: string, transacti
 
      try {
         await adminDb.doc(`accounts/${accountId}/transactions/${transactionId}`).update(updateData);
-        revalidatePath('/finance');
+        // Removed revalidatePath
         return { message: 'success' };
     } catch (e) {
         return { message: 'error', error: handleFirebaseError(e) };
