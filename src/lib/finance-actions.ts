@@ -380,7 +380,6 @@ export async function updateTransactionAction(accountId: string, prevState: any,
         // we can either add it or ignore it. To prevent the error, we must handle it.
         // Let's remove it to be safe and strictly adhere to the known type,
         // OR convert it if we want to expose it later.
-        // Given the error "Only plain objects...", it's better to remove unknown/complex objects.
         const { updatedAt, ...rest } = sanitizedData as any;
 
         const returnedTransaction: Transaction = {
@@ -477,7 +476,7 @@ export async function createTransactionFromService(
         }
 
         const transactionData = {
-            description: `Receita ${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`,
+            description: `${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`,
             amount: totalValue,
             type: 'income',
             status: status,
