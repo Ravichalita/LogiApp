@@ -90,7 +90,9 @@ import {
     setSeconds,
     setMilliseconds,
     getWeek,
-    getDate
+    getDate,
+    startOfMonth,
+    endOfMonth
 } from 'date-fns';
 import {
     toZonedTime,
@@ -1020,7 +1022,11 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
         const rentalDays = Math.max(diffDays, 1);
 
         let totalValue = rentalData.billingType === 'lumpSum' ? (rentalData.lumpSumValue || 0) : rentalData.value * rentalDays * rentalData.dumpsterIds.length;
+        let transactionAmount = totalValue;
         let recurrenceData: RecurrenceProfile | null = null;
+
+        let shouldCreateTransaction = true;
+
         if (rentalData.recurrenceProfileId) {
             const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${rentalData.recurrenceProfileId}`).get();
             if (recurrenceSnap.exists) {
@@ -1058,15 +1064,40 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
                 if (['monthly', 'weekly', 'biweekly'].includes(billingType)) {
                     if (isEndOfPeriod()) {
                         totalValue = (recurrenceData.monthlyValue || 0) / 100;
+                        transactionAmount = totalValue;
+                        shouldCreateTransaction = true;
                     } else {
                         totalValue = 0;
+                        transactionAmount = 0;
+                        shouldCreateTransaction = false;
+                    }
+                } else if (billingType === 'perService') {
+                    // Check if next run is in next month (or later), meaning this is the last occurrence of the current month
+                    const isLastOfMonth = nextRunZoned.getMonth() !== now.getMonth() || nextRunZoned.getFullYear() !== now.getFullYear();
+
+                    if (!isLastOfMonth) {
+                        shouldCreateTransaction = false;
+                    } else {
+                        shouldCreateTransaction = true;
+
+                        // Sum all completed rentals for this profile in the current month
+                        const start = startOfMonth(new Date());
+                        const end = endOfMonth(new Date());
+
+                        const siblingsSnap = await db.collection(`accounts/${accountId}/completed_rentals`)
+                            .where('parentRentalId', '==', recurrenceData.originalOrderId)
+                            .where('completedDate', '>=', start)
+                            .where('completedDate', '<=', end)
+                            .get();
+
+                        const siblingsValue = siblingsSnap.docs.reduce((acc, doc) => acc + (doc.data().totalValue || 0), 0);
+
+                        // Transaction amount is sum of previous siblings + current one
+                        transactionAmount = siblingsValue + totalValue;
                     }
                 }
             }
         }
-
-        // Logic to prevent creating a transaction for intermediate recurring items
-        const shouldCreateTransaction = !(recurrenceData && ['monthly', 'weekly', 'biweekly'].includes(recurrenceData.billingType) && totalValue === 0);
 
         const completedRentalData: any = {
             ...rentalData,
@@ -1095,7 +1126,7 @@ export async function finishRentalAction(accountId: string, rentalId: string, is
                 accountId,
                 rentalId,
                 'rental',
-                totalValue,
+                transactionAmount,
                 clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
                 new Date(), // Current date as completion date
                 rentalData.sequentialId,
@@ -1925,7 +1956,10 @@ export async function finishOperationAction(accountId: string, operationId: stri
         const operationData = operationSnap.data() as Operation;
 
         let operationValue = operationData.value || 0;
+        let transactionAmount = operationValue;
         let recurrenceData: RecurrenceProfile | null = null;
+        let shouldCreateTransaction = true;
+
         if (operationData.recurrenceProfileId) {
             const recurrenceSnap = await db.doc(`accounts/${accountId}/recurrence_profiles/${operationData.recurrenceProfileId}`).get();
             if (recurrenceSnap.exists) {
@@ -1962,14 +1996,40 @@ export async function finishOperationAction(accountId: string, operationId: stri
                 if (['monthly', 'weekly', 'biweekly'].includes(billingType)) {
                     if (isEndOfPeriod()) {
                         operationValue = (recurrenceData.monthlyValue || 0) / 100;
+                        transactionAmount = operationValue;
+                        shouldCreateTransaction = true;
                     } else {
                         operationValue = 0;
+                        transactionAmount = 0;
+                        shouldCreateTransaction = false;
+                    }
+                } else if (billingType === 'perService') {
+                    // Check if next run is in next month (or later)
+                    const isLastOfMonth = nextRunZoned.getMonth() !== now.getMonth() || nextRunZoned.getFullYear() !== now.getFullYear();
+
+                    if (!isLastOfMonth) {
+                        shouldCreateTransaction = false;
+                    } else {
+                        shouldCreateTransaction = true;
+
+                        // Sum all completed operations for this profile in the current month
+                        const start = startOfMonth(new Date());
+                        const end = endOfMonth(new Date());
+
+                        const siblingsSnap = await db.collection(`accounts/${accountId}/completed_operations`)
+                            .where('parentOperationId', '==', recurrenceData.originalOrderId)
+                            .where('completedDate', '>=', start)
+                            .where('completedDate', '<=', end)
+                            .get();
+
+                        const siblingsValue = siblingsSnap.docs.reduce((acc, doc) => acc + (doc.data().value || 0), 0);
+
+                        // Transaction amount is sum of previous siblings + current one
+                        transactionAmount = siblingsValue + operationValue;
                     }
                 }
             }
         }
-
-        const shouldCreateTransaction = !(recurrenceData && ['monthly', 'weekly', 'biweekly'].includes(recurrenceData.billingType) && operationValue === 0);
 
         const completedOpData: any = {
             ...operationData,
@@ -1995,7 +2055,7 @@ export async function finishOperationAction(accountId: string, operationId: stri
                 accountId,
                 operationId,
                 'operation',
-                operationValue,
+                transactionAmount,
                 clientSnap.exists ? clientSnap.data()?.name || 'Cliente' : 'Cliente',
                 new Date(),
                 operationData.sequentialId,
