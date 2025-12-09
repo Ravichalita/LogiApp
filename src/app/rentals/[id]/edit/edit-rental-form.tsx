@@ -167,6 +167,17 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         setDirections(null);
         setWeather(null);
         setTravelCost(null);
+
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+             toast({
+              title: "Recurso Indisponível",
+              description: "Seu plano não inclui o cálculo automático de rotas e clima.",
+              variant: "destructive"
+             });
+             setIsFetchingInfo(false);
+             return;
+        }
+
         try {
           const [directionsResult, weatherResult] = await Promise.all([
              getDirectionsAction(startLocation, deliveryLocation),
@@ -222,11 +233,13 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
             setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
         } else {
             setStartLocation(null); 
-            geocodeAddress(selectedBase.address).then(location => {
-                if (location) {
-                    setStartLocation({ lat: location.lat, lng: location.lng });
-                }
-            });
+            if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
+                geocodeAddress(selectedBase.address).then(location => {
+                    if (location) {
+                        setStartLocation({ lat: location.lat, lng: location.lng });
+                    }
+                });
+            }
         }
     }
   };

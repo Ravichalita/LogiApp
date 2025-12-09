@@ -173,6 +173,7 @@ export const PermissionsSchema = z.object({
   canEditFleet: z.boolean().default(false),
   canAddClients: z.boolean().default(true), // New permission
   canEditClients: z.boolean().default(false),
+  canUsePaidGoogleAPIs: z.boolean().default(true),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;
