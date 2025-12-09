@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -24,7 +24,8 @@ import { FinanceDashboard } from './components/finance-dashboard';
 import { TransactionsList } from './components/transactions-list';
 import { PeriodSelector, PeriodType } from './components/period-selector';
 
-function FinanceContent() {
+
+export default function FinancePage() {
     const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
     const [loadingData, setLoadingData] = useState(true);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
@@ -318,13 +319,5 @@ function FinanceContent() {
                 </TabsContent>
             </Tabs>
         </div>
-    );
-}
-
-export default function FinancePage() {
-    return (
-        <Suspense fallback={<div className="container mx-auto py-8 px-4 md:px-6"><Skeleton className="h-12 w-48" /></div>}>
-            <FinanceContent />
-        </Suspense>
     );
 }

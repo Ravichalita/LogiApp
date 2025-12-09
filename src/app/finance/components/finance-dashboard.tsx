@@ -123,7 +123,16 @@ export function FinanceDashboard({ transactions, historicItems, team, account, p
         sortedTrans
             .filter(t => t.status !== 'cancelled' && t.status !== 'pending')
             .forEach(t => {
-                const date = new Date(t.dueDate);
+                // Fix: Parse YYYY-MM-DD manually to avoid timezone shift (UTC midnight -> Previous Day)
+                // This ensures "2024-12-01" stays in December.
+                let date;
+                if (t.dueDate.includes('T')) {
+                     date = new Date(t.dueDate);
+                } else {
+                     const [y, m, d] = t.dueDate.split('-').map(Number);
+                     date = new Date(y, m - 1, d);
+                }
+                
                 const key = format(date, 'yyyy-MM');
                 const label = format(date, 'MMM/yy');
 
