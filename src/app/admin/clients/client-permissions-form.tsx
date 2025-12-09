@@ -17,6 +17,7 @@ const permissionLabels: Partial<Record<keyof Permissions, string>> = {
   canAccessFinance: 'Acessar Histórico e Valores $',
   canAccessNotificationsStudio: 'Acessar Notificações Personalizadas',
   canUseAttachments: 'Gerenciar Anexos',
+  canUsePaidGoogleAPIs: 'Utilizar APIs Pagas (Google Maps/AI)',
 };
 
 interface ClientPermissionsFormProps {

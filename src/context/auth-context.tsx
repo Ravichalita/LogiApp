@@ -256,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         canAddClients: true,
                         canEditClients: true,
                         canUseAttachments: true,
+                        canUsePaidGoogleAPIs: true,
                     };
                 } else if (userData.role === 'admin') {
                     // If user is admin, fetch owner's permissions to ensure they are correct

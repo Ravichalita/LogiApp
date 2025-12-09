@@ -271,6 +271,15 @@ export default function RoutePlanningPage() {
              return;
         }
 
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+             toast({
+              title: "Recurso Indisponível",
+              description: "Seu plano não inclui o uso de IA para análise de trânsito.",
+              variant: "destructive"
+             });
+             return;
+        }
+
         const updateOperationRouteState = (updates: Partial<RouteGroup>) => {
             setTasksByDriver(prev => prev.map(d => {
                 if (d.driverId === driverId) {
@@ -355,6 +364,15 @@ export default function RoutePlanningPage() {
 
          if (!driverGroup || !route || !route.optimizedRoute || !accountId) {
              toast({ title: 'Erro', description: 'Rota otimizada não encontrada.', variant: 'destructive' });
+             return;
+        }
+
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+             toast({
+              title: "Recurso Indisponível",
+              description: "Seu plano não inclui o uso de IA para análise de trânsito.",
+              variant: "destructive"
+             });
              return;
         }
 

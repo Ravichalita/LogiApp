@@ -205,13 +205,14 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
   useEffect(() => {
     if (!startLocation && startAddress) {
+      if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
       geocodeAddress(startAddress).then(location => {
         if (location) {
           setStartLocation({ lat: location.lat, lng: location.lng });
         }
       });
     }
-  }, [startAddress, startLocation]);
+  }, [startAddress, startLocation, userAccount]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -222,16 +223,18 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           setDeliveryLocation({ lat: client.latitude, lng: client.longitude });
         } else {
           setDeliveryLocation(null);
-          geocodeAddress(client.address).then(location => {
-            if (location) setDeliveryLocation({ lat: location.lat, lng: location.lng });
-          });
+          if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
+             geocodeAddress(client.address).then(location => {
+                if (location) setDeliveryLocation({ lat: location.lat, lng: location.lng });
+             });
+          }
         }
       }
     } else if (!prefillData) { // Clear only if not prefilling
       setDeliveryAddress('');
       setDeliveryLocation(null);
     }
-  }, [selectedClientId, clients, prefillData]);
+  }, [selectedClientId, clients, prefillData, userAccount]);
 
   useEffect(() => {
     const fetchRouteInfo = async () => {
@@ -240,6 +243,17 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         setDirections(null);
         setWeather(null);
         setTravelCost(null);
+
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+             toast({
+              title: "Recurso Indisponível",
+              description: "Seu plano não inclui o cálculo automático de rotas e clima.",
+              variant: "destructive"
+             });
+             setIsFetchingInfo(false);
+             return;
+        }
+
         try {
           const [directionsResult, weatherResult] = await Promise.all([
             getDirectionsAction(startLocation, deliveryLocation),
@@ -310,11 +324,13 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
       } else {
         setStartLocation(null);
-        geocodeAddress(selectedBase.address).then(location => {
-          if (location) {
-            setStartLocation({ lat: location.lat, lng: location.lng });
-          }
-        });
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
+             geocodeAddress(selectedBase.address).then(location => {
+                if (location) {
+                    setStartLocation({ lat: location.lat, lng: location.lng });
+                }
+            });
+        }
       }
     }
   };
@@ -470,6 +486,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     setSelectedClientId(clientId);
     setClientSelectOpen(false);
   }
+
+  useEffect(() => {
+     if (selectedClientId && userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+        // Skip geocoding
+     }
+  }, [selectedClientId, userAccount]);
 
   const filterClients = (clients: Client[], search: string) => {
     if (!search) return clients;
