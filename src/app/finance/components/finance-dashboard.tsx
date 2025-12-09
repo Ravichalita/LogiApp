@@ -121,7 +121,7 @@ export function FinanceDashboard({ transactions, historicItems, team, account, p
         const sortedTrans = [...chartTransactions].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
         sortedTrans
-            .filter(t => t.status !== 'cancelled')
+            .filter(t => t.status !== 'cancelled' && t.status !== 'pending')
             .forEach(t => {
                 const date = new Date(t.dueDate);
                 const key = format(date, 'yyyy-MM');
@@ -229,7 +229,10 @@ export function FinanceDashboard({ transactions, historicItems, team, account, p
             <div className="grid gap-4 md:grid-cols-2">
                 <Card className="col-span-2 md:col-span-1">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base">Fluxo de Caixa</CardTitle>
+                        <CardTitle className="text-base">
+                            Fluxo de Caixa
+                            <span className="text-xs font-normal text-muted-foreground ml-2">(pendentes não inclusos)</span>
+                        </CardTitle>
                         <ChartSelector />
                     </CardHeader>
                     <CardContent className="h-[300px]">
@@ -262,7 +265,10 @@ export function FinanceDashboard({ transactions, historicItems, team, account, p
                 </Card>
                  <Card className="col-span-2 md:col-span-1">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base">Evolução do Saldo</CardTitle>
+                        <CardTitle className="text-base">
+                            Evolução do Saldo
+                            <span className="text-xs font-normal text-muted-foreground ml-2">(pendentes não inclusos)</span>
+                        </CardTitle>
                         <ChartSelector />
                     </CardHeader>
                     <CardContent className="h-[300px]">
