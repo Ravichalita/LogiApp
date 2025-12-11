@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -16,9 +15,12 @@ import type {
     Transaction,
     TransactionCategory,
     Account,
-    RecurringTransactionProfile
+    RecurringTransactionProfile,
+    CompletedRental,
+    PopulatedOperation
 } from './types';
 import { generateTransactionsForProfile } from './recurring-utils';
+import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
 // #region Helper Functions
 
@@ -449,7 +451,9 @@ export async function createTransactionFromService(
     sequentialId: number,
     status: 'pending' | 'paid' = 'pending',
     userId?: string,
-    truckId?: string
+    truckId?: string,
+    forceDuplicate: boolean = false,
+    customDescription?: string
 ) {
     try {
         // 1. Get default category for services ("Receita de Serviços") or create one if not exists
@@ -482,8 +486,10 @@ export async function createTransactionFromService(
             }
         }
 
+        const description = customDescription || `Receita ${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`;
+
         const transactionData: Record<string, any> = {
-            description: `Receita ${serviceType === 'rental' ? 'Aluguel' : 'Operação'} #${sequentialId} - ${clientName}`,
+            description,
             amount: totalValue,
             type: 'income',
             status: status,
@@ -502,25 +508,29 @@ export async function createTransactionFromService(
             transactionData.paymentDate = completedDate.toISOString();
         }
 
-        // We use .set with merge:true in case it already exists (idempotency safety) or just add
-        // Since we don't have a transaction ID here easily unless we query, let's just use add.
-        // To prevent duplicates, we could query first.
-        const q = adminDb.collection(`accounts/${accountId}/transactions`)
-            .where('relatedResourceId', '==', serviceId)
-            .limit(1);
-        const existing = await q.get();
-
-        if (!existing.empty) {
-            // Update existing
-            await existing.docs[0].ref.update({
-                amount: totalValue,
-                description: transactionData.description,
-                // Don't overwrite status if user manually changed it?
-                // Maybe better to leave it alone if it exists.
-                updatedAt: FieldValue.serverTimestamp()
-            });
-        } else {
+        if (forceDuplicate) {
              await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
+        } else {
+            // We use .set with merge:true in case it already exists (idempotency safety) or just add
+            // Since we don't have a transaction ID here easily unless we query, let's just use add.
+            // To prevent duplicates, we could query first.
+            const q = adminDb.collection(`accounts/${accountId}/transactions`)
+                .where('relatedResourceId', '==', serviceId)
+                .limit(1);
+            const existing = await q.get();
+
+            if (!existing.empty) {
+                // Update existing
+                await existing.docs[0].ref.update({
+                    amount: totalValue,
+                    description: transactionData.description,
+                    // Don't overwrite status if user manually changed it?
+                    // Maybe better to leave it alone if it exists.
+                    updatedAt: FieldValue.serverTimestamp()
+                });
+            } else {
+                 await adminDb.collection(`accounts/${accountId}/transactions`).add(transactionData);
+            }
         }
 
     } catch (e) {
@@ -563,6 +573,194 @@ export async function updateTransactionByServiceId(accountId: string, serviceId:
     } catch (e) {
          console.error("Failed to auto-update transaction:", e);
     }
+}
+
+// #endregion
+
+// #region Bulk Transaction Actions
+
+async function getGroupSiblings(accountId: string, parentId: string, date: Date, kind: 'rental' | 'operation') {
+    const collection = kind === 'rental' ? 'completed_rentals' : 'completed_operations';
+    const parentField = kind === 'rental' ? 'parentRentalId' : 'parentOperationId';
+
+    // We only query by parentId to avoid composite index requirements
+    const q = adminDb.collection(`accounts/${accountId}/${collection}`)
+        .where(parentField, '==', parentId);
+
+    const snap = await q.get();
+    const start = startOfMonth(date);
+    const end = endOfMonth(date);
+
+    return snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as any))
+        .filter(item => {
+            const d = parseISO(item.completedDate);
+            return d >= start && d <= end;
+        });
+}
+
+export async function recreateTransactionAction(
+    accountId: string,
+    itemId: string,
+    kind: 'rental' | 'operation',
+    mode: 'duplicate' | 'update'
+) {
+    if (!accountId || !itemId) return { message: 'error', error: 'Dados inválidos.' };
+
+    try {
+        const collection = kind === 'rental' ? 'completed_rentals' : 'completed_operations';
+        const docRef = adminDb.doc(`accounts/${accountId}/${collection}/${itemId}`);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return { message: 'error', error: 'Item não encontrado.' };
+        }
+
+        const item = { id: docSnap.id, ...docSnap.data() } as any;
+        const parentId = kind === 'rental' ? item.parentRentalId : item.parentOperationId;
+
+        let targetId = item.id;
+        let totalValue = item.totalValue || 0;
+        let description = `Receita ${kind === 'rental' ? 'Aluguel' : 'Operação'} #${item.sequentialId} - ${item.clientName || 'Cliente'}`;
+
+        // If grouped, fetch siblings and sum up
+        if (parentId) {
+            const siblings = await getGroupSiblings(accountId, parentId, parseISO(item.completedDate), kind);
+
+            // Sort to find the latest one (which usually holds the transaction reference)
+            siblings.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
+
+            if (siblings.length > 0) {
+                targetId = siblings[0].id; // Use the latest item ID as the group key
+                totalValue = siblings.reduce((sum, sib) => sum + (sib.totalValue || 0), 0);
+
+                // If it's a group, the description usually refers to the monthly bill
+                const latest = siblings[0];
+                description = `Receita ${kind === 'rental' ? 'Aluguel' : 'Operação'} #${latest.sequentialId} (Agrupado) - ${latest.clientName || 'Cliente'}`;
+
+                // We must use the latest item properties
+                item.clientName = latest.clientName;
+                item.completedDate = latest.completedDate;
+                item.sequentialId = latest.sequentialId;
+                item.driver = latest.driver;
+                item.assignedToUser = latest.assignedToUser;
+                item.truck = latest.truck;
+                item.dumpsters = latest.dumpsters;
+            }
+        }
+
+        await createTransactionFromService(
+            accountId,
+            targetId,
+            kind,
+            totalValue,
+            item.clientName || 'Cliente',
+            parseISO(item.completedDate),
+            item.sequentialId,
+            'paid', // Force paid status as requested
+            kind === 'rental' ? item.assignedToUser?.id : item.driver?.id,
+            kind === 'rental' ? (item.dumpsters && item.dumpsters.length > 0 ? undefined : item.truckId) : item.truck?.id, // Logic for truck ID varies
+            mode === 'duplicate',
+            description
+        );
+
+        revalidatePath('/finance');
+        return { message: 'success' };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+export type BulkTransactionItem = {
+    id: string;
+    kind: 'rental' | 'operation';
+    totalValue: number;
+    clientName: string;
+    completedDate: string;
+    sequentialId: number;
+    userId?: string;
+    truckId?: string;
+    parentId?: string;
+}
+
+export async function processBulkTransactionsAction(
+    accountId: string,
+    items: BulkTransactionItem[],
+    mode: 'duplicate' | 'update'
+) {
+    if (!accountId || !items || items.length === 0) return { message: 'error', error: 'Nenhum item para processar.' };
+
+    try {
+        const groups: Record<string, BulkTransactionItem[]> = {};
+        const singles: BulkTransactionItem[] = [];
+
+        items.forEach(item => {
+            if (item.parentId) {
+                const date = parseISO(item.completedDate);
+                const key = `${item.parentId}-${getYear(date)}-${getMonth(date)}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(item);
+            } else {
+                singles.push(item);
+            }
+        });
+
+        // Process Singles
+        for (const item of singles) {
+            await createTransactionFromService(
+                accountId,
+                item.id,
+                item.kind,
+                item.totalValue,
+                item.clientName,
+                parseISO(item.completedDate),
+                item.sequentialId,
+                'paid',
+                item.userId,
+                item.truckId,
+                mode === 'duplicate'
+            );
+        }
+
+        // Process Groups
+        for (const key in groups) {
+            const groupItems = groups[key];
+            // Sort by date desc to find latest
+            groupItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
+
+            const mainItem = groupItems[0];
+            const totalGroupValue = groupItems.reduce((sum, i) => sum + (i.totalValue || 0), 0);
+            const description = `Receita ${mainItem.kind === 'rental' ? 'Aluguel' : 'Operação'} #${mainItem.sequentialId} (Agrupado) - ${mainItem.clientName}`;
+
+            await createTransactionFromService(
+                accountId,
+                mainItem.id, // Use latest item ID as key
+                mainItem.kind,
+                totalGroupValue,
+                mainItem.clientName,
+                parseISO(mainItem.completedDate),
+                mainItem.sequentialId,
+                'paid',
+                mainItem.userId,
+                mainItem.truckId,
+                mode === 'duplicate',
+                description
+            );
+        }
+
+        revalidatePath('/finance');
+        return { message: 'success', count: items.length };
+    } catch (e) {
+        return { message: 'error', error: handleFirebaseError(e) };
+    }
+}
+
+function getYear(date: Date) {
+    return date.getFullYear();
+}
+
+function getMonth(date: Date) {
+    return date.getMonth();
 }
 
 // #endregion

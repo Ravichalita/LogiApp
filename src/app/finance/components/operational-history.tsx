@@ -7,7 +7,7 @@ import { getCityFromAddressAction, getNeighborhoodFromAddressAction } from '@/li
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DollarSign, Truck, TrendingUp, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, Download, BarChart, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Edit, Trash2, Undo2 } from 'lucide-react';
+import { DollarSign, Truck, TrendingUp, FileText, CalendarDays, MapPin, User, Workflow, Paperclip, Download, BarChart, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Edit, Trash2, Undo2, Receipt } from 'lucide-react';
 import { format, parseISO, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from '../revenue-by-client-chart';
@@ -33,7 +33,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { AttachmentsUploader } from '@/components/attachments-uploader';
-import { addAttachmentToOperationAction, addAttachmentToRentalAction, deleteAttachmentAction, deleteCompletedRentalAction, deleteCompletedOperationAction, restoreRentalAction, restoreOperationAction } from '@/lib/actions';
+import { addAttachmentToOperationAction, addAttachmentToRentalAction, deleteAttachmentAction, deleteCompletedRentalAction, deleteCompletedOperationAction, restoreRentalAction, restoreOperationAction, recreateTransactionAction, processBulkTransactionsAction, BulkTransactionItem } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/hooks/use-toast';
@@ -99,6 +99,8 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     const { accountId } = useAuth();
     const { toast } = useToast();
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [isProcessingTransaction, setIsProcessingTransaction] = useState(false);
+    const [showTransactionDialog, setShowTransactionDialog] = useState(false);
 
     if (!item) return null;
     
@@ -146,6 +148,27 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
             toast({ title: "Erro ao gerar PDF", description: "Não foi possível gerar o arquivo.", variant: "destructive" });
         } finally {
             setIsGeneratingPdf(false);
+        }
+    };
+
+    const handleGenerateTransaction = async (mode: 'duplicate' | 'update') => {
+        if (!accountId) return;
+        setIsProcessingTransaction(true);
+        setShowTransactionDialog(false);
+
+        try {
+            const result = await recreateTransactionAction(accountId, item.id, item.kind, mode);
+            if (result.message === 'success') {
+                toast({ title: "Sucesso", description: mode === 'duplicate' ? "Transação duplicada com sucesso." : "Transação atualizada/criada com sucesso." });
+                onOpenChange(false);
+            } else {
+                toast({ title: "Erro", description: result.error, variant: "destructive" });
+            }
+        } catch (error) {
+             console.error("Error generating transaction:", error);
+             toast({ title: "Erro", description: "Falha ao processar transação.", variant: "destructive" });
+        } finally {
+            setIsProcessingTransaction(false);
         }
     };
 
@@ -286,7 +309,31 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                         )}
                     </div>
                 </div>
-                 <DialogFooter>
+                 <DialogFooter className="gap-2 sm:gap-0">
+                    <AlertDialog open={showTransactionDialog} onOpenChange={setShowTransactionDialog}>
+                        <AlertDialogTrigger asChild>
+                             <Button variant="outline" disabled={isProcessingTransaction}>
+                                {isProcessingTransaction ? <Spinner size="small" /> : <Receipt className="mr-2 h-4 w-4" />}
+                                Gerar Transação
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Gerar Transação Financeira</AlertDialogTitle>
+                                <RealAlertDialogDescription>
+                                    Como você deseja processar a transação para este serviço?
+                                </RealAlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                    <Button variant="outline" onClick={() => handleGenerateTransaction('update')}>Atualizar Existente</Button>
+                                    <Button onClick={() => handleGenerateTransaction('duplicate')}>Duplicar Transação</Button>
+                                </div>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
                     <Button onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf}>
                         {isGeneratingPdf ? <Spinner size="small" /> : <Download className="mr-2 h-4 w-4" />}
                         Baixar PDF
@@ -328,6 +375,9 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
 
     const [isEditing, setIsEditing] = useState(false);
     const [itemToEdit, setItemToEdit] = useState<HistoricItem | null>(null);
+
+    const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+    const [showBulkDialog, setShowBulkDialog] = useState(false);
 
     // We maintain a local state for optimistic updates on delete/restore to avoid full page reload
     const [localItems, setLocalItems] = useState<HistoricItem[]>(allHistoricItems);
@@ -440,6 +490,44 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
             else next.add(groupId);
             return next;
         });
+    };
+
+    const handleProcessBulkTransactions = async (mode: 'duplicate' | 'update') => {
+        if (!accountId || filteredItems.length === 0) return;
+        setIsProcessingBulk(true);
+        setShowBulkDialog(false);
+
+        const bulkItems: BulkTransactionItem[] = filteredItems.map(item => ({
+            id: item.id,
+            kind: item.kind,
+            totalValue: item.totalValue,
+            clientName: item.clientName,
+            completedDate: item.completedDate,
+            sequentialId: item.sequentialId,
+            userId: item.kind === 'rental'
+                ? (item.data as CompletedRental).assignedToUser?.id
+                : (item.data as PopulatedOperation).driver?.id,
+            truckId: item.kind === 'operation'
+                ? (item.data as PopulatedOperation).truck?.id
+                : undefined, // Rentals might have truckId but logic varies, keep safe
+            parentId: item.kind === 'rental'
+                ? (item.data as any).parentRentalId
+                : (item.data as any).parentOperationId
+        }));
+
+        try {
+            const result = await processBulkTransactionsAction(accountId, bulkItems, mode);
+            if (result.message === 'success') {
+                 toast({ title: "Sucesso!", description: `${result.count} registros processados para transações.` });
+            } else {
+                 toast({ title: "Erro", description: result.error, variant: "destructive" });
+            }
+        } catch (error) {
+             console.error("Error processing bulk transactions:", error);
+             toast({ title: "Erro", description: "Falha ao processar transações em massa.", variant: "destructive" });
+        } finally {
+            setIsProcessingBulk(false);
+        }
     };
 
      useEffect(() => {
@@ -831,9 +919,36 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                     </Carousel>
                 </Card>
                 <Card className="lg:col-span-3">
-                    <CardHeader>
-                        <CardTitle className="font-headline">Histórico de Serviços</CardTitle>
-                        <CardDescription>Lista de todos os serviços finalizados no período. Clique para ver detalhes.</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="font-headline">Histórico de Serviços</CardTitle>
+                            <CardDescription>Lista de todos os serviços finalizados no período.</CardDescription>
+                        </div>
+                        {filteredItems.length > 0 && (
+                            <AlertDialog open={showBulkDialog} onOpenChange={setShowBulkDialog}>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm" disabled={isProcessingBulk}>
+                                        {isProcessingBulk ? <Spinner size="small" /> : <Receipt className="mr-2 h-4 w-4" />}
+                                        Enviar para Transações
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Enviar para Transações em Massa</AlertDialogTitle>
+                                        <RealAlertDialogDescription>
+                                            Você está prestes a processar {filteredItems.length} registros. Como deseja que o sistema lide com transações já existentes para estes serviços?
+                                        </RealAlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                            <Button variant="outline" onClick={() => handleProcessBulkTransactions('update')}>Atualizar Existentes</Button>
+                                            <Button onClick={() => handleProcessBulkTransactions('duplicate')}>Criar Duplicatas</Button>
+                                        </div>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                     </CardHeader>
                     <CardContent>
                         <div className="overflow-x-auto">
