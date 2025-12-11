@@ -32,6 +32,24 @@ function handleFirebaseError(error: unknown): string {
     return message;
 }
 
+function parseFirestoreDate(dateValue: any): Date {
+    if (!dateValue) return new Date();
+    if (dateValue instanceof Timestamp) {
+        return dateValue.toDate();
+    }
+    // Duck typing for Timestamp-like objects in case of version mismatch or similar
+    if (typeof dateValue.toDate === 'function') {
+        return dateValue.toDate();
+    }
+    if (dateValue instanceof Date) {
+        return dateValue;
+    }
+    if (typeof dateValue === 'string') {
+        return parseISO(dateValue);
+    }
+    return new Date(dateValue);
+}
+
 // #endregion
 
 // #region Categories Actions
@@ -594,7 +612,7 @@ async function getGroupSiblings(accountId: string, parentId: string, date: Date,
     return snap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
         .filter(item => {
-            const d = parseISO(item.completedDate);
+            const d = parseFirestoreDate(item.completedDate);
             return d >= start && d <= end;
         });
 }
@@ -618,6 +636,7 @@ export async function recreateTransactionAction(
 
         const item = { id: docSnap.id, ...docSnap.data() } as any;
         const parentId = kind === 'rental' ? item.parentRentalId : item.parentOperationId;
+        const itemCompletedDate = parseFirestoreDate(item.completedDate);
 
         let targetId = item.id;
         let totalValue = item.totalValue || 0;
@@ -625,10 +644,14 @@ export async function recreateTransactionAction(
 
         // If grouped, fetch siblings and sum up
         if (parentId) {
-            const siblings = await getGroupSiblings(accountId, parentId, parseISO(item.completedDate), kind);
+            const siblings = await getGroupSiblings(accountId, parentId, itemCompletedDate, kind);
 
             // Sort to find the latest one (which usually holds the transaction reference)
-            siblings.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
+            siblings.sort((a, b) => {
+                const dateA = parseFirestoreDate(a.completedDate).getTime();
+                const dateB = parseFirestoreDate(b.completedDate).getTime();
+                return dateB - dateA;
+            });
 
             if (siblings.length > 0) {
                 targetId = siblings[0].id; // Use the latest item ID as the group key
@@ -655,7 +678,7 @@ export async function recreateTransactionAction(
             kind,
             totalValue,
             item.clientName || 'Cliente',
-            parseISO(item.completedDate),
+            parseFirestoreDate(item.completedDate),
             item.sequentialId,
             'paid', // Force paid status as requested
             kind === 'rental' ? item.assignedToUser?.id : item.driver?.id,
