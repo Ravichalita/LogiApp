@@ -45,7 +45,10 @@ import {
     TruckTypeSchema,
     UploadedImageSchema
 } from './types';
-import { createTransactionFromService, deleteTransactionByServiceId, updateTransactionByServiceId } from './finance-actions';
+import { createTransactionFromService, deleteTransactionByServiceId, updateTransactionByServiceId, recreateTransactionAction, processBulkTransactionsAction } from './finance-actions';
+export { recreateTransactionAction, processBulkTransactionsAction };
+export type { BulkTransactionItem } from './finance-actions';
+
 import type {
     UserAccount,
     UserRole,
