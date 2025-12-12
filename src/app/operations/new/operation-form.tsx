@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck, Navigation } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -158,6 +158,21 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
+  // Address suggestions toggle with localStorage persistence
+  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
+    }
+    return false;
+  });
+
+  const handleSuggestionsToggle = (checked: boolean) => {
+    setEnableAddressSuggestions(checked);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('addressSuggestionsEnabled', String(checked));
+    }
+  };
+
 
   useEffect(() => {
     if (!startLocation && startAddress) {
@@ -181,77 +196,76 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
     }
   }, [destinationAddress, destinationLocation, userAccount]);
 
-  useEffect(() => {
-    const fetchRouteInfo = async () => {
-      if (startLocation && destinationLocation && startDate) {
-        setIsFetchingInfo(true);
-        setDirections(null);
-        setWeather(null);
-        setTravelCost(null);
+  // Manual fetch route info function (no longer automatic)
+  const fetchRouteInfo = async () => {
+    if (!startLocation || !destinationLocation || !startDate) {
+      toast({
+        title: "Dados Incompletos",
+        description: "Preencha os endereços e a data antes de calcular a rota.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
-             toast({
-              title: "Recurso Indisponível",
-              description: "Seu plano não inclui o cálculo automático de rotas e clima.",
-              variant: "destructive"
-             });
-             setIsFetchingInfo(false);
-             return;
-        }
+    setIsFetchingInfo(true);
+    setDirections(null);
+    setWeather(null);
+    setTravelCost(null);
 
-        try {
-          const [directionsResult, weatherResult] = await Promise.all([
-            getDirectionsAction(startLocation, destinationLocation),
-            getWeatherForecastAction(destinationLocation, startDate),
-          ]);
+    if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+      toast({
+        title: "Recurso Indisponível",
+        description: "Seu plano não inclui o cálculo de rotas e clima.",
+        variant: "destructive"
+      });
+      setIsFetchingInfo(false);
+      return;
+    }
 
-          if (directionsResult) {
-            setDirections(directionsResult);
-            const truck = trucks.find(t => t.id === selectedTruckId);
-            const truckType = account?.truckTypes.find(t => t.name === truck?.type);
+    try {
+      const [directionsResult, weatherResult] = await Promise.all([
+        getDirectionsAction(startLocation, destinationLocation),
+        getWeatherForecastAction(destinationLocation, startDate),
+      ]);
 
-            if (truckType) {
-              let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
-              // Fallback: If no specific base config, find any config for this truck type.
-              if (!costConfig) {
-                costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
-              }
+      if (directionsResult) {
+        setDirections(directionsResult);
+        const truck = trucks.find(t => t.id === selectedTruckId);
+        const truckType = account?.truckTypes.find(t => t.name === truck?.type);
 
-              const costPerKm = costConfig?.value || 0;
-
-              if (costPerKm > 0 && directionsResult.distanceMeters) {
-                setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
-              } else {
-                setTravelCost(0);
-              }
-            } else {
-              setTravelCost(0);
-            }
+        if (truckType) {
+          let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
+          if (!costConfig) {
+            costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
           }
 
-          if (weatherResult) {
-            setWeather(weatherResult);
-          }
+          const costPerKm = costConfig?.value || 0;
 
-        } catch (error) {
-          console.error("Error fetching route or weather info:", error);
-          toast({
-            title: "Erro de Comunicação",
-            description: "Não foi possível obter os dados de rota ou previsão do tempo.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsFetchingInfo(false);
+          if (costPerKm > 0 && directionsResult.distanceMeters) {
+            setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm);
+          } else {
+            setTravelCost(0);
+          }
+        } else {
+          setTravelCost(0);
         }
-      } else {
-        setDirections(null);
-        setWeather(null);
-        setTravelCost(null);
       }
-    };
 
-    fetchRouteInfo();
-  }, [startLocation, destinationLocation, startDate, account, selectedBaseId, selectedTruckId, trucks, toast]);
+      if (weatherResult) {
+        setWeather(weatherResult);
+      }
+
+    } catch (error) {
+      console.error("Error fetching route or weather info:", error);
+      toast({
+        title: "Erro",
+        description: "Falha ao calcular rota e clima.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsFetchingInfo(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -277,9 +291,9 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
         } else {
           setDestinationLocation(null);
           if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-             geocodeAddress(client.address).then(location => {
-                if (location) setDestinationLocation({ lat: location.lat, lng: location.lng });
-             });
+            geocodeAddress(client.address).then(location => {
+              if (location) setDestinationLocation({ lat: location.lat, lng: location.lng });
+            });
           }
         }
       }
@@ -345,11 +359,11 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
       } else {
         setStartLocation(null);
         if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-             geocodeAddress(selectedBase.address).then(location => {
-              if (location) {
-                setStartLocation({ lat: location.lat, lng: location.lng });
-              }
-            });
+          geocodeAddress(selectedBase.address).then(location => {
+            if (location) {
+              setStartLocation({ lat: location.lat, lng: location.lng });
+            }
+          });
         }
       }
     }
@@ -405,9 +419,9 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   }
 
   useEffect(() => {
-     if (selectedClientId && userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
-        // Just load client info but skip geocoding logic handled in other useEffects via the permission check
-     }
+    if (selectedClientId && userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+      // Just load client info but skip geocoding logic handled in other useEffects via the permission check
+    }
   }, [selectedClientId, userAccount]);
 
   const filterClients = (clients: Client[], search: string) => {
@@ -743,7 +757,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
               <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
             </div>
             <AccordionContent className="pt-4 space-y-2">
-              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} />
+              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} enableSuggestions={enableAddressSuggestions} />
               {errors?.startAddress && (
                 <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
               )}
@@ -788,17 +802,35 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
             value={destinationAddress}
             onInputChange={handleDestinationAddressChange}
             onLocationSelect={handleDestinationLocationSelect}
+            enableSuggestions={enableAddressSuggestions}
           />
+          <div className="flex items-center gap-2 mt-2">
+            <Checkbox
+              id="enable-suggestions-op"
+              checked={enableAddressSuggestions}
+              onCheckedChange={handleSuggestionsToggle}
+            />
+            <Label htmlFor="enable-suggestions-op" className="text-sm font-normal text-muted-foreground cursor-pointer">
+              Sugestões de endereço
+            </Label>
+          </div>
           {errors?.destinationAddress && <p className="text-sm font-medium text-destructive">{errors.destinationAddress[0]}</p>}
         </div>
       </div>
 
-      {isFetchingInfo && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Spinner size="small" />
-          Calculando rota e previsão do tempo...
-        </div>
-      )}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={fetchRouteInfo}
+        disabled={isFetchingInfo || !startLocation || !destinationLocation}
+        className="w-full"
+      >
+        {isFetchingInfo ? (
+          <><Spinner size="small" className="mr-2" /> Calculando...</>
+        ) : (
+          <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
+        )}
+      </Button>
 
       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && !isFetchingInfo && (
         <div className="relative">
@@ -938,15 +970,15 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
 
       {canUseAttachments && accountId && (
         <div className="p-4 border rounded-md space-y-2 bg-card">
-            <AttachmentsUploader 
-                accountId={accountId}
-                attachments={attachments}
-                onAttachmentUploaded={handleAttachmentUploaded}
-                onAttachmentDeleted={handleRemoveAttachment}
-                uploadPath={`accounts/${accountId}/operations/attachments`}
-            />
+          <AttachmentsUploader
+            accountId={accountId}
+            attachments={attachments}
+            onAttachmentUploaded={handleAttachmentUploaded}
+            onAttachmentDeleted={handleRemoveAttachment}
+            uploadPath={`accounts/${accountId}/operations/attachments`}
+          />
         </div>
-       )}
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
@@ -967,7 +999,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <SubmitButton isPending={isPending} />
         <Button asChild variant="outline" size="lg">
-            <Link href="/os">Cancelar</Link>
+          <Link href="/os">Cancelar</Link>
         </Button>
       </div >
     </form >

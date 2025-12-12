@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import type { CompletedRental, HistoricItem, PopulatedOperation, Attachment, PopulatedRental, UserAccount, Account, Permissions } from '@/lib/types';
-import { getCityFromAddressAction, getNeighborhoodFromAddressAction } from '@/lib/data-server-actions';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,23 +12,23 @@ import { format, parseISO, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RevenueByClientChart } from '../revenue-by-client-chart';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription as RealAlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogTrigger,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription as RealAlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -41,11 +41,11 @@ import { OsPdfDocument } from '@/components/os-pdf-document';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
 } from "@/components/ui/carousel"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { MonthlyRevenueChart } from '../monthly-revenue-chart';
@@ -59,8 +59,8 @@ function formatCurrency(value: number | undefined | null) {
         return "R$ 0,00";
     }
     return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
+        style: 'currency',
+        currency: 'BRL',
     }).format(value);
 }
 
@@ -103,7 +103,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
     const [showTransactionDialog, setShowTransactionDialog] = useState(false);
 
     if (!item) return null;
-    
+
     // Definição do objeto para o PDF
     const itemForPdf = {
         ...item.data,
@@ -132,8 +132,8 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
 
         try {
             const canvas = await html2canvas(pdfContainer, { useCORS: true, scale: 2 });
-             if (canvas.width === 0 || canvas.height === 0) {
-              throw new Error('Canvas gerado está vazio. Verifique se o conteúdo do PDF está visível.');
+            if (canvas.width === 0 || canvas.height === 0) {
+                throw new Error('Canvas gerado está vazio. Verifique se o conteúdo do PDF está visível.');
             }
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -165,8 +165,8 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                 toast({ title: "Erro", description: result.error, variant: "destructive" });
             }
         } catch (error) {
-             console.error("Error generating transaction:", error);
-             toast({ title: "Erro", description: "Falha ao processar transação.", variant: "destructive" });
+            console.error("Error generating transaction:", error);
+            toast({ title: "Erro", description: "Falha ao processar transação.", variant: "destructive" });
         } finally {
             setIsProcessingTransaction(false);
         }
@@ -176,7 +176,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
         <>
             {/* Hidden div for PDF rendering - moved outside Dialog to prevent event capturing issues */}
             <div style={{ position: 'fixed', left: '-220mm', top: 0, zIndex: -1 }}>
-                 <OsPdfDocument item={itemForPdf} owner={owner} />
+                <OsPdfDocument item={itemForPdf} owner={owner} />
             </div>
 
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -187,7 +187,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                 <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
                                 <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                             </div>
-                             <div className="flex gap-1 shrink-0">
+                            <div className="flex gap-1 shrink-0">
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
                                     <Edit className="h-4 w-4" />
                                 </Button>
@@ -216,7 +216,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </AlertDialogTrigger>
-                                     <AlertDialogContent>
+                                    <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>Tem certeza que deseja excluir?</AlertDialogTitle>
                                             <RealAlertDialogDescription>
@@ -232,114 +232,114 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                             </div>
                         </div>
                     </DialogHeader>
-                <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
-                     {item.kind === 'operation' && (
+                    <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
+                        {item.kind === 'operation' && (
+                            <div className="flex items-start gap-3">
+                                <Workflow className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-muted-foreground">Tipo de Serviço</span>
+                                    <span className="font-medium">{operationTitle}</span>
+                                </div>
+                            </div>
+                        )}
                         <div className="flex items-start gap-3">
-                           <Workflow className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                           <div className="flex flex-col">
-                               <span className="text-sm text-muted-foreground">Tipo de Serviço</span>
-                               <span className="font-medium">{operationTitle}</span>
-                           </div>
-                       </div>
-                     )}
-                     <div className="flex items-start gap-3">
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Cliente</span>
-                            <span className="font-medium">{item.clientName}</span>
-                        </div>
-                    </div>
-                     <div className="flex items-start gap-3">
-                        <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Responsável</span>
-                            <span className="font-medium">{isRental ? rental?.assignedToUser?.name : operation?.driver?.name ?? 'N/A'}</span>
-                        </div>
-                    </div>
-                     <div className="flex items-start gap-3">
-                        <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">{isRental ? "Caçamba(s)" : "Caminhão"}</span>
-                            <span className="font-medium">{isRental ? (rental?.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ') : `${operation?.truck?.name} (${operation?.truck?.plate})`}</span>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">{isRental ? "Endereço de Entrega" : "Destino"}</span>
-                            <span className="font-medium">{isRental ? rental?.deliveryAddress : operation?.destinationAddress}</span>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Período</span>
-                            <span className="font-medium">
-                                {isRental
-                                    ? `${format(parseISO(rental!.rentalDate), 'dd/MM/yy')} - ${format(parseISO(rental!.returnDate), 'dd/MM/yy')} (${rental!.rentalDays} dias)`
-                                    : `${format(parseISO(operation!.startDate), 'dd/MM/yy HH:mm')} - ${format(parseISO(operation!.endDate), 'dd/MM/yy HH:mm')}`
-                                }
-                            </span>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <DollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                        <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">Valor Total</span>
-                            <span className="font-medium">{formatCurrency(item.totalValue)}</span>
-                        </div>
-                    </div>
-                    {item.data.observations && (
-                         <div className="flex items-start gap-3">
-                            <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                             <div className="flex flex-col">
-                                <span className="text-sm text-muted-foreground">Observações</span>
-                                <p className="font-medium whitespace-pre-wrap">{item.data.observations}</p>
+                                <span className="text-sm text-muted-foreground">Cliente</span>
+                                <span className="font-medium">{item.clientName}</span>
                             </div>
                         </div>
-                    )}
-                    <div className="space-y-2">
-                        {accountId && (
-                            <AttachmentsUploader
-                                accountId={accountId}
-                                attachments={item.data.attachments || []}
-                                onAttachmentUploaded={(newAttachment) => onAttachmentUploaded(item.id, newAttachment)}
-                                onAttachmentDeleted={(attachment) => onAttachmentDeleted(item.id, attachment)}
-                                uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
-                            />
-                        )}
-                    </div>
-                </div>
-                 <DialogFooter className="gap-2 sm:gap-0">
-                    <AlertDialog open={showTransactionDialog} onOpenChange={setShowTransactionDialog}>
-                        <AlertDialogTrigger asChild>
-                             <Button variant="outline" disabled={isProcessingTransaction}>
-                                {isProcessingTransaction ? <Spinner size="small" /> : <Receipt className="mr-2 h-4 w-4" />}
-                                Gerar Transação
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Gerar Transação Financeira</AlertDialogTitle>
-                                <RealAlertDialogDescription>
-                                    Como você deseja processar a transação para este serviço?
-                                </RealAlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <div className="flex gap-2 w-full sm:w-auto justify-end">
-                                    <Button variant="outline" onClick={() => handleGenerateTransaction('update')}>Atualizar Existente</Button>
-                                    <Button onClick={() => handleGenerateTransaction('duplicate')}>Duplicar Transação</Button>
+                        <div className="flex items-start gap-3">
+                            <User className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Responsável</span>
+                                <span className="font-medium">{isRental ? rental?.assignedToUser?.name : operation?.driver?.name ?? 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <Truck className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">{isRental ? "Caçamba(s)" : "Caminhão"}</span>
+                                <span className="font-medium">{isRental ? (rental?.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ') : `${operation?.truck?.name} (${operation?.truck?.plate})`}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">{isRental ? "Endereço de Entrega" : "Destino"}</span>
+                                <span className="font-medium">{isRental ? rental?.deliveryAddress : operation?.destinationAddress}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <CalendarDays className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Período</span>
+                                <span className="font-medium">
+                                    {isRental
+                                        ? `${format(parseISO(rental!.rentalDate), 'dd/MM/yy')} - ${format(parseISO(rental!.returnDate), 'dd/MM/yy')} (${rental!.rentalDays} dias)`
+                                        : `${format(parseISO(operation!.startDate), 'dd/MM/yy HH:mm')} - ${format(parseISO(operation!.endDate), 'dd/MM/yy HH:mm')}`
+                                    }
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <DollarSign className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Valor Total</span>
+                                <span className="font-medium">{formatCurrency(item.totalValue)}</span>
+                            </div>
+                        </div>
+                        {item.data.observations && (
+                            <div className="flex items-start gap-3">
+                                <FileText className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                                <div className="flex flex-col">
+                                    <span className="text-sm text-muted-foreground">Observações</span>
+                                    <p className="font-medium whitespace-pre-wrap">{item.data.observations}</p>
                                 </div>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            {accountId && (
+                                <AttachmentsUploader
+                                    accountId={accountId}
+                                    attachments={item.data.attachments || []}
+                                    onAttachmentUploaded={(newAttachment) => onAttachmentUploaded(item.id, newAttachment)}
+                                    onAttachmentDeleted={(attachment) => onAttachmentDeleted(item.id, attachment)}
+                                    uploadPath={`accounts/${accountId}/${isRental ? 'completed_rentals' : 'completed_operations'}/${item.id}/attachments`}
+                                />
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialog open={showTransactionDialog} onOpenChange={setShowTransactionDialog}>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" disabled={isProcessingTransaction}>
+                                    {isProcessingTransaction ? <Spinner size="small" /> : <Receipt className="mr-2 h-4 w-4" />}
+                                    Gerar Transação
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Gerar Transação Financeira</AlertDialogTitle>
+                                    <RealAlertDialogDescription>
+                                        Como você deseja processar a transação para este serviço?
+                                    </RealAlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                        <Button variant="outline" onClick={() => handleGenerateTransaction('update')}>Atualizar Existente</Button>
+                                        <Button onClick={() => handleGenerateTransaction('duplicate')}>Duplicar Transação</Button>
+                                    </div>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
 
-                    <Button onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf}>
-                        {isGeneratingPdf ? <Spinner size="small" /> : <Download className="mr-2 h-4 w-4" />}
-                        Baixar PDF
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
+                        <Button onClick={handleGenerateAndDownloadPdf} disabled={isGeneratingPdf}>
+                            {isGeneratingPdf ? <Spinner size="small" /> : <Download className="mr-2 h-4 w-4" />}
+                            Baixar PDF
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
             </Dialog>
         </>
     );
@@ -362,10 +362,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
     const { accountId } = useAuth();
     const { toast } = useToast();
     const [selectedItem, setSelectedItem] = useState<HistoricItem | null>(null);
-    const [cityRevenue, setCityRevenue] = useState<Record<string, number>>({});
-    const [neighborhoodRevenue, setNeighborhoodRevenue] = useState<Record<string, number>>({});
-    const cityCache = useMemo(() => new Map<string, string>(), []);
-    const neighborhoodCache = useMemo(() => new Map<string, string>(), []);
+
 
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(new Date().getMonth());
@@ -404,7 +401,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
     const [activeTab, setActiveTab] = useState<'all' | 'rentals' | 'operations'>(getDefaultTab());
 
     useEffect(() => {
-      setActiveTab(getDefaultTab());
+        setActiveTab(getDefaultTab());
     }, [canAccessRentals, canAccessOperations]);
 
 
@@ -460,18 +457,18 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
         standalone.forEach(item => result.push({ type: 'item', item }));
 
         Object.entries(groups).forEach(([parentId, groupItems]) => {
-             const totalValue = groupItems.reduce((sum, i) => sum + (i.totalValue || 0), 0);
-             groupItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
-             const latestItem = groupItems[0];
+            const totalValue = groupItems.reduce((sum, i) => sum + (i.totalValue || 0), 0);
+            groupItems.sort((a, b) => new Date(b.completedDate).getTime() - new Date(a.completedDate).getTime());
+            const latestItem = groupItems[0];
 
-             result.push({
-                 type: 'group',
-                 id: parentId,
-                 items: groupItems,
-                 mainItem: latestItem,
-                 totalValue,
-                 completedDate: latestItem.completedDate
-             });
+            result.push({
+                type: 'group',
+                id: parentId,
+                items: groupItems,
+                mainItem: latestItem,
+                totalValue,
+                completedDate: latestItem.completedDate
+            });
         });
 
         return result.sort((a, b) => {
@@ -518,62 +515,19 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
         try {
             const result = await processBulkTransactionsAction(accountId, bulkItems, mode);
             if (result.message === 'success') {
-                 toast({ title: "Sucesso!", description: `${result.count} registros processados para transações.` });
+                toast({ title: "Sucesso!", description: `${result.count} registros processados para transações.` });
             } else {
-                 toast({ title: "Erro", description: result.error, variant: "destructive" });
+                toast({ title: "Erro", description: result.error, variant: "destructive" });
             }
         } catch (error) {
-             console.error("Error processing bulk transactions:", error);
-             toast({ title: "Erro", description: "Falha ao processar transações em massa.", variant: "destructive" });
+            console.error("Error processing bulk transactions:", error);
+            toast({ title: "Erro", description: "Falha ao processar transações em massa.", variant: "destructive" });
         } finally {
             setIsProcessingBulk(false);
         }
     };
 
-     useEffect(() => {
-        if (filteredItems.length > 0) {
-            const processAddresses = async () => {
-                const revenueByCity: Record<string, number> = {};
-                const revenueByNeighborhood: Record<string, number> = {};
 
-                for (const item of filteredItems) {
-                    const address = item.kind === 'rental'
-                        ? (item.data as CompletedRental).deliveryAddress
-                        : (item.data as PopulatedOperation).destinationAddress;
-                    if (!address) continue;
-
-                    let city = cityCache.get(address);
-                    if (!city) {
-                        city = await getCityFromAddressAction(address) || 'Não identificada';
-                        cityCache.set(address, city);
-                    }
-
-                    let neighborhood = neighborhoodCache.get(address);
-                    if (!neighborhood) {
-                        neighborhood = await getNeighborhoodFromAddressAction(address) || 'Não identificado';
-                        neighborhoodCache.set(address, neighborhood);
-                    }
-
-                    const value = item.totalValue || 0;
-                    if (!revenueByCity[city]) {
-                        revenueByCity[city] = 0;
-                    }
-                    revenueByCity[city] += value;
-
-                    if (!revenueByNeighborhood[neighborhood]) {
-                        revenueByNeighborhood[neighborhood] = 0;
-                    }
-                    revenueByNeighborhood[neighborhood] += value;
-                }
-                setCityRevenue(revenueByCity);
-                setNeighborhoodRevenue(neighborhoodRevenue);
-            };
-            processAddresses();
-        } else {
-             setCityRevenue({});
-             setNeighborhoodRevenue({});
-        }
-    }, [filteredItems, cityCache, neighborhoodCache]);
 
     const owner = useMemo(() => team.find(m => m.role === 'owner'), [team]);
 
@@ -603,11 +557,11 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
             }));
             toast({ title: 'Sucesso!', description: 'Anexo adicionado.' });
         } else {
-             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+            toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }
     };
 
-     const handleAttachmentDeleted = async (itemId: string, attachmentToDelete: Attachment) => {
+    const handleAttachmentDeleted = async (itemId: string, attachmentToDelete: Attachment) => {
         if (!accountId) return;
         const item = localItems.find(i => i.id === itemId);
         if (!item) return;
@@ -629,7 +583,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                 }
                 return item;
             }));
-             toast({ title: 'Sucesso!', description: 'Anexo removido.' });
+            toast({ title: 'Sucesso!', description: 'Anexo removido.' });
         } else {
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         }
@@ -727,7 +681,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
         return (
             <span className={cn("flex items-center", isPositive ? 'text-green-600' : 'text-destructive')}>
                 <Icon className="h-3 w-3 mr-1" />
-                {isPositive && '+'}{percentageChange.toFixed(1).replace('.',',')}% em relação ao mês anterior
+                {isPositive && '+'}{percentageChange.toFixed(1).replace('.', ',')}% em relação ao mês anterior
             </span>
         );
     }, [periodRevenue, previousMonthRevenue, selectedMonth]);
@@ -750,20 +704,12 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
         return (
             <span className={cn("flex items-center", isPositive ? 'text-green-600' : 'text-destructive')}>
                 <Icon className="h-3 w-3 mr-1" />
-                {isPositive && '+'}{percentageChange.toFixed(1).replace('.',',')}% em relação ao ano anterior
+                {isPositive && '+'}{percentageChange.toFixed(1).replace('.', ',')}% em relação ao ano anterior
             </span>
         );
     }, [yearlyRevenue, previousYearRevenue]);
 
-    const cityChartData = Object.entries(cityRevenue).map(([name, value]) => ({
-        name,
-        value,
-    })).sort((a, b) => b.value - a.value);
 
-    const neighborhoodChartData = Object.entries(neighborhoodRevenue).map(([name, value]) => ({
-        name,
-        value,
-    })).sort((a, b) => b.value - a.value);
 
     const serviceTypeChartData = useMemo(() => {
         const revenueByServiceType = filteredItems.reduce((acc, item) => {
@@ -785,7 +731,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
         return Object.entries(revenueByServiceType).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
     }, [filteredItems]);
 
-     const monthlyChartData = useMemo(() => {
+    const monthlyChartData = useMemo(() => {
         const yearlyData = localItems.filter(item => getYear(parseISO(item.completedDate)) === selectedYear);
         const monthlyTotals = Array(12).fill(0).map((_, i) => ({
             name: months[i].substring(0, 3),
@@ -832,7 +778,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                     <SelectContent>
                         <SelectItem value="all">Ano Inteiro</SelectItem>
                         {months.map((month, index) => (
-                             <SelectItem key={index} value={String(index)}>{month}</SelectItem>
+                            <SelectItem key={index} value={String(index)}>{month}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -849,7 +795,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                         <CardDescription>Receita total gerada em cada mês do ano selecionado.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                         <MonthlyRevenueChart data={monthlyChartData} />
+                        <MonthlyRevenueChart data={monthlyChartData} />
                     </CardContent>
                 </Card>
             )}
@@ -865,29 +811,29 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
             )}
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
-                 <StatCard
+                <StatCard
                     title={`Produção (${selectedMonth === 'all' ? selectedYear : `${months[selectedMonth]}/${selectedYear}`})`}
                     value={formatCurrency(periodRevenue)}
                     icon={DollarSign}
                     loading={false}
                     description={monthlyRevenueDescription}
                 />
-                 <StatCard
+                <StatCard
                     title={`Produção (Ano de ${selectedYear})`}
                     value={formatCurrency(yearlyRevenue)}
                     icon={TrendingUp}
                     loading={false}
                     description={yearlyRevenueDescription}
                 />
-                 <StatCard title={`Serviços Finalizados (${selectedMonth === 'all' ? selectedYear : months[selectedMonth]})`} value={String(periodCompletions)} icon={Truck} loading={false} />
+                <StatCard title={`Serviços Finalizados (${selectedMonth === 'all' ? selectedYear : months[selectedMonth]})`} value={String(periodCompletions)} icon={Truck} loading={false} />
             </div>
 
-             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
                 <Card className="lg:col-span-2">
                     <Carousel>
                         <CarouselContent>
-                             <CarouselItem>
-                                 <CardHeader>
+                            <CarouselItem>
+                                <CardHeader>
                                     <CardTitle className="font-headline">Produção por Tipo de Serviço</CardTitle>
                                     <CardDescription>Valor gerado por cada tipo de serviço no período.</CardDescription>
                                 </CardHeader>
@@ -895,27 +841,9 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                                     <RevenueByClientChart data={serviceTypeChartData} />
                                 </CardContent>
                             </CarouselItem>
-                             <CarouselItem>
-                                 <CardHeader>
-                                    <CardTitle className="font-headline">Produção por Cidade</CardTitle>
-                                    <CardDescription>Valor gerado em cada cidade no período selecionado.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <RevenueByClientChart data={cityChartData} />
-                                </CardContent>
-                            </CarouselItem>
-                            <CarouselItem>
-                                 <CardHeader>
-                                    <CardTitle className="font-headline">Produção por Bairro</CardTitle>
-                                    <CardDescription>Valor gerado em cada bairro no período selecionado.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <RevenueByClientChart data={neighborhoodChartData} />
-                                </CardContent>
-                            </CarouselItem>
                         </CarouselContent>
                         <CarouselPrevious className="-left-4" />
-                        <CarouselNext className="-right-4"/>
+                        <CarouselNext className="-right-4" />
                     </Carousel>
                 </Card>
                 <Card className="lg:col-span-3">
@@ -953,133 +881,133 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                     <CardContent>
                         <div className="overflow-x-auto">
                             <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>OS</TableHead>
-                                    <TableHead className="w-[20px] p-2 text-center">
-                                        <Paperclip className="h-4 w-4 text-muted-foreground" />
-                                        <span className="sr-only">Anexos</span>
-                                    </TableHead>
-                                    <TableHead>Tipo de Serviço</TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead className="text-right">Finalizado em</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {groupedItems.length > 0 ? groupedItems.map((rowItem) => {
-                                    if (rowItem.type === 'item') {
-                                        const item = rowItem.item;
-                                        return (
-                                            <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
-                                                <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
-                                                <TableCell className="w-[20px] p-2 text-center">
-                                                    {item.data.attachments && item.data.attachments.length > 0 && (
-                                                        <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="font-medium capitalize">
-                                                    {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
-                                                </TableCell>
-                                                <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
-                                                <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
-                                                <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
-                                            </TableRow>
-                                        );
-                                    } else {
-                                        const group = rowItem;
-                                        const isExpanded = expandedGroups.has(group.id);
-                                        return (
-                                            <React.Fragment key={group.id}>
-                                                <TableRow
-                                                    className="cursor-pointer hover:bg-muted/50 bg-muted/20"
-                                                    onClick={(e) => toggleGroup(group.id, e)}
-                                                >
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>OS</TableHead>
+                                        <TableHead className="w-[20px] p-2 text-center">
+                                            <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                            <span className="sr-only">Anexos</span>
+                                        </TableHead>
+                                        <TableHead>Tipo de Serviço</TableHead>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead className="text-right">Finalizado em</TableHead>
+                                        <TableHead className="text-right">Valor</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupedItems.length > 0 ? groupedItems.map((rowItem) => {
+                                        if (rowItem.type === 'item') {
+                                            const item = rowItem.item;
+                                            return (
+                                                <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50">
+                                                    <TableCell className="font-mono text-xs font-bold">{item.prefix}{item.sequentialId}</TableCell>
+                                                    <TableCell className="w-[20px] p-2 text-center">
+                                                        {item.data.attachments && item.data.attachments.length > 0 && (
+                                                            <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium capitalize">
+                                                        {item.kind === 'rental' ? 'Aluguel' : (item.operationTypes?.map(t => t.name).join(', ') || 'Operação')}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium whitespace-nowrap">{item.clientName}</TableCell>
+                                                    <TableCell className="text-right whitespace-nowrap">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
+                                                    <TableCell className="text-right whitespace-nowrap">{formatCurrency(item.totalValue)}</TableCell>
+                                                </TableRow>
+                                            );
+                                        } else {
+                                            const group = rowItem;
+                                            const isExpanded = expandedGroups.has(group.id);
+                                            return (
+                                                <React.Fragment key={group.id}>
+                                                    <TableRow
+                                                        className="cursor-pointer hover:bg-muted/50 bg-muted/20"
+                                                        onClick={(e) => toggleGroup(group.id, e)}
+                                                    >
                                                         <TableCell className="font-mono text-xs font-bold">
                                                             <div className="flex items-center gap-2">
-                                                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                                            <span>{group.items.length} Serviços</span>
+                                                                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                                <span>{group.items.length} Serviços</span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="w-[20px] p-2 text-center">
                                                         </TableCell>
                                                         <TableCell className="font-medium capitalize">
-                                                        {(() => {
-                                                            const itemWithBilling = group.items.find(i => (i.data as any).billingType);
-                                                            const billingType = (itemWithBilling?.data as any)?.billingType;
-                                                            
-                                                            let typeLabel = 'Recorrente';
-                                                            if (billingType === 'monthly') typeLabel = 'Mensal';
-                                                            else if (billingType === 'weekly') typeLabel = 'Semanal';
-                                                            else if (billingType === 'biweekly') typeLabel = 'Quinzenal';
-                                                            else if (billingType === 'perService') typeLabel = 'Por Serviço';
-                                                            else if (group.items.some(i => i.totalValue === 0)) typeLabel = 'Mensal'; // Legacy fallback
+                                                            {(() => {
+                                                                const itemWithBilling = group.items.find(i => (i.data as any).billingType);
+                                                                const billingType = (itemWithBilling?.data as any)?.billingType;
 
-                                                            if (group.mainItem.kind === 'rental') {
-                                                                return `Aluguel (${typeLabel})`;
-                                                            } else {
-                                                                const opName = (group.mainItem.data as any).operationTypes?.map((t: any) => t.name).join(', ') || 'Operação';
-                                                                return `${opName} (${typeLabel})`;
-                                                            }
-                                                        })()}
+                                                                let typeLabel = 'Recorrente';
+                                                                if (billingType === 'monthly') typeLabel = 'Mensal';
+                                                                else if (billingType === 'weekly') typeLabel = 'Semanal';
+                                                                else if (billingType === 'biweekly') typeLabel = 'Quinzenal';
+                                                                else if (billingType === 'perService') typeLabel = 'Por Serviço';
+                                                                else if (group.items.some(i => i.totalValue === 0)) typeLabel = 'Mensal'; // Legacy fallback
+
+                                                                if (group.mainItem.kind === 'rental') {
+                                                                    return `Aluguel (${typeLabel})`;
+                                                                } else {
+                                                                    const opName = (group.mainItem.data as any).operationTypes?.map((t: any) => t.name).join(', ') || 'Operação';
+                                                                    return `${opName} (${typeLabel})`;
+                                                                }
+                                                            })()}
                                                         </TableCell>
                                                         <TableCell className="font-medium whitespace-nowrap">{group.mainItem.clientName}</TableCell>
                                                         <TableCell className="text-right whitespace-nowrap">{format(parseISO(group.completedDate), 'MM/yyyy', { locale: ptBR })}</TableCell>
                                                         <TableCell className="text-right whitespace-nowrap font-bold">{formatCurrency(group.totalValue)}</TableCell>
-                                                </TableRow>
-                                                {isExpanded && group.items.map(item => (
-                                                    <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50 bg-muted/5">
+                                                    </TableRow>
+                                                    {isExpanded && group.items.map(item => (
+                                                        <TableRow key={item.id} onClick={() => setSelectedItem(item)} className="cursor-pointer hover:bg-muted/50 bg-muted/5">
                                                             <TableCell className="font-mono text-xs font-bold pl-8">
-                                                            <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-2">
                                                                     {item.prefix}{item.sequentialId}
-                                                            </div>
+                                                                </div>
                                                             </TableCell>
                                                             <TableCell className="w-[20px] p-2 text-center">
-                                                            {item.data.attachments && item.data.attachments.length > 0 && (
-                                                                <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
-                                                            )}
+                                                                {item.data.attachments && item.data.attachments.length > 0 && (
+                                                                    <Paperclip className="h-4 w-4 mx-auto text-muted-foreground" />
+                                                                )}
                                                             </TableCell>
                                                             <TableCell className="font-medium capitalize text-muted-foreground">
-                                                            {(() => {
-                                                                const billingType = (item.data as any)?.billingType;
+                                                                {(() => {
+                                                                    const billingType = (item.data as any)?.billingType;
 
-                                                                let typeLabel = '';
-                                                                if (billingType === 'monthly') typeLabel = ' (Mensal)';
-                                                                else if (billingType === 'weekly') typeLabel = ' (Semanal)';
-                                                                else if (billingType === 'biweekly') typeLabel = ' (Quinzenal)';
-                                                                else if (billingType === 'perService') typeLabel = ' (Por Serviço)';
-                                                                else if (!billingType && item.totalValue === 0) typeLabel = ' (Fatura Mensal)';
+                                                                    let typeLabel = '';
+                                                                    if (billingType === 'monthly') typeLabel = ' (Mensal)';
+                                                                    else if (billingType === 'weekly') typeLabel = ' (Semanal)';
+                                                                    else if (billingType === 'biweekly') typeLabel = ' (Quinzenal)';
+                                                                    else if (billingType === 'perService') typeLabel = ' (Por Serviço)';
+                                                                    else if (!billingType && item.totalValue === 0) typeLabel = ' (Fatura Mensal)';
 
-                                                                if (item.kind === 'rental') {
-                                                                    return `Aluguel${typeLabel}`;
-                                                                } else {
-                                                                    const opName = item.operationTypes?.map(t => t.name).join(', ') || 'Operação';
-                                                                    return `${opName}${typeLabel}`;
-                                                                }
-                                                            })()}
+                                                                    if (item.kind === 'rental') {
+                                                                        return `Aluguel${typeLabel}`;
+                                                                    } else {
+                                                                        const opName = item.operationTypes?.map(t => t.name).join(', ') || 'Operação';
+                                                                        return `${opName}${typeLabel}`;
+                                                                    }
+                                                                })()}
                                                             </TableCell>
                                                             <TableCell className="font-medium whitespace-nowrap text-muted-foreground">{item.clientName}</TableCell>
                                                             <TableCell className="text-right whitespace-nowrap text-muted-foreground">{format(parseISO(item.completedDate), 'dd/MM/yyyy', { locale: ptBR })}</TableCell>
                                                             <TableCell className="text-right whitespace-nowrap text-muted-foreground">{formatCurrency(item.totalValue)}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </React.Fragment>
-                                        )
-                                    }
-                                }) : (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center h-24">Nenhum serviço finalizado no período selecionado.</TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                                        </TableRow>
+                                                    ))}
+                                                </React.Fragment>
+                                            )
+                                        }
+                                    }) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center h-24">Nenhum serviço finalizado no período selecionado.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
                     </CardContent>
                 </Card>
-             </div>
+            </div>
 
-             {/* Read-only details dialog */}
-             <HistoricItemDetailsDialog
+            {/* Read-only details dialog */}
+            <HistoricItemDetailsDialog
                 item={selectedItem}
                 isOpen={!!selectedItem}
                 onOpenChange={(open) => !open && setSelectedItem(null)}
@@ -1089,10 +1017,10 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                 onEdit={handleEditItem}
                 onDelete={handleDeleteItem}
                 onRestore={handleRestoreItem}
-             />
+            />
 
-             {/* Edit Forms */}
-             {isEditing && itemToEdit && itemToEdit.kind === 'rental' && (
+            {/* Edit Forms */}
+            {isEditing && itemToEdit && itemToEdit.kind === 'rental' && (
                 <EditHistoricRentalForm
                     rental={itemToEdit.data as CompletedRental}
                     team={team}
@@ -1100,9 +1028,9 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                     onOpenChange={handleEditClose}
                     onSuccess={handleEditSuccess}
                 />
-             )}
+            )}
 
-             {isEditing && itemToEdit && itemToEdit.kind === 'operation' && account && (
+            {isEditing && itemToEdit && itemToEdit.kind === 'operation' && account && (
                 <EditHistoricOperationForm
                     operation={itemToEdit.data as PopulatedOperation}
                     team={team}
@@ -1111,7 +1039,7 @@ export function OperationalHistory({ items: allHistoricItems, team, account, per
                     onOpenChange={handleEditClose}
                     onSuccess={handleEditSuccess}
                 />
-             )}
+            )}
         </div>
     );
 }

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Plus, ChevronsUpDown, Check, ListFilter, Star, Building, ShieldCheck, Navigation } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO, isBefore as isBeforeDate, startOfToday, addDays, isSameDay, differenceInCalendarDays, set, addHours, isWithinInterval, endOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -174,6 +174,21 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const [isRentalDateOpen, setIsRentalDateOpen] = useState(false);
   const [isReturnDateOpen, setIsReturnDateOpen] = useState(false);
 
+  // Address suggestions toggle with localStorage persistence
+  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
+    }
+    return false;
+  });
+
+  const handleSuggestionsToggle = (checked: boolean) => {
+    setEnableAddressSuggestions(checked);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('addressSuggestionsEnabled', String(checked));
+    }
+  };
+
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
@@ -224,9 +239,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         } else {
           setDeliveryLocation(null);
           if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-             geocodeAddress(client.address).then(location => {
-                if (location) setDeliveryLocation({ lat: location.lat, lng: location.lng });
-             });
+            geocodeAddress(client.address).then(location => {
+              if (location) setDeliveryLocation({ lat: location.lat, lng: location.lng });
+            });
           }
         }
       }
@@ -236,67 +251,72 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
     }
   }, [selectedClientId, clients, prefillData, userAccount]);
 
-  useEffect(() => {
-    const fetchRouteInfo = async () => {
-      if (startLocation && deliveryLocation && rentalDate) {
-        setIsFetchingInfo(true);
-        setDirections(null);
-        setWeather(null);
-        setTravelCost(null);
+  // Manual fetch route info function (no longer automatic)
+  const fetchRouteInfo = async () => {
+    if (!startLocation || !deliveryLocation || !rentalDate) {
+      toast({
+        title: "Dados Incompletos",
+        description: "Preencha os endereços e a data antes de calcular a rota.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
-             toast({
-              title: "Recurso Indisponível",
-              description: "Seu plano não inclui o cálculo automático de rotas e clima.",
-              variant: "destructive"
-             });
-             setIsFetchingInfo(false);
-             return;
-        }
+    setIsFetchingInfo(true);
+    setDirections(null);
+    setWeather(null);
+    setTravelCost(null);
 
-        try {
-          const [directionsResult, weatherResult] = await Promise.all([
-            getDirectionsAction(startLocation, deliveryLocation),
-            getWeatherForecastAction(deliveryLocation, rentalDate),
-          ]);
-          if (directionsResult) {
-            setDirections(directionsResult);
-            const truckType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
+    if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+      toast({
+        title: "Recurso Indisponível",
+        description: "Seu plano não inclui o cálculo de rotas e clima.",
+        variant: "destructive"
+      });
+      setIsFetchingInfo(false);
+      return;
+    }
 
-            if (truckType) {
-              let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
-              if (!costConfig) {
-                costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
-              }
+    try {
+      const [directionsResult, weatherResult] = await Promise.all([
+        getDirectionsAction(startLocation, deliveryLocation),
+        getWeatherForecastAction(deliveryLocation, rentalDate),
+      ]);
+      if (directionsResult) {
+        setDirections(directionsResult);
+        const truckType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
 
-              const costPerKm = costConfig?.value || 0;
-
-              if (costPerKm > 0) {
-                setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
-              } else {
-                setTravelCost(0);
-              }
-            } else {
-              setTravelCost(0);
-            }
+        if (truckType) {
+          let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
+          if (!costConfig) {
+            costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
           }
-          if (weatherResult) {
-            setWeather(weatherResult);
+
+          const costPerKm = costConfig?.value || 0;
+
+          if (costPerKm > 0) {
+            setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm);
+          } else {
+            setTravelCost(0);
           }
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsFetchingInfo(false);
+        } else {
+          setTravelCost(0);
         }
-      } else {
-        setDirections(null);
-        setWeather(null);
-        setTravelCost(null);
       }
-    };
-
-    fetchRouteInfo();
-  }, [startLocation, deliveryLocation, rentalDate, account, selectedBaseId]);
+      if (weatherResult) {
+        setWeather(weatherResult);
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Erro",
+        description: "Falha ao calcular rota e clima.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsFetchingInfo(false);
+    }
+  };
 
   useEffect(() => {
     setSameDaySwapWarning(null);
@@ -325,11 +345,11 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       } else {
         setStartLocation(null);
         if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-             geocodeAddress(selectedBase.address).then(location => {
-                if (location) {
-                    setStartLocation({ lat: location.lat, lng: location.lng });
-                }
-            });
+          geocodeAddress(selectedBase.address).then(location => {
+            if (location) {
+              setStartLocation({ lat: location.lat, lng: location.lng });
+            }
+          });
         }
       }
     }
@@ -488,9 +508,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   }
 
   useEffect(() => {
-     if (selectedClientId && userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
-        // Skip geocoding
-     }
+    if (selectedClientId && userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+      // Skip geocoding
+    }
   }, [selectedClientId, userAccount]);
 
   const filterClients = (clients: Client[], search: string) => {
@@ -799,7 +819,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
               <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
             </div>
             <AccordionContent className="pt-4 space-y-2">
-              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} />
+              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} enableSuggestions={enableAddressSuggestions} />
               {errors?.startAddress && (
                 <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
               )}
@@ -844,16 +864,34 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           value={deliveryAddress}
           onInputChange={handleDeliveryAddressChange}
           onLocationSelect={handleDeliveryLocationSelect}
+          enableSuggestions={enableAddressSuggestions}
         />
+        <div className="flex items-center gap-2 mt-2">
+          <Checkbox
+            id="enable-suggestions"
+            checked={enableAddressSuggestions}
+            onCheckedChange={handleSuggestionsToggle}
+          />
+          <Label htmlFor="enable-suggestions" className="text-sm font-normal text-muted-foreground cursor-pointer">
+            Sugestões de endereço
+          </Label>
+        </div>
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
 
-      {isFetchingInfo && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Spinner size="small" />
-          Calculando rota e previsão do tempo...
-        </div>
-      )}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={fetchRouteInfo}
+        disabled={isFetchingInfo || !startLocation || !deliveryLocation}
+        className="w-full"
+      >
+        {isFetchingInfo ? (
+          <><Spinner size="small" className="mr-2" /> Calculando...</>
+        ) : (
+          <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
+        )}
+      </Button>
 
       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && deliveryLocation && !isFetchingInfo && (
         <div className="relative">
@@ -999,124 +1037,124 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
       {recurrenceData.billingType === 'monthly' ? (
         <div className="p-4 border rounded-md space-y-4 bg-card">
-            <Label htmlFor="monthlyValue">Valor Mensal</Label>
-            <Input
-                id="monthlyValue"
-                name="monthlyValue_display"
-                value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
-                onChange={(e) => {
-                    const rawValue = e.target.value.replace(/\D/g, '');
-                    const cents = parseInt(rawValue, 10) || 0;
-                    setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
-                }}
-                placeholder="R$ 0,00"
-                className="text-right"
-            />
+          <Label htmlFor="monthlyValue">Valor Mensal</Label>
+          <Input
+            id="monthlyValue"
+            name="monthlyValue_display"
+            value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+            onChange={(e) => {
+              const rawValue = e.target.value.replace(/\D/g, '');
+              const cents = parseInt(rawValue, 10) || 0;
+              setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+            }}
+            placeholder="R$ 0,00"
+            className="text-right"
+          />
         </div>
       ) : (
         <Accordion type="single" collapsible defaultValue="per-day" className="w-full" onValueChange={handleAccordionChange}>
-            <AccordionItem value="per-day">
-                <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
-                <AccordionContent>
-                    <div className="p-4 border rounded-md space-y-4 bg-card">
-                        <div className="space-y-2">
-                            {(rentalPrices && rentalPrices.length > 0) ? (
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Selecione um preço" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {rentalPrices.map(p => (
-                                                <SelectItem key={p.id} value={p.id}>
-                                                    {p.name} ({formatCurrencyForDisplay(p.value)})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <Input
-                                        id="value"
-                                        name="value_display"
-                                        value={displayValue}
-                                        onChange={handleValueChange}
-                                        placeholder="R$ 0,00"
-                                        required={billingType === 'perDay'}
-                                        className="sm:w-1/3 text-right"
-                                        disabled={billingType !== 'perDay'}
-                                    />
-                                </div>
-                            ) : (
-                                <Input
-                                    id="value_display"
-                                    name="value_display"
-                                    value={displayValue}
-                                    onChange={handleValueChange}
-                                    placeholder="R$ 0,00"
-                                    required={billingType === 'perDay'}
-                                    className="text-right"
-                                    disabled={billingType !== 'perDay'}
-                                />
-                            )}
-                        </div>
-                        {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
+          <AccordionItem value="per-day">
+            <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
+            <AccordionContent>
+              <div className="p-4 border rounded-md space-y-4 bg-card">
+                <div className="space-y-2">
+                  {(rentalPrices && rentalPrices.length > 0) ? (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um preço" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rentalPrices.map(p => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name} ({formatCurrencyForDisplay(p.value)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        id="value"
+                        name="value_display"
+                        value={displayValue}
+                        onChange={handleValueChange}
+                        placeholder="R$ 0,00"
+                        required={billingType === 'perDay'}
+                        className="sm:w-1/3 text-right"
+                        disabled={billingType !== 'perDay'}
+                      />
                     </div>
-                </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="lump-sum">
-                <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
-                <AccordionContent>
-                    <div className="p-4 border rounded-md space-y-4 bg-card">
-                        <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
-                        <Input
-                            id="lumpSumValue"
-                            name="lumpSumValue_display"
-                            value={displayLumpSumValue}
-                            onChange={handleLumpSumValueChange}
-                            placeholder="R$ 0,00"
-                            required={billingType === 'lumpSum'}
-                            className="text-right"
-                            disabled={billingType !== 'lumpSum'}
-                        />
-                        {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
-                    </div>
-                </AccordionContent>
-            </AccordionItem>
+                  ) : (
+                    <Input
+                      id="value_display"
+                      name="value_display"
+                      value={displayValue}
+                      onChange={handleValueChange}
+                      placeholder="R$ 0,00"
+                      required={billingType === 'perDay'}
+                      className="text-right"
+                      disabled={billingType !== 'perDay'}
+                    />
+                  )}
+                </div>
+                {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="lump-sum">
+            <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
+            <AccordionContent>
+              <div className="p-4 border rounded-md space-y-4 bg-card">
+                <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
+                <Input
+                  id="lumpSumValue"
+                  name="lumpSumValue_display"
+                  value={displayLumpSumValue}
+                  onChange={handleLumpSumValueChange}
+                  placeholder="R$ 0,00"
+                  required={billingType === 'lumpSum'}
+                  className="text-right"
+                  disabled={billingType !== 'lumpSum'}
+                />
+                {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       )}
-      
-       <div className="p-4 border rounded-md space-y-4 bg-card">
+
+      <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-destructive" />
-                <span className="font-medium">Custo Total da Operação:</span>
-                <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
-            </div>
-            <CostsDialog 
-              costs={additionalCosts} 
-              onSave={setAdditionalCosts} 
-            >
-              <Button type="button" variant="outline">Adicionar Custos</Button>
-            </CostsDialog>
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 text-destructive" />
+            <span className="font-medium">Custo Total da Operação:</span>
+            <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
+          </div>
+          <CostsDialog
+            costs={additionalCosts}
+            onSave={setAdditionalCosts}
+          >
+            <Button type="button" variant="outline">Adicionar Custos</Button>
+          </CostsDialog>
         </div>
         {(totalRentalValue > 0 || totalOperationCost > 0) && (
-            <>
+          <>
             <Separator />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm pt-2 gap-2 sm:gap-4">
-                <div className="flex items-center gap-2">
-                    {profit >= 0 ? 
-                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                        <TrendingDown className="h-4 w-4 text-red-600" />
-                    }
-                    <span className="font-medium">Lucro Previsto:</span>
-                    <span className={cn(
-                        "font-bold",
-                        profit >= 0 ? "text-green-600" : "text-red-600"
-                    )}>
-                        {formatCurrencyForDisplay(profit)}
-                    </span>
-                </div>
+              <div className="flex items-center gap-2">
+                {profit >= 0 ?
+                  <TrendingUp className="h-4 w-4 text-green-600" /> :
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                }
+                <span className="font-medium">Lucro Previsto:</span>
+                <span className={cn(
+                  "font-bold",
+                  profit >= 0 ? "text-green-600" : "text-red-600"
+                )}>
+                  {formatCurrencyForDisplay(profit)}
+                </span>
+              </div>
             </div>
-            </>
+          </>
         )}
       </div>
 
@@ -1128,12 +1166,12 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
 
       {canUseAttachments && accountId && (
         <div className="p-4 border rounded-md space-y-2 bg-card">
-          <AttachmentsUploader 
-              accountId={accountId}
-              attachments={attachments}
-              onAttachmentUploaded={handleAttachmentUploaded}
-              onAttachmentDeleted={handleRemoveAttachment}
-              uploadPath={`accounts/${accountId}/rentals/attachments`}
+          <AttachmentsUploader
+            accountId={accountId}
+            attachments={attachments}
+            onAttachmentUploaded={handleAttachmentUploaded}
+            onAttachmentDeleted={handleRemoveAttachment}
+            uploadPath={`accounts/${accountId}/rentals/attachments`}
           />
         </div>
       )}
@@ -1146,7 +1184,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
         <SubmitButton isPending={isPending} />
         <Button asChild variant="outline" size="lg">
-            <Link href="/os">Cancelar</Link>
+          <Link href="/os">Cancelar</Link>
         </Button>
       </div >
     </form >

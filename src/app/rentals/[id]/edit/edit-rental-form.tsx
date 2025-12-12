@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp } from 'lucide-react';
+import { CalendarIcon, User, AlertCircle, MapPin, Warehouse, Route, Clock, Sun, CloudRain, Cloudy, Snowflake, DollarSign, Map as MapIcon, TrendingDown, TrendingUp, Navigation } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isBefore as isBeforeDate, parseISO, startOfToday, addDays, isSameDay, differenceInCalendarDays, set } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +36,7 @@ import { MapDialog } from '@/components/map-dialog';
 import { CostsDialog } from '@/app/operations/new/costs-dialog';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface EditRentalFormProps {
   rental: PopulatedRental;
@@ -46,11 +47,11 @@ interface EditRentalFormProps {
 }
 
 const formatCurrencyForInput = (valueInCents: string): string => {
-    if (!valueInCents) return '0,00';
-    const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
-    const reais = Math.floor(numericValue / 100);
-    const centavos = (numericValue % 100).toString().padStart(2, '0');
-    return `${reais.toLocaleString('pt-BR')},${centavos}`;
+  if (!valueInCents) return '0,00';
+  const numericValue = parseInt(valueInCents.replace(/\D/g, ''), 10) || 0;
+  const reais = Math.floor(numericValue / 100);
+  const centavos = (numericValue % 100).toString().padStart(2, '0');
+  return `${reais.toLocaleString('pt-BR')},${centavos}`;
 };
 
 const formatCurrencyForDisplay = (value: number): string => {
@@ -61,17 +62,17 @@ const formatCurrencyForDisplay = (value: number): string => {
 };
 
 const WeatherIcon = ({ condition }: { condition: string }) => {
-    const lowerCaseCondition = condition.toLowerCase();
-    if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
-        return <CloudRain className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
-        return <Snowflake className="h-5 w-5" />;
-    }
-    if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
-        return <Cloudy className="h-5 w-5" />;
-    }
-    return <Sun className="h-5 w-5" />;
+  const lowerCaseCondition = condition.toLowerCase();
+  if (lowerCaseCondition.includes('chuva') || lowerCaseCondition.includes('rain')) {
+    return <CloudRain className="h-5 w-5" />;
+  }
+  if (lowerCaseCondition.includes('neve') || lowerCaseCondition.includes('snow')) {
+    return <Snowflake className="h-5 w-5" />;
+  }
+  if (lowerCaseCondition.includes('nublado') || lowerCaseCondition.includes('cloudy')) {
+    return <Cloudy className="h-5 w-5" />;
+  }
+  return <Sun className="h-5 w-5" />;
 };
 
 
@@ -80,7 +81,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
-  
+
   const [assignedToId, setAssignedToId] = useState<string | undefined>(rental.assignedTo);
   const [selectedTruckId, setSelectedTruckId] = useState<string | undefined>(rental.truckId);
   const [deliveryAddress, setDeliveryAddress] = useState<string>(rental.deliveryAddress);
@@ -101,7 +102,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
       ? { lat: rental.startLatitude, lng: rental.startLongitude }
       : null
   );
-  
+
   const [errors, setErrors] = useState<any>({});
   const [value, setValue] = useState(rental.value);
   const [lumpSumValue, setLumpSumValue] = useState(rental.lumpSumValue || 0);
@@ -109,11 +110,11 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
 
   const [displayValue, setDisplayValue] = useState(formatCurrencyForInput((rental.value * 100).toString()));
   const [displayLumpSumValue, setDisplayLumpSumValue] = useState(formatCurrencyForInput(((rental.lumpSumValue || 0) * 100).toString()));
-  
+
   const [priceId, setPriceId] = useState<string | undefined>();
   const [attachments, setAttachments] = useState<Attachment[]>(rental.attachments || []);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>(rental.additionalCosts || []);
-  
+
   const [directions, setDirections] = useState<{ distanceMeters: number, durationSeconds: number, distance: string, duration: string } | null>(null);
   const [weather, setWeather] = useState<{ condition: string; tempC: number } | null>(null);
   const [travelCost, setTravelCost] = useState<number | null>(null);
@@ -129,6 +130,21 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
 
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
+  // Address suggestions toggle with localStorage persistence
+  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
+    }
+    return false;
+  });
+
+  const handleSuggestionsToggle = (checked: boolean) => {
+    setEnableAddressSuggestions(checked);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('addressSuggestionsEnabled', String(checked));
+    }
+  };
+
   const rentalDays = returnDate && rentalDate ? differenceInCalendarDays(returnDate, rentalDate) + 1 : 0;
   const totalRentalValue = billingType === 'lumpSum' ? lumpSumValue : value * rentalDays;
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
@@ -138,19 +154,19 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
 
   useEffect(() => {
     if (rental.recurrenceProfileId && accountId) {
-        getRecurrenceProfileById(accountId, rental.recurrenceProfileId).then(profile => {
-            if (profile) {
-                setRecurrenceData({
-                    enabled: true,
-                    frequency: profile.frequency,
-                    daysOfWeek: profile.daysOfWeek,
-                    time: profile.time,
-                    endDate: profile.endDate ? parseISO(profile.endDate) : undefined,
-                    billingType: profile.billingType,
-                    monthlyValue: profile.monthlyValue,
-                });
-            }
-        });
+      getRecurrenceProfileById(accountId, rental.recurrenceProfileId).then(profile => {
+        if (profile) {
+          setRecurrenceData({
+            enabled: true,
+            frequency: profile.frequency,
+            daysOfWeek: profile.daysOfWeek,
+            time: profile.time,
+            endDate: profile.endDate ? parseISO(profile.endDate) : undefined,
+            billingType: profile.billingType,
+            monthlyValue: profile.monthlyValue,
+          });
+        }
+      });
     }
   }, [rental.recurrenceProfileId, accountId]);
 
@@ -160,107 +176,111 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
     }
   }, [poliguindasteTrucks, selectedTruckId]);
 
-  useEffect(() => {
-    const fetchRouteInfo = async () => {
-      if (startLocation && deliveryLocation && rentalDate) {
-        setIsFetchingInfo(true);
-        setDirections(null);
-        setWeather(null);
-        setTravelCost(null);
+  // Manual fetch route info function (no longer automatic)
+  const fetchRouteInfo = async () => {
+    if (!startLocation || !deliveryLocation || !rentalDate) {
+      toast({
+        title: "Dados Incompletos",
+        description: "Preencha os endereços e a data antes de calcular a rota.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
-             toast({
-              title: "Recurso Indisponível",
-              description: "Seu plano não inclui o cálculo automático de rotas e clima.",
-              variant: "destructive"
-             });
-             setIsFetchingInfo(false);
-             return;
-        }
+    setIsFetchingInfo(true);
+    setDirections(null);
+    setWeather(null);
+    setTravelCost(null);
 
-        try {
-          const [directionsResult, weatherResult] = await Promise.all([
-             getDirectionsAction(startLocation, deliveryLocation),
-             getWeatherForecastAction(deliveryLocation, rentalDate),
-          ]);
-          if (directionsResult) {
-            setDirections(directionsResult);
-            const truckType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
+    if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) {
+      toast({
+        title: "Recurso Indisponível",
+        description: "Seu plano não inclui o cálculo de rotas e clima.",
+        variant: "destructive"
+      });
+      setIsFetchingInfo(false);
+      return;
+    }
 
-            if (truckType) {
-                let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
-                // Fallback: If no specific base config, find any config for this truck type.
-                if (!costConfig) {
-                    costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
-                }
+    try {
+      const [directionsResult, weatherResult] = await Promise.all([
+        getDirectionsAction(startLocation, deliveryLocation),
+        getWeatherForecastAction(deliveryLocation, rentalDate),
+      ]);
+      if (directionsResult) {
+        setDirections(directionsResult);
+        const truckType = account?.truckTypes.find(t => t.name.toLowerCase().includes('poliguindaste'));
 
-                const costPerKm = costConfig?.value || 0;
-                
-                if (costPerKm > 0) {
-                    setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm); // Ida e volta
-                } else {
-                    setTravelCost(0);
-                }
-            } else {
-                setTravelCost(0);
-            }
+        if (truckType) {
+          let costConfig = account?.operationalCosts.find(c => c.baseId === selectedBaseId && c.truckTypeId === truckType.id);
+          if (!costConfig) {
+            costConfig = account?.operationalCosts.find(c => c.truckTypeId === truckType.id);
           }
-          if (weatherResult) {
-              setWeather(weatherResult);
+
+          const costPerKm = costConfig?.value || 0;
+
+          if (costPerKm > 0) {
+            setTravelCost((directionsResult.distanceMeters / 1000) * 2 * costPerKm);
+          } else {
+            setTravelCost(0);
           }
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsFetchingInfo(false);
+        } else {
+          setTravelCost(0);
         }
-      } else {
-          setDirections(null);
-          setWeather(null);
-          setTravelCost(null);
       }
-    };
-
-    fetchRouteInfo();
-  }, [startLocation, deliveryLocation, rentalDate, account, selectedBaseId]);
+      if (weatherResult) {
+        setWeather(weatherResult);
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Erro",
+        description: "Falha ao calcular rota e clima.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsFetchingInfo(false);
+    }
+  };
 
 
   const handleBaseSelect = (baseId: string) => {
     setSelectedBaseId(baseId);
     const selectedBase = account?.bases?.find(b => b.id === baseId);
     if (selectedBase) {
-        setStartAddress(selectedBase.address);
-        if (selectedBase.latitude && selectedBase.longitude) {
-            setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
-        } else {
-            setStartLocation(null); 
-            if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-                geocodeAddress(selectedBase.address).then(location => {
-                    if (location) {
-                        setStartLocation({ lat: location.lat, lng: location.lng });
-                    }
-                });
+      setStartAddress(selectedBase.address);
+      if (selectedBase.latitude && selectedBase.longitude) {
+        setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
+      } else {
+        setStartLocation(null);
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
+          geocodeAddress(selectedBase.address).then(location => {
+            if (location) {
+              setStartLocation({ lat: location.lat, lng: location.lng });
             }
+          });
         }
+      }
     }
   };
-  
+
   const handleStartLocationSelect = (selectedLocation: Location) => {
     setStartLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setStartAddress(selectedLocation.address);
     setSelectedBaseId(undefined); // Clear base selection if custom address is chosen
   };
-  
+
   const handleStartAddressChange = (newAddress: string) => {
     setStartAddress(newAddress);
     setStartLocation(null);
     setSelectedBaseId(undefined); // Clear base selection if custom address is chosen
   }
-  
+
   const handleDeliveryLocationSelect = (selectedLocation: Location) => {
     setDeliveryLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setDeliveryAddress(selectedLocation.address);
   };
-  
+
   const handleDeliveryAddressChange = (newAddress: string) => {
     setDeliveryAddress(newAddress);
     setDeliveryLocation(null);
@@ -268,69 +288,69 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
 
   const handleFormAction = (formData: FormData) => {
     startTransition(async () => {
-        if (!accountId) {
-            toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
-            return;
-        }
+      if (!accountId) {
+        toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
+        return;
+      }
 
-        const combineDateTime = (date: Date | undefined, time: string): string | undefined => {
-            if (!date || !time) return undefined;
-            const [hours, minutes] = time.split(':').map(Number);
-            return set(date, { hours, minutes }).toISOString();
-        };
+      const combineDateTime = (date: Date | undefined, time: string): string | undefined => {
+        if (!date || !time) return undefined;
+        const [hours, minutes] = time.split(':').map(Number);
+        return set(date, { hours, minutes }).toISOString();
+      };
 
-        const finalRentalDate = combineDateTime(rentalDate, rentalTime);
-        const finalReturnDate = combineDateTime(returnDate, returnTime);
-        
-        formData.set('id', rental.id);
-        if (selectedTruckId) formData.set('truckId', selectedTruckId);
-        formData.set('startAddress', startAddress);
-        if (startLocation) {
-          formData.set('startLatitude', String(startLocation.lat));
-          formData.set('startLongitude', String(startLocation.lng));
-        }
+      const finalRentalDate = combineDateTime(rentalDate, rentalTime);
+      const finalReturnDate = combineDateTime(returnDate, returnTime);
 
-        formData.set('deliveryAddress', deliveryAddress);
-        if (deliveryMapsLink) {
-            formData.set('deliveryGoogleMapsLink', deliveryMapsLink);
-        }
-        if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
-        if (finalReturnDate) formData.set('returnDate', finalReturnDate);
-        if (deliveryLocation) {
-          formData.set('latitude', String(deliveryLocation.lat));
-          formData.set('longitude', String(deliveryLocation.lng));
-        }
-        formData.set('billingType', billingType);
-        formData.set('value', String(value));
-        formData.set('lumpSumValue', String(lumpSumValue));
-        formData.set('attachments', JSON.stringify(attachments));
-        formData.set('additionalCosts', JSON.stringify(additionalCosts));
-        formData.set('recurrence', JSON.stringify(recurrenceData));
+      formData.set('id', rental.id);
+      if (selectedTruckId) formData.set('truckId', selectedTruckId);
+      formData.set('startAddress', startAddress);
+      if (startLocation) {
+        formData.set('startLatitude', String(startLocation.lat));
+        formData.set('startLongitude', String(startLocation.lng));
+      }
 
-        const boundAction = updateRentalAction.bind(null, accountId);
-        const result = await boundAction(null, formData);
+      formData.set('deliveryAddress', deliveryAddress);
+      if (deliveryMapsLink) {
+        formData.set('deliveryGoogleMapsLink', deliveryMapsLink);
+      }
+      if (finalRentalDate) formData.set('rentalDate', finalRentalDate);
+      if (finalReturnDate) formData.set('returnDate', finalReturnDate);
+      if (deliveryLocation) {
+        formData.set('latitude', String(deliveryLocation.lat));
+        formData.set('longitude', String(deliveryLocation.lng));
+      }
+      formData.set('billingType', billingType);
+      formData.set('value', String(value));
+      formData.set('lumpSumValue', String(lumpSumValue));
+      formData.set('attachments', JSON.stringify(attachments));
+      formData.set('additionalCosts', JSON.stringify(additionalCosts));
+      formData.set('recurrence', JSON.stringify(recurrenceData));
 
-        if (result?.errors) {
-            setErrors(result.errors);
-             const errorMessages = Object.values(result.errors).flat().join(' ');
-             toast({
-                title: "Erro de Validação",
-                description: errorMessages,
-                variant: "destructive"
-             })
-        } else if (result?.message && result.message !== 'success') {
-            toast({ title: "Erro", description: result.message, variant: "destructive"});
-        } else {
-            toast({ title: "Sucesso!", description: "OS atualizada."});
-            router.push('/os');
-        }
+      const boundAction = updateRentalAction.bind(null, accountId);
+      const result = await boundAction(null, formData);
+
+      if (result?.errors) {
+        setErrors(result.errors);
+        const errorMessages = Object.values(result.errors).flat().join(' ');
+        toast({
+          title: "Erro de Validação",
+          description: errorMessages,
+          variant: "destructive"
+        })
+      } else if (result?.message && result.message !== 'success') {
+        toast({ title: "Erro", description: result.message, variant: "destructive" });
+      } else {
+        toast({ title: "Sucesso!", description: "OS atualizada." });
+        router.push('/os');
+      }
     });
   };
-  
+
   const handleAttachmentUploaded = (newAttachment: Attachment) => {
     setAttachments(prev => [...prev, newAttachment]);
   };
-  
+
   const handleRemoveAttachment = (attachmentToRemove: Attachment) => {
     setAttachments(prev => prev.filter(att => att.url !== attachmentToRemove.url));
   };
@@ -338,57 +358,57 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
   const handlePriceSelection = (selectedPriceId: string) => {
     setPriceId(selectedPriceId);
     const selectedPrice = account.rentalPrices?.find(p => p.id === selectedPriceId);
-    if(selectedPrice) {
-        setValue(selectedPrice.value);
-        setDisplayValue(formatCurrencyForInput((selectedPrice.value * 100).toString()));
+    if (selectedPrice) {
+      setValue(selectedPrice.value);
+      setDisplayValue(formatCurrencyForInput((selectedPrice.value * 100).toString()));
     }
   }
-  
+
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     const cents = parseInt(rawValue, 10) || 0;
     setValue(cents / 100);
     setDisplayValue(formatCurrencyForInput(rawValue));
   }
-  
+
   const handleLumpSumValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     const cents = parseInt(rawValue, 10) || 0;
     setLumpSumValue(cents / 100);
     setDisplayLumpSumValue(formatCurrencyForInput(rawValue));
   }
-  
+
   const handleAccordionChange = (value: string) => {
     const newBillingType = value === 'lump-sum' ? 'lumpSum' : 'perDay';
     setBillingType(newBillingType);
     if (newBillingType === 'perDay') {
-        setLumpSumValue(0);
-        setDisplayLumpSumValue('');
+      setLumpSumValue(0);
+      setDisplayLumpSumValue('');
     } else {
-        setValue(0);
-        setDisplayValue('');
-        setPriceId(undefined);
+      setValue(0);
+      setDisplayValue('');
+      setPriceId(undefined);
     }
   };
 
 
   return (
     <form action={handleFormAction} className="space-y-6">
-        <input type="hidden" name="clientId" value={rental.clientId} />
-        <input type="hidden" name="dumpsterIds" value={JSON.stringify(rental.dumpsterIds)} />
+      <input type="hidden" name="clientId" value={rental.clientId} />
+      <input type="hidden" name="dumpsterIds" value={JSON.stringify(rental.dumpsterIds)} />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-            <Label>Caçamba(s)</Label>
-            <Input value={(rental.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ')} disabled />
+          <Label>Caçamba(s)</Label>
+          <Input value={(rental.dumpsters || []).map(d => `${d.name} (${d.size}m³)`).join(', ')} disabled />
         </div>
 
         <div className="space-y-2">
-            <Label>Cliente</Label>
-            <Input value={rental.client?.name} disabled />
+          <Label>Cliente</Label>
+          <Input value={rental.client?.name} disabled />
         </div>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="assignedTo">Designar para</Label>
@@ -415,135 +435,153 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
           </Select>
         </div>
       </div>
-      
-       <div className="p-4 border rounded-md space-y-4 bg-card relative">
+
+      <div className="p-4 border rounded-md space-y-4 bg-card relative">
         {(account?.bases?.length ?? 0) > 0 && (
-            <div className="space-y-2">
-                <Label htmlFor="base-select" className="text-muted-foreground">Endereço de Partida</Label>
-                <Select onValueChange={handleBaseSelect} value={selectedBaseId}>
-                    <SelectTrigger id="base-select">
-                        <SelectValue placeholder="Selecione uma base de partida" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {account?.bases?.map(base => (
-                            <SelectItem key={base.id} value={base.id}>{base.name} - {base.address}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="base-select" className="text-muted-foreground">Endereço de Partida</Label>
+            <Select onValueChange={handleBaseSelect} value={selectedBaseId}>
+              <SelectTrigger id="base-select">
+                <SelectValue placeholder="Selecione uma base de partida" />
+              </SelectTrigger>
+              <SelectContent>
+                {account?.bases?.map(base => (
+                  <SelectItem key={base.id} value={base.id}>{base.name} - {base.address}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
         <Accordion type="single" collapsible className="w-full" defaultValue="">
-             <AccordionItem value="custom-address" className="border-b-0">
-                <div className="flex justify-between items-center w-full">
-                  <AccordionTrigger className="text-sm hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground flex-grow">
-                      <span className="font-normal">{ (account?.bases?.length ?? 0) > 0 ? "Ou digite um endereço de partida personalizado" : "Endereço de Partida" }</span>
-                  </AccordionTrigger>
-                  <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
-                </div>
-                <AccordionContent className="pt-4 space-y-2">
-                    <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} />
-                    {errors?.startAddress && (
-                        <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
-                    )}
-                </AccordionContent>
-             </AccordionItem>
+          <AccordionItem value="custom-address" className="border-b-0">
+            <div className="flex justify-between items-center w-full">
+              <AccordionTrigger className="text-sm hover:no-underline p-0 justify-start [&>svg]:ml-1 data-[state=closed]:text-muted-foreground flex-grow">
+                <span className="font-normal">{(account?.bases?.length ?? 0) > 0 ? "Ou digite um endereço de partida personalizado" : "Endereço de Partida"}</span>
+              </AccordionTrigger>
+              <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
+            </div>
+            <AccordionContent className="pt-4 space-y-2">
+              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} enableSuggestions={enableAddressSuggestions} />
+              {errors?.startAddress && (
+                <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
+              )}
+            </AccordionContent>
+          </AccordionItem>
         </Accordion>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-            <Label htmlFor="address-input">Endereço de Entrega</Label>
-            <Dialog>
-                <DialogTrigger asChild>
-                    <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Link do Google Maps</DialogTitle>
-                        <DialogDescription>
-                            Cole o link de compartilhamento do Google Maps para o endereço de destino. Isso garantirá a localização mais precisa.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                        <Label htmlFor="delivery-maps-link-input">Link</Label>
-                        <Input 
-                            id="delivery-maps-link-input"
-                            value={deliveryMapsLink}
-                            onChange={(e) => setDeliveryMapsLink(e.target.value)}
-                            placeholder="https://maps.app.goo.gl/..."
-                        />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button">Salvar</Button>
-                        </DialogClose>
-                    </DialogFooter>
-                </DialogContent>
-              </Dialog>
+          <Label htmlFor="address-input">Endereço de Entrega</Label>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Link do Google Maps</DialogTitle>
+                <DialogDescription>
+                  Cole o link de compartilhamento do Google Maps para o endereço de destino. Isso garantirá a localização mais precisa.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="delivery-maps-link-input">Link</Label>
+                <Input
+                  id="delivery-maps-link-input"
+                  value={deliveryMapsLink}
+                  onChange={(e) => setDeliveryMapsLink(e.target.value)}
+                  placeholder="https://maps.app.goo.gl/..."
+                />
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button">Salvar</Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
         <AddressInput
-            id="address-input"
-            value={deliveryAddress}
-            onInputChange={handleDeliveryAddressChange}
-            onLocationSelect={handleDeliveryLocationSelect}
-            initialLocation={deliveryLocation}
+          id="address-input"
+          value={deliveryAddress}
+          onInputChange={handleDeliveryAddressChange}
+          onLocationSelect={handleDeliveryLocationSelect}
+          initialLocation={deliveryLocation}
+          enableSuggestions={enableAddressSuggestions}
         />
+        <div className="flex items-center gap-2 mt-2">
+          <Checkbox
+            id="enable-suggestions-edit-rental"
+            checked={enableAddressSuggestions}
+            onCheckedChange={handleSuggestionsToggle}
+          />
+          <Label htmlFor="enable-suggestions-edit-rental" className="text-sm font-normal text-muted-foreground cursor-pointer">
+            Sugestões de endereço
+          </Label>
+        </div>
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
-      
-       {isFetchingInfo && (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Spinner size="small" />
-          Calculando rota e previsão do tempo...
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={fetchRouteInfo}
+        disabled={isFetchingInfo || !startLocation || !deliveryLocation}
+        className="w-full"
+      >
+        {isFetchingInfo ? (
+          <><Spinner size="small" className="mr-2" /> Calculando...</>
+        ) : (
+          <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
+        )}
+      </Button>
+
+      {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && deliveryLocation && !isFetchingInfo && (
+        <div className="relative">
+          <Alert variant="info" className="flex-grow flex flex-col gap-4">
+            <AlertTitle>Informações da Rota e Clima</AlertTitle>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              {directions && (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Route className="h-5 w-5" />
+                    <span className="font-bold">{directions.distance}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="h-5 w-5" />
+                    <span className="font-bold">{directions.duration}</span>
+                  </div>
+                </>
+              )}
+              {weather && (
+                <div className="text-center">
+                  <div className="flex items-center gap-2 text-sm">
+                    <WeatherIcon condition={weather.condition} />
+                    <span className="font-bold">{weather.tempC}°C</span>
+                  </div>
+                </div>
+              )}
+              {(travelCost !== null && travelCost > 0) && (
+                <div className="flex items-center gap-2 text-sm">
+                  <DollarSign className="h-5 w-5" />
+                  <span className="font-bold">{formatCurrencyForDisplay(travelCost)} (ida/volta)</span>
+                </div>
+              )}
+            </div>
+            <Button asChild variant="outline" size="sm" className="w-full mt-auto border-primary/50">
+              <Link
+                href={`https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${deliveryLocation.lat},${deliveryLocation.lng}`}
+                target="_blank"
+                className="flex items-center gap-2"
+              >
+                <MapIcon className="h-4 w-4" />
+                <span>Ver Trajeto no Mapa</span>
+              </Link>
+            </Button>
+          </Alert>
         </div>
       )}
-      
-       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && deliveryLocation && !isFetchingInfo && (
-          <div className="relative">
-             <Alert variant="info" className="flex-grow flex flex-col gap-4">
-               <AlertTitle>Informações da Rota e Clima</AlertTitle>
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                {directions && (
-                    <>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Route className="h-5 w-5" />
-                        <span className="font-bold">{directions.distance}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-5 w-5" />
-                        <span className="font-bold">{directions.duration}</span>
-                    </div>
-                    </>
-                )}
-                 {weather && (
-                    <div className="text-center">
-                    <div className="flex items-center gap-2 text-sm">
-                        <WeatherIcon condition={weather.condition} />
-                        <span className="font-bold">{weather.tempC}°C</span>
-                    </div>
-                    </div>
-                )}
-                 {(travelCost !== null && travelCost > 0) && (
-                    <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="h-5 w-5" />
-                        <span className="font-bold">{formatCurrencyForDisplay(travelCost)} (ida/volta)</span>
-                    </div>
-                 )}
-                </div>
-                 <Button asChild variant="outline" size="sm" className="w-full mt-auto border-primary/50">
-                    <Link
-                        href={`https://www.google.com/maps/dir/?api=1&origin=${startLocation.lat},${startLocation.lng}&destination=${deliveryLocation.lat},${deliveryLocation.lng}`}
-                        target="_blank"
-                        className="flex items-center gap-2"
-                    >
-                        <MapIcon className="h-4 w-4" />
-                        <span>Ver Trajeto no Mapa</span>
-                    </Link>
-                </Button>
-            </Alert>
-          </div>
-        )}
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Data de Entrega</Label>
@@ -571,7 +609,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                 />
               </PopoverContent>
             </Popover>
-             <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-full sm:w-auto" />
+            <Input type="time" value={rentalTime} onChange={(e) => setRentalTime(e.target.value)} className="w-full sm:w-auto" />
           </div>
           {errors?.rentalDate && <p className="text-sm font-medium text-destructive">{errors.rentalDate[0]}</p>}
         </div>
@@ -605,32 +643,32 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
             </Popover>
             <Input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="w-full sm:w-auto" />
           </div>
-           {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
+          {errors?.returnDate && <p className="text-sm font-medium text-destructive">{errors.returnDate[0]}</p>}
         </div>
       </div>
 
       {!recurrenceData.enabled || recurrenceData.billingType !== 'monthly' ? (
         <Accordion type="single" collapsible defaultValue={billingType} className="w-full" onValueChange={handleAccordionChange}>
-            <AccordionItem value="perDay">
+          <AccordionItem value="perDay">
             <AccordionTrigger>Cobrar por Diária</AccordionTrigger>
             <AccordionContent>
-                <div className="p-4 border rounded-md space-y-4 bg-card">
+              <div className="p-4 border rounded-md space-y-4 bg-card">
                 <div className="space-y-2">
-                    {(account.rentalPrices && account.rentalPrices.length > 0) ? (
+                  {(account.rentalPrices && account.rentalPrices.length > 0) ? (
                     <div className="flex flex-col sm:flex-row gap-2">
-                        <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
+                      <Select onValueChange={handlePriceSelection} value={priceId} disabled={billingType !== 'perDay'}>
                         <SelectTrigger>
-                            <SelectValue placeholder="Selecione um preço" />
+                          <SelectValue placeholder="Selecione um preço" />
                         </SelectTrigger>
                         <SelectContent>
-                            {account.rentalPrices.map(p => (
+                          {account.rentalPrices.map(p => (
                             <SelectItem key={p.id} value={p.id}>
-                                {p.name} ({formatCurrencyForDisplay(p.value)})
+                              {p.name} ({formatCurrencyForDisplay(p.value)})
                             </SelectItem>
-                            ))}
+                          ))}
                         </SelectContent>
-                        </Select>
-                        <Input
+                      </Select>
+                      <Input
                         id="value"
                         name="value_display"
                         value={displayValue}
@@ -639,80 +677,80 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                         required={billingType === 'perDay'}
                         className="sm:w-1/3 text-right"
                         disabled={billingType !== 'perDay'}
-                        />
+                      />
                     </div>
-                    ) : (
+                  ) : (
                     <Input
-                        id="value_display"
-                        name="value_display"
-                        value={displayValue}
-                        onChange={handleValueChange}
-                        placeholder="R$ 0,00"
-                        required={billingType === 'perDay'}
-                        className="text-right"
-                        disabled={billingType !== 'perDay'}
+                      id="value_display"
+                      name="value_display"
+                      value={displayValue}
+                      onChange={handleValueChange}
+                      placeholder="R$ 0,00"
+                      required={billingType === 'perDay'}
+                      className="text-right"
+                      disabled={billingType !== 'perDay'}
                     />
-                    )}
+                  )}
                 </div>
                 {errors?.value && <p className="text-sm font-medium text-destructive">{errors.value[0]}</p>}
-                </div>
+              </div>
             </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="lump-sum">
+          </AccordionItem>
+          <AccordionItem value="lump-sum">
             <AccordionTrigger>Cobrar por Empreitada (Valor Fechado)</AccordionTrigger>
             <AccordionContent>
-                <div className="p-4 border rounded-md space-y-4 bg-card">
+              <div className="p-4 border rounded-md space-y-4 bg-card">
                 <Label htmlFor="lumpSumValue">Valor Total do Serviço</Label>
                 <Input
-                    id="lumpSumValue"
-                    name="lumpSumValue_display"
-                    value={displayLumpSumValue}
-                    onChange={handleLumpSumValueChange}
-                    placeholder="R$ 0,00"
-                    required={billingType === 'lumpSum'}
-                    className="text-right"
-                    disabled={billingType !== 'lumpSum'}
+                  id="lumpSumValue"
+                  name="lumpSumValue_display"
+                  value={displayLumpSumValue}
+                  onChange={handleLumpSumValueChange}
+                  placeholder="R$ 0,00"
+                  required={billingType === 'lumpSum'}
+                  className="text-right"
+                  disabled={billingType !== 'lumpSum'}
                 />
                 {errors?.lumpSumValue && <p className="text-sm font-medium text-destructive">{errors.lumpSumValue[0]}</p>}
-                </div>
+              </div>
             </AccordionContent>
-            </AccordionItem>
+          </AccordionItem>
         </Accordion>
       ) : null}
-      
-       <div className="p-4 border rounded-md space-y-4 bg-card">
+
+      <div className="p-4 border rounded-md space-y-4 bg-card">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-destructive" />
-                <span className="font-medium">Custo Total da Operação:</span>
-                <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
-            </div>
-            <CostsDialog 
-              costs={additionalCosts} 
-              onSave={setAdditionalCosts} 
-            >
-              <Button type="button" variant="outline">Adicionar Custos</Button>
-            </CostsDialog>
+          <div className="flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 text-destructive" />
+            <span className="font-medium">Custo Total da Operação:</span>
+            <span className="font-bold text-destructive">{formatCurrencyForDisplay(totalOperationCost)}</span>
+          </div>
+          <CostsDialog
+            costs={additionalCosts}
+            onSave={setAdditionalCosts}
+          >
+            <Button type="button" variant="outline">Adicionar Custos</Button>
+          </CostsDialog>
         </div>
         {(totalRentalValue > 0 || totalOperationCost > 0) && (
-            <>
+          <>
             <Separator />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm pt-2 gap-2 sm:gap-4">
-                <div className="flex items-center gap-2">
-                    {profit >= 0 ? 
-                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                        <TrendingDown className="h-4 w-4 text-red-600" />
-                    }
-                    <span className="font-medium">Lucro Previsto:</span>
-                    <span className={cn(
-                        "font-bold",
-                        profit >= 0 ? "text-green-600" : "text-red-600"
-                    )}>
-                        {formatCurrencyForDisplay(profit)}
-                    </span>
-                </div>
+              <div className="flex items-center gap-2">
+                {profit >= 0 ?
+                  <TrendingUp className="h-4 w-4 text-green-600" /> :
+                  <TrendingDown className="h-4 w-4 text-red-600" />
+                }
+                <span className="font-medium">Lucro Previsto:</span>
+                <span className={cn(
+                  "font-bold",
+                  profit >= 0 ? "text-green-600" : "text-red-600"
+                )}>
+                  {formatCurrencyForDisplay(profit)}
+                </span>
+              </div>
             </div>
-            </>
+          </>
         )}
       </div>
 
@@ -724,34 +762,34 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
 
       {canUseAttachments && accountId && (
         <div className="p-4 border rounded-md space-y-2 bg-card">
-            <AttachmentsUploader 
-                accountId={accountId}
-                attachments={attachments || []}
-                onAttachmentUploaded={handleAttachmentUploaded}
-                onAttachmentDeleted={handleRemoveAttachment}
-                uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
-            />
+          <AttachmentsUploader
+            accountId={accountId}
+            attachments={attachments || []}
+            onAttachmentUploaded={handleAttachmentUploaded}
+            onAttachmentDeleted={handleRemoveAttachment}
+            uploadPath={`accounts/${accountId}/rentals/${rental.id}/attachments`}
+          />
         </div>
       )}
 
       {recurrenceData.enabled && recurrenceData.billingType === 'monthly' && (
         <div className="p-4 border rounded-md space-y-2 bg-card">
-            <Label htmlFor="monthlyValue">Valor Mensal</Label>
-            <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
-                <Input
-                    id="monthlyValue"
-                    name="monthlyValue_display"
-                    value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
-                    onChange={(e) => {
-                        const rawValue = e.target.value.replace(/\D/g, '');
-                        const cents = parseInt(rawValue, 10) || 0;
-                        setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
-                    }}
-                    placeholder="0,00"
-                    className="pl-8 text-right font-bold"
-                />
-            </div>
+          <Label htmlFor="monthlyValue">Valor Mensal</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+            <Input
+              id="monthlyValue"
+              name="monthlyValue_display"
+              value={formatCurrencyForInput((recurrenceData.monthlyValue || 0).toString())}
+              onChange={(e) => {
+                const rawValue = e.target.value.replace(/\D/g, '');
+                const cents = parseInt(rawValue, 10) || 0;
+                setRecurrenceData(prev => ({ ...prev, monthlyValue: cents }));
+              }}
+              placeholder="0,00"
+              className="pl-8 text-right font-bold"
+            />
+          </div>
         </div>
       )}
 
@@ -766,7 +804,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
           {isPending ? <Spinner size="small" /> : 'Salvar Alterações'}
         </Button>
         <Button asChild variant="outline" size="lg">
-            <Link href="/os">Cancelar</Link>
+          <Link href="/os">Cancelar</Link>
         </Button>
       </div>
     </form>

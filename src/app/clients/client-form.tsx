@@ -15,6 +15,7 @@ import { AddressInput } from '@/components/address-input';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Link2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 const initialState = {
@@ -35,11 +36,26 @@ export function ClientForm() {
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
-  
+
   const [address, setAddress] = useState('');
   const [location, setLocation] = useState<Omit<Location, 'address'> | null>(null);
   const [mapsLink, setMapsLink] = useState('');
-  
+
+  // Address suggestions toggle with localStorage persistence
+  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
+    }
+    return false;
+  });
+
+  const handleSuggestionsToggle = (checked: boolean) => {
+    setEnableAddressSuggestions(checked);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('addressSuggestionsEnabled', String(checked));
+    }
+  };
+
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setAddress(selectedLocation.address);
@@ -54,15 +70,15 @@ export function ClientForm() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    
+
     // Ensure the latest address from state is included
     formData.set('address', address);
-    if(location) {
+    if (location) {
       formData.set('latitude', String(location.lat));
       formData.set('longitude', String(location.lng));
     }
     if (mapsLink) {
-        formData.set('googleMapsLink', mapsLink);
+      formData.set('googleMapsLink', mapsLink);
     }
 
     startTransition(async () => {
@@ -72,21 +88,21 @@ export function ClientForm() {
       }
       const boundAction = createClient.bind(null, accountId);
       const result = await boundAction(initialState, formData);
-      
+
       if (result.errors) {
-         toast({
-            title: "Erro de Validação",
-            description: Object.values(result.errors).flat().join(' '),
-            variant: "destructive"
-         });
-         setState(result);
+        toast({
+          title: "Erro de Validação",
+          description: Object.values(result.errors).flat().join(' '),
+          variant: "destructive"
+        });
+        setState(result);
       } else if (result.message === 'error') {
-          toast({
-            title: "Erro ao Salvar",
-            description: result.error,
-            variant: "destructive",
-          });
-          setState(result);
+        toast({
+          title: "Erro ao Salvar",
+          description: result.error,
+          variant: "destructive",
+        });
+        setState(result);
       }
     });
   };
@@ -107,55 +123,66 @@ export function ClientForm() {
         <Input id="phone" name="phone" placeholder="(11) 98765-4321" required />
         {state?.errors?.phone && <p className="text-sm font-medium text-destructive">{state.errors.phone[0]}</p>}
       </div>
-       <div className="space-y-2">
+      <div className="space-y-2">
         <Label htmlFor="cpfCnpj">CPF/CNPJ (Opcional)</Label>
         <Input id="cpfCnpj" name="cpfCnpj" placeholder="00.000.000/0000-00" />
         {state?.errors?.cpfCnpj && <p className="text-sm font-medium text-destructive">{state.errors.cpfCnpj[0]}</p>}
       </div>
-       <div className="space-y-2">
+      <div className="space-y-2">
         <Label htmlFor="email">E-mail</Label>
         <Input id="email" name="email" type="email" placeholder="contato@joao.com" />
         {state?.errors?.email && <p className="text-sm font-medium text-destructive">{state.errors.email[0]}</p>}
       </div>
       <div className="space-y-2">
-          <div className="flex items-center justify-between">
-              <Label htmlFor="address-input">Endereço Principal</Label>
-              <Dialog>
-                <DialogTrigger asChild>
-                    <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Link do Google Maps</DialogTitle>
-                        <DialogDescription>
-                            Cole o link de compartilhamento do Google Maps para este endereço. Isso garantirá a localização mais precisa.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                        <Label htmlFor="maps-link-input">Link</Label>
-                        <Input 
-                            id="maps-link-input"
-                            value={mapsLink}
-                            onChange={(e) => setMapsLink(e.target.value)}
-                            placeholder="https://maps.app.goo.gl/..."
-                        />
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button type="button">Salvar</Button>
-                        </DialogClose>
-                    </DialogFooter>
-                </DialogContent>
-              </Dialog>
-          </div>
-          <AddressInput
-              id="address-input"
-              value={address}
-              onLocationSelect={handleLocationSelect}
-              onInputChange={handleAddressChange}
-              initialLocation={location}
+        <div className="flex items-center justify-between">
+          <Label htmlFor="address-input">Endereço Principal</Label>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="link" size="sm" type="button" className="text-xs h-auto p-0">Inserir link do google maps</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Link do Google Maps</DialogTitle>
+                <DialogDescription>
+                  Cole o link de compartilhamento do Google Maps para este endereço. Isso garantirá a localização mais precisa.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="maps-link-input">Link</Label>
+                <Input
+                  id="maps-link-input"
+                  value={mapsLink}
+                  onChange={(e) => setMapsLink(e.target.value)}
+                  placeholder="https://maps.app.goo.gl/..."
+                />
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button">Salvar</Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <AddressInput
+          id="address-input"
+          value={address}
+          onLocationSelect={handleLocationSelect}
+          onInputChange={handleAddressChange}
+          initialLocation={location}
+          enableSuggestions={enableAddressSuggestions}
+        />
+        <div className="flex items-center gap-2 mt-2">
+          <Checkbox
+            id="enable-suggestions-client"
+            checked={enableAddressSuggestions}
+            onCheckedChange={handleSuggestionsToggle}
           />
-          {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
+          <Label htmlFor="enable-suggestions-client" className="text-sm font-normal text-muted-foreground cursor-pointer">
+            Sugestões de endereço
+          </Label>
+        </div>
+        {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor="observations">Observações</Label>
@@ -163,14 +190,13 @@ export function ClientForm() {
         {state?.errors?.observations && <p className="text-sm font-medium text-destructive">{state.errors.observations[0]}</p>}
       </div>
 
-       <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
-          <SubmitButton isPending={isPending} />
-          <Button asChild type="button" variant="outline">
-            <Link href="/clients">Cancelar</Link>
-          </Button>
-        </div>
+      <div className="flex flex-col sm:flex-row-reverse gap-2 pt-4">
+        <SubmitButton isPending={isPending} />
+        <Button asChild type="button" variant="outline">
+          <Link href="/clients">Cancelar</Link>
+        </Button>
+      </div>
     </form>
   );
 }
 
-    
