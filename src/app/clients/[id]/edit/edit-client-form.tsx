@@ -30,7 +30,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 export function EditClientForm({ client }: { client: Client }) {
-  const { accountId } = useAuth();
+  const { accountId, userAccount } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
@@ -173,16 +173,18 @@ export function EditClientForm({ client }: { client: Client }) {
             initialLocation={location}
             enableSuggestions={enableAddressSuggestions}
           />
-          <div className="flex items-center gap-2 mt-2">
-            <Checkbox
-              id="enable-suggestions-edit-client"
-              checked={enableAddressSuggestions}
-              onCheckedChange={handleSuggestionsToggle}
-            />
-            <Label htmlFor="enable-suggestions-edit-client" className="text-sm font-normal text-muted-foreground cursor-pointer">
-              Sugestões de endereço
-            </Label>
-          </div>
+          {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+            <div className="flex items-center gap-2 mt-2">
+              <Checkbox
+                id="enable-suggestions-edit-client"
+                checked={enableAddressSuggestions}
+                onCheckedChange={handleSuggestionsToggle}
+              />
+              <Label htmlFor="enable-suggestions-edit-client" className="text-sm font-normal text-muted-foreground cursor-pointer">
+                Sugestões de endereço
+              </Label>
+            </div>
+          )}
           {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
         </div>
         <div className="space-y-2">

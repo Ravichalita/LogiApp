@@ -160,23 +160,25 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
 
   useEffect(() => {
     if (!startLocation && startAddress) {
+      if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
       geocodeAddress(startAddress).then(location => {
         if (location) {
           setStartLocation({ lat: location.lat, lng: location.lng });
         }
       });
     }
-  }, [startAddress, startLocation]);
+  }, [startAddress, startLocation, userAccount]);
 
   useEffect(() => {
     if (!destinationLocation && destinationAddress) {
+      if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
       geocodeAddress(destinationAddress).then(location => {
         if (location) {
           setDestinationLocation({ lat: location.lat, lng: location.lng });
         }
       });
     }
-  }, [destinationAddress, destinationLocation]);
+  }, [destinationAddress, destinationLocation, userAccount]);
 
   // Manual fetch route info function (no longer automatic)
   const fetchRouteInfo = async () => {
@@ -295,12 +297,14 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
         setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
       } else {
         setStartLocation(null);
-        // Trigger geocoding if coords are missing
-        geocodeAddress(selectedBase.address).then(location => {
-          if (location) {
-            setStartLocation({ lat: location.lat, lng: location.lng });
-          }
-        });
+        // Trigger geocoding if coords are missing AND permission is granted
+        if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
+          geocodeAddress(selectedBase.address).then(location => {
+            if (location) {
+              setStartLocation({ lat: location.lat, lng: location.lng });
+            }
+          });
+        }
       }
     }
   };
@@ -617,33 +621,37 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
             <MapDialog onLocationSelect={handleDestinationLocationSelect} address={destinationAddress} initialLocation={destinationLocation} />
           </div>
           <AddressInput id="destination-address-input" value={destinationAddress} onInputChange={handleDestinationAddressChange} onLocationSelect={handleDestinationLocationSelect} enableSuggestions={enableAddressSuggestions} />
-          <div className="flex items-center gap-2 mt-2">
-            <Checkbox
-              id="enable-suggestions-edit-op2"
-              checked={enableAddressSuggestions}
-              onCheckedChange={handleSuggestionsToggle}
-            />
-            <Label htmlFor="enable-suggestions-edit-op2" className="text-sm font-normal text-muted-foreground cursor-pointer">
-              Sugestões de endereço
-            </Label>
-          </div>
+          {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+            <div className="flex items-center gap-2 mt-2">
+              <Checkbox
+                id="enable-suggestions-edit-op2"
+                checked={enableAddressSuggestions}
+                onCheckedChange={handleSuggestionsToggle}
+              />
+              <Label htmlFor="enable-suggestions-edit-op2" className="text-sm font-normal text-muted-foreground cursor-pointer">
+                Sugestões de endereço
+              </Label>
+            </div>
+          )}
           {errors?.destinationAddress && <p className="text-sm font-medium text-destructive">{errors.destinationAddress[0]}</p>}
         </div>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={fetchRouteInfo}
-        disabled={isFetchingInfo || !startLocation || !destinationLocation}
-        className="w-full"
-      >
-        {isFetchingInfo ? (
-          <><Spinner size="small" className="mr-2" /> Calculando...</>
-        ) : (
-          <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
-        )}
-      </Button>
+      {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={fetchRouteInfo}
+          disabled={isFetchingInfo || !startLocation || !destinationLocation}
+          className="w-full"
+        >
+          {isFetchingInfo ? (
+            <><Spinner size="small" className="mr-2" /> Calculando...</>
+          ) : (
+            <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
+          )}
+        </Button>
+      )}
 
       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && destinationLocation && !isFetchingInfo && (
         <div className="relative">

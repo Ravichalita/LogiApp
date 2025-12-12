@@ -866,32 +866,36 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           onLocationSelect={handleDeliveryLocationSelect}
           enableSuggestions={enableAddressSuggestions}
         />
-        <div className="flex items-center gap-2 mt-2">
-          <Checkbox
-            id="enable-suggestions"
-            checked={enableAddressSuggestions}
-            onCheckedChange={handleSuggestionsToggle}
-          />
-          <Label htmlFor="enable-suggestions" className="text-sm font-normal text-muted-foreground cursor-pointer">
-            Sugestões de endereço
-          </Label>
-        </div>
+        {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+          <div className="flex items-center gap-2 mt-2">
+            <Checkbox
+              id="enable-suggestions"
+              checked={enableAddressSuggestions}
+              onCheckedChange={handleSuggestionsToggle}
+            />
+            <Label htmlFor="enable-suggestions" className="text-sm font-normal text-muted-foreground cursor-pointer">
+              Sugestões de endereço
+            </Label>
+          </div>
+        )}
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        onClick={fetchRouteInfo}
-        disabled={isFetchingInfo || !startLocation || !deliveryLocation}
-        className="w-full"
-      >
-        {isFetchingInfo ? (
-          <><Spinner size="small" className="mr-2" /> Calculando...</>
-        ) : (
-          <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
-        )}
-      </Button>
+      {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={fetchRouteInfo}
+          disabled={isFetchingInfo || !startLocation || !deliveryLocation}
+          className="w-full"
+        >
+          {isFetchingInfo ? (
+            <><Spinner size="small" className="mr-2" /> Calculando...</>
+          ) : (
+            <><Navigation className="mr-2 h-4 w-4" /> Calcular Rota e Previsão do Tempo</>
+          )}
+        </Button>
+      )}
 
       {(directions || weather || (travelCost !== null && travelCost > 0)) && startLocation && deliveryLocation && !isFetchingInfo && (
         <div className="relative">
