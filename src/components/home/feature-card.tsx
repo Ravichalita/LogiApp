@@ -16,8 +16,8 @@ export function FeatureCard({ title, icon, summary, description }: FeatureCardPr
     const [isExpanded, setIsExpanded] = useState(false);
 
     return (
-        <div className="flex flex-col items-center space-y-4 text-center p-6 rounded-lg transition-all duration-300 hover:bg-muted/30">
-            <div className="p-4 bg-primary/10 rounded-full transition-transform duration-300 hover:scale-110">
+        <div className="flex flex-col items-center space-y-4 text-center p-6 rounded-xl transition-all duration-300 hover:bg-muted/50 hover:shadow-lg border border-transparent hover:border-border/50 bg-card/50">
+            <div className="p-4 bg-primary/15 rounded-full transition-all duration-300 hover:scale-110 hover:bg-primary/25 shadow-sm">
                 {icon}
             </div>
             <h3 className="text-xl font-bold">{title}</h3>
