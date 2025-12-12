@@ -5,8 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { HeaderLogin } from "@/components/home/header-login";
 import { FeatureCard } from "@/components/home/feature-card";
-import { Truck, Calendar, PieChart, ShieldCheck, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Truck, Calendar, PieChart, ShieldCheck, ChevronDown } from "lucide-react";
 import { HoneycombAnimation } from "@/components/home/honeycomb-animation";
 
 export default function HomePage() {
@@ -30,20 +29,24 @@ export default function HomePage() {
 
             <main className="flex-grow">
                 {/* Hero Section */}
-                <section className="relative py-20 lg:py-32 overflow-hidden">
+                <section className="relative min-h-[calc(100vh-4rem)] lg:min-h-0 lg:py-32 overflow-hidden flex flex-col justify-center">
                     <HoneycombAnimation />
-                    <div className="container px-4 md:px-6 relative z-10">
+                    <div className="container px-4 md:px-6 relative z-10 flex-grow flex flex-col justify-center">
                         <div className="flex flex-col items-center space-y-4 text-center">
-                            <div className="space-y-2">
-                                <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none text-foreground dark:[text-shadow:_0_2px_8px_rgba(0,0,0,0.9)]">
-                                    Gestão Completa para Empresas de <br className="hidden md:inline" />
-                                    <span className="text-primary drop-shadow-sm">Limpa Fossa</span> e <span className="text-primary drop-shadow-sm">Locação de Caçambas</span>
+                            <div className="space-y-4">
+                                <h1 className="text-2xl font-bold tracking-tighter sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl/none text-foreground dark:[text-shadow:_0_2px_8px_rgba(0,0,0,0.9)]">
+                                    Gestão Completa para Empresas de <br className="hidden sm:inline" />
+                                    <span className="text-primary drop-shadow-sm">Limpa Fossa</span> e <br className="sm:hidden" /><span className="text-primary drop-shadow-sm">Locação de Caçambas</span>
                                 </h1>
-                                <p className="mx-auto max-w-[700px] text-foreground/80 md:text-xl dark:text-muted-foreground dark:[text-shadow:_0_1px_4px_rgba(0,0,0,0.6)]">
+                                <p className="mx-auto max-w-[700px] text-sm sm:text-base md:text-lg lg:text-xl text-foreground/80 dark:text-muted-foreground dark:[text-shadow:_0_1px_4px_rgba(0,0,0,0.6)] px-2">
                                     Elimine planilhas e otimize sua logística. Do agendamento do caminhão vácuo à retirada da caçamba, controle tudo em um só lugar.
                                 </p>
                             </div>
                         </div>
+                    </div>
+                    {/* Scroll Indicator - Mobile Only */}
+                    <div className="lg:hidden absolute bottom-8 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+                        <ChevronDown className="h-8 w-8 text-primary/70" />
                     </div>
                 </section>
 
