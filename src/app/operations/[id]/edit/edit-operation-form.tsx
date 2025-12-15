@@ -641,7 +641,15 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
               <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
             </div>
             <AccordionContent className="pt-4 space-y-2">
-              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} enableSuggestions={enableAddressSuggestions} />
+              <AddressInput
+                id="start-address-input"
+                value={startAddress}
+                onInputChange={handleStartAddressChange}
+                onLocationSelect={handleStartLocationSelect}
+                enableSuggestions={enableAddressSuggestions}
+                provider={account?.geocodingProvider || 'locationiq'}
+                disabled={userAccount?.permissions?.canUseGeocoding === false}
+              />
               {errors?.startAddress && (
                 <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
               )}
@@ -680,8 +688,16 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
               </DialogContent>
             </Dialog>
           </div>
-          <AddressInput id="destination-address-input" value={destinationAddress} onInputChange={handleDestinationAddressChange} onLocationSelect={handleDestinationLocationSelect} enableSuggestions={enableAddressSuggestions} />
-          {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+          <AddressInput
+            id="destination-address-input"
+            value={destinationAddress}
+            onInputChange={handleDestinationAddressChange}
+            onLocationSelect={handleDestinationLocationSelect}
+            enableSuggestions={enableAddressSuggestions}
+            provider={account?.geocodingProvider || 'locationiq'}
+            disabled={userAccount?.permissions?.canUseGeocoding === false}
+          />
+          {userAccount?.permissions?.canUseGeocoding !== false && (
             <div className="flex items-center gap-2 mt-2">
               <Checkbox
                 id="enable-suggestions-edit-op"
