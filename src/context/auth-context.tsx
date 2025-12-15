@@ -28,6 +28,7 @@ interface BeforeInstallPromptEvent extends Event {
 interface AuthContextType {
   user: User | null;
   userAccount: UserAccount | null;
+  account: Account | null;
   accountId: string | null;
   loading: boolean;
   logout: () => Promise<void>;
@@ -42,6 +43,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType>({
   user: null,
   userAccount: null,
+  account: null,
   accountId: null,
   loading: true,
   logout: async () => {},
@@ -384,6 +386,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const contextValue = {
     user,
     userAccount,
+    account,
     accountId,
     loading,
     logout,

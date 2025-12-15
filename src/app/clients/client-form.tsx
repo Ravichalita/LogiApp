@@ -32,7 +32,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
 }
 
 export function ClientForm() {
-  const { accountId, userAccount } = useAuth();
+  const { accountId, userAccount, account } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [state, setState] = useState<any>(initialState);
   const { toast } = useToast();
