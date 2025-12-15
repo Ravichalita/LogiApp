@@ -129,8 +129,16 @@ export const AccountSchema = z.object({
   financialCategories: z.array(TransactionCategorySchema).optional().default([]),
   recurringTransactionProfiles: z.array(RecurringTransactionProfileSchema).optional().default([]),
   geocodingProvider: z.enum(['google', 'locationiq']).optional().default('locationiq'),
+  googleMapsApiKey: z.string().optional(),
+  locationIqToken: z.string().optional(),
 });
 export type Account = z.infer<typeof AccountSchema>;
+
+export const UpdateMapSettingsSchema = z.object({
+  geocodingProvider: z.enum(['google', 'locationiq']),
+  googleMapsApiKey: z.string().optional(),
+  locationIqToken: z.string().optional(),
+});
 
 export const UpdateBackupSettingsSchema = z.object({
   backupPeriodicityDays: z.coerce.number().int().min(1, "A periodicidade deve ser de no mínimo 1 dia."),
