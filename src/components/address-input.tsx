@@ -19,7 +19,7 @@ interface AddressInputProps {
   className?: string;
   value: string;
   initialLocation?: { lat: number; lng: number } | null;
-  enableSuggestions?: boolean; // default: false
+  enableSuggestions?: boolean; // default: true (controlled by account settings mostly)
   provider?: 'google' | 'locationiq';
   disabled?: boolean;
 }
@@ -45,11 +45,18 @@ export function AddressInput({
   value,
   onKeyDown,
   initialLocation,
-  enableSuggestions = false,
+  enableSuggestions: propEnableSuggestions,
   provider: propProvider,
   disabled = false,
 }: AddressInputProps) {
   const { account } = useAuth();
+
+  // Determine if suggestions should be enabled:
+  // 1. Must not be disabled prop
+  // 2. Account settings "isGeocodingEnabled" (defaults to true)
+  // 3. Prop enableSuggestions (defaults to true if undefined)
+  const isGloballyEnabled = account?.isGeocodingEnabled ?? true;
+  const enableSuggestions = !disabled && isGloballyEnabled && (propEnableSuggestions ?? true);
 
   // Determine effective provider and keys
   // Priority: 1. Account Settings 2. Prop (fallback) 3. Default ('locationiq')
@@ -77,11 +84,11 @@ export function AddressInput({
     libraries: ['places', 'geocoding'],
   });
 
-  const shouldRenderGoogle = provider === 'google' && enableSuggestions && !disabled && !!googleMapsApiKey;
+  const shouldRenderGoogle = provider === 'google' && enableSuggestions && !!googleMapsApiKey;
 
   // LocationIQ Effect
   useEffect(() => {
-    if (disabled || !enableSuggestions || provider !== 'locationiq' || !debouncedSearchTerm || debouncedSearchTerm.length < 3) {
+    if (!enableSuggestions || provider !== 'locationiq' || !debouncedSearchTerm || debouncedSearchTerm.length < 3) {
       setSuggestions([]);
       // Only close if we are not typing anymore (handled by other logic? No, close if criteria not met)
       if (debouncedSearchTerm.length < 3) setIsOpen(false);
@@ -147,7 +154,7 @@ export function AddressInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onInputChange?.(e.target.value);
-    if (provider === 'locationiq' && enableSuggestions && !disabled) {
+    if (provider === 'locationiq' && enableSuggestions) {
         setIsOpen(true);
     }
   }
@@ -163,8 +170,8 @@ export function AddressInput({
 
   // --- Render Logic ---
 
-  // 1. Disabled (Geocoding Permission False) or Suggestions Disabled -> Simple Input
-  if (disabled || !enableSuggestions) {
+  // 1. Suggestions Disabled -> Simple Input
+  if (!enableSuggestions) {
     return (
         <div className="relative w-full">
         <Input

@@ -1,0 +1,20 @@
+
+> nextn@0.1.0 dev
+> next dev -p 9002
+
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:9002
+   - Network:       http://192.168.0.2:9002
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+ ✓ Ready in 768ms
+ ○ Compiling /login ...
+
+warn - The class `duration-[5000ms]` is ambiguous and matches multiple utilities.
+warn - If this is content and not a class, replace it with `duration-&lsqb;5000ms&rsqb;` to silence this warning.
+ GET /login 200 in 16.7s (compile: 15.8s, render: 964ms)

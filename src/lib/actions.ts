@@ -194,11 +194,17 @@ export async function recoverSuperAdminAction() {
 export async function updateMapSettingsAction(accountId: string, prevState: any, formData: FormData) {
     const rawData = Object.fromEntries(formData.entries());
 
-    // Sanitize empty strings to undefined to allow optional fields
-    if (rawData.googleMapsApiKey === '') delete rawData.googleMapsApiKey;
-    if (rawData.locationIqToken === '') delete rawData.locationIqToken;
+    // Handle boolean checkbox
+    const dataToValidate: any = {
+        ...rawData,
+        isGeocodingEnabled: rawData.isGeocodingEnabled === 'on'
+    };
 
-    const validatedFields = UpdateMapSettingsSchema.safeParse(rawData);
+    // Sanitize empty strings to undefined to allow optional fields
+    if (dataToValidate.googleMapsApiKey === '') delete dataToValidate.googleMapsApiKey;
+    if (dataToValidate.locationIqToken === '') delete dataToValidate.locationIqToken;
+
+    const validatedFields = UpdateMapSettingsSchema.safeParse(dataToValidate);
 
     if (!validatedFields.success) {
         return {
@@ -209,7 +215,8 @@ export async function updateMapSettingsAction(accountId: string, prevState: any,
 
     try {
         const updateData: any = {
-            geocodingProvider: validatedFields.data.geocodingProvider
+            geocodingProvider: validatedFields.data.geocodingProvider,
+            isGeocodingEnabled: validatedFields.data.isGeocodingEnabled
         };
 
         if (validatedFields.data.googleMapsApiKey) {

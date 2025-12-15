@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save } from 'lucide-react';
 import type { Account } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -39,6 +40,7 @@ interface MapSettingsFormProps {
 export function MapSettingsForm({ account }: MapSettingsFormProps) {
   const { toast } = useToast();
   const [provider, setProvider] = useState<'google' | 'locationiq'>(account.geocodingProvider || 'locationiq');
+  const [enabled, setEnabled] = useState(account.isGeocodingEnabled ?? true);
   const updateWithId = updateMapSettingsAction.bind(null, account.id);
   const [state, formAction] = useActionState(updateWithId, { message: '' });
 
@@ -61,35 +63,48 @@ export function MapSettingsForm({ account }: MapSettingsFormProps) {
   // Sync state with prop if it changes (revalidation)
   useEffect(() => {
       setProvider(account.geocodingProvider || 'locationiq');
-  }, [account.geocodingProvider]);
+      setEnabled(account.isGeocodingEnabled ?? true);
+  }, [account.geocodingProvider, account.isGeocodingEnabled]);
 
   return (
     <form action={formAction} className="space-y-6">
       <div className="space-y-4">
-        <div className="space-y-2">
-            <Label>Provedor de Geocodificação</Label>
-            <RadioGroup
-                name="geocodingProvider"
-                value={provider}
-                onValueChange={(v) => setProvider(v as 'google' | 'locationiq')}
-                className="flex flex-col space-y-1"
-            >
-                <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="locationiq" id="provider-locationiq" />
-                    <Label htmlFor="provider-locationiq" className="font-normal cursor-pointer">
-                        LocationIQ (Recomendado / Gratuito)
-                    </Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="google" id="provider-google" />
-                    <Label htmlFor="provider-google" className="font-normal cursor-pointer">
-                        Google Maps (Requer chave de API paga)
-                    </Label>
-                </div>
-            </RadioGroup>
+        <div className="flex items-center space-x-2">
+            <Switch
+                id="isGeocodingEnabled"
+                name="isGeocodingEnabled"
+                checked={enabled}
+                onCheckedChange={setEnabled}
+            />
+            <Label htmlFor="isGeocodingEnabled">Ativar Sugestões de Endereço (Autocomplete)</Label>
         </div>
 
-        {provider === 'google' && (
+        <div className={enabled ? '' : 'opacity-50 pointer-events-none'}>
+            <div className="space-y-2">
+                <Label>Provedor de Geocodificação</Label>
+                <RadioGroup
+                    name="geocodingProvider"
+                    value={provider}
+                    onValueChange={(v) => setProvider(v as 'google' | 'locationiq')}
+                    className="flex flex-col space-y-1"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="locationiq" id="provider-locationiq" />
+                        <Label htmlFor="provider-locationiq" className="font-normal cursor-pointer">
+                            LocationIQ (Recomendado / Gratuito)
+                        </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="google" id="provider-google" />
+                        <Label htmlFor="provider-google" className="font-normal cursor-pointer">
+                            Google Maps (Requer chave de API paga)
+                        </Label>
+                    </div>
+                </RadioGroup>
+            </div>
+        </div>
+
+        {provider === 'google' && enabled && (
             <div className="space-y-2 pt-2">
                 <Label htmlFor="googleMapsApiKey">Chave de API do Google Maps</Label>
                 <Input
