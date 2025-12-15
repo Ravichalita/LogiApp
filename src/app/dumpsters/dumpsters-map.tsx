@@ -59,9 +59,9 @@ export function DumpstersMap({ dumpsters }: DumpstersMapProps) {
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
     googleMapsApiKey: googleMapsApiKey ?? '',
     libraries: ['places', 'geocoding'],
-    preventLoad: !googleMapsApiKey,
   });
 
   const markers = React.useMemo((): MapMarkerData[] => {

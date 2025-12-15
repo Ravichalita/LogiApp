@@ -30,9 +30,9 @@ export function OptimizedRouteMap({ baseLocation, stops }: OptimizedRouteMapProp
   const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
     googleMapsApiKey: googleMapsApiKey ?? '',
     libraries: ['places', 'geocoding'],
-    preventLoad: !googleMapsApiKey,
   });
 
   const directionsOptions = useMemo(() => {
