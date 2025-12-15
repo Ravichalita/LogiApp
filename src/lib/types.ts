@@ -128,6 +128,7 @@ export const AccountSchema = z.object({
   operationalCosts: z.array(OperationalCostSchema).optional().default([]),
   financialCategories: z.array(TransactionCategorySchema).optional().default([]),
   recurringTransactionProfiles: z.array(RecurringTransactionProfileSchema).optional().default([]),
+  geocodingProvider: z.enum(['google', 'locationiq']).optional().default('locationiq'),
 });
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -174,6 +175,7 @@ export const PermissionsSchema = z.object({
   canAddClients: z.boolean().default(true), // New permission
   canEditClients: z.boolean().default(false),
   canUsePaidGoogleAPIs: z.boolean().default(true),
+  canUseGeocoding: z.boolean().default(true),
 }).default({});
 
 export type Permissions = z.infer<typeof PermissionsSchema>;

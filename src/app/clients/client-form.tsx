@@ -171,8 +171,10 @@ export function ClientForm() {
           onInputChange={handleAddressChange}
           initialLocation={location}
           enableSuggestions={enableAddressSuggestions}
+            provider={account?.geocodingProvider || 'locationiq'}
+            disabled={userAccount?.permissions?.canUseGeocoding === false}
         />
-        {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+          {userAccount?.permissions?.canUseGeocoding !== false && (
           <div className="flex items-center gap-2 mt-2">
             <Checkbox
               id="enable-suggestions-client"

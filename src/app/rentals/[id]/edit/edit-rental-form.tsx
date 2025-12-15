@@ -5,7 +5,7 @@ import { useEffect, useState, useTransition, useMemo } from 'react';
 import { updateRentalAction } from '@/lib/actions';
 import type { Client, PopulatedRental, Location, UserAccount, RentalPrice, Attachment, Account, AdditionalCost, Truck } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { RecurrenceSelector, RecurrenceData } from '@/components/recurrence-selector';
+import { RecurrenceSelector, type RecurrenceData } from '@/components/recurrence-selector';
 import { getRecurrenceProfileById } from '@/lib/data-server-actions';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -253,8 +253,8 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
         setStartLocation({ lat: selectedBase.latitude, lng: selectedBase.longitude });
       } else {
         setStartLocation(null);
-        if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-          geocodeAddress(selectedBase.address).then(location => {
+        if (userAccount?.permissions?.canUseGeocoding !== false) {
+          geocodeAddress(selectedBase.address, accountId).then(location => {
             if (location) {
               setStartLocation({ lat: location.lat, lng: location.lng });
             }
@@ -391,6 +391,17 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
     }
   };
 
+  useEffect(() => {
+    if (!startLocation && startAddress) {
+      if (userAccount?.permissions?.canUseGeocoding === false) return;
+      geocodeAddress(startAddress, accountId).then(location => {
+        if (location) {
+          setStartLocation({ lat: location.lat, lng: location.lng });
+        }
+      });
+    }
+  }, [startAddress, startLocation, userAccount, accountId]);
+
 
   return (
     <form action={handleFormAction} className="space-y-6">
@@ -461,7 +472,15 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
               <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
             </div>
             <AccordionContent className="pt-4 space-y-2">
-              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} enableSuggestions={enableAddressSuggestions} />
+              <AddressInput
+                id="start-address-input"
+                value={startAddress}
+                onInputChange={handleStartAddressChange}
+                onLocationSelect={handleStartLocationSelect}
+                enableSuggestions={enableAddressSuggestions}
+                provider={account?.geocodingProvider || 'locationiq'}
+                disabled={userAccount?.permissions?.canUseGeocoding === false}
+              />
               {errors?.startAddress && (
                 <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
               )}
@@ -508,8 +527,10 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
           onLocationSelect={handleDeliveryLocationSelect}
           initialLocation={deliveryLocation}
           enableSuggestions={enableAddressSuggestions}
+          provider={account?.geocodingProvider || 'locationiq'}
+          disabled={userAccount?.permissions?.canUseGeocoding === false}
         />
-        {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
+        {userAccount?.permissions?.canUseGeocoding !== false && (
           <div className="flex items-center gap-2 mt-2">
             <Checkbox
               id="enable-suggestions-edit-rental"

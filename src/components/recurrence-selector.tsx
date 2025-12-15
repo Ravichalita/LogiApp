@@ -21,6 +21,7 @@ export interface RecurrenceData {
     time: string;
     endDate?: Date;
     billingType: 'perService' | 'monthly' | 'weekly' | 'biweekly';
+  monthlyValue?: number;
 }
 
 interface RecurrenceSelectorProps {
