@@ -129,6 +129,7 @@ export const AccountSchema = z.object({
   financialCategories: z.array(TransactionCategorySchema).optional().default([]),
   recurringTransactionProfiles: z.array(RecurringTransactionProfileSchema).optional().default([]),
   geocodingProvider: z.enum(['google', 'locationiq']).optional().default('locationiq'),
+  isGeocodingEnabled: z.boolean().optional().default(true),
   googleMapsApiKey: z.string().optional(),
   locationIqToken: z.string().optional(),
 });
@@ -136,6 +137,7 @@ export type Account = z.infer<typeof AccountSchema>;
 
 export const UpdateMapSettingsSchema = z.object({
   geocodingProvider: z.enum(['google', 'locationiq']),
+  isGeocodingEnabled: z.boolean().optional().default(true),
   googleMapsApiKey: z.string().optional(),
   locationIqToken: z.string().optional(),
 });
