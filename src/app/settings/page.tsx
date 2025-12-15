@@ -19,7 +19,7 @@ import { BaseAddressForm } from './base-address-form';
 import { OperationTypesForm } from './operation-types-form';
 import { CostSettingsForm } from './cost-settings-form';
 import { RecurrencePanel } from './recurrence-panel';
-
+import { MapSettingsForm } from './map-settings-form';
 
 import { useSearchParams } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -204,6 +204,24 @@ export default function SettingsPage() {
                                 <Separator />
                                 <div className="p-4">
                                      <RecurrencePanel />
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+
+                        <AccordionItem value="map-settings" className="border rounded-lg bg-card">
+                            <AccordionTrigger className="p-4 hover:no-underline">
+                                <div className="flex items-center gap-3">
+                                    <Pin className="h-6 w-6" />
+                                    <div className="text-left">
+                                        <h3 className="font-headline text-lg font-semibold">Configuração de Mapa</h3>
+                                        <p className="text-sm text-muted-foreground font-normal">Escolha o provedor de mapas e configure as chaves de API.</p>
+                                    </div>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <Separator />
+                                <div className="p-4">
+                                    {isLoading || !account ? <Skeleton className="h-40 w-full" /> : <MapSettingsForm account={account} />}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>

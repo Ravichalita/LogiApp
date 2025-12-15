@@ -43,7 +43,8 @@ import {
     UpdateOperationalCostsSchema,
     OperationTypeSchema,
     TruckTypeSchema,
-    UploadedImageSchema
+    UploadedImageSchema,
+    UpdateMapSettingsSchema
 } from './types';
 import { createTransactionFromService, deleteTransactionByServiceId, updateTransactionByServiceId, recreateTransactionAction, processBulkTransactionsAction } from './finance-actions';
 export { recreateTransactionAction, processBulkTransactionsAction };
@@ -179,6 +180,52 @@ export async function recoverSuperAdminAction() {
             name: 'Super Admin',
             email: 'contato@econtrol.com.br',
         }, null, 'superadmin');
+        return {
+            message: 'success'
+        };
+    } catch (e) {
+        return {
+            message: 'error',
+            error: handleFirebaseError(e)
+        };
+    }
+}
+
+export async function updateMapSettingsAction(accountId: string, prevState: any, formData: FormData) {
+    const rawData = Object.fromEntries(formData.entries());
+
+    // Sanitize empty strings to undefined to allow optional fields
+    if (rawData.googleMapsApiKey === '') delete rawData.googleMapsApiKey;
+    if (rawData.locationIqToken === '') delete rawData.locationIqToken;
+
+    const validatedFields = UpdateMapSettingsSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+        return {
+            message: 'error',
+            error: JSON.stringify(validatedFields.error.flatten().fieldErrors)
+        };
+    }
+
+    try {
+        const updateData: any = {
+            geocodingProvider: validatedFields.data.geocodingProvider
+        };
+
+        if (validatedFields.data.googleMapsApiKey) {
+            updateData.googleMapsApiKey = validatedFields.data.googleMapsApiKey;
+        } else if (rawData.googleMapsApiKey === '') {
+             updateData.googleMapsApiKey = FieldValue.delete();
+        }
+
+        if (validatedFields.data.locationIqToken) {
+            updateData.locationIqToken = validatedFields.data.locationIqToken;
+        } else if (rawData.locationIqToken === '') {
+             updateData.locationIqToken = FieldValue.delete();
+        }
+
+        await adminDb.doc(`accounts/${accountId}`).update(updateData);
+        revalidatePath('/settings');
         return {
             message: 'success'
         };

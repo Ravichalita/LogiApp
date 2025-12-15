@@ -9,6 +9,7 @@ import type { Location } from '@/lib/types';
 import { X, Loader2, MapPin } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { useAuth } from '@/context/auth-context';
 
 interface AddressInputProps {
   id?: string;
@@ -45,9 +46,20 @@ export function AddressInput({
   onKeyDown,
   initialLocation,
   enableSuggestions = false,
-  provider = 'locationiq', // Default to LocationIQ as requested
+  provider: propProvider,
   disabled = false,
 }: AddressInputProps) {
+  const { account } = useAuth();
+
+  // Determine effective provider and keys
+  // Priority: 1. Account Settings 2. Prop (fallback) 3. Default ('locationiq')
+  const provider = account?.geocodingProvider || propProvider || 'locationiq';
+
+  // Keys: Priority: 1. Account Settings 2. Env Vars
+  const googleMapsApiKey = account?.googleMapsApiKey || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const locationIqToken = account?.locationIqToken || process.env.NEXT_PUBLIC_LOCATIONIQ_TOKEN || 'pk.7b731f867a11326a628704e56212defb';
+
+
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -58,12 +70,7 @@ export function AddressInput({
 
   const debouncedSearchTerm = useDebounceValue(value, 500); // 500ms Debounce
 
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const locationIqToken = process.env.NEXT_PUBLIC_LOCATIONIQ_TOKEN || 'pk.7b731f867a11326a628704e56212defb'; // Use env or fallback to provided token
-
   // Google Maps Loader
-  // We must always pass the same API key options to prevent "Loader must not be called again with different options" error.
-  // We control the *rendering* of the Google components based on the provider, not the loading of the script.
   const { isLoaded: isGoogleLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: googleMapsApiKey || '',
@@ -257,7 +264,7 @@ export function AddressInput({
                     )}
                 </div>
             </PopoverTrigger>
-            <PopoverContent className="p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <Command shouldFilter={false}>
                      <CommandList>
                         {suggestions.length === 0 && !isLoadingIQ && (
