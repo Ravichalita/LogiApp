@@ -62,13 +62,15 @@ export function AddressInput({
   const locationIqToken = process.env.NEXT_PUBLIC_LOCATIONIQ_TOKEN || 'pk.7b731f867a11326a628704e56212defb'; // Use env or fallback to provided token
 
   // Google Maps Loader
-  // Fix: remove preventLoad and conditionally pass key. If google disabled, we pass undefined or empty string which stops loading.
-  const shouldLoadGoogle = provider === 'google' && enableSuggestions && !disabled && !!googleMapsApiKey;
-
+  // We must always pass the same API key options to prevent "Loader must not be called again with different options" error.
+  // We control the *rendering* of the Google components based on the provider, not the loading of the script.
   const { isLoaded: isGoogleLoaded } = useJsApiLoader({
-    googleMapsApiKey: shouldLoadGoogle ? googleMapsApiKey : '',
+    id: 'google-map-script',
+    googleMapsApiKey: googleMapsApiKey || '',
     libraries: ['places', 'geocoding'],
   });
+
+  const shouldRenderGoogle = provider === 'google' && enableSuggestions && !disabled && !!googleMapsApiKey;
 
   // LocationIQ Effect
   useEffect(() => {
@@ -183,7 +185,7 @@ export function AddressInput({
 
   // 2. Google Provider
   if (provider === 'google') {
-    if (shouldLoadGoogle && !isGoogleLoaded) return <Skeleton className="h-10 w-full" />;
+    if (shouldRenderGoogle && !isGoogleLoaded) return <Skeleton className="h-10 w-full" />;
 
     return (
         <div className="flex gap-2 items-center w-full">
