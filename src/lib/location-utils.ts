@@ -16,7 +16,7 @@ interface LocationInfo {
  * - -23.5, -46.6 (Raw string)
  * - lat, lng keys in URL params
  */
-function parseCoordinates(input: string): { lat: number, lng: number } | null {
+export function parseCoordinates(input: string): { lat: number, lng: number } | null {
     if (!input) return null;
 
     // 1. Try to find "lat,lng" pattern in the string (e.g. from q= param or raw text)
