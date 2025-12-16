@@ -221,13 +221,13 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   useEffect(() => {
     if (!startLocation && startAddress) {
       if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
-      geocodeAddress(startAddress).then(location => {
+      geocodeAddress(startAddress, accountId).then(location => {
         if (location) {
           setStartLocation({ lat: location.lat, lng: location.lng });
         }
       });
     }
-  }, [startAddress, startLocation, userAccount]);
+  }, [startAddress, startLocation, userAccount, accountId]);
 
   useEffect(() => {
     if (selectedClientId) {
@@ -239,7 +239,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
         } else {
           setDeliveryLocation(null);
           if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-            geocodeAddress(client.address).then(location => {
+            geocodeAddress(client.address, accountId).then(location => {
               if (location) setDeliveryLocation({ lat: location.lat, lng: location.lng });
             });
           }
@@ -249,7 +249,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       setDeliveryAddress('');
       setDeliveryLocation(null);
     }
-  }, [selectedClientId, clients, prefillData, userAccount]);
+  }, [selectedClientId, clients, prefillData, userAccount, accountId]);
 
   // Manual fetch route info function (no longer automatic)
   const fetchRouteInfo = async () => {
@@ -345,7 +345,7 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
       } else {
         setStartLocation(null);
         if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-          geocodeAddress(selectedBase.address).then(location => {
+          geocodeAddress(selectedBase.address, accountId).then(location => {
             if (location) {
               setStartLocation({ lat: location.lat, lng: location.lng });
             }

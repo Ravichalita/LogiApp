@@ -177,24 +177,24 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   useEffect(() => {
     if (!startLocation && startAddress) {
       if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
-      geocodeAddress(startAddress).then(location => {
+      geocodeAddress(startAddress, accountId).then(location => {
         if (location) {
           setStartLocation({ lat: location.lat, lng: location.lng });
         }
       });
     }
-  }, [startAddress, startLocation, userAccount]);
+  }, [startAddress, startLocation, userAccount, accountId]);
 
   useEffect(() => {
     if (!destinationLocation && destinationAddress) {
       if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
-      geocodeAddress(destinationAddress).then(location => {
+      geocodeAddress(destinationAddress, accountId).then(location => {
         if (location) {
           setDestinationLocation({ lat: location.lat, lng: location.lng });
         }
       });
     }
-  }, [destinationAddress, destinationLocation, userAccount]);
+  }, [destinationAddress, destinationLocation, userAccount, accountId]);
 
   // Manual fetch route info function (no longer automatic)
   const fetchRouteInfo = async () => {
@@ -291,7 +291,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
         } else {
           setDestinationLocation(null);
           if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-            geocodeAddress(client.address).then(location => {
+            geocodeAddress(client.address, accountId).then(location => {
               if (location) setDestinationLocation({ lat: location.lat, lng: location.lng });
             });
           }
@@ -359,7 +359,7 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
       } else {
         setStartLocation(null);
         if (userAccount?.permissions?.canUsePaidGoogleAPIs !== false) {
-          geocodeAddress(selectedBase.address).then(location => {
+          geocodeAddress(selectedBase.address, accountId).then(location => {
             if (location) {
               setStartLocation({ lat: location.lat, lng: location.lng });
             }
