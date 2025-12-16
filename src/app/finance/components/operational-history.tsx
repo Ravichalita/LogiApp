@@ -180,12 +180,12 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
             </div>
 
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <div className="flex justify-between items-start gap-4">
-                            <div className="space-y-1">
-                                <DialogTitle>Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
-                                <DialogDescription>Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
+                <DialogContent className="max-w-md max-h-[85vh] sm:max-h-[90vh]">
+                    <DialogHeader className="pr-10">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                            <div className="space-y-1 min-w-0">
+                                <DialogTitle className="text-base sm:text-lg">Detalhes da OS #{item.prefix}{item.sequentialId}</DialogTitle>
+                                <DialogDescription className="text-xs sm:text-sm">Finalizada em {format(parseISO(item.completedDate), 'dd/MM/yyyy HH:mm', { locale: ptBR })}</DialogDescription>
                             </div>
                             <div className="flex gap-1 shrink-0">
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Editar" onClick={() => onEdit(item)}>
@@ -232,7 +232,7 @@ function HistoricItemDetailsDialog({ item, isOpen, onOpenChange, onAttachmentUpl
                             </div>
                         </div>
                     </DialogHeader>
-                    <div className="space-y-4 py-4 px-4 max-h-[70vh] overflow-y-auto">
+                    <div className="space-y-4 py-2 sm:py-4 max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
                         {item.kind === 'operation' && (
                             <div className="flex items-start gap-3">
                                 <Workflow className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
