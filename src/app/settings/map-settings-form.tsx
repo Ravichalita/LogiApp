@@ -39,7 +39,7 @@ interface MapSettingsFormProps {
 
 export function MapSettingsForm({ account }: MapSettingsFormProps) {
   const { toast } = useToast();
-  const [provider, setProvider] = useState<'google' | 'locationiq'>(account.geocodingProvider || 'locationiq');
+  const [provider, setProvider] = useState<'google' | 'locationiq' | 'geoapify'>(account.geocodingProvider || 'locationiq');
   const [enabled, setEnabled] = useState(account.isGeocodingEnabled ?? true);
   const updateWithId = updateMapSettingsAction.bind(null, account.id);
   const [state, formAction] = useActionState(updateWithId, { message: '' });
@@ -85,13 +85,19 @@ export function MapSettingsForm({ account }: MapSettingsFormProps) {
                 <RadioGroup
                     name="geocodingProvider"
                     value={provider}
-                    onValueChange={(v) => setProvider(v as 'google' | 'locationiq')}
+                    onValueChange={(v) => setProvider(v as 'google' | 'locationiq' | 'geoapify')}
                     className="flex flex-col space-y-1"
                 >
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="locationiq" id="provider-locationiq" />
                         <Label htmlFor="provider-locationiq" className="font-normal cursor-pointer">
                             LocationIQ (Recomendado / Gratuito)
+                        </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="geoapify" id="provider-geoapify" />
+                        <Label htmlFor="provider-geoapify" className="font-normal cursor-pointer">
+                            Geoapify (Alta precisão / Gratuito)
                         </Label>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -116,6 +122,22 @@ export function MapSettingsForm({ account }: MapSettingsFormProps) {
                 />
                  <p className="text-xs text-muted-foreground">
                     Necessária para usar o autocompletar e mapas do Google. Deixe em branco para usar a variável de ambiente do servidor (se configurada).
+                </p>
+            </div>
+        )}
+
+        {provider === 'geoapify' && enabled && (
+             <div className="space-y-2 pt-2">
+                <Label htmlFor="geoapifyApiKey">Chave de API da Geoapify</Label>
+                <Input
+                    id="geoapifyApiKey"
+                    name="geoapifyApiKey"
+                    type="password"
+                    placeholder="Cole sua chave aqui..."
+                    defaultValue={account.geoapifyApiKey || ''}
+                />
+                <p className="text-xs text-muted-foreground">
+                    Chave para usar os serviços da Geoapify.
                 </p>
             </div>
         )}

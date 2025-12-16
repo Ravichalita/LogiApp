@@ -20,7 +20,7 @@ interface AddressInputProps {
   value: string;
   initialLocation?: { lat: number; lng: number } | null;
   enableSuggestions?: boolean; // default: true (controlled by account settings mostly)
-  provider?: 'google' | 'locationiq';
+  provider?: 'google' | 'locationiq' | 'geoapify';
   disabled?: boolean;
 }
 
@@ -65,15 +65,15 @@ export function AddressInput({
   // Keys: Priority: 1. Account Settings 2. Env Vars
   const googleMapsApiKey = account?.googleMapsApiKey || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const locationIqToken = account?.locationIqToken || process.env.NEXT_PUBLIC_LOCATIONIQ_TOKEN || 'pk.7b731f867a11326a628704e56212defb';
-
+  const geoapifyApiKey = account?.geoapifyApiKey || process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY;
 
   const [searchBox, setSearchBox] = useState<google.maps.places.SearchBox | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // LocationIQ State
+  // Suggestions State (LocationIQ or Geoapify)
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoadingIQ, setIsLoadingIQ] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const debouncedSearchTerm = useDebounceValue(value, 500); // 500ms Debounce
 
@@ -86,40 +86,53 @@ export function AddressInput({
 
   const shouldRenderGoogle = provider === 'google' && enableSuggestions && !!googleMapsApiKey;
 
-  // LocationIQ Effect
+  // Autocomplete Effect (LocationIQ / Geoapify)
   useEffect(() => {
-    if (!enableSuggestions || provider !== 'locationiq' || !debouncedSearchTerm || debouncedSearchTerm.length < 3) {
+    if (!enableSuggestions || provider === 'google' || !debouncedSearchTerm || debouncedSearchTerm.length < 3) {
       setSuggestions([]);
-      // Only close if we are not typing anymore (handled by other logic? No, close if criteria not met)
       if (debouncedSearchTerm.length < 3) setIsOpen(false);
       return;
     }
 
-    const fetchLocationIqSuggestions = async () => {
-      setIsLoadingIQ(true);
+    const fetchSuggestions = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch(
-          `https://api.locationiq.com/v1/autocomplete?key=${locationIqToken}&q=${encodeURIComponent(debouncedSearchTerm)}&limit=5&dedupe=1&tag=place:city,place:town,place:village,road`
-        );
+        if (provider === 'geoapify' && geoapifyApiKey) {
+            const response = await fetch(
+                `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(debouncedSearchTerm)}&apiKey=${geoapifyApiKey}&limit=5&format=json`
+            );
+            if (response.ok) {
+                const data = await response.json();
+                setSuggestions(data.results || []);
+                setIsOpen((data.results || []).length > 0);
+            } else {
+                console.error("Geoapify Error:", response.statusText);
+                setSuggestions([]);
+            }
+        } else if (provider === 'locationiq') {
+            const response = await fetch(
+                `https://api.locationiq.com/v1/autocomplete?key=${locationIqToken}&q=${encodeURIComponent(debouncedSearchTerm)}&limit=5&dedupe=1&tag=place:city,place:town,place:village,road`
+            );
 
-        if (response.ok) {
-          const data = await response.json();
-          setSuggestions(data);
-          setIsOpen(data.length > 0);
-        } else {
-            console.error("LocationIQ Error:", response.statusText);
-            setSuggestions([]);
+            if (response.ok) {
+                const data = await response.json();
+                setSuggestions(data);
+                setIsOpen(data.length > 0);
+            } else {
+                console.error("LocationIQ Error:", response.statusText);
+                setSuggestions([]);
+            }
         }
       } catch (error) {
-        console.error("Failed to fetch LocationIQ suggestions:", error);
+        console.error(`Failed to fetch ${provider} suggestions:`, error);
         setSuggestions([]);
       } finally {
-        setIsLoadingIQ(false);
+        setIsLoading(false);
       }
     };
 
-    fetchLocationIqSuggestions();
-  }, [debouncedSearchTerm, disabled, enableSuggestions, provider, locationIqToken]);
+    fetchSuggestions();
+  }, [debouncedSearchTerm, disabled, enableSuggestions, provider, locationIqToken, geoapifyApiKey]);
 
 
   const onLoadGoogle = useCallback((ref: google.maps.places.SearchBox) => {
@@ -141,20 +154,32 @@ export function AddressInput({
     }
   };
 
-  const handleLocationIqSelect = (item: any) => {
-    onInputChange?.(item.display_name);
-    const locationData: Location = {
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-      address: item.display_name,
-    };
-    onLocationSelect(locationData);
+  const handleSuggestionSelect = (item: any) => {
+    if (provider === 'geoapify') {
+        const address = item.formatted || item.address_line1 + (item.address_line2 ? ', ' + item.address_line2 : '');
+        onInputChange?.(address);
+        const locationData: Location = {
+            lat: item.lat,
+            lng: item.lon,
+            address: address,
+        };
+        onLocationSelect(locationData);
+    } else {
+        // LocationIQ
+        onInputChange?.(item.display_name);
+        const locationData: Location = {
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+            address: item.display_name,
+        };
+        onLocationSelect(locationData);
+    }
     setIsOpen(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onInputChange?.(e.target.value);
-    if (provider === 'locationiq' && enableSuggestions) {
+    if ((provider === 'locationiq' || provider === 'geoapify') && enableSuggestions) {
         setIsOpen(true);
     }
   }
@@ -235,7 +260,7 @@ export function AddressInput({
     );
   }
 
-  // 3. LocationIQ Provider (Custom Autocomplete)
+  // 3. Custom Autocomplete (LocationIQ or Geoapify)
   return (
     <div className="relative w-full">
          <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -244,7 +269,7 @@ export function AddressInput({
                     <Input
                         id={id}
                         ref={inputRef}
-                        placeholder="Digite para buscar um endereço..."
+                        placeholder={`Digite para buscar um endereço (${provider === 'geoapify' ? 'Geoapify' : 'LocationIQ'})...`}
                         value={value}
                         onChange={handleInputChange}
                         onKeyDown={(e) => {
@@ -254,7 +279,7 @@ export function AddressInput({
                         className="pr-8"
                         autoComplete="off"
                     />
-                     {isLoadingIQ && (
+                     {isLoading && (
                         <div className="absolute inset-y-0 right-8 flex items-center">
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         </div>
@@ -274,20 +299,20 @@ export function AddressInput({
             <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" onOpenAutoFocus={(e) => e.preventDefault()}>
                 <Command shouldFilter={false}>
                      <CommandList>
-                        {suggestions.length === 0 && !isLoadingIQ && (
+                        {suggestions.length === 0 && !isLoading && (
                             <CommandEmpty className="py-2 text-center text-sm text-muted-foreground">
                                 {value.length < 3 ? 'Digite pelo menos 3 caracteres' : 'Nenhum endereço encontrado.'}
                             </CommandEmpty>
                         )}
                         <CommandGroup>
-                            {suggestions.map((item) => (
+                            {suggestions.map((item, index) => (
                                 <CommandItem
-                                    key={item.place_id}
-                                    value={item.display_name}
-                                    onSelect={() => handleLocationIqSelect(item)}
+                                    key={`${item.place_id}-${index}`}
+                                    value={provider === 'geoapify' ? item.formatted : item.display_name}
+                                    onSelect={() => handleSuggestionSelect(item)}
                                 >
                                     <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                                    <span>{item.display_name}</span>
+                                    <span>{provider === 'geoapify' ? item.formatted : item.display_name}</span>
                                 </CommandItem>
                             ))}
                         </CommandGroup>
