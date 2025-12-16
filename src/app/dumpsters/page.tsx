@@ -297,7 +297,7 @@ export default function DumpstersPage() {
                     <CardTitle className="flex-shrink-0 text-sm font-medium sm:text-base">Mapa de Caçambas</CardTitle>
                 </div>
             </CardHeader>
-             <CardContent className="p-0 h-96">
+             <CardContent className="p-0 h-[450px]">
                 {loading ? (
                     <Skeleton className="h-full w-full" />
                 ) : (
