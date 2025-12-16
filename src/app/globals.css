@@ -4,77 +4,100 @@
 
 @layer base {
   :root {
-    --background: 0 0% 90%;
+    --background: 0 0% 92%;
     --foreground: 0 0% 9%;
-    
+
     --card: 0 0% 100%;
     --card-foreground: 0 0% 9%;
-    
+
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
-    
+
     --primary: 37 100% 50%;
     --primary-foreground: 0 0% 9%;
-    
-    --secondary: 0 0% 98%;
+
+    --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 9%;
-    
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    
-    --accent: 0 0% 96.1%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 0 0% 94%;
     --accent-foreground: 0 0% 9%;
-    
-    --destructive: 37 100% 50%;
-    --destructive-foreground: 0 0% 9%;
-    
-    --border: 0 0% 85%;
-    --input: 0 0% 100%;
-    --ring: 37 100% 45%;
-    
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 75%;
+    --input: 0 0% 98%;
+    --ring: 37 100% 40%;
+
     --radius: 0.5rem;
+
+    /* Estados adicionais */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 9%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
   }
- 
+
   .dark {
-    --background: 0 0% 12%;
+    --background: 0 0% 9%;
     --foreground: 0 0% 98%;
-   
-    --card: 0 0% 20%;
+
+    --card: 0 0% 14%;
     --card-foreground: 0 0% 98%;
-   
+
     --popover: 0 0% 12%;
     --popover-foreground: 0 0% 98%;
-   
+
     --primary: 37 100% 50%;
     --primary-foreground: 0 0% 9%;
-   
+
     --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 98%;
-   
+
     --muted: 0 0% 18%;
     --muted-foreground: 0 0% 63.9%;
-   
+
     --accent: 0 0% 18%;
     --accent-foreground: 0 0% 98%;
-   
-    --destructive: 37 100% 50%;
-    --destructive-foreground: 0 0% 9%;
-   
-    --border: 0 0% 25%;
-    --input: 0 0% 18%;
-    --ring: 37 100% 50%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 22%;
+    --input: 0 0% 16%;
+    --ring: 37 100% 55%;
+
+    /* Estados adicionais */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 9%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-headline);
   }
 }
@@ -85,6 +108,7 @@
     position: relative;
     z-index: 1;
   }
+
   .honeycomb-bg::before,
   .honeycomb-bg::after {
     content: '';
@@ -98,12 +122,13 @@
     opacity: 0.05;
     z-index: -1;
   }
-   .honeycomb-bg::after {
+
+  .honeycomb-bg::after {
     background-position: 25px 25px;
   }
 }
 
 /* Fix for Google Places Autocomplete suggestions appearing behind dialogs */
 .pac-container {
-    @apply z-[9999];
+  @apply z-[9999];
 }

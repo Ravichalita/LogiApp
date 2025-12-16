@@ -26,7 +26,7 @@ export function BottomNav({ className }: { className?: string }) {
   }
 
   const permissions = userAccount?.permissions;
-  
+
   const visibleLinks = allNavLinks.filter(link => {
     if (isSuperAdmin) return true;
     if (!permissions) return false;
@@ -36,13 +36,13 @@ export function BottomNav({ className }: { className?: string }) {
 
   return (
     <nav className={cn("fixed bottom-0 left-0 right-0 z-50 bg-card border-t", className)}>
-      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${visibleLinks.length > 0 ? visibleLinks.length : 1}, 1fr)`}}>
+      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${visibleLinks.length > 0 ? visibleLinks.length : 1}, 1fr)` }}>
         {visibleLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={cn(
-              'flex flex-col items-center justify-center gap-1 text-sm font-medium transition-colors',
+              'flex flex-col items-center justify-center gap-1 min-h-[48px] min-w-[48px] text-sm font-medium transition-colors active:scale-95',
               pathname === href
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-primary'

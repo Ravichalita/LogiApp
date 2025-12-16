@@ -14,8 +14,8 @@ import { InstallPwaPrompt } from "@/components/install-pwa-prompt";
 import { useScrollDirection } from "@/hooks/use-scroll-direction";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({ 
-  subsets: ["latin"], 
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-sans",
   display: 'swap',
 });
@@ -49,27 +49,26 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
         >
           <AuthProvider>
-              <div className="flex flex-col min-h-screen">
-                  <Header className={cn(
-                    "transition-transform duration-300",
-                    scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
-                  )} />
-                  <main className="flex-grow">{children}</main>
-                  <div className="h-16 md:hidden" />
-                  <BottomNav className={cn(
-                    "transition-transform duration-300 md:hidden",
-                     scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'
-                  )} />
-                  <FloatingActionButton className={cn(
-                     "transition-opacity duration-300",
-                     scrollDirection === 'down' ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                  )} />
-                  <InstallPwaPrompt />
-              </div>
-              <Toaster />
+            <div className="flex flex-col min-h-screen">
+              <Header className={cn(
+                "transition-transform duration-300",
+                scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
+              )} />
+              <main className="flex-grow">{children}</main>
+              <div className="h-16 md:hidden" />
+              <BottomNav className={cn(
+                "transition-transform duration-300 md:hidden",
+                scrollDirection === 'down' ? 'translate-y-full' : 'translate-y-0'
+              )} />
+              <FloatingActionButton className={cn(
+                "transition-opacity duration-300",
+                scrollDirection === 'down' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              )} />
+              <InstallPwaPrompt />
+            </div>
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>
