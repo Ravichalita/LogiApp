@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import { EnhancedDumpster } from '@/lib/types';
 import { useAuth } from '@/context/auth-context';
 import { isWithinInterval, parseISO, endOfDay } from 'date-fns';
+import { parseCoordinates } from '@/lib/location-utils';
 
 interface DashboardMapProps {
   dumpsters: EnhancedDumpster[];
@@ -48,8 +49,14 @@ export default function DashboardMap({ dumpsters }: DashboardMapProps) {
       if (isRented && activeRental) {
         if (activeRental.latitude && activeRental.longitude) {
            position = [activeRental.latitude, activeRental.longitude];
-           address = activeRental.deliveryAddress;
-           clientName = activeRental.client?.name || 'Cliente Desconhecido';
+        } else if (activeRental.deliveryGoogleMapsLink) {
+           const coords = parseCoordinates(activeRental.deliveryGoogleMapsLink);
+           if (coords) position = [coords.lat, coords.lng];
+        }
+
+        if (position) {
+             address = activeRental.deliveryAddress;
+             clientName = activeRental.client?.name || 'Cliente Desconhecido';
         }
       } else if (status === 'Disponível' || status === 'Em Manutenção') {
          // Place at Base if available
@@ -61,10 +68,18 @@ export default function DashboardMap({ dumpsters }: DashboardMapProps) {
                 clientName = `Base: ${base.name}`;
             }
          }
-      } else if (activeRental && activeRental.latitude && activeRental.longitude) {
-           position = [activeRental.latitude, activeRental.longitude];
-           address = activeRental.deliveryAddress;
-           clientName = activeRental.client?.name || 'Cliente Desconhecido';
+      } else if (activeRental) {
+           if (activeRental.latitude && activeRental.longitude) {
+               position = [activeRental.latitude, activeRental.longitude];
+           } else if (activeRental.deliveryGoogleMapsLink) {
+               const coords = parseCoordinates(activeRental.deliveryGoogleMapsLink);
+               if (coords) position = [coords.lat, coords.lng];
+           }
+
+           if (position) {
+               address = activeRental.deliveryAddress;
+               clientName = activeRental.client?.name || 'Cliente Desconhecido';
+           }
       }
 
       if (!position) return null;
@@ -80,14 +95,14 @@ export default function DashboardMap({ dumpsters }: DashboardMapProps) {
     }).filter((m): m is NonNullable<typeof m> => m !== null);
   }, [dumpsters, account]);
 
-  if (!isMounted) return <div className="h-[600px] w-full bg-muted animate-pulse rounded-md" />;
+  if (!isMounted) return <div className="h-[450px] w-full bg-muted animate-pulse rounded-md" />;
 
   if (!geoapifyKey) {
-     return <div className="h-[600px] w-full bg-muted flex items-center justify-center rounded-md text-muted-foreground">Chave API Geoapify não configurada.</div>;
+     return <div className="h-[450px] w-full bg-muted flex items-center justify-center rounded-md text-muted-foreground">Chave API Geoapify não configurada.</div>;
   }
 
   return (
-    <MapContainer center={DEFAULT_CENTER} zoom={ZOOM_LEVEL} style={{ height: '600px', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}>
+    <MapContainer center={DEFAULT_CENTER} zoom={ZOOM_LEVEL} style={{ height: '450px', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}>
       <TileLayer
         attribution='Powered by <a href="https://www.geoapify.com/">Geoapify</a> | © OpenStreetMap'
         url={`https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=${geoapifyKey}`}
