@@ -266,6 +266,26 @@ export default function DumpstersPage() {
     });
   };
 
+  const handleViewDetails = (id: string) => {
+      // Ensure the row is expanded
+      setExpandedRows(prev => {
+          const newSet = new Set(prev);
+          newSet.add(id);
+          return newSet;
+      });
+
+      // Scroll into view after a short delay to allow rendering
+      setTimeout(() => {
+          const element = document.getElementById(`dumpster-${id}`);
+          if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Highlight effect (optional)
+              element.classList.add('bg-muted');
+              setTimeout(() => element.classList.remove('bg-muted'), 2000);
+          }
+      }, 100);
+  };
+
   const isLoading = authLoading || (loading && canAccess);
   
   if (!isLoading && !canAccess) {
@@ -302,7 +322,7 @@ export default function DumpstersPage() {
                     <Skeleton className="h-full w-full" />
                 ) : (
                     account?.geocodingProvider === 'geoapify' ? (
-                        <DashboardMap dumpsters={dumpstersWithDerivedStatus} />
+                        <DashboardMap dumpsters={dumpstersWithDerivedStatus} onViewDetails={handleViewDetails} />
                     ) : (
                         <DumpstersMap dumpsters={dumpstersWithDerivedStatus} />
                     )
@@ -367,7 +387,7 @@ export default function DumpstersPage() {
                     <TableBody>
                         {filteredDumpsters.length > 0 ? filteredDumpsters.map(dumpster => (
                             <React.Fragment key={dumpster.id}>
-                                <TableRow>
+                                <TableRow id={`dumpster-${dumpster.id}`} className="transition-colors duration-500">
                                     <TableCell className="p-0 pl-2">
                                         {dumpster.scheduledRentals.length > 0 && (
                                             <Button variant="ghost" size="icon" onClick={() => toggleRow(dumpster.id)} aria-label="Ver detalhes">
@@ -434,7 +454,7 @@ export default function DumpstersPage() {
                     const isRented = dumpster.derivedStatus === 'Alugada' || dumpster.derivedStatus === 'Encerra hoje' || dumpster.derivedStatus === 'Em Atraso' || dumpster.derivedStatus.includes('Agendada');
                     const isReserved = dumpster.derivedStatus.startsWith('Reservada');
                     return (
-                         <Card key={dumpster.id} className="border rounded-lg overflow-hidden">
+                         <Card key={dumpster.id} id={`dumpster-${dumpster.id}`} className="border rounded-lg overflow-hidden transition-colors duration-500">
                             <div className="p-4 space-y-3 bg-card">
                                 <div className="flex justify-between items-start">
                                     <h3 className="font-bold text-lg">{dumpster.name}</h3>

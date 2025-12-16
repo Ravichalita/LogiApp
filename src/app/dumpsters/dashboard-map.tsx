@@ -11,6 +11,7 @@ import { parseCoordinates } from '@/lib/location-utils';
 
 interface DashboardMapProps {
   dumpsters: EnhancedDumpster[];
+  onViewDetails?: (id: string) => void;
 }
 
 const DEFAULT_CENTER: [number, number] = [-22.88, -42.02]; // Cabo Frio
@@ -30,7 +31,12 @@ function MapEffect({ markers }: { markers: MapMarker[] }) {
 
   useEffect(() => {
     if (markers.length > 0) {
-      const bounds = L.latLngBounds(markers.map(m => m.position));
+      // Filter out markers that are at the base (Available or Maintenance) for bounds calculation
+      // providing a better view of active rentals
+      const activeMarkers = markers.filter(m => m.status !== 'Disponível' && m.status !== 'Em Manutenção');
+      const markersToFit = activeMarkers.length > 0 ? activeMarkers : markers;
+
+      const bounds = L.latLngBounds(markersToFit.map(m => m.position));
       map.fitBounds(bounds, { padding: [50, 50] });
     } else {
        map.setView(DEFAULT_CENTER, ZOOM_LEVEL);
@@ -40,7 +46,7 @@ function MapEffect({ markers }: { markers: MapMarker[] }) {
   return null;
 }
 
-export default function DashboardMap({ dumpsters }: DashboardMapProps) {
+export default function DashboardMap({ dumpsters, onViewDetails }: DashboardMapProps) {
   const { account } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -143,7 +149,14 @@ export default function DashboardMap({ dumpsters }: DashboardMapProps) {
               <p><strong>{marker.clientName}</strong></p>
               <p className="text-muted-foreground">{marker.address}</p>
               <p className="uppercase text-xs font-bold mt-2 text-primary">{marker.status}</p>
-              <button className="text-primary text-xs underline mt-2 cursor-pointer" onClick={() => console.log('Ver detalhes', marker.id)}>Ver Detalhes</button>
+              {onViewDetails && (
+                <button
+                  className="text-primary text-xs underline mt-2 cursor-pointer"
+                  onClick={() => onViewDetails(marker.id)}
+                >
+                  Ver Detalhes
+                </button>
+              )}
             </div>
           </Popup>
         </Marker>
