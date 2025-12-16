@@ -20,7 +20,7 @@ import type {
     PopulatedOperation
 } from './types';
 import { generateTransactionsForProfile } from './recurring-utils';
-import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { startOfMonth, endOfMonth, parseISO, startOfDay, isBefore } from 'date-fns';
 
 // #region Helper Functions
 
@@ -200,7 +200,8 @@ export async function saveRecurringTransactionProfileAction(accountId: string, p
         // Filter in memory for future dates
         const docsToDelete = cleanupSnap.docs.filter(doc => {
             const data = doc.data() as Transaction;
-            return new Date(data.dueDate) > new Date();
+            // Include today (start of day) in the deletion logic to ensure updates affect today's pending items
+            return !isBefore(parseISO(data.dueDate), startOfDay(new Date()));
         });
 
         // Batch Delete
@@ -216,7 +217,8 @@ export async function saveRecurringTransactionProfileAction(accountId: string, p
 
         // 3. Generate New Transactions (Batched)
         const newTransactions = generateTransactionsForProfile(profile, accountId);
-        const futureTransactions = newTransactions.filter(tr => new Date(tr.dueDate) > new Date());
+        // Include today's transactions by checking if due date is NOT before today (start of day)
+        const futureTransactions = newTransactions.filter(tr => !isBefore(parseISO(tr.dueDate), startOfDay(new Date())));
 
         for (let i = 0; i < futureTransactions.length; i += batchSize) {
             const batch = adminDb.batch();
@@ -267,7 +269,8 @@ export async function deleteRecurringTransactionProfileAction(accountId: string,
         // Filter in memory
         const docsToDelete = querySnap.docs.filter(doc => {
             const data = doc.data() as Transaction;
-            return new Date(data.dueDate) > new Date();
+            // Include today's pending transactions in deletion
+            return !isBefore(parseISO(data.dueDate), startOfDay(new Date()));
         });
 
         const batchSize = 400;
