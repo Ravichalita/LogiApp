@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Trash2, Edit, Plus, Filter, ArrowUpCircle, ArrowDownCircle, CheckCircle2, Clock, Settings2, ChevronLeft, ChevronRight, LayoutList, TrendingUp, TrendingDown, Container, User, CalendarClock, ChevronsUpDown, Truck as TruckIcon, User as UserIcon } from 'lucide-react';
 import { format, parseISO, addMonths, subMonths, isAfter, startOfDay, setMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,22 +22,22 @@ import { Spinner } from '@/components/ui/spinner';
 import { ManageCategories } from './categories-settings';
 import { RecurringTransactionsSettings } from './recurring-transactions-settings';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription as RealAlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription as RealAlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 
@@ -179,16 +180,16 @@ export function TransactionsList({
         const result = await toggleTransactionStatusAction(accountId, id, currentStatus);
         if (result.message !== 'success') {
             // Revert on failure
-             if (transaction && onTransactionChange) {
+            if (transaction && onTransactionChange) {
                 onTransactionChange({ ...transaction, status: currentStatus as any }, 'update');
             }
             toast({ title: 'Erro', description: result.error, variant: 'destructive' });
         } else {
-             // If we didn't optimistic update, we refresh
-             if (!onTransactionChange && onRefresh) onRefresh();
+            // If we didn't optimistic update, we refresh
+            if (!onTransactionChange && onRefresh) onRefresh();
         }
     };
-    
+
     const handleMonthSelect = (monthIndex: number | 'all') => {
         if (monthIndex === 'all') {
             onDateChange(new Date(selectedDate.getFullYear(), 0, 1));
@@ -296,131 +297,139 @@ export function TransactionsList({
                 </div>
             </div>
 
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Descrição</TableHead>
-                            <TableHead>Usuário</TableHead>
-                            <TableHead>Caminhão</TableHead>
-                            <TableHead>Categoria</TableHead>
-                            <TableHead>Vencimento</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Valor</TableHead>
-                            <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredTransactions.length > 0 ? filteredTransactions.map((t) => {
-                            const category = categories.find(c => c.id === t.categoryId);
-                            const user = team?.find(u => u.id === t.userId);
-                            const truck = trucks?.find(tr => tr.id === t.truckId);
-                            const isFuture = isAfter(parseISO(t.dueDate), startOfDay(new Date()));
-                            const isRecurringFuture = t.recurringProfileId && isFuture && t.status === 'pending';
-
-                            return (
-                                <TableRow key={t.id} className={cn(isFuture && t.status === 'pending' && "opacity-60 hover:opacity-100 transition-opacity")}>
-                                    <TableCell className="font-medium">
-                                        <div className="flex items-center gap-2">
-                                            {t.type === 'income' ?
-                                                <ArrowUpCircle className="h-4 w-4 text-green-500" /> :
-                                                <ArrowDownCircle className="h-4 w-4 text-red-500" />
-                                            }
-                                            <span className="truncate max-w-[200px]" title={t.description}>{t.description}</span>
-                                            {t.source === 'service' && <Badge variant="outline" className="text-[10px] h-5">Auto</Badge>}
-                                            {isRecurringFuture && (
-                                                <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                                    Transação Futura
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {user ? (
-                                            <div className="flex items-center gap-1">
-                                                <UserIcon className="h-3 w-3" />
-                                                {user.name.split(' ')[0]}
-                                            </div>
-                                        ) : '-'}
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {truck ? (
-                                            <div className="flex items-center gap-1">
-                                                <TruckIcon className="h-3 w-3" />
-                                                {truck.name}
-                                            </div>
-                                        ) : '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {category ? (
-                                            <Badge variant="secondary" style={category.color ? { backgroundColor: category.color + '20', color: category.color } : {}}>
-                                                {category.name}
-                                            </Badge>
-                                        ) : '-'}
-                                    </TableCell>
-                                    <TableCell>{format(parseISO(t.dueDate), 'dd/MM/yyyy')}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary" className={cn(STATUS_COLORS[t.status])}>
-                                                {STATUS_LABELS[t.status]}
-                                            </Badge>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-6 w-6 p-0 rounded-full"
-                                                onClick={() => handleToggleStatus(t.id, t.status)}
-                                                title={t.status === 'paid' ? 'Marcar como pendente' : 'Marcar como pago'}
-                                            >
-                                                {t.status === 'paid' ? <Clock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className={cn("text-right font-bold", t.type === 'income' ? 'text-green-600' : 'text-red-600')}>
-                                        {t.type === 'expense' ? '-' : ''}{formatCurrency(t.amount)}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingTransaction(t); setIsAddDialogOpen(true); }}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                         <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                    disabled={deletingId === t.id}
-                                                >
-                                                    {deletingId === t.id ? <Spinner size="small" /> : <Trash2 className="h-4 w-4" />}
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Tem certeza que deseja excluir esta transação?</AlertDialogTitle>
-                                                    <RealAlertDialogDescription>
-                                                        Esta ação não pode ser desfeita e excluirá permanentemente o registro desta transação.
-                                                    </RealAlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(t.id)}>
-                                                        Excluir
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="font-headline text-lg">Lista de Transações</CardTitle>
+                    <CardDescription>Transações do período selecionado.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Descrição</TableHead>
+                                    <TableHead>Usuário</TableHead>
+                                    <TableHead>Caminhão</TableHead>
+                                    <TableHead>Categoria</TableHead>
+                                    <TableHead>Vencimento</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Valor</TableHead>
+                                    <TableHead className="text-right">Ações</TableHead>
                                 </TableRow>
-                            );
-                        }) : (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                                    Nenhuma transação encontrada.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredTransactions.length > 0 ? filteredTransactions.map((t) => {
+                                    const category = categories.find(c => c.id === t.categoryId);
+                                    const user = team?.find(u => u.id === t.userId);
+                                    const truck = trucks?.find(tr => tr.id === t.truckId);
+                                    const isFuture = isAfter(parseISO(t.dueDate), startOfDay(new Date()));
+                                    const isRecurringFuture = t.recurringProfileId && isFuture && t.status === 'pending';
+
+                                    return (
+                                        <TableRow key={t.id} className={cn(isFuture && t.status === 'pending' && "opacity-60 hover:opacity-100 transition-opacity", "cursor-pointer hover:bg-muted/50")}>
+                                            <TableCell className="font-medium">
+                                                <div className="flex items-center gap-2">
+                                                    {t.type === 'income' ?
+                                                        <ArrowUpCircle className="h-4 w-4 text-green-500" /> :
+                                                        <ArrowDownCircle className="h-4 w-4 text-red-500" />
+                                                    }
+                                                    <span className="truncate max-w-[200px]" title={t.description}>{t.description}</span>
+                                                    {t.source === 'service' && <Badge variant="outline" className="text-[10px] h-5">Auto</Badge>}
+                                                    {isRecurringFuture && (
+                                                        <Badge variant="secondary" className="text-[10px] h-5 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                                                            Transação Futura
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {user ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <UserIcon className="h-3 w-3" />
+                                                        {user.name.split(' ')[0]}
+                                                    </div>
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {truck ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <TruckIcon className="h-3 w-3" />
+                                                        {truck.name}
+                                                    </div>
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {category ? (
+                                                    <Badge variant="secondary" style={category.color ? { backgroundColor: category.color + '20', color: category.color } : {}}>
+                                                        {category.name}
+                                                    </Badge>
+                                                ) : '-'}
+                                            </TableCell>
+                                            <TableCell>{format(parseISO(t.dueDate), 'dd/MM/yyyy')}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="secondary" className={cn(STATUS_COLORS[t.status])}>
+                                                        {STATUS_LABELS[t.status]}
+                                                    </Badge>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 w-6 p-0 rounded-full"
+                                                        onClick={() => handleToggleStatus(t.id, t.status)}
+                                                        title={t.status === 'paid' ? 'Marcar como pendente' : 'Marcar como pago'}
+                                                    >
+                                                        {t.status === 'paid' ? <Clock className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className={cn("text-right font-bold", t.type === 'income' ? 'text-green-600' : 'text-red-600')}>
+                                                {t.type === 'expense' ? '-' : ''}{formatCurrency(t.amount)}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingTransaction(t); setIsAddDialogOpen(true); }}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                                            disabled={deletingId === t.id}
+                                                        >
+                                                            {deletingId === t.id ? <Spinner size="small" /> : <Trash2 className="h-4 w-4" />}
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Tem certeza que deseja excluir esta transação?</AlertDialogTitle>
+                                                            <RealAlertDialogDescription>
+                                                                Esta ação não pode ser desfeita e excluirá permanentemente o registro desta transação.
+                                                            </RealAlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(t.id)}>
+                                                                Excluir
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                }) : (
+                                    <TableRow>
+                                        <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
+                                            Nenhuma transação encontrada.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </CardContent>
+            </Card>
 
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogContent>
@@ -505,7 +514,7 @@ export function TransactionsList({
                         </div>
 
                         {editingTransaction && (
-                             <div className="grid gap-2">
+                            <div className="grid gap-2">
                                 <Label htmlFor="status">Status</Label>
                                 <Select name="status" defaultValue={editingTransaction.status}>
                                     <SelectTrigger>
@@ -547,7 +556,7 @@ export function TransactionsList({
                     <DialogHeader>
                         <DialogTitle>Configuração de Recorrências</DialogTitle>
                         <DialogDescription>
-                             Gerencie suas receitas e despesas fixas.
+                            Gerencie suas receitas e despesas fixas.
                         </DialogDescription>
                     </DialogHeader>
                     <RecurringTransactionsSettings
