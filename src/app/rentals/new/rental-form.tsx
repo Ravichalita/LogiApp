@@ -174,21 +174,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
   const [isRentalDateOpen, setIsRentalDateOpen] = useState(false);
   const [isReturnDateOpen, setIsReturnDateOpen] = useState(false);
 
-  // Address suggestions toggle with localStorage persistence
-  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
-    }
-    return false;
-  });
-
-  const handleSuggestionsToggle = (checked: boolean) => {
-    setEnableAddressSuggestions(checked);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('addressSuggestionsEnabled', String(checked));
-    }
-  };
-
   const isViewer = userAccount?.role === 'viewer';
   const assignableUsers = isViewer && userAccount ? [userAccount] : team;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
@@ -824,7 +809,6 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
                 value={startAddress}
                 onInputChange={handleStartAddressChange}
                 onLocationSelect={handleStartLocationSelect}
-                enableSuggestions={enableAddressSuggestions}
                 provider={account?.geocodingProvider || 'locationiq'}
                 disabled={userAccount?.permissions?.canUseGeocoding === false}
               />
@@ -872,22 +856,9 @@ export function RentalForm({ dumpsters, clients, classifiedClients, team, trucks
           value={deliveryAddress}
           onInputChange={handleDeliveryAddressChange}
           onLocationSelect={handleDeliveryLocationSelect}
-          enableSuggestions={enableAddressSuggestions}
           provider={account?.geocodingProvider || 'locationiq'}
           disabled={userAccount?.permissions?.canUseGeocoding === false}
         />
-        {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
-          <div className="flex items-center gap-2 mt-2">
-            <Checkbox
-              id="enable-suggestions"
-              checked={enableAddressSuggestions}
-              onCheckedChange={handleSuggestionsToggle}
-            />
-            <Label htmlFor="enable-suggestions" className="text-sm font-normal text-muted-foreground cursor-pointer">
-              Sugestões de endereço
-            </Label>
-          </div>
-        )}
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
 

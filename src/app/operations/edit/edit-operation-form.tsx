@@ -143,21 +143,6 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
-  // Address suggestions toggle with localStorage persistence
-  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
-    }
-    return false;
-  });
-
-  const handleSuggestionsToggle = (checked: boolean) => {
-    setEnableAddressSuggestions(checked);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('addressSuggestionsEnabled', String(checked));
-    }
-  };
-
   useEffect(() => {
     if (!startLocation && startAddress) {
       if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
@@ -607,7 +592,7 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
               <MapDialog onLocationSelect={handleStartLocationSelect} address={startAddress} initialLocation={startLocation} />
             </div>
             <AccordionContent className="pt-4 space-y-2">
-              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} enableSuggestions={enableAddressSuggestions} />
+              <AddressInput id="start-address-input" value={startAddress} onInputChange={handleStartAddressChange} onLocationSelect={handleStartLocationSelect} />
               {errors?.startAddress && (
                 <p className="text-sm font-medium text-destructive mt-2">{errors.startAddress[0]}</p>
               )}
@@ -620,19 +605,7 @@ export function EditOperationForm({ operation, clients, classifiedClients, team,
             <Label htmlFor="destination-address-input" className="text-muted-foreground">Endereço de Destino</Label>
             <MapDialog onLocationSelect={handleDestinationLocationSelect} address={destinationAddress} initialLocation={destinationLocation} />
           </div>
-          <AddressInput id="destination-address-input" value={destinationAddress} onInputChange={handleDestinationAddressChange} onLocationSelect={handleDestinationLocationSelect} enableSuggestions={enableAddressSuggestions} />
-          {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
-            <div className="flex items-center gap-2 mt-2">
-              <Checkbox
-                id="enable-suggestions-edit-op2"
-                checked={enableAddressSuggestions}
-                onCheckedChange={handleSuggestionsToggle}
-              />
-              <Label htmlFor="enable-suggestions-edit-op2" className="text-sm font-normal text-muted-foreground cursor-pointer">
-                Sugestões de endereço
-              </Label>
-            </div>
-          )}
+          <AddressInput id="destination-address-input" value={destinationAddress} onInputChange={handleDestinationAddressChange} onLocationSelect={handleDestinationLocationSelect} />
           {errors?.destinationAddress && <p className="text-sm font-medium text-destructive">{errors.destinationAddress[0]}</p>}
         </div>
       </div>

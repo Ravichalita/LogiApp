@@ -41,22 +41,6 @@ export function EditClientForm({ client }: { client: Client }) {
   );
   const [mapsLink, setMapsLink] = useState(client.googleMapsLink || '');
 
-  // Address suggestions toggle with localStorage persistence
-  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
-    }
-    return false;
-  });
-
-  const handleSuggestionsToggle = (checked: boolean) => {
-    setEnableAddressSuggestions(checked);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('addressSuggestionsEnabled', String(checked));
-    }
-  };
-
-
   const handleLocationSelect = (selectedLocation: Location) => {
     setLocation({ lat: selectedLocation.lat, lng: selectedLocation.lng });
     setAddress(selectedLocation.address);
@@ -171,20 +155,7 @@ export function EditClientForm({ client }: { client: Client }) {
             onLocationSelect={handleLocationSelect}
             onInputChange={handleAddressChange}
             initialLocation={location}
-            enableSuggestions={enableAddressSuggestions}
           />
-          {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
-            <div className="flex items-center gap-2 mt-2">
-              <Checkbox
-                id="enable-suggestions-edit-client"
-                checked={enableAddressSuggestions}
-                onCheckedChange={handleSuggestionsToggle}
-              />
-              <Label htmlFor="enable-suggestions-edit-client" className="text-sm font-normal text-muted-foreground cursor-pointer">
-                Sugestões de endereço
-              </Label>
-            </div>
-          )}
           {state?.errors?.address && <p className="text-sm font-medium text-destructive">{state.errors.address[0]}</p>}
         </div>
         <div className="space-y-2">
