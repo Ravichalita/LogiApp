@@ -462,7 +462,6 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                 value={startAddress}
                 onInputChange={handleStartAddressChange}
                 onLocationSelect={handleStartLocationSelect}
-                enableSuggestions={true}
                 provider={account?.geocodingProvider || 'locationiq'}
                 disabled={userAccount?.permissions?.canUseGeocoding === false}
               />
@@ -511,22 +510,9 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
           onInputChange={handleDeliveryAddressChange}
           onLocationSelect={handleDeliveryLocationSelect}
           initialLocation={deliveryLocation}
-          enableSuggestions={enableAddressSuggestions}
           provider={account?.geocodingProvider || 'locationiq'}
           disabled={userAccount?.permissions?.canUseGeocoding === false}
         />
-        {userAccount?.permissions?.canUseGeocoding !== false && (
-          <div className="flex items-center gap-2 mt-2">
-            <Checkbox
-              id="enable-suggestions-edit-rental"
-              checked={enableAddressSuggestions}
-              onCheckedChange={handleSuggestionsToggle}
-            />
-            <Label htmlFor="enable-suggestions-edit-rental" className="text-sm font-normal text-muted-foreground cursor-pointer">
-              Sugestões de endereço
-            </Label>
-          </div>
-        )}
         {errors?.deliveryAddress && <p className="text-sm font-medium text-destructive">{errors.deliveryAddress[0]}</p>}
       </div>
 

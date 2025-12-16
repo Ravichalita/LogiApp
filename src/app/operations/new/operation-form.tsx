@@ -158,22 +158,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
   const profit = baseValue - totalOperationCost;
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
-  // Address suggestions toggle with localStorage persistence
-  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
-    }
-    return false;
-  });
-
-  const handleSuggestionsToggle = (checked: boolean) => {
-    setEnableAddressSuggestions(checked);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('addressSuggestionsEnabled', String(checked));
-    }
-  };
-
-
   useEffect(() => {
     if (!startLocation && startAddress) {
       if (userAccount?.permissions?.canUsePaidGoogleAPIs === false) return;
@@ -762,7 +746,6 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
                 value={startAddress}
                 onInputChange={handleStartAddressChange}
                 onLocationSelect={handleStartLocationSelect}
-                enableSuggestions={enableAddressSuggestions}
                 provider={account?.geocodingProvider || 'locationiq'}
                 disabled={userAccount?.permissions?.canUseGeocoding === false}
               />
@@ -810,22 +793,9 @@ export function OperationForm({ clients, classifiedClients, team, trucks, operat
             value={destinationAddress}
             onInputChange={handleDestinationAddressChange}
             onLocationSelect={handleDestinationLocationSelect}
-            enableSuggestions={enableAddressSuggestions}
             provider={account?.geocodingProvider || 'locationiq'}
             disabled={userAccount?.permissions?.canUseGeocoding === false}
           />
-          {userAccount?.permissions?.canUsePaidGoogleAPIs !== false && (
-            <div className="flex items-center gap-2 mt-2">
-              <Checkbox
-                id="enable-suggestions-op"
-                checked={enableAddressSuggestions}
-                onCheckedChange={handleSuggestionsToggle}
-              />
-              <Label htmlFor="enable-suggestions-op" className="text-sm font-normal text-muted-foreground cursor-pointer">
-                Sugestões de endereço
-              </Label>
-            </div>
-          )}
           {errors?.destinationAddress && <p className="text-sm font-medium text-destructive">{errors.destinationAddress[0]}</p>}
         </div>
       </div>
