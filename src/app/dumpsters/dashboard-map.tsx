@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { EnhancedDumpster } from '@/lib/types';
@@ -15,6 +15,30 @@ interface DashboardMapProps {
 
 const DEFAULT_CENTER: [number, number] = [-22.88, -42.02]; // Cabo Frio
 const ZOOM_LEVEL = 13;
+
+interface MapMarker {
+  id: string;
+  name: string;
+  position: [number, number];
+  status: string;
+  clientName: string;
+  address: string;
+}
+
+function MapEffect({ markers }: { markers: MapMarker[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (markers.length > 0) {
+      const bounds = L.latLngBounds(markers.map(m => m.position));
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+       map.setView(DEFAULT_CENTER, ZOOM_LEVEL);
+    }
+  }, [map, markers]);
+
+  return null;
+}
 
 export default function DashboardMap({ dumpsters }: DashboardMapProps) {
   const { account } = useAuth();
@@ -103,6 +127,7 @@ export default function DashboardMap({ dumpsters }: DashboardMapProps) {
 
   return (
     <MapContainer center={DEFAULT_CENTER} zoom={ZOOM_LEVEL} style={{ height: '450px', width: '100%', borderRadius: '0.5rem', zIndex: 0 }}>
+      <MapEffect markers={markers} />
       <TileLayer
         attribution='Powered by <a href="https://www.geoapify.com/">Geoapify</a> | © OpenStreetMap'
         url={`https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=${geoapifyKey}`}
