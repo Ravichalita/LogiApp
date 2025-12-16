@@ -22,6 +22,12 @@ import { GanttSpreadsheet } from './gantt-spreadsheet';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { DumpstersMap } from './dumpsters-map';
+import dynamic from 'next/dynamic';
+
+const DashboardMap = dynamic(() => import('./dashboard-map'), {
+    ssr: false,
+    loading: () => <Skeleton className="h-full w-full" />
+});
 
 
 function ColorDisplay({ color }: { color: DumpsterColor }) {
@@ -78,7 +84,7 @@ const filterOptions: { label: string, value: DerivedDumpsterStatus | 'Todos' | '
 ];
 
 export default function DumpstersPage() {
-  const { accountId, userAccount, isSuperAdmin, loading: authLoading } = useAuth();
+  const { accountId, userAccount, isSuperAdmin, loading: authLoading, account } = useAuth();
   const [dumpsters, setDumpsters] = useState<Dumpster[]>([]);
   const [allRentals, setAllRentals] = useState<Rental[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -292,7 +298,15 @@ export default function DumpstersPage() {
                 </div>
             </CardHeader>
              <CardContent className="p-0 h-96">
-                {loading ? <Skeleton className="h-full w-full" /> : <DumpstersMap dumpsters={dumpstersWithDerivedStatus} />}
+                {loading ? (
+                    <Skeleton className="h-full w-full" />
+                ) : (
+                    account?.geocodingProvider === 'geoapify' ? (
+                        <DashboardMap dumpsters={dumpstersWithDerivedStatus} />
+                    ) : (
+                        <DumpstersMap dumpsters={dumpstersWithDerivedStatus} />
+                    )
+                )}
             </CardContent>
         </Card>
 
