@@ -130,21 +130,6 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
 
   const canUseAttachments = isSuperAdmin || userAccount?.permissions?.canUseAttachments;
 
-  // Address suggestions toggle with localStorage persistence
-  const [enableAddressSuggestions, setEnableAddressSuggestions] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('addressSuggestionsEnabled') === 'true';
-    }
-    return false;
-  });
-
-  const handleSuggestionsToggle = (checked: boolean) => {
-    setEnableAddressSuggestions(checked);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('addressSuggestionsEnabled', String(checked));
-    }
-  };
-
   const rentalDays = returnDate && rentalDate ? differenceInCalendarDays(returnDate, rentalDate) + 1 : 0;
   const totalRentalValue = billingType === 'lumpSum' ? lumpSumValue : value * rentalDays;
   const totalOperationCost = (travelCost || 0) + additionalCosts.reduce((acc, cost) => acc + cost.value, 0);
@@ -477,7 +462,7 @@ export function EditRentalForm({ rental, clients, team, trucks, account }: EditR
                 value={startAddress}
                 onInputChange={handleStartAddressChange}
                 onLocationSelect={handleStartLocationSelect}
-                enableSuggestions={enableAddressSuggestions}
+                enableSuggestions={true}
                 provider={account?.geocodingProvider || 'locationiq'}
                 disabled={userAccount?.permissions?.canUseGeocoding === false}
               />

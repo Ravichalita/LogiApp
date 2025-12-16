@@ -231,6 +231,12 @@ export async function updateMapSettingsAction(accountId: string, prevState: any,
              updateData.locationIqToken = FieldValue.delete();
         }
 
+        if (validatedFields.data.geoapifyApiKey) {
+            updateData.geoapifyApiKey = validatedFields.data.geoapifyApiKey;
+        } else if (rawData.geoapifyApiKey === '') {
+             updateData.geoapifyApiKey = FieldValue.delete();
+        }
+
         await adminDb.doc(`accounts/${accountId}`).update(updateData);
         revalidatePath('/settings');
         return {
