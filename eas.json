@@ -1,26 +1,26 @@
 {
-    "cli": {
-        "version": ">= 12.0.0"
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
     },
-    "build": {
-        "development": {
-            "developmentClient": true,
-            "distribution": "internal"
-        },
-        "preview": {
-            "android": {
-                "buildType": "apk"
-            },
-        "env": {
+    "preview": {
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      },
+      "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
-          }
-            "ios": {
-                "simulator": true
-            }
-        },
-        "production": {}
+      }
     },
-    "submit": {
-        "production": {}
-    }
+    "production": {}
+  },
+  "submit": {
+    "production": {}
+  }
 }
