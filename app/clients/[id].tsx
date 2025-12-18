@@ -54,8 +54,18 @@ export default function ClientDetail() {
     const [loading, setLoading] = useState(true);
     const [loadingHistory, setLoadingHistory] = useState(true);
     const [accountId, setAccountId] = useState<string>('');
+    const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
     const router = useRouter();
     const { auth, db } = getFirebase();
+
+    // Separate active and completed OS
+    const activeOS = osHistory.filter(os =>
+        os.status === 'Ativo' || os.status === 'Em Andamento' || os.status === 'Pendente'
+    );
+    const completedOS = osHistory.filter(os =>
+        os.status === 'Finalizado' || os.status === 'Concluído'
+    );
+    const displayOS = activeTab === 'active' ? activeOS : completedOS;
 
     useEffect(() => {
         const fetchClient = async () => {
@@ -333,10 +343,10 @@ export default function ClientDetail() {
                     </View>
                 </View>
 
-                {/* OS History */}
+                {/* OS History with Tabs */}
                 <View className="px-4 mb-4">
                     <View className="flex-row items-center justify-between mb-3">
-                        <Text className="text-base font-semibold text-gray-900">Histórico de OS</Text>
+                        <Text className="text-base font-semibold text-gray-900">Ordens de Serviço</Text>
                         <TouchableOpacity
                             onPress={handleNewOS}
                             className="flex-row items-center bg-orange-500 rounded-lg px-3 py-2"
@@ -346,25 +356,49 @@ export default function ClientDetail() {
                         </TouchableOpacity>
                     </View>
 
+                    {/* Tabs */}
+                    <View className="flex-row bg-gray-100 rounded-lg p-1 mb-3">
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('active')}
+                            className={`flex-1 py-2 rounded-md items-center ${activeTab === 'active' ? 'bg-white shadow-sm' : ''}`}
+                        >
+                            <Text className={`font-medium ${activeTab === 'active' ? 'text-orange-600' : 'text-gray-500'}`}>
+                                Ativas ({activeOS.length})
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('history')}
+                            className={`flex-1 py-2 rounded-md items-center ${activeTab === 'history' ? 'bg-white shadow-sm' : ''}`}
+                        >
+                            <Text className={`font-medium ${activeTab === 'history' ? 'text-orange-600' : 'text-gray-500'}`}>
+                                Histórico ({completedOS.length})
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
                     {loadingHistory ? (
                         <ActivityIndicator size="small" color="#FF9500" />
-                    ) : osHistory.length === 0 ? (
+                    ) : displayOS.length === 0 ? (
                         <Card>
                             <CardContent className="py-8 items-center">
                                 <FileText size={32} color="#D1D5DB" />
-                                <Text className="text-gray-500 mt-2">Nenhuma OS encontrada</Text>
-                                <TouchableOpacity
-                                    onPress={handleNewOS}
-                                    className="mt-4 bg-orange-500 rounded-lg px-4 py-2"
-                                >
-                                    <Text className="text-white font-medium">Criar primeira OS</Text>
-                                </TouchableOpacity>
+                                <Text className="text-gray-500 mt-2">
+                                    {activeTab === 'active' ? 'Nenhuma OS ativa' : 'Nenhuma OS finalizada'}
+                                </Text>
+                                {activeTab === 'active' && (
+                                    <TouchableOpacity
+                                        onPress={handleNewOS}
+                                        className="mt-4 bg-orange-500 rounded-lg px-4 py-2"
+                                    >
+                                        <Text className="text-white font-medium">Criar primeira OS</Text>
+                                    </TouchableOpacity>
+                                )}
                             </CardContent>
                         </Card>
                     ) : (
                         <Card>
                             <CardContent className="py-0">
-                                {osHistory.map((os, index) => {
+                                {displayOS.map((os, index) => {
                                     const statusColor = getStatusColor(os.status);
                                     const isRental = os.type === 'rental';
                                     const osCode = isRental ? `AL${os.sequentialId}` : `OP${os.sequentialId}`;
@@ -376,7 +410,7 @@ export default function ClientDetail() {
                                                 pathname: '/os/[id]',
                                                 params: { id: os.id, type: os.type }
                                             })}
-                                            className={`flex-row items-center py-4 ${index < osHistory.length - 1 ? 'border-b border-gray-100' : ''
+                                            className={`flex-row items-center py-4 ${index < displayOS.length - 1 ? 'border-b border-gray-100' : ''
                                                 }`}
                                         >
                                             <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isRental ? 'bg-orange-100' : 'bg-blue-100'

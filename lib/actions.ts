@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebase } from './firebase';
 
-import type { Client, Dumpster, Rental, Operation, Truck, UserAccount, Attachment, RecurrenceData, AdditionalCost } from './types';
+import type { Client, Dumpster, Rental, Operation, Truck, UserAccount, Attachment, RecurrenceData, AdditionalCost, Permissions } from './types';
 
 // Helper to handle common errors
 const handleFirebaseError = (error: unknown): string => {
@@ -562,6 +562,292 @@ export async function updateUserAction(
         return { success: true };
     } catch (error) {
         console.error('Error updating user:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function updateUserPermissionsAction(
+    accountId: string,
+    userId: string,
+    permissions: Partial<Permissions>
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        // Update in account team collection
+        const teamMemberRef = doc(db, `accounts/${accountId}/team`, userId);
+        await updateDoc(teamMemberRef, { permissions });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating user permissions:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+// #endregion
+
+// #region Dumpster Actions
+
+export interface CreateDumpsterData {
+    name: string;
+    size: number;
+    color: string;
+    status?: 'Disponível' | 'Em Manutenção' | 'Em Uso';
+}
+
+export async function createDumpsterAction(
+    accountId: string,
+    data: CreateDumpsterData
+): Promise<{ success: boolean; error?: string; dumpsterId?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const dumpsterRef = await addDoc(collection(db, `accounts/${accountId}/dumpsters`), {
+            ...data,
+            status: data.status || 'Disponível',
+            accountId,
+            createdAt: serverTimestamp(),
+        });
+
+        return { success: true, dumpsterId: dumpsterRef.id };
+    } catch (error) {
+        console.error('Error creating dumpster:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export interface UpdateDumpsterData {
+    name?: string;
+    size?: number;
+    color?: string;
+    status?: 'Disponível' | 'Em Manutenção' | 'Em Uso';
+}
+
+export async function updateDumpsterAction(
+    accountId: string,
+    dumpsterId: string,
+    data: UpdateDumpsterData
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const dumpsterRef = doc(db, `accounts/${accountId}/dumpsters`, dumpsterId);
+
+        const updateData: any = { ...data };
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined) {
+                delete updateData[key];
+            }
+        });
+
+        await updateDoc(dumpsterRef, updateData);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating dumpster:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function updateDumpsterStatusAction(
+    accountId: string,
+    dumpsterId: string,
+    newStatus: 'Disponível' | 'Em Manutenção' | 'Em Uso'
+): Promise<{ success: boolean; error?: string }> {
+    return updateDumpsterAction(accountId, dumpsterId, { status: newStatus });
+}
+
+export async function deleteDumpsterAction(
+    accountId: string,
+    dumpsterId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const dumpsterRef = doc(db, `accounts/${accountId}/dumpsters`, dumpsterId);
+        await deleteDoc(dumpsterRef);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting dumpster:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+// #endregion
+
+// #region Truck/Fleet Actions
+
+export interface CreateTruckData {
+    name: string;
+    plate: string;
+    type?: string;
+    typeId?: string;
+    year?: number;
+    status?: 'Disponível' | 'Em Manutenção' | 'Em Uso';
+}
+
+export async function createTruckAction(
+    accountId: string,
+    data: CreateTruckData
+): Promise<{ success: boolean; error?: string; truckId?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const truckRef = await addDoc(collection(db, `accounts/${accountId}/fleet`), {
+            ...data,
+            status: data.status || 'Disponível',
+            accountId,
+            createdAt: serverTimestamp(),
+        });
+
+        return { success: true, truckId: truckRef.id };
+    } catch (error) {
+        console.error('Error creating truck:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export interface UpdateTruckData {
+    name?: string;
+    plate?: string;
+    type?: string;
+    typeId?: string;
+    year?: number;
+    status?: 'Disponível' | 'Em Manutenção' | 'Em Uso';
+}
+
+export async function updateTruckAction(
+    accountId: string,
+    truckId: string,
+    data: UpdateTruckData
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const truckRef = doc(db, `accounts/${accountId}/fleet`, truckId);
+
+        const updateData: any = { ...data };
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined) {
+                delete updateData[key];
+            }
+        });
+
+        await updateDoc(truckRef, updateData);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating truck:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function updateTruckStatusAction(
+    accountId: string,
+    truckId: string,
+    newStatus: 'Disponível' | 'Em Manutenção' | 'Em Uso'
+): Promise<{ success: boolean; error?: string }> {
+    return updateTruckAction(accountId, truckId, { status: newStatus });
+}
+
+export async function deleteTruckAction(
+    accountId: string,
+    truckId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const truckRef = doc(db, `accounts/${accountId}/fleet`, truckId);
+        await deleteDoc(truckRef);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting truck:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+// #endregion
+
+// #region Account Settings Actions
+
+export async function updateOperationTypesAction(
+    accountId: string,
+    operationTypes: { id: string; name: string; value: number }[]
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const accountRef = doc(db, 'accounts', accountId);
+        await updateDoc(accountRef, { operationTypes });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating operation types:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function updateBasesAction(
+    accountId: string,
+    bases: { id: string; name: string; address: string; latitude?: number | null; longitude?: number | null }[]
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const accountRef = doc(db, 'accounts', accountId);
+        await updateDoc(accountRef, { bases });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating bases:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function updateRentalPricesAction(
+    accountId: string,
+    rentalPrices: { id: string; name: string; value: number }[]
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const accountRef = doc(db, 'accounts', accountId);
+        await updateDoc(accountRef, { rentalPrices });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating rental prices:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function updateTruckTypesAction(
+    accountId: string,
+    truckTypes: { id: string; name: string }[]
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const accountRef = doc(db, 'accounts', accountId);
+        await updateDoc(accountRef, { truckTypes });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error updating truck types:', error);
         return { success: false, error: handleFirebaseError(error) };
     }
 }

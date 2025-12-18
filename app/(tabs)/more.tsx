@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Truck, Trash2, Settings, ChevronRight, Users, DollarSign, Bell, BarChart3, Search } from "lucide-react-native";
+import { Truck, Trash2, Settings, ChevronRight, Users, DollarSign, Bell, BarChart3, Search, Map } from "lucide-react-native";
 import { getFirebase } from "../../lib/firebase";
 
 export default function MoreOptions() {
@@ -22,6 +22,13 @@ export default function MoreOptions() {
             description: "Filtros por data e tipo",
             route: "/more/search",
             color: "#6366F1"
+        },
+        {
+            icon: Map,
+            label: "Planejamento de Rotas",
+            description: "Visualizar e otimizar trajetos",
+            route: "/more/route-planning",
+            color: "#0EA5E9"
         },
         {
             icon: Truck,
@@ -57,6 +64,13 @@ export default function MoreOptions() {
             description: "Estatísticas e exportação",
             route: "/more/reports",
             color: "#0891B2"
+        },
+        {
+            icon: Settings,
+            label: "Config. Avançadas",
+            description: "Bases, tipos e preços",
+            route: "/more/admin-settings",
+            color: "#EA580C"
         },
         {
             icon: Settings,

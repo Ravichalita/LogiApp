@@ -5,18 +5,21 @@ import {
     ScrollView,
     ActivityIndicator,
     TouchableOpacity,
-    FlatList
+    Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
-import { ChevronLeft, TrendingUp, TrendingDown, DollarSign, Calendar, ChevronRight, ArrowUpCircle, ArrowDownCircle } from 'lucide-react-native';
-import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { ChevronLeft, TrendingUp, TrendingDown, DollarSign, ChevronRight, ArrowUpCircle, ArrowDownCircle, Filter, Clock, CheckCircle, AlertCircle, Percent } from 'lucide-react-native';
+import { format, subMonths, addMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
 import { getFirebase } from '../../lib/firebase';
 import { getTransactions } from '../../lib/data';
 import { Transaction } from '../../lib/types';
+
+type StatusFilter = 'all' | 'pending' | 'paid' | 'overdue';
 
 export default function FinanceScreen() {
     const router = useRouter();
@@ -26,6 +29,8 @@ export default function FinanceScreen() {
     const [loading, setLoading] = useState(true);
     const [accountId, setAccountId] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState(new Date());
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    const [showFilterModal, setShowFilterModal] = useState(false);
 
     useEffect(() => {
         const loadAccountId = async () => {
@@ -61,24 +66,35 @@ export default function FinanceScreen() {
     }, [accountId, selectedMonth]);
 
     // Calculate totals
-    const { totalIncome, totalExpense, balance } = useMemo(() => {
-        let income = 0;
-        let expense = 0;
+    const metrics = useMemo(() => {
+        let totalIncome = 0;
+        let totalExpense = 0;
+        let pendingIncome = 0;
+        let pendingExpense = 0;
 
         transactions.forEach(t => {
+            if (t.status === 'cancelled') return;
+
             if (t.type === 'income') {
-                income += t.amount;
+                totalIncome += t.amount;
+                if (t.status === 'pending') pendingIncome += t.amount;
             } else {
-                expense += t.amount;
+                totalExpense += t.amount;
+                if (t.status === 'pending' || t.status === 'overdue') pendingExpense += t.amount;
             }
         });
 
-        return {
-            totalIncome: income,
-            totalExpense: expense,
-            balance: income - expense
-        };
+        const balance = totalIncome - totalExpense;
+        const margin = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+
+        return { totalIncome, totalExpense, balance, pendingIncome, pendingExpense, margin };
     }, [transactions]);
+
+    // Filter transactions
+    const filteredTransactions = useMemo(() => {
+        if (statusFilter === 'all') return transactions;
+        return transactions.filter(t => t.status === statusFilter);
+    }, [transactions, statusFilter]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', {
@@ -95,33 +111,31 @@ export default function FinanceScreen() {
         setSelectedMonth(prev => addMonths(prev, 1));
     };
 
-    const getStatusColor = (status: string) => {
+    const getStatusConfig = (status: string) => {
         switch (status) {
-            case 'paid': return 'text-green-600';
-            case 'pending': return 'text-yellow-600';
-            case 'overdue': return 'text-red-600';
-            case 'cancelled': return 'text-gray-400';
-            default: return 'text-gray-600';
+            case 'paid': return { color: 'text-green-600', bg: 'bg-green-100', label: 'Pago', icon: CheckCircle };
+            case 'pending': return { color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Pendente', icon: Clock };
+            case 'overdue': return { color: 'text-red-600', bg: 'bg-red-100', label: 'Atrasado', icon: AlertCircle };
+            case 'cancelled': return { color: 'text-gray-400', bg: 'bg-gray-100', label: 'Cancelado', icon: Clock };
+            default: return { color: 'text-gray-600', bg: 'bg-gray-100', label: status, icon: Clock };
         }
     };
 
-    const getStatusLabel = (status: string) => {
-        switch (status) {
-            case 'paid': return 'Pago';
-            case 'pending': return 'Pendente';
-            case 'overdue': return 'Atrasado';
-            case 'cancelled': return 'Cancelado';
-            default: return status;
-        }
-    };
+    const filterOptions: { value: StatusFilter; label: string; count: number }[] = [
+        { value: 'all', label: 'Todas', count: transactions.length },
+        { value: 'pending', label: 'Pendentes', count: transactions.filter(t => t.status === 'pending').length },
+        { value: 'paid', label: 'Pagas', count: transactions.filter(t => t.status === 'paid').length },
+        { value: 'overdue', label: 'Atrasadas', count: transactions.filter(t => t.status === 'overdue').length },
+    ];
 
-    const renderTransaction = ({ item }: { item: Transaction }) => {
+    const renderTransaction = (item: Transaction) => {
         const isIncome = item.type === 'income';
+        const statusConfig = getStatusConfig(item.status);
+        const StatusIcon = statusConfig.icon;
 
         return (
-            <TouchableOpacity className="flex-row items-center py-4 border-b border-gray-100">
-                <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isIncome ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
+            <TouchableOpacity key={item.id} className="flex-row items-center py-4 border-b border-gray-100">
+                <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${isIncome ? 'bg-green-100' : 'bg-red-100'}`}>
                     {isIncome ? (
                         <ArrowUpCircle size={20} color="#16A34A" />
                     ) : (
@@ -133,13 +147,16 @@ export default function FinanceScreen() {
                     <Text className="font-medium text-gray-900" numberOfLines={1}>
                         {item.description}
                     </Text>
-                    <View className="flex-row items-center">
+                    <View className="flex-row items-center mt-1">
                         <Text className="text-xs text-gray-500">
                             {format(new Date(item.dueDate), 'dd/MM/yyyy')}
                         </Text>
-                        <Text className={`text-xs ml-2 ${getStatusColor(item.status)}`}>
-                            • {getStatusLabel(item.status)}
-                        </Text>
+                        <View className={`flex-row items-center ml-2 px-2 py-0.5 rounded-full ${statusConfig.bg}`}>
+                            <StatusIcon size={10} color={statusConfig.color.replace('text-', '#').replace('-600', '')} />
+                            <Text className={`text-xs ml-1 ${statusConfig.color}`}>
+                                {statusConfig.label}
+                            </Text>
+                        </View>
                     </View>
                 </View>
 
@@ -193,7 +210,7 @@ export default function FinanceScreen() {
                                         <View>
                                             <Text className="text-orange-100 text-sm">Saldo do Período</Text>
                                             <Text className="text-white text-3xl font-bold mt-1">
-                                                {formatCurrency(balance)}
+                                                {formatCurrency(metrics.balance)}
                                             </Text>
                                         </View>
                                         <View className="w-14 h-14 bg-white/20 rounded-full items-center justify-center">
@@ -203,7 +220,7 @@ export default function FinanceScreen() {
                                 </CardContent>
                             </Card>
 
-                            <View className="flex-row gap-4">
+                            <View className="flex-row gap-4 mb-4">
                                 {/* Income Card */}
                                 <Card className="flex-1">
                                     <CardContent className="pt-4 pb-4">
@@ -214,8 +231,13 @@ export default function FinanceScreen() {
                                             <Text className="text-gray-500 text-sm">Receitas</Text>
                                         </View>
                                         <Text className="text-green-600 text-xl font-bold">
-                                            {formatCurrency(totalIncome)}
+                                            {formatCurrency(metrics.totalIncome)}
                                         </Text>
+                                        {metrics.pendingIncome > 0 && (
+                                            <Text className="text-xs text-gray-400 mt-1">
+                                                A receber: {formatCurrency(metrics.pendingIncome)}
+                                            </Text>
+                                        )}
                                     </CardContent>
                                 </Card>
 
@@ -229,30 +251,58 @@ export default function FinanceScreen() {
                                             <Text className="text-gray-500 text-sm">Despesas</Text>
                                         </View>
                                         <Text className="text-red-600 text-xl font-bold">
-                                            {formatCurrency(totalExpense)}
+                                            {formatCurrency(metrics.totalExpense)}
                                         </Text>
+                                        {metrics.pendingExpense > 0 && (
+                                            <Text className="text-xs text-gray-400 mt-1">
+                                                A pagar: {formatCurrency(metrics.pendingExpense)}
+                                            </Text>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </View>
+
+                            {/* Margin Card */}
+                            <Card className="mb-4">
+                                <CardContent className="pt-4 pb-4 flex-row items-center justify-between">
+                                    <View className="flex-row items-center">
+                                        <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
+                                            <Percent size={20} color="#3B82F6" />
+                                        </View>
+                                        <View>
+                                            <Text className="text-gray-500 text-sm">Margem de Lucro</Text>
+                                            <Text className="text-gray-400 text-xs">Saldo / Receitas</Text>
+                                        </View>
+                                    </View>
+                                    <Text className={`text-2xl font-bold ${metrics.margin >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                        {metrics.margin.toFixed(1)}%
+                                    </Text>
+                                </CardContent>
+                            </Card>
                         </View>
 
                         {/* Transactions List */}
                         <View className="px-4 pb-4">
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="flex-row items-center justify-between">
                                     <CardTitle className="text-base">Transações</CardTitle>
+                                    <TouchableOpacity
+                                        onPress={() => setShowFilterModal(true)}
+                                        className="flex-row items-center px-3 py-1.5 bg-gray-100 rounded-full"
+                                    >
+                                        <Filter size={14} color="#6B7280" />
+                                        <Text className="text-gray-600 text-sm ml-1">
+                                            {filterOptions.find(f => f.value === statusFilter)?.label}
+                                        </Text>
+                                    </TouchableOpacity>
                                 </CardHeader>
                                 <CardContent>
-                                    {transactions.length === 0 ? (
+                                    {filteredTransactions.length === 0 ? (
                                         <View className="py-8 items-center">
-                                            <Text className="text-gray-500">Nenhuma transação neste período</Text>
+                                            <Text className="text-gray-500">Nenhuma transação {statusFilter !== 'all' ? 'com este status' : 'neste período'}</Text>
                                         </View>
                                     ) : (
-                                        transactions.map((item) => (
-                                            <View key={item.id}>
-                                                {renderTransaction({ item })}
-                                            </View>
-                                        ))
+                                        filteredTransactions.map((item) => renderTransaction(item))
                                     )}
                                 </CardContent>
                             </Card>
@@ -260,6 +310,42 @@ export default function FinanceScreen() {
                     </>
                 )}
             </ScrollView>
+
+            {/* Filter Modal */}
+            <Modal
+                visible={showFilterModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowFilterModal(false)}
+            >
+                <TouchableOpacity
+                    className="flex-1 bg-black/50 justify-end"
+                    activeOpacity={1}
+                    onPress={() => setShowFilterModal(false)}
+                >
+                    <View className="bg-white rounded-t-3xl p-6">
+                        <Text className="text-lg font-bold text-gray-900 mb-4">Filtrar por Status</Text>
+                        {filterOptions.map((option) => (
+                            <TouchableOpacity
+                                key={option.value}
+                                onPress={() => {
+                                    setStatusFilter(option.value);
+                                    setShowFilterModal(false);
+                                }}
+                                className={`flex-row items-center justify-between py-4 border-b border-gray-100 ${statusFilter === option.value ? 'bg-orange-50 -mx-6 px-6' : ''}`}
+                            >
+                                <Text className={`font-medium ${statusFilter === option.value ? 'text-orange-600' : 'text-gray-700'}`}>
+                                    {option.label}
+                                </Text>
+                                <Badge variant="secondary">
+                                    <Text className="text-gray-600">{option.count}</Text>
+                                </Badge>
+                            </TouchableOpacity>
+                        ))}
+                        <View className="h-6" />
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </SafeAreaView>
     );
 }
