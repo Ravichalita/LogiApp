@@ -17,7 +17,7 @@ export function Input({ className, label, error, ...props }: InputProps) {
             {label && <Text className="text-gray-700 font-medium mb-1.5">{label}</Text>}
             <TextInput
                 className={cn(
-                    "flex h-11 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-blue-500",
+                    "flex h-11 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:border-orange-500",
                     error && "border-red-500",
                     className
                 )}

@@ -98,7 +98,7 @@ export default function DumpstersList() {
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#2563EB" />
+                    <ActivityIndicator size="large" color="#FF9500" />
                 </View>
             ) : (
                 <FlatList

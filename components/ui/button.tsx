@@ -16,7 +16,7 @@ export function Button({ className, variant = 'default', size = 'default', loadi
     const baseStyles = "flex-row items-center justify-center rounded-md disabled:opacity-50";
 
     const variants = {
-        default: "bg-blue-600 active:bg-blue-700",
+        default: "bg-orange-500 active:bg-orange-600",
         destructive: "bg-red-500 active:bg-red-600",
         outline: "border border-gray-300 bg-transparent active:bg-gray-100",
         secondary: "bg-gray-100 active:bg-gray-200",
@@ -37,7 +37,7 @@ export function Button({ className, variant = 'default', size = 'default', loadi
         outline: "text-gray-900 font-medium",
         secondary: "text-gray-900 font-medium",
         ghost: "text-gray-900 font-medium",
-        link: "text-blue-600 font-medium",
+        link: "text-orange-500 font-medium",
     };
 
     return (

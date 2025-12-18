@@ -43,7 +43,7 @@ export default function FleetList() {
             <CardHeader className="pb-2 flex-row justify-between items-start">
                 <View className="flex-row items-center">
                     <View className="w-10 h-10 bg-blue-50 rounded-full items-center justify-center mr-3">
-                        <TruckIcon size={20} color="#2563EB" />
+                        <TruckIcon size={20} color="#FF9500" />
                     </View>
                     <View>
                         <CardTitle className="text-lg">{item.name}</CardTitle>
@@ -87,7 +87,7 @@ export default function FleetList() {
 
             {loading ? (
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#2563EB" />
+                    <ActivityIndicator size="large" color="#FF9500" />
                 </View>
             ) : (
                 <FlatList

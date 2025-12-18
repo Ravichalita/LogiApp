@@ -306,4 +306,66 @@ export async function getAccount(accountId: string): Promise<Account | null> {
     }
     return null;
 }
+
+export function getTeam(accountId: string, callback: (team: UserAccount[]) => void): Unsubscribe {
+    const { db } = getFirebase();
+    if (!db) {
+        callback([]);
+        return () => { };
+    }
+
+    const teamRef = collection(db, `accounts/${accountId}/users`);
+    const q = query(teamRef, where('status', '==', 'ativo'));
+
+    return onSnapshot(q, (snapshot) => {
+        const team: UserAccount[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...docToSerializable(doc),
+        }));
+        callback(team);
+    }, (error) => {
+        console.error('Error fetching team:', error);
+        callback([]);
+    });
+}
+
+export async function getOperationTypes(accountId: string): Promise<OperationType[]> {
+    const account = await getAccount(accountId);
+    return account?.operationTypes || [];
+}
+
+export async function getTransactions(
+    accountId: string,
+    month: number,
+    year: number
+): Promise<any[]> {
+    const { db } = getFirebase();
+    if (!db) return [];
+
+    try {
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+        const transactionsRef = collection(db, `accounts/${accountId}/transactions`);
+        const q = query(
+            transactionsRef,
+            where('dueDate', '>=', startDate.toISOString()),
+            where('dueDate', '<=', endDate.toISOString())
+        );
+
+        const snapshot = await getDocs(q);
+        const transactions = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...docToSerializable(doc),
+        }));
+
+        return transactions.sort((a, b) =>
+            new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()
+        );
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
+        return [];
+    }
+}
 // #endregion
+

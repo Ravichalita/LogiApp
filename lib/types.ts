@@ -115,6 +115,9 @@ export const UpdateTransactionSchema = TransactionSchema.partial().extend({
 export const AccountSchema = z.object({
     id: z.string(),
     ownerId: z.string(),
+    name: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
     rentalCounter: z.number().int().optional().default(0),
     operationCounter: z.number().int().optional().default(0),
     rentalPrices: z.array(RentalPriceSchema).optional().default([]),
@@ -222,8 +225,9 @@ export const AttachmentSchema = z.object({
     url: z.string().url(),
     name: z.string(),
     type: z.string(),
-    uploadedAt: z.string(),
+    uploadedAt: z.string().optional(),
     path: z.string(),
+    id: z.string(),
 });
 export type Attachment = z.infer<typeof AttachmentSchema>;
 
@@ -297,6 +301,12 @@ export const UpdateOperationSchema = BaseOperationSchema
 
 
 export type Operation = z.infer<typeof OperationSchema> & { id: string };
+
+export type CreateOperationData = Omit<z.input<typeof BaseOperationSchema>, 'accountId' | 'createdBy' | 'createdAt' | 'status'> & {
+    status: 'Pendente' | 'Em Andamento' | 'Concluído';
+    sequentialId?: number;
+    googleCalendarEventId?: string;
+};
 
 export const CompletedOperationSchema = BaseOperationSchema.extend({
     sequentialId: z.number().int().positive(),
@@ -526,6 +536,16 @@ export const RecurrenceProfileSchema = z.object({
     templateData: z.any().optional(),
 });
 export type RecurrenceProfile = z.infer<typeof RecurrenceProfileSchema>;
+
+export interface RecurrenceData {
+    enabled: boolean;
+    frequency: 'weekly' | 'biweekly' | 'monthly' | 'custom';
+    daysOfWeek: number[];
+    time: string;
+    endDate?: Date;
+    billingType: 'perService' | 'monthly' | 'weekly' | 'biweekly';
+    monthlyValue?: number;
+}
 // #endregion
 
 export const RentalPricesSchema = z.object({

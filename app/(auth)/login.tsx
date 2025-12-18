@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { View, Image, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, ActivityIndicator, Alert } from 'react-native';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useRouter } from 'expo-router';
-import { getFirebase } from '../lib/firebase';
+import { getFirebase } from '../../lib/firebase';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card';
-import { Label } from '../components/ui/label';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../../components/ui/card';
+import { Label } from '../../components/ui/label';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -23,10 +23,9 @@ export default function Login() {
         }
 
         setLoading(true);
-        // Force specific error handling for demonstration
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            router.replace('/');
+            router.replace('/(tabs)');
         } catch (error: any) {
             console.error(error);
             let errorMessage = 'Falha ao fazer login.';
@@ -55,16 +54,16 @@ export default function Login() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center p-4">
+        <SafeAreaView className="flex-1 bg-zinc-100 items-center justify-center p-4">
             <Card className="w-full max-w-sm">
                 <CardHeader className="items-center pb-2">
                     <View className="mb-4">
-                        {/* Placeholder for Logo */}
-                        <View className="w-20 h-20 bg-blue-600 rounded-xl items-center justify-center shadow-sm">
-                            <Label className="text-white text-3xl font-bold">L</Label>
+                        {/* Logo with orange primary color */}
+                        <View className="w-20 h-20 bg-orange-500 rounded-xl items-center justify-center shadow-sm">
+                            <Label className="text-zinc-900 text-3xl font-bold">L</Label>
                         </View>
                     </View>
-                    <CardTitle className="text-2xl font-bold text-blue-600">LogiApp</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-orange-500">LogiApp</CardTitle>
                     <CardDescription>Gestão de Logística Simplificada</CardDescription>
                 </CardHeader>
 
@@ -89,7 +88,7 @@ export default function Login() {
                 </CardContent>
 
                 <CardFooter className="flex-col space-y-4 pt-2">
-                    <Button className="w-full bg-blue-600" onPress={handleLogin} loading={loading}>
+                    <Button className="w-full bg-orange-500" onPress={handleLogin} loading={loading}>
                         Entrar
                     </Button>
 

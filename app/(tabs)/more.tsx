@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Truck, Trash2, Settings, ChevronRight, Users } from "lucide-react-native";
+import { Truck, Trash2, Settings, ChevronRight, Users, DollarSign, Bell, BarChart3, Search } from "lucide-react-native";
 import { getFirebase } from "../../lib/firebase";
 
 export default function MoreOptions() {
@@ -9,6 +9,20 @@ export default function MoreOptions() {
     const { auth } = getFirebase();
 
     const menuItems = [
+        {
+            icon: Bell,
+            label: "Notificações",
+            description: "Alertas e lembretes",
+            route: "/more/notifications",
+            color: "#DC2626"
+        },
+        {
+            icon: Search,
+            label: "Busca Avançada",
+            description: "Filtros por data e tipo",
+            route: "/more/search",
+            color: "#6366F1"
+        },
         {
             icon: Truck,
             label: "Frota",
@@ -23,8 +37,27 @@ export default function MoreOptions() {
             route: "/more/dumpsters",
             color: "#D97706"
         },
-        // Using Clients here again just as an example of menu, but it's already in tabs
-        // Adding Settings
+        {
+            icon: DollarSign,
+            label: "Financeiro",
+            description: "Receitas, despesas e transações",
+            route: "/more/finance",
+            color: "#16A34A"
+        },
+        {
+            icon: Users,
+            label: "Equipe",
+            description: "Gerenciar membros e permissões",
+            route: "/more/team",
+            color: "#8B5CF6"
+        },
+        {
+            icon: BarChart3,
+            label: "Relatórios",
+            description: "Estatísticas e exportação",
+            route: "/more/reports",
+            color: "#0891B2"
+        },
         {
             icon: Settings,
             label: "Configurações",
