@@ -163,8 +163,8 @@ export default function FleetList() {
         <Card className="mb-4 mx-4">
             <CardHeader className="pb-2 flex-row justify-between items-start">
                 <View className="flex-row items-center flex-1">
-                    <View className="w-10 h-10 bg-blue-50 rounded-full items-center justify-center mr-3">
-                        <TruckIcon size={20} color="#FF9500" />
+                    <View className="w-10 h-10 bg-primary/10 rounded-full items-center justify-center mr-3">
+                        <TruckIcon size={20} className="text-primary" />
                     </View>
                     <View className="flex-1">
                         <CardTitle className="text-lg">{item.name}</CardTitle>
@@ -173,7 +173,7 @@ export default function FleetList() {
                 </View>
                 <View className="flex-row items-center gap-2">
                     <Badge variant={item.status === 'Disponível' ? 'success' : 'secondary'}>
-                        <Text className={item.status === 'Disponível' ? 'text-green-800' : 'text-gray-600'}>
+                        <Text className={item.status === 'Disponível' ? 'text-primary-foreground' : 'text-secondary-foreground'}>
                             {item.status}
                         </Text>
                     </Badge>
@@ -181,26 +181,26 @@ export default function FleetList() {
                         onPress={() => setShowActionMenu(showActionMenu === item.id ? null : item.id)}
                         className="p-1"
                     >
-                        <MoreVertical size={20} color="#6B7280" />
+                        <MoreVertical size={20} className="text-muted-foreground" />
                     </TouchableOpacity>
                 </View>
             </CardHeader>
 
             {showActionMenu === item.id && (
-                <View className="absolute right-4 top-14 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px]">
+                <View className="absolute right-4 top-14 bg-popover border border-border rounded-lg shadow-lg z-10 min-w-[150px]">
                     <TouchableOpacity
                         onPress={() => openEditModal(item)}
-                        className="flex-row items-center px-4 py-3 border-b border-gray-100"
+                        className="flex-row items-center px-4 py-3 border-b border-border"
                     >
-                        <Edit size={16} color="#4B5563" />
-                        <Text className="ml-3 text-gray-700">Editar</Text>
+                        <Edit size={16} className="text-foreground" />
+                        <Text className="ml-3 text-foreground">Editar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => handleStatusToggle(item)}
-                        className="flex-row items-center px-4 py-3 border-b border-gray-100"
+                        className="flex-row items-center px-4 py-3 border-b border-border"
                     >
-                        <Wrench size={16} color="#4B5563" />
-                        <Text className="ml-3 text-gray-700">
+                        <Wrench size={16} className="text-foreground" />
+                        <Text className="ml-3 text-foreground">
                             {item.status === 'Disponível' ? 'Manutenção' : 'Disponível'}
                         </Text>
                     </TouchableOpacity>
@@ -217,8 +217,8 @@ export default function FleetList() {
             <CardContent>
                 <View className="flex-row gap-4 mt-2">
                     <View>
-                        <Text className="text-xs text-gray-400 uppercase">Tipo</Text>
-                        <Text className="text-gray-700 font-medium">{item.type || 'Padrão'}</Text>
+                        <Text className="text-xs text-muted-foreground uppercase">Tipo</Text>
+                        <Text className="text-foreground font-medium">{item.type || 'Padrão'}</Text>
                     </View>
                     {item.year && (
                         <View>
@@ -232,16 +232,16 @@ export default function FleetList() {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView className="flex-1 bg-background">
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View className="px-4 py-3 bg-white border-b border-gray-200">
+            <View className="px-4 py-3 bg-card border-b border-border">
                 <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-row items-center">
                         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-                            <ArrowLeft size={24} color="#1F2937" />
+                            <ArrowLeft size={24} className="text-foreground" />
                         </TouchableOpacity>
-                        <Text className="text-lg font-bold text-gray-900">Frota</Text>
+                        <Text className="text-lg font-bold text-foreground">Frota</Text>
                     </View>
                     <TouchableOpacity
                         onPress={openCreateModal}

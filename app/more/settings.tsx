@@ -141,14 +141,14 @@ export default function SettingsScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50" edges={['bottom']}>
+        <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
             <Stack.Screen
                 options={{
                     headerShown: true,
                     title: 'Configurações',
                     headerLeft: () => (
                         <TouchableOpacity onPress={() => router.back()} className="mr-2">
-                            <ArrowLeft size={24} color="#171717" />
+                            <ArrowLeft size={24} className="text-foreground" />
                         </TouchableOpacity>
                     ),
                 }}
@@ -163,22 +163,22 @@ export default function SettingsScreen() {
                     <>
                         {/* Profile Card */}
                         <View className="p-4">
-                            <Card className="bg-orange-500">
+                            <Card className="bg-primary">
                                 <CardContent className="pt-6 pb-6">
                                     <View className="flex-row items-center justify-between">
                                         <View className="flex-row items-center flex-1">
                                             <View className="w-16 h-16 bg-white/20 rounded-full items-center justify-center mr-4">
-                                                <User size={32} color="#FFFFFF" />
+                                                <User size={32} className="text-primary-foreground" />
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-white text-xl font-bold">
+                                                <Text className="text-primary-foreground text-xl font-bold">
                                                     {userAccount?.name || auth.currentUser?.displayName || 'Usuário'}
                                                 </Text>
-                                                <Text className="text-orange-100 text-sm">
+                                                <Text className="text-primary-foreground/80 text-sm">
                                                     {auth.currentUser?.email}
                                                 </Text>
                                                 {userAccount?.phone && (
-                                                    <Text className="text-orange-100 text-xs mt-0.5">
+                                                    <Text className="text-primary-foreground/80 text-xs mt-0.5">
                                                         {userAccount.phone}
                                                     </Text>
                                                 )}
@@ -200,7 +200,7 @@ export default function SettingsScreen() {
                                             onPress={() => setIsEditing(true)}
                                             className="bg-white/20 p-2 rounded-full"
                                         >
-                                            <Edit2 size={20} color="#FFFFFF" />
+                                            <Edit2 size={20} className="text-primary-foreground" />
                                         </TouchableOpacity>
                                     </View>
                                 </CardContent>
@@ -209,23 +209,23 @@ export default function SettingsScreen() {
 
                         {/* Company Info */}
                         <View className="px-4 mb-4">
-                            <Text className="text-gray-500 text-xs font-semibold uppercase mb-2 ml-2">
+                            <Text className="text-muted-foreground text-xs font-semibold uppercase mb-2 ml-2">
                                 Empresa
                             </Text>
                             <Card>
                                 <CardContent className="pt-4 pb-4">
                                     <View className="flex-row items-center">
-                                        <View className="w-12 h-12 bg-gray-100 rounded-full items-center justify-center mr-3">
-                                            <Building2 size={24} color="#6B7280" />
+                                        <View className="w-12 h-12 bg-muted rounded-full items-center justify-center mr-3">
+                                            <Building2 size={24} className="text-muted-foreground" />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className="font-semibold text-gray-900">
+                                            <Text className="font-semibold text-foreground">
                                                 {account?.name || 'Empresa'}
                                             </Text>
                                             {account?.phone && (
                                                 <View className="flex-row items-center mt-1">
-                                                    <Phone size={12} color="#6B7280" />
-                                                    <Text className="text-gray-500 text-sm ml-1">{account.phone}</Text>
+                                                    <Phone size={12} className="text-muted-foreground" />
+                                                    <Text className="text-muted-foreground text-sm ml-1">{account.phone}</Text>
                                                 </View>
                                             )}
                                             {account?.email && (
@@ -242,19 +242,19 @@ export default function SettingsScreen() {
 
                         {/* Preferences */}
                         <View className="px-4 mb-4">
-                            <Text className="text-gray-500 text-xs font-semibold uppercase mb-2 ml-2">
+                            <Text className="text-muted-foreground text-xs font-semibold uppercase mb-2 ml-2">
                                 Preferências
                             </Text>
                             <Card>
                                 <CardContent className="py-0">
                                     <TouchableOpacity
-                                        className="flex-row items-center justify-between py-4 border-b border-gray-100"
+                                        className="flex-row items-center justify-between py-4 border-b border-border"
                                     >
                                         <View className="flex-row items-center">
                                             <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
                                                 <Bell size={20} color="#3B82F6" />
                                             </View>
-                                            <Text className="font-medium text-gray-900">Notificações</Text>
+                                            <Text className="font-medium text-foreground">Notificações</Text>
                                         </View>
                                         <Switch
                                             value={notifications}
@@ -271,7 +271,7 @@ export default function SettingsScreen() {
                                             <View className="w-10 h-10 bg-purple-100 rounded-full items-center justify-center mr-3">
                                                 <Moon size={20} color="#8B5CF6" />
                                             </View>
-                                            <Text className="font-medium text-gray-900">Modo Escuro</Text>
+                                            <Text className="font-medium text-foreground">Modo Escuro</Text>
                                         </View>
                                         <Switch
                                             value={darkMode}
@@ -286,7 +286,7 @@ export default function SettingsScreen() {
 
                         {/* Support */}
                         <View className="px-4 mb-4">
-                            <Text className="text-gray-500 text-xs font-semibold uppercase mb-2 ml-2">
+                            <Text className="text-muted-foreground text-xs font-semibold uppercase mb-2 ml-2">
                                 Suporte
                             </Text>
                             <Card>
@@ -299,9 +299,9 @@ export default function SettingsScreen() {
                                             <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
                                                 <HelpCircle size={20} color="#16A34A" />
                                             </View>
-                                            <Text className="font-medium text-gray-900">Central de Ajuda</Text>
+                                            <Text className="font-medium text-foreground">Central de Ajuda</Text>
                                         </View>
-                                        <ChevronRight size={20} color="#9CA3AF" />
+                                        <ChevronRight size={20} className="text-muted-foreground" />
                                     </TouchableOpacity>
                                 </CardContent>
                             </Card>
@@ -310,22 +310,22 @@ export default function SettingsScreen() {
                         {/* Logout */}
                         <View className="px-4 mb-4">
                             <TouchableOpacity
-                                className="bg-red-50 border border-red-200 rounded-xl p-4 flex-row items-center justify-center"
+                                className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 flex-row items-center justify-center"
                                 onPress={handleLogout}
                             >
-                                <LogOut size={20} color="#DC2626" />
-                                <Text className="text-red-600 font-semibold ml-2">Sair da Conta</Text>
+                                <LogOut size={20} className="text-destructive" />
+                                <Text className="text-destructive font-semibold ml-2">Sair da Conta</Text>
                             </TouchableOpacity>
                         </View>
 
                         {/* App Info */}
                         <View className="px-4 pb-8 items-center">
                             <View className="flex-row items-center mb-2">
-                                <Info size={16} color="#9CA3AF" />
-                                <Text className="text-gray-400 text-sm ml-1">LogiApp Mobile</Text>
+                                <Info size={16} className="text-muted-foreground" />
+                                <Text className="text-muted-foreground text-sm ml-1">LogiApp Mobile</Text>
                             </View>
-                            <Text className="text-gray-400 text-xs">Versão 1.0.0 (Beta)</Text>
-                            <Text className="text-gray-400 text-xs mt-1">© 2024 Chalita Digital</Text>
+                            <Text className="text-muted-foreground text-xs">Versão 1.0.0 (Beta)</Text>
+                            <Text className="text-muted-foreground text-xs mt-1">© 2024 Chalita Digital</Text>
                         </View>
                     </>
                 )}
@@ -345,17 +345,17 @@ export default function SettingsScreen() {
                     <TouchableWithoutFeedback onPress={() => setIsEditing(false)}>
                         <View className="flex-1" />
                     </TouchableWithoutFeedback>
-                    <View className="bg-white rounded-t-3xl p-6">
+                    <View className="bg-card rounded-t-3xl p-6">
                         <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-xl font-bold text-gray-900">Editar Perfil</Text>
+                            <Text className="text-xl font-bold text-foreground">Editar Perfil</Text>
                             <TouchableOpacity onPress={() => setIsEditing(false)}>
-                                <X size={24} color="#6B7280" />
+                                <X size={24} className="text-muted-foreground" />
                             </TouchableOpacity>
                         </View>
 
                         <View className="space-y-4 mb-6">
                             <View>
-                                <Text className="text-sm font-medium text-gray-700 mb-1">Nome Completo</Text>
+                                <Text className="text-sm font-medium text-foreground mb-1">Nome Completo</Text>
                                 <Input
                                     value={editName}
                                     onChangeText={setEditName}
@@ -364,7 +364,7 @@ export default function SettingsScreen() {
                                 />
                             </View>
                             <View>
-                                <Text className="text-sm font-medium text-gray-700 mb-1">Telefone / WhatsApp</Text>
+                                <Text className="text-sm font-medium text-foreground mb-1">Telefone / WhatsApp</Text>
                                 <Input
                                     value={editPhone}
                                     onChangeText={setEditPhone}
@@ -382,7 +382,7 @@ export default function SettingsScreen() {
                             {saving ? (
                                 <ActivityIndicator color="#FFF" />
                             ) : (
-                                <Text className="text-white font-bold text-center">Salvar Alterações</Text>
+                                <Text className="text-primary-foreground font-bold text-center">Salvar Alterações</Text>
                             )}
                         </Button>
                         <View className="h-6" />

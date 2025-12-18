@@ -7,8 +7,8 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface ButtonProps extends TouchableOpacityProps {
-    variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-    size?: 'default' | 'sm' | 'lg' | 'icon';
+    variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | 'selected' | 'nooutline';
+    size?: 'default' | 'sm' | 'lg' | 'icon' | 'bigicon';
     loading?: boolean;
 }
 
@@ -16,12 +16,14 @@ export function Button({ className, variant = 'default', size = 'default', loadi
     const baseStyles = "flex-row items-center justify-center rounded-md disabled:opacity-50";
 
     const variants = {
-        default: "bg-orange-500 active:bg-orange-600",
-        destructive: "bg-red-500 active:bg-red-600",
-        outline: "border border-gray-300 bg-transparent active:bg-gray-100",
-        secondary: "bg-gray-100 active:bg-gray-200",
-        ghost: "bg-transparent active:bg-gray-100",
+        default: "bg-primary active:bg-primary/90",
+        destructive: "bg-destructive active:bg-destructive/90",
+        outline: "border border-input bg-card active:bg-accent",
+        secondary: "bg-secondary active:bg-secondary/80",
+        ghost: "bg-transparent active:bg-accent",
         link: "bg-transparent underline-offset-4 active:underline",
+        selected: "bg-muted border-2 border-primary/50",
+        nooutline: "bg-card active:bg-accent",
     };
 
     const sizes = {
@@ -29,15 +31,18 @@ export function Button({ className, variant = 'default', size = 'default', loadi
         sm: "h-9 rounded-md px-3",
         lg: "h-12 rounded-md px-8",
         icon: "h-10 w-10",
+        bigicon: "h-11 w-11",
     };
 
     const textStyles = {
-        default: "text-white font-medium",
-        destructive: "text-white font-medium",
-        outline: "text-gray-900 font-medium",
-        secondary: "text-gray-900 font-medium",
-        ghost: "text-gray-900 font-medium",
-        link: "text-orange-500 font-medium",
+        default: "text-primary-foreground font-medium",
+        destructive: "text-destructive-foreground font-medium",
+        outline: "text-foreground font-medium",
+        secondary: "text-secondary-foreground font-medium",
+        ghost: "text-foreground font-medium",
+        link: "text-primary font-medium",
+        selected: "text-foreground font-medium",
+        nooutline: "text-accent-foreground font-medium",
     };
 
     return (

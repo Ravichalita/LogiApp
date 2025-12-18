@@ -40,6 +40,13 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
+                name="finance"
+                options={{
+                    title: 'Financeiro',
+                    tabBarIcon: ({ color, size }) => <Users size={size} color={color} />, // Placeholder icon, change to DollarSign if available or Wallet
+                }}
+            />
+            <Tabs.Screen
                 name="more"
                 options={{
                     title: 'Mais',

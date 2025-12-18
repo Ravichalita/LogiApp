@@ -45,13 +45,6 @@ export default function MoreOptions() {
             color: "#D97706"
         },
         {
-            icon: DollarSign,
-            label: "Financeiro",
-            description: "Receitas, despesas e transações",
-            route: "/more/finance",
-            color: "#16A34A"
-        },
-        {
             icon: Users,
             label: "Equipe",
             description: "Gerenciar membros e permissões",

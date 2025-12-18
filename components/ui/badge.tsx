@@ -7,27 +7,29 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface BadgeProps extends ViewProps {
-    variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+    variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
     children: React.ReactNode;
 }
 
 export function Badge({ className, variant = 'default', children, ...props }: BadgeProps) {
     const variants = {
-        default: "bg-blue-600 border-transparent",
-        secondary: "bg-gray-100 border-transparent",
-        destructive: "bg-red-500 border-transparent",
-        outline: "text-gray-900 border-gray-200",
+        default: "bg-primary border-transparent",
+        secondary: "bg-secondary border-transparent",
+        destructive: "bg-destructive border-transparent",
+        outline: "text-foreground border-border",
         success: "bg-green-500 border-transparent",
         warning: "bg-yellow-500 border-transparent",
+        info: "bg-blue-500 border-transparent",
     };
 
     const textVariants = {
-        default: "text-white",
-        secondary: "text-gray-900",
-        destructive: "text-white",
-        outline: "text-gray-900",
+        default: "text-primary-foreground",
+        secondary: "text-secondary-foreground",
+        destructive: "text-destructive-foreground",
+        outline: "text-foreground",
         success: "text-white",
         warning: "text-white",
+        info: "text-white",
     };
 
     return (
