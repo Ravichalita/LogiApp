@@ -15,7 +15,18 @@ import { ChevronLeft, MapPin, Navigation, Truck, Clock, Route, ChevronDown, Chev
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+
+// Conditionally import MapView only on native platforms
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
+
+if (Platform.OS !== 'web') {
+    const Maps = require('react-native-maps');
+    MapView = Maps.default;
+    Marker = Maps.Marker;
+    PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
+}
 
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -213,30 +224,49 @@ export default function RoutePlanningScreen() {
                 </View>
             ) : (
                 <View className="flex-1">
-                    {/* Map */}
+                    {/* Map - Only on native platforms */}
                     <View className="h-64 bg-gray-200">
-                        <MapView
-                            style={{ flex: 1 }}
-                            provider={PROVIDER_GOOGLE}
-                            region={mapRegion}
-                            showsUserLocation
-                            showsTraffic
-                        >
-                            {filteredStops.map((stop, index) => (
-                                stop.latitude && stop.longitude && (
-                                    <Marker
-                                        key={stop.id}
-                                        coordinate={{
-                                            latitude: stop.latitude,
-                                            longitude: stop.longitude
-                                        }}
-                                        title={`${stop.type === 'rental' ? 'AL' : 'OP'}${stop.sequentialId}`}
-                                        description={stop.clientName}
-                                        pinColor={getMarkerColor(stop.type, stop.status)}
-                                    />
-                                )
-                            ))}
-                        </MapView>
+                        {Platform.OS === 'web' ? (
+                            <View className="flex-1 items-center justify-center bg-gray-100">
+                                <MapPin size={40} color="#9CA3AF" />
+                                <Text className="text-gray-500 mt-2 text-center px-4">
+                                    Mapa disponível apenas no app móvel
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={openRouteInMaps}
+                                    className="mt-3 bg-orange-500 rounded-lg px-4 py-2"
+                                >
+                                    <Text className="text-white font-medium">Abrir no Google Maps</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : MapView ? (
+                            <MapView
+                                style={{ flex: 1 }}
+                                provider={PROVIDER_GOOGLE}
+                                region={mapRegion}
+                                showsUserLocation
+                                showsTraffic
+                            >
+                                {filteredStops.map((stop, index) => (
+                                    stop.latitude && stop.longitude && (
+                                        <Marker
+                                            key={stop.id}
+                                            coordinate={{
+                                                latitude: stop.latitude,
+                                                longitude: stop.longitude
+                                            }}
+                                            title={`${stop.type === 'rental' ? 'AL' : 'OP'}${stop.sequentialId}`}
+                                            description={stop.clientName}
+                                            pinColor={getMarkerColor(stop.type, stop.status)}
+                                        />
+                                    )
+                                ))}
+                            </MapView>
+                        ) : (
+                            <View className="flex-1 items-center justify-center">
+                                <ActivityIndicator color="#FF9500" />
+                            </View>
+                        )}
                     </View>
 
                     {/* Actions Bar */}

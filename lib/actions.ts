@@ -2,6 +2,7 @@ import {
     collection,
     doc,
     getDoc,
+    getDocs,
     setDoc,
     updateDoc,
     deleteDoc,
@@ -848,6 +849,147 @@ export async function updateTruckTypesAction(
         return { success: true };
     } catch (error) {
         console.error('Error updating truck types:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+// #endregion
+
+// #region Backup Actions
+
+export interface Backup {
+    id: string;
+    createdAt: string;
+    collections: string[];
+    status: 'completed' | 'pending' | 'failed';
+}
+
+export async function getBackupsAction(
+    accountId: string
+): Promise<Backup[]> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const backupsRef = collection(db, `accounts/${accountId}/backups`);
+        const snap = await getDocs(backupsRef);
+
+        const backups: Backup[] = snap.docs.map(d => ({
+            id: d.id,
+            createdAt: d.data().createdAt || new Date().toISOString(),
+            collections: d.data().collections || [],
+            status: d.data().status || 'completed'
+        }));
+
+        return backups.sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    } catch (error) {
+        console.error('Error getting backups:', error);
+        return [];
+    }
+}
+
+export async function createBackupAction(
+    accountId: string
+): Promise<{ success: boolean; backupId?: string; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        // Create backup document
+        const backupRef = await addDoc(collection(db, `accounts/${accountId}/backups`), {
+            createdAt: new Date().toISOString(),
+            status: 'pending',
+            collections: ['rentals', 'operations', 'clients', 'dumpsters', 'trucks']
+        });
+
+        // Copy each collection to backup subcollections
+        const collectionsToBackup = ['rentals', 'operations', 'clients', 'dumpsters', 'trucks'];
+
+        for (const collName of collectionsToBackup) {
+            const sourceRef = collection(db, `accounts/${accountId}/${collName}`);
+            const snap = await getDocs(sourceRef);
+
+            for (const docSnap of snap.docs) {
+                await setDoc(
+                    doc(db, `accounts/${accountId}/backups/${backupRef.id}/${collName}`, docSnap.id),
+                    docSnap.data()
+                );
+            }
+        }
+
+        // Mark backup as completed
+        await updateDoc(backupRef, { status: 'completed' });
+
+        return { success: true, backupId: backupRef.id };
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function restoreBackupAction(
+    accountId: string,
+    backupId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        const collectionsToRestore = ['rentals', 'operations', 'clients', 'dumpsters', 'trucks'];
+
+        for (const collName of collectionsToRestore) {
+            // Delete current data
+            const currentRef = collection(db, `accounts/${accountId}/${collName}`);
+            const currentSnap = await getDocs(currentRef);
+            for (const docSnap of currentSnap.docs) {
+                await deleteDoc(doc(db, `accounts/${accountId}/${collName}`, docSnap.id));
+            }
+
+            // Restore from backup
+            const backupCollRef = collection(db, `accounts/${accountId}/backups/${backupId}/${collName}`);
+            const backupSnap = await getDocs(backupCollRef);
+            for (const docSnap of backupSnap.docs) {
+                await setDoc(
+                    doc(db, `accounts/${accountId}/${collName}`, docSnap.id),
+                    docSnap.data()
+                );
+            }
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error restoring backup:', error);
+        return { success: false, error: handleFirebaseError(error) };
+    }
+}
+
+export async function deleteBackupAction(
+    accountId: string,
+    backupId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { db } = getFirebase();
+        if (!db) throw new Error('Firebase not initialized');
+
+        // Delete backup subcollections
+        const collectionsToDelete = ['rentals', 'operations', 'clients', 'dumpsters', 'trucks'];
+
+        for (const collName of collectionsToDelete) {
+            const collRef = collection(db, `accounts/${accountId}/backups/${backupId}/${collName}`);
+            const snap = await getDocs(collRef);
+            for (const docSnap of snap.docs) {
+                await deleteDoc(doc(db, `accounts/${accountId}/backups/${backupId}/${collName}`, docSnap.id));
+            }
+        }
+
+        // Delete backup document
+        await deleteDoc(doc(db, `accounts/${accountId}/backups`, backupId));
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error deleting backup:', error);
         return { success: false, error: handleFirebaseError(error) };
     }
 }

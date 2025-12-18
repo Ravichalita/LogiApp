@@ -13,14 +13,23 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ravichalita.logiapp",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCBLytgbl46Zn0gd8SK86c_BiJJYkTEa-w"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.ravichalita.mobile"
+      "package": "com.ravichalita.mobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCBLytgbl46Zn0gd8SK86c_BiJJYkTEa-w"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

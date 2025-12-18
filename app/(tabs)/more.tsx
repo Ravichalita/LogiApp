@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Truck, Trash2, Settings, ChevronRight, Users, DollarSign, Bell, BarChart3, Search, Map } from "lucide-react-native";
+import { Truck, Trash2, Settings, ChevronRight, Users, DollarSign, Bell, BarChart3, Search, Map, HardDrive } from "lucide-react-native";
 import { getFirebase } from "../../lib/firebase";
 
 export default function MoreOptions() {
@@ -64,6 +64,13 @@ export default function MoreOptions() {
             description: "Estatísticas e exportação",
             route: "/more/reports",
             color: "#0891B2"
+        },
+        {
+            icon: HardDrive,
+            label: "Backup",
+            description: "Criar e restaurar backups",
+            route: "/more/backup",
+            color: "#7C3AED"
         },
         {
             icon: Settings,
